@@ -1,3 +1,4 @@
+import Link from 'next/link';
 import type { RoleName } from '@/types/permissions';
 import * as Icons from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
@@ -11,17 +12,20 @@ const NAV_ICONS: Record<string, LucideIcon> = {
   Megaphone: Icons.Megaphone,
   Settings: Icons.Settings,
   Users: Icons.Users,
+  Package: Icons.Package,
 };
 
 interface SubTab {
   id: string;
   name: string;
+  href: string;
 }
 
 interface Tab {
   id: string;
   name: string;
   icon: string;
+  href: string;
   subTabs?: SubTab[];
 }
 
@@ -30,8 +34,8 @@ interface SidebarProps {
   currentTab: string;
   currentSubTab: string;
   activeRole: RoleName;
-  onTabChange: (tab: string) => void;
-  onSubTabChange: (subTab: string) => void;
+  onNavigate: () => void;
+  menuOpen: boolean;
 }
 
 export default function Sidebar({
@@ -39,12 +43,12 @@ export default function Sidebar({
   currentTab,
   currentSubTab,
   activeRole,
-  onTabChange,
-  onSubTabChange,
+  onNavigate,
+  menuOpen,
 }: SidebarProps) {
   return (
-    <aside className="sidebar" id="application-navigation" aria-label="Navigation principale">
-      <div className="nav-section-title">Navigation</div>
+    <aside className="sidebar" id="application-navigation" aria-label="Navigation principale" role={menuOpen ? 'dialog' : undefined} aria-modal={menuOpen || undefined}>
+      <div className="sidebar-heading"><div className="nav-section-title">Navigation</div><button className="notif-btn sidebar-close" aria-label="Fermer le menu" onClick={onNavigate}><Icons.X size={20} /></button></div>
 
       <div className="nav-list" style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
         {availableTabs.map(tab => {
@@ -54,11 +58,11 @@ export default function Sidebar({
 
           return (
             <div key={tab.id} className="nav-group">
-              <button
-                data-tour-tab={tab.id}
-                aria-current={isSelected ? 'page' : undefined}
+              <Link
+                href={tab.href}
+                aria-current={isSelected && (!tab.subTabs?.length || currentSubTab === tab.subTabs[0].id) ? 'page' : undefined}
                 className={`nav-item ${isSelected ? 'active' : ''}`}
-                onClick={() => onTabChange(tab.id)}
+                onClick={onNavigate}
                 style={{ width: '100%' }}
               >
                 <IconComponent size={16} className="nav-icon" />
@@ -73,7 +77,7 @@ export default function Sidebar({
                     }}
                   />
                 )}
-              </button>
+              </Link>
 
               {/* Sous-onglets si l'onglet est sélectionné */}
               {isSelected && tab.subTabs && tab.subTabs.length > 0 && (
@@ -91,12 +95,12 @@ export default function Sidebar({
                   }}
                 >
                   {tab.subTabs.map(sub => (
-                    <button
-                      data-tour-subtab={sub.id}
+                    <Link
+                      href={sub.href}
                       key={sub.id}
                       aria-current={currentSubTab === sub.id ? 'page' : undefined}
                       className={`subnav-item ${currentSubTab === sub.id ? 'active' : ''}`}
-                      onClick={() => onSubTabChange(sub.id)}
+                      onClick={onNavigate}
                       style={{
                         background: 'transparent',
                         border: 'none',
@@ -111,7 +115,7 @@ export default function Sidebar({
                       }}
                     >
                       {sub.name}
-                    </button>
+                    </Link>
                   ))}
                 </div>
               )}
@@ -122,7 +126,7 @@ export default function Sidebar({
 
       <div className="sidebar-footer">
         <div className="permission-card">
-          <div className="perm-title">🔒 Moindre Privilège</div>
+          <div className="perm-title">Accès selon le rôle</div>
           <p>
             En tant que <strong>{activeRole}</strong>, vous n&apos;accédez
             qu&apos;aux modules et données relevant de votre rôle.

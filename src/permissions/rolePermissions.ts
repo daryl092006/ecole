@@ -12,10 +12,10 @@ const academicManagement: Permission[] = [
 ];
 
 export const ROLE_ACCESS: Record<RoleName, RoleAccess> = {
-  [ROLES.DG]: { role: ROLES.DG, description: 'Vision globale et décisions stratégiques.', permissions: ['academic.view', 'schedule.view', 'grade.view', 'complaint.view', 'finance.view', 'finance.report.view', 'student.view', 'communication.view', 'system.audit.view'], scope: {} },
+  [ROLES.DG]: { role: ROLES.DG, description: 'Vision globale, décisions stratégiques et validation des annulations financières.', permissions: ['academic.view', 'schedule.view', 'grade.view', 'complaint.view', 'finance.view', 'finance.report.view', 'student.view', 'communication.view', 'system.audit.view', 'user.manage', 'payment.cancel'], scope: {} },
   [ROLES.DGA]: { role: ROLES.DGA, description: 'Suivi opérationnel global.', permissions: ['academic.view', 'schedule.view', 'grade.view', 'complaint.view', 'finance.view', 'finance.report.view', 'student.view', 'communication.view'], scope: {} },
-  [ROLES.DA]: { role: ROLES.DA, description: 'Pilote la structure académique : années, filières, parcours, niveaux et matières.', permissions: [...academicManagement, 'academic.year.open'], scope: {} },
-  [ROLES.LOG]: { role: ROLES.LOG, description: 'Assure provisoirement la gestion académique, les groupes, les affectations et la planification.', permissions: [...academicManagement, 'academic.group.manage', 'academic.assignment.manage', 'schedule.create', 'schedule.update', 'student.group.assign'], scope: {} },
+  [ROLES.DA]: { role: ROLES.DA, description: 'Pilote la structure académique, les jurys et le parcours des étudiants.', permissions: [...academicManagement, 'academic.year.open', 'student.lifecycle.manage', 'student.card.print'], scope: {} },
+  [ROLES.LOG]: { role: ROLES.LOG, description: 'Gère les dossiers, les groupes, les affectations et la planification.', permissions: ['academic.view', 'academic.structure.manage', 'schedule.view', 'attendance.view', 'grade.view', 'complaint.view', 'student.view', 'academic.group.manage', 'academic.assignment.manage', 'schedule.create', 'schedule.update', 'student.group.assign', 'student.lifecycle.manage', 'student.card.print'], scope: {} },
   [ROLES.ENS]: { role: ROLES.ENS, description: 'Ses enseignements, groupes, présences et notes.', permissions: ['academic.view', 'schedule.view', 'attendance.view', 'attendance.record', 'evaluation.create', 'grade.view', 'grade.enter', 'grade.submit', 'complaint.view'], scope: { groupIds: [] } },
   [ROLES.SURV]: { role: ROLES.SURV, description: 'Séances affectées, présences et incidents.', permissions: ['schedule.view', 'attendance.view', 'attendance.record'], scope: { sessionIds: [] } },
   [ROLES.RAF]: { role: ROLES.RAF, description: 'Opérations financières quotidiennes.', permissions: ['finance.view', 'finance.report.view', 'payment.record', 'student.view'], scope: {} },
@@ -38,6 +38,8 @@ function getAllowedTabs(role: RoleName, permissions: Permission[]): string[] {
   if (permissions.includes('student.view')) tabs.push('etudiants');
   if (permissions.includes('finance.view')) tabs.push('finance');
   if (permissions.includes('user.manage')) tabs.push('personnel');
+  if (([ROLES.DG, ROLES.DGA, ROLES.RAF].includes(role as typeof ROLES.DG) || permissions.includes('academic.assignment.manage')) && !tabs.includes('personnel')) tabs.push('personnel');
+  if ([ROLES.DG, ROLES.DGA, ROLES.RAF, ROLES.ACHATS, ROLES.SITE].includes(role as typeof ROLES.DG)) tabs.push('logistique');
   if (permissions.some(permission => permission.startsWith('communication.'))) tabs.push('marketing');
   if (permissions.some(permission => permission.startsWith('system.'))) tabs.push('systeme');
   if (role === ROLES.DG || role === ROLES.DGA) tabs.splice(1, 0, 'dashboard_global');

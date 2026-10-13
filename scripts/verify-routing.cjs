@@ -1,0 +1,27 @@
+/* eslint-disable @typescript-eslint/no-require-imports */
+const assert = require('node:assert/strict');
+const fs = require('node:fs');
+const path = require('node:path');
+const { ROLES } = require('../src/types/permissions.ts');
+const { PORTAL_ROUTES, HOME_PATH, getPortalRoute, studentPath } = require('../src/constants/portalRoutes.ts');
+const { getAvailableTabs, isRouteAllowed, postLoginPath } = require('../src/permissions/navigation.ts');
+const { authenticateDemoSession, DEMO_PASSWORD } = require('../src/services/demoSessionService.ts');
+assert.equal(authenticateDemoSession(' Direction@escen.demo ', DEMO_PASSWORD).role, ROLES.DG);
+assert.throws(() => authenticateDemoSession('direction@escen.demo', 'incorrect'));
+assert.throws(() => authenticateDemoSession('adresse-inconnue@escen.demo', DEMO_PASSWORD));
+assert.equal(postLoginPath('/finance/contrats', ROLES.DG), '/finance/contrats');
+assert.equal(postLoginPath('/finance/contrats', ROLES.STUD), HOME_PATH);
+assert.equal(postLoginPath('/academique', ROLES.ENS), '/academique');
+assert.equal(postLoginPath('/academique', ROLES.IT), HOME_PATH);
+assert.equal(postLoginPath('https://autre.example/finance', ROLES.DG), HOME_PATH);
+assert.equal(postLoginPath('javascript:alert(1)', ROLES.DG), HOME_PATH);
+assert.equal(isRouteAllowed('/etudiants/ETU001', ROLES.LOG), true);
+assert.equal(isRouteAllowed('/etudiants/ETU001', ROLES.STUD), false);
+assert.equal(isRouteAllowed('/academique/notes', ROLES.IT), false);
+assert.equal(isRouteAllowed('/systeme/support', ROLES.IT), true);
+assert.equal(getPortalRoute(studentPath('ETU/001')).studentId, 'ETU/001');
+assert.equal(new Set(PORTAL_ROUTES.map(item => item.href)).size, PORTAL_ROUTES.length);
+assert.equal(new Set(PORTAL_ROUTES.map(item => item.section)).size, PORTAL_ROUTES.length);
+for (const route of PORTAL_ROUTES) assert(fs.existsSync(path.join(__dirname, '../src/app/(portail)', route.href, 'page.tsx')), 'Page Next.js manquante : ' + route.href);
+for (const role of Object.values(ROLES)) for (const tab of getAvailableTabs(role)) for (const section of tab.subTabs) assert.equal(isRouteAllowed(section.href, role), true);
+console.log('Vérification réussie : accès de démonstration, routes Next.js, redirections autorisées et périmètres par rôle.');

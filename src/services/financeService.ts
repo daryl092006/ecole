@@ -5,7 +5,7 @@ export function recordLocalPayment(student: Student, fee: Fee, amount: number, m
   if (!hasPermission(recordedBy, 'payment.record')) throw new Error('Encaissement non autorisé.');
   if (!['ESPECES', 'VIREMENT', 'CARTE', 'MOBILE_MONEY', 'CHEQUE'].includes(method)) throw new Error('Mode de paiement invalide.');
   if (!fee.active || fee.academicYearId !== student.academicYearId) throw new Error('Frais incompatibles avec le dossier Étudiant.');
-  if (!Number.isFinite(amount) || amount <= 0) throw new Error('Le montant doit être strictement positif.');
+  if (!Number.isSafeInteger(amount) || amount <= 0) throw new Error('Le montant en FCFA doit être un entier strictement positif.');
   if (amount > student.financials.remaining) throw new Error('Le versement dépasse le solde restant.');
   const date = new Date().toISOString();
   const payment: Payment = { id: `PAY-${String(sequence).padStart(3, '0')}`, studentId: student.matricule, feeId: fee.id, amount, date, paymentMethod: method, reference: `${method}-${Date.now()}`, recordedBy, status: 'ENREGISTRE' };

@@ -1,0 +1,20 @@
+import type { Permission } from '@/types';
+export const PERMISSION_LABELS: Record<Permission, string> = {
+  'academic.view': 'Consulter les enseignements', 'academic.structure.manage': 'Gérer le référentiel académique',
+  'academic.year.open': 'Ouvrir et clôturer les années', 'academic.group.manage': 'Gérer les groupes',
+  'academic.assignment.manage': 'Affecter les enseignants', 'schedule.view': 'Consulter le planning',
+  'schedule.create': 'Planifier les séances', 'schedule.update': 'Déplacer et annuler les séances',
+  'attendance.view': 'Consulter les présences', 'attendance.record': 'Enregistrer les présences',
+  'evaluation.create': 'Créer les évaluations', 'grade.view': 'Consulter les notes',
+  'grade.enter': 'Saisir les notes', 'grade.submit': 'Soumettre les notes',
+  'grade.review': 'Contrôler les notes', 'grade.approve': 'Valider les notes', 'grade.publish': 'Publier les notes',
+  'complaint.view': 'Consulter les réclamations', 'complaint.review': 'Traiter les réclamations',
+  'finance.view': 'Consulter les finances', 'finance.report.view': 'Exporter les rapports financiers',
+  'payment.record': 'Enregistrer les contrats et versements', 'payment.cancel': 'Annuler les paiements avec motif',
+  'student.view': 'Consulter les dossiers étudiants', 'student.update': 'Modifier les dossiers étudiants',
+  'student.group.assign': 'Créer les dossiers et affecter les groupes', 'student.card.print': 'Éditer les cartes et certificats',
+  'student.lifecycle.manage': 'Gérer les réinscriptions et statuts', 'communication.view': 'Consulter les annonces',
+  'communication.manage': 'Diffuser les annonces', 'user.manage': 'Gérer les utilisateurs',
+  'system.audit.view': 'Consulter le journal d’activité', 'system.backup.manage': 'Exporter le journal',
+  'system.support.manage': 'Prendre en charge les demandes de support',
+};

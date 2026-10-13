@@ -1,10 +1,12 @@
+import FormFeedback from '@/components/ui/FormFeedback';
+import { useFeedback } from '@/hooks/useFeedback';
 import { useState } from 'react';
 import type { BlockedPeriod, Room } from '@/types';
 interface Props { rooms: Room[]; periods: BlockedPeriod[]; onRoom: (room: Room) => void; onPeriod: (label: string, start: string, end: string) => void; }
 export default function ScheduleResourcesForm({ rooms, periods, onRoom, onPeriod }: Props) {
   const [code, setCode] = useState(''); const [name, setName] = useState(''); const [capacity, setCapacity] = useState('');
-  const [label, setLabel] = useState(''); const [start, setStart] = useState(''); const [end, setEnd] = useState(''); const [feedback, setFeedback] = useState('');
-  const run = (action: () => void) => { try { action(); setFeedback('Enregistrement effectué.'); } catch (error) { setFeedback(error instanceof Error ? error.message : 'Opération impossible.'); } };
+  const [label, setLabel] = useState(''); const [start, setStart] = useState(''); const [end, setEnd] = useState(''); const [feedback, setFeedback, feedbackError] = useFeedback();
+  const run = (action: () => void) => { try { action(); setFeedback('Enregistrement effectué.'); } catch (error) { setFeedback(error instanceof Error ? error.message : 'Opération impossible.', true); } };
   return <div className="card card-full mb-2"><div className="card-header"><h2>Salles et périodes bloquées</h2></div>
     <form className="form-row mb-2" onSubmit={event => { event.preventDefault(); run(() => { onRoom({ code: code.trim(), name: name.trim(), capacity: Number(capacity), building: '', status: 'Disponible' }); setCode(''); setName(''); setCapacity(''); }); }}>
       <label>Code salle<input className="input" required value={code} onChange={event => setCode(event.target.value)} /></label>
@@ -18,7 +20,7 @@ export default function ScheduleResourcesForm({ rooms, periods, onRoom, onPeriod
       <label>Fin<input className="input" required type="date" value={end} onChange={event => setEnd(event.target.value)} /></label>
       <button className="btn btn-primary">Bloquer la période</button>
     </form>
-    {feedback && <p role="status">{feedback}</p>}
+    <FormFeedback message={feedback} error={feedbackError} />
     <p>{rooms.map(room => `${room.name} (${room.capacity} places)`).join(' · ') || 'Aucune salle.'}</p>
     {periods.map(period => <p key={period.id}>{period.label} : {period.startDate} · {period.endDate}</p>)}
   </div>;

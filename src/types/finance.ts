@@ -18,11 +18,12 @@ export interface StudentFinancials {
   paid: number;
   remaining: number;
   installments: Installment[];
+  terms?: { tuition: number; registration: number; other: number; scholarship: number; reason: string };
 }
 
 export interface Fee { id: string; code: string; label: string; amount: number; academicYearId: string; active: boolean; }
 export type PaymentMethod = 'ESPECES' | 'VIREMENT' | 'CARTE' | 'MOBILE_MONEY' | 'CHEQUE';
-export interface Payment { id: string; studentId: string; feeId: string; amount: number; date: string; paymentMethod: PaymentMethod; reference: string; recordedBy: string; status: 'ENREGISTRE' | 'ANNULE'; }
+export interface Payment { id: string; studentId: string; feeId: string; amount: number; date: string; paymentMethod: PaymentMethod; reference: string; recordedBy: string; status: 'ENREGISTRE' | 'ANNULE'; academicYearId?: string; }
 export interface Receipt { id: string; paymentId: string; reference: string; issuedAt: string; studentId: string; amount: number; }
 export interface PaymentCancellation { id: string; paymentId: string; reason: string; cancelledBy: string; date: string; }
 export interface Scholarship { id: string; studentId: string; label: string; percent: number; amount: number; academicYearId: string; active: boolean; }

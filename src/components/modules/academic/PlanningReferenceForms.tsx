@@ -1,13 +1,17 @@
+import FormFeedback from '@/components/ui/FormFeedback';
+import { useFeedback } from '@/hooks/useFeedback';
 import { useState } from 'react';
 import { useAcademicReferences } from '@/hooks/useAcademicReferences';
 import { createAssignment, createSemester } from '@/services/academicPlanningService';
 import type { RoleName } from '@/types';
 import { SEMESTERS_BY_LEVEL } from '@/constants/academicStructure';
+import { usePortal } from '@/hooks/usePortal';
 
 export default function PlanningReferenceForms({ mode, role }: { mode: 'semester' | 'assignment'; role: RoleName }) {
   const refs = useAcademicReferences();
+  const portal = usePortal();
   const [values, setValues] = useState<Record<string, string>>({});
-  const [feedback, setFeedback] = useState('');
+  const [feedback, setFeedback, feedbackError] = useFeedback();
   const select = (key: string, label: string, options: { id: string; name: string }[]) => <label className="form-group">{label}<select required className="select-input" value={values[key] ?? ''} onChange={event => setValues({ ...values, [key]: event.target.value })}><option value="">Sélectionner</option>{options.map(item => <option key={item.id} value={item.id}>{item.name}</option>)}</select></label>;
   return <form className="mb-2" onSubmit={event => {
     event.preventDefault();
@@ -15,13 +19,15 @@ export default function PlanningReferenceForms({ mode, role }: { mode: 'semester
       if (mode === 'semester') {
         const item = createSemester(refs, values.year, values.level, Number(values.order), values.start, values.end, role);
         refs.setSemesters(previous => [...previous, item]);
+        portal.logEvent('Création semestre', JSON.stringify({ entity: item.id, oldValue: null, newValue: item }));
       } else {
         const group = refs.groups.find(item => item.id === values.group);
         const item = createAssignment(refs, { subjectId: values.subject, teacherId: values.teacher, groupId: values.group, semesterId: values.semester, academicYearId: group?.academicYearId ?? '' }, role);
         refs.setAssignments(previous => [...previous, item]);
+        portal.logEvent('Affectation pédagogique', JSON.stringify({ entity: item.id, oldValue: null, newValue: item }));
       }
       setValues({}); setFeedback('Enregistrement effectué.');
-    } catch (error) { setFeedback(error instanceof Error ? error.message : 'Opération impossible.'); }
+    } catch (error) { setFeedback(error instanceof Error ? error.message : 'Opération impossible.', true); }
   }}>
     <div className="form-row">
     {mode === 'semester' ? <>
@@ -36,7 +42,7 @@ export default function PlanningReferenceForms({ mode, role }: { mode: 'semester
       {select('semester', 'Semestre', refs.semesters.filter(item => { const group = refs.groups.find(group => group.id === values.group); return item.active && item.academicYearId === group?.academicYearId && item.levelId === group?.levelId; }))}
     </>}
     </div><button className="btn btn-primary">{mode === 'semester' ? 'Créer le semestre' : 'Créer l’affectation'}</button>
-    {feedback && <p role="status">{feedback}</p>}
+    <FormFeedback message={feedback} error={feedbackError} />
     {mode === 'semester' && refs.semesters.map(item => <p key={item.id}>{item.name} · {refs.levels.find(level => level.id === item.levelId)?.name} · {item.startDate} · {item.endDate}</p>)}
   </form>;
 }

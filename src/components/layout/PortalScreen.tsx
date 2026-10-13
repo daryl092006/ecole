@@ -1,0 +1,166 @@
+'use client';
+
+import { usePortal } from '@/hooks/usePortal';
+import StudentLifecyclePanel from '@/components/modules/StudentLifecyclePanel';
+import StudentDocumentsPanel from '@/components/modules/StudentDocumentsPanel';
+import FinancePaymentsPanel from '@/components/modules/FinancePaymentsPanel';
+import JuryPanel from '@/components/modules/academic/JuryPanel';
+import ExamsPanel from '@/components/modules/academic/ExamsPanel';
+import AcademicSettingsPanel from '@/components/modules/academic/AcademicSettingsPanel';
+import ScheduleChangesPanel from '@/components/modules/academic/ScheduleChangesPanel';
+import TeachersPanel from '@/components/modules/academic/TeachersPanel';
+import PlanningReferenceForms from '@/components/modules/academic/PlanningReferenceForms';
+import StaffRecordsPanel from '@/components/modules/StaffRecordsPanel';
+import LogisticsModule from '@/components/modules/LogisticsModule';
+import RoleGuard from '@/components/ui/RoleGuard';
+import SupportPanel from '@/components/modules/SupportPanel';
+import EspaceModule from '@/components/modules/EspaceModule';
+import DashboardModule from '@/components/modules/DashboardModule';
+import AcademiqueModule from '@/components/modules/AcademiqueModule';
+import EtudiantsModule from '@/components/modules/EtudiantsModule';
+import FinanceModule from '@/components/modules/FinanceModule';
+import PersonnelModule from '@/components/modules/PersonnelModule';
+import MarketingModule from '@/components/modules/MarketingModule';
+import SystemeModule from '@/components/modules/SystemeModule';
+
+export default function PortalScreen({ tab, section }: { tab: string; section: string }) {
+  const state = usePortal();
+  const { activeRole, perms } = state;
+  const currentTab = tab;
+  const currentSubTab = section;
+  return <>
+          {currentTab === 'espace' && currentSubTab === 'espace_documents' && <StudentDocumentsPanel />}
+          {currentTab === 'espace' && currentSubTab === 'espace_finance' && <FinancePaymentsPanel personal />}
+          {currentTab === 'etudiants' && currentSubTab === 'stud_cards' && <StudentDocumentsPanel />}
+          {currentTab === 'etudiants' && currentSubTab === 'stud_status' && <StudentLifecyclePanel />}
+          {currentTab === 'academique' && currentSubTab === 'acad_exams' && <ExamsPanel />}
+          {currentTab === 'academique' && currentSubTab === 'acad_jury' && <JuryPanel />}
+          {currentTab === 'academique' && currentSubTab === 'acad_settings' && <AcademicSettingsPanel />}
+          {currentTab === 'personnel' && currentSubTab === 'staff_records' && <StaffRecordsPanel />}
+          {currentTab === 'personnel' && currentSubTab === 'staff_teachers' && <div><div className="module-header"><h1>Enseignants et affectations</h1><p>Annuaire pédagogique et enseignements affectés par année et semestre.</p></div><div className="card card-full mb-2"><TeachersPanel role={activeRole} /></div><div className="card card-full"><h2>Affectations pédagogiques</h2><PlanningReferenceForms mode="assignment" role={activeRole} /></div></div>}
+          {currentTab === 'logistique' && <LogisticsModule />}
+
+          {/* ═══ MON ESPACE ═══ */}
+          {((currentTab === 'espace' && currentSubTab === 'espace_support') || (currentTab === 'systeme' && currentSubTab === 'sys_support')) && <SupportPanel tickets={state.tickets} canManage={perms.permissions.includes('system.support.manage')} onCreate={state.openTicket} onTransition={state.changeTicket} />}
+          {currentTab === 'espace' && !['espace_support', 'espace_documents', 'espace_finance'].includes(currentSubTab) && (
+            <RoleGuard tab="espace" perms={perms}>
+              <EspaceModule
+                students={state.students}
+                classes={state.classes}
+                evaluations={state.evaluations}
+                sessions={state.sessions}
+                reclamations={state.reclamations}
+                ownDataOnly={!!perms.scope.ownDataOnly}
+                addReclamation={state.addReclamation}
+                activeRole={activeRole}
+                currentSubTab={currentSubTab}
+                announcements={state.announcements}
+              />
+            </RoleGuard>
+          )}
+
+          {/* ═══ TABLEAU DE BORD GLOBAL ═══ */}
+          {currentTab === 'dashboard_global' && (
+            <RoleGuard tab="dashboard_global" perms={perms}>
+              <DashboardModule
+                currentSubTab={currentSubTab}
+                students={state.students}
+              />
+            </RoleGuard>
+          )}
+
+          {/* ═══ ACADÉMIQUE ═══ */}
+          {currentTab === 'academique' && !['acad_exams', 'acad_jury', 'acad_settings'].includes(currentSubTab) && (
+            <RoleGuard tab="academique" perms={perms}>
+              <AcademiqueModule
+                addRoom={state.addRoom}
+                addBlockedPeriod={state.addBlockedPeriod}
+                blockedPeriods={state.blockedPeriods}
+                recordAttendance={state.recordAttendance}
+                perms={perms}
+                activeRole={activeRole}
+                currentSubTab={currentSubTab}
+                classes={state.classes}
+                reclamations={state.reclamations}
+                students={state.students}
+                rooms={state.rooms}
+                sessions={state.sessions}
+                checkConflictsAndAddSession={state.checkConflictsAndAddSession}
+                selectedClassForGrades={state.selectedClassForGrades}
+                setSelectedClassForGrades={state.setSelectedClassForGrades}
+                filteredEvals={state.filteredEvals}
+                newEvalName={state.newEvalName}
+                setNewEvalName={state.setNewEvalName}
+                newEvalType={state.newEvalType}
+                setNewEvalType={state.setNewEvalType}
+                addEvaluation={state.addEvaluation}
+                submitGrades={state.submitGrades}
+                changeGradeStatus={state.changeGradeStatus}
+                updateGrade={state.updateGrade}
+                transitionReclamation={state.transitionReclamation}
+              />
+            </RoleGuard>
+          )}
+
+          {currentTab === 'academique' && currentSubTab === 'acad_schedule' && <ScheduleChangesPanel />}
+
+          {/* ═══ ÉTUDIANTS ═══ */}
+          {currentTab === 'etudiants' && currentSubTab === 'stud_list' && (
+            <RoleGuard tab="etudiants" perms={perms}>
+              <EtudiantsModule
+                activeRole={activeRole}
+                createStudent={state.createStudent}
+                perms={perms}
+                currentSubTab={currentSubTab}
+                students={state.students}
+                groups={state.groups}
+                selectedStudent={state.selectedStudent}
+                setSelectedStudent={state.setSelectedStudent}
+                assignStudentToGroup={state.assignStudentToGroup}
+              />
+            </RoleGuard>
+          )}
+
+          {/* ═══ FINANCE ═══ */}
+          {currentTab === 'finance' && (
+            <RoleGuard tab="finance" perms={perms}>
+              <FinanceModule />
+            </RoleGuard>
+          )}
+
+          {/* ═══ PERSONNEL ═══ */}
+          {currentTab === 'personnel' && currentSubTab === 'staff_list' && (
+            <RoleGuard tab="personnel" perms={perms}>
+              <PersonnelModule
+                users={state.users}
+                addUser={state.addUser}
+                toggleUser={state.toggleUser}
+                currentSubTab={currentSubTab}
+              />
+            </RoleGuard>
+          )}
+
+          {/* ═══ MARKETING ═══ */}
+          {currentTab === 'marketing' && (
+            <RoleGuard tab="marketing" perms={perms}>
+              <MarketingModule
+                announcements={state.announcements}
+                addAnnouncement={state.addAnnouncement}
+                currentSubTab={currentSubTab}
+              />
+            </RoleGuard>
+          )}
+
+          {/* ═══ SYSTÈME & AUDIT ═══ */}
+          {currentTab === 'systeme' && currentSubTab !== 'sys_support' && (
+            <RoleGuard tab="systeme" perms={perms}>
+              <SystemeModule
+                currentSubTab={currentSubTab}
+                systemLogs={state.systemLogs}
+                runBackup={state.runBackup}
+              />
+            </RoleGuard>
+          )}
+
+  </>;
+}

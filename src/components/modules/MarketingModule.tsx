@@ -11,12 +11,13 @@ export default function MarketingModule({ currentSubTab, announcements, addAnnou
   const [feedback, setFeedback] = useState<{ error: boolean; text: string } | null>(null);
   const [newTitle, setNewTitle] = useState('');
   const [newContent, setNewContent] = useState('');
+  const [audience, setAudience] = useState('Tous');
 
   const handleCreateAnnouncement = (e: React.FormEvent) => {
     e.preventDefault();
     setFeedback(null);
     try {
-      addAnnouncement(newTitle, newContent, 'Tous');
+      addAnnouncement(newTitle, newContent, audience);
       setNewTitle('');
       setNewContent('');
       setFeedback({ error: false, text: 'Annonce publiée et disponible dans Mon Espace.' });
@@ -29,7 +30,9 @@ export default function MarketingModule({ currentSubTab, announcements, addAnnou
     <div>
       {/* ── SUBTAB: comm_announcements (Création Annonce / Alertes) ── */}
       {currentSubTab === 'comm_announcements' && (
-        <div className="content-grid">
+        <div>
+          <div className="module-header"><h1>Publier une annonce</h1><p>Choisissez les destinataires et diffusez les informations de l’établissement.</p></div>
+          <div className="content-grid">
           <div className="card">
             <div className="card-header"><h2>Publier une annonce opérationnelle</h2></div>
             <form onSubmit={handleCreateAnnouncement} style={{ display: 'flex', flexDirection: 'column', gap: '0.85rem' }}>
@@ -60,6 +63,7 @@ export default function MarketingModule({ currentSubTab, announcements, addAnnou
                   style={{ resize: 'vertical', fontFamily: 'inherit' }}
                 />
               </div>
+              <label className="form-group">Destinataires<select className="select-input" value={audience} onChange={event => setAudience(event.target.value)}><option value="Tous">Tous les utilisateurs</option><option value="Étudiants">Étudiants et délégués</option><option value="Enseignants">Enseignants</option><option value="Surveillant">Surveillants</option></select></label>
               <button className="btn btn-primary" type="submit">
                 Diffuser l'annonce
               </button>
@@ -82,6 +86,7 @@ export default function MarketingModule({ currentSubTab, announcements, addAnnou
                 </div>
               ))}
             </div>
+          </div>
           </div>
         </div>
       )}

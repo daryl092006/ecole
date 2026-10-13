@@ -1,6 +1,7 @@
 import { ShieldCheck } from 'lucide-react';
 import type { RoleName } from '@/types';
 import { ROLE_ACCESS } from '@/permissions/rolePermissions';
+import { ROLES } from '@/types/permissions';
 
 interface RoleScopeBannerProps {
   role: RoleName;
@@ -9,8 +10,8 @@ interface RoleScopeBannerProps {
 function describeScope(role: RoleName) {
   const scope = ROLE_ACCESS[role].scope;
   if (scope.ownDataOnly) return 'Données personnelles uniquement';
-  if (scope.teacherId) return `Enseignements affectés · ${scope.groupIds?.length ?? 0} groupe(s)`;
-  if (scope.sessionIds) return `${scope.sessionIds.length} séance(s) affectée(s)`;
+  if (role === ROLES.ENS) return 'Enseignements et groupes affectés à l’identité sélectionnée';
+  if (role === ROLES.SURV) return 'Séances affectées à l’identité sélectionnée';
   return 'Périmètre institutionnel selon les permissions';
 }
 
@@ -23,7 +24,6 @@ export default function RoleScopeBanner({ role }: RoleScopeBannerProps) {
         <strong>{role}</strong>
         <span>{access.description} · {describeScope(role)}</span>
       </div>
-      <span className="role-permission-count">{access.permissions.length} permission(s)</span>
     </div>
   );
 }

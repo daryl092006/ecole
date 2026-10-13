@@ -46,3 +46,6 @@ next-env.d.ts
 
 # Isolated production verification
 /.next-verification/
+/.next-ui-tests/
+/test-results/
+/playwright-report/

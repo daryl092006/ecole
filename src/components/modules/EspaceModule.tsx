@@ -1,70 +1,26 @@
+import FormFeedback from '@/components/ui/FormFeedback';
+import { useFeedback } from '@/hooks/useFeedback';
+import { displayLabel, displayDate } from '@/utils/display';
 import { useState } from 'react';
 import type { Announcement, RoleName, Student, ClassItem, Evaluation, Session, Reclamation } from '@/types';
-
-interface EspaceModuleProps {
-  students: Student[];
-  classes: ClassItem[];
-  evaluations: Evaluation[];
-  sessions: Session[];
-  reclamations: Reclamation[];
-  ownDataOnly: boolean;
-  addReclamation: (studentId: string, evaluationId: string, reason: string) => void;
-  activeRole: RoleName;
-  currentSubTab: string;
-  announcements: Announcement[];
-}
-
-export default function EspaceModule({ activeRole, currentSubTab, announcements, students, classes, evaluations, sessions, reclamations, ownDataOnly, addReclamation }: EspaceModuleProps) {
-  const [reason, setReason] = useState('');
-  const [evaluationId, setEvaluationId] = useState('');
-  const [feedback, setFeedback] = useState('');
+import { usePortal } from '@/hooks/usePortal';
+import { ROLES } from '@/types/permissions';
+interface Props { students: Student[]; classes: ClassItem[]; evaluations: Evaluation[]; sessions: Session[]; reclamations: Reclamation[]; ownDataOnly: boolean; addReclamation: (studentId: string, evaluationId: string, reason: string) => void; activeRole: RoleName; currentSubTab: string; announcements: Announcement[]; }
+export default function EspaceModule({ activeRole, currentSubTab, announcements, students, classes, evaluations, sessions, reclamations, ownDataOnly, addReclamation }: Props) {
+  const state = usePortal(); const [reason, setReason] = useState(''); const [evaluationId, setEvaluationId] = useState(''); const [feedback, setFeedback, feedbackError] = useFeedback();
   const student = ownDataOnly ? students[0] : undefined;
-  return (
-    <div>
-      {currentSubTab === 'espace_dashboard' && (
-        <>
-          <div className="module-header">
-            <h1>Mon Espace Personnel</h1>
-            <p>Tableau de bord adapté à votre rôle. Bienvenue, <strong>{activeRole}</strong>.</p>
-          </div>
-          <div className="card card-full" style={{ marginTop: '1rem' }}>
-            {student ? <><h2>{student.firstname} {student.lastname}</h2><p>{student.matricule} · {student.filiere} · {student.niveau} · {student.groupe}</p></> : <p>{classes.length} enseignement(s) visible(s) · {sessions.length} séance(s) visible(s).</p>}
-            {sessions.map(session => <p key={session.id}>{session.date} · {session.startTime}–{session.endTime} · {classes.find(item => item.id === session.classId)?.name} · Salle {session.roomCode}</p>)}
-            {student && <>
-              <h2>Mes notes publiées</h2>
-              {evaluations.filter(item => item.status === 'PUBLIEES').map(item => <p key={item.id}>{item.name} : {item.grades.find(grade => grade.matricule === student.matricule)?.value ?? '—'}/20</p>)}
-              <form onSubmit={event => { event.preventDefault(); try { addReclamation(student.matricule, evaluationId, reason); setReason(''); setEvaluationId(''); setFeedback('Réclamation déposée.'); } catch (error) { setFeedback(error instanceof Error ? error.message : 'Dépôt impossible.'); } }}>
-                <h3>Déposer une réclamation</h3><select className="select-input" required value={evaluationId} onChange={event => setEvaluationId(event.target.value)}><option value="">Choisir une note publiée</option>{evaluations.filter(item => item.status === 'PUBLIEES').map(item => <option key={item.id} value={item.id}>{item.name}</option>)}</select>
-                <label>Motif<textarea className="input" required value={reason} onChange={event => setReason(event.target.value)} /></label><button className="btn btn-primary">Déposer</button>{feedback && <p role="status">{feedback}</p>}
-              </form>
-              <h3>Mes réclamations</h3>{reclamations.map(item => <p key={item.id}>{item.id} · {item.status} · {item.response || item.reason}</p>)}
-            </> }
-          </div>
-        </>
-      )}
-
-      {currentSubTab === 'espace_announcements' && (
-        <>
-          <div className="module-header">
-            <h1>Annonces &amp; Actualités</h1>
-            <p>Retrouvez ici toutes les notes opérationnelles et informations officielles d'ESCEN.</p>
-          </div>
-          <div className="ann-grid">
-            {announcements.length === 0 && <div className="empty-state"><strong>Aucune annonce</strong><span>Les annonces publiées apparaîtront ici.</span></div>}
-            {announcements.map(a => (
-              <div key={a.id} className="ann-card">
-                <div className="ann-meta">
-                  <span className="ann-tag">{a.audience}</span>
-                  <span className="ann-date">{a.date}</span>
-                </div>
-                <h3>{a.title}</h3>
-                <p>{a.content}</p>
-                <div className="ann-author">Auteur : {a.author}</div>
-              </div>
-            ))}
-          </div>
-        </>
-      )}
-    </div>
-  );
+  const upcoming = sessions.filter(item => item.status !== 'Annulé' && item.date >= new Date().toISOString().slice(0, 10)).sort((a, b) => (a.date + a.startTime).localeCompare(b.date + b.startTime));
+  const quickLinks = state.availableTabs.filter(item => item.id !== 'espace').slice(0, 6);
+  if (currentSubTab === 'espace_announcements') return <div><div className="module-header"><h1>Annonces et actualités</h1><p>Informations de l’établissement destinées à votre rôle.</p></div><div className="ann-grid">{announcements.map(item => <article className="ann-card" key={item.id}><div className="ann-meta"><span className="ann-tag">{item.audience}</span><span className="ann-date">{displayDate(item.date)}</span></div><h3>{item.title}</h3><p>{item.content}</p><div className="ann-author">{item.author}</div></article>)}{!announcements.length && <div className="empty-state"><strong>Aucune annonce</strong><span>Les informations destinées à votre rôle apparaîtront ici.</span></div>}</div></div>;
+  const scoped = [ROLES.ENS, ROLES.SURV, ROLES.STUD, ROLES.DEL].includes(activeRole as typeof ROLES.ENS);
+  return <div><div className="module-header"><h1>{student ? `${student.firstname} ${student.lastname}` : 'Mon espace'}</h1><p>{student ? `${student.matricule} · ${student.filiere} · ${student.niveau} · ${student.groupe}` : activeRole}</p></div>
+    {scoped && !state.demoIdentity && <div className="empty-state"><strong>Sélectionnez votre identité</strong><span>Votre emploi du temps et vos données personnelles seront affichés après cette sélection.</span></div>}
+    <div className="metrics-grid">{[{ label: 'Séances à venir', value: upcoming.length }, { label: ownDataOnly ? 'Notes publiées' : 'Enseignements visibles', value: ownDataOnly ? evaluations.length : classes.length }, { label: 'Annonces disponibles', value: announcements.length }, { label: 'Tickets de support ouverts', value: state.tickets.filter(item => item.status !== 'RESOLU').length }].map(item => <div className="metric-card" key={item.label}><div><div className="metric-value">{item.value}</div><div className="metric-label">{item.label}</div></div></div>)}</div>
+    {!ownDataOnly && quickLinks.length > 0 && <div className="card card-full mb-2"><h2>Accès directs</h2><div className="quick-links">{quickLinks.map(item => <button className="quick-link" key={item.id} onClick={() => state.navigateTo(item.id)}><strong>{item.name}</strong><span>{item.subTabs?.[0]?.name}</span></button>)}</div></div>}
+    <div className="content-grid"><div className="card"><div className="card-header"><h2>Prochaines séances</h2>{state.availableTabs.some(item => item.id === 'academique') && <button className="btn btn-outline btn-sm" onClick={() => state.navigateTo('academique', 'acad_schedule')}>Voir le planning</button>}</div>{upcoming.slice(0, 8).map(item => <article className="agenda-item" key={item.id}><div><strong>{classes.find(cls => cls.id === item.classId)?.name || 'Séance affectée'}</strong><p>{state.groups.find(group => group.id === item.groupId)?.name} · Salle {item.roomCode}</p></div><div><strong>{new Date(item.date + 'T12:00:00').toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' })}</strong><p>{item.startTime}–{item.endTime}</p></div></article>)}{!upcoming.length && <p className="cell-sub">Aucune séance à venir dans votre périmètre.</p>}</div>
+      <div className="card"><div className="card-header"><h2>Informations récentes</h2><button className="btn btn-outline btn-sm" onClick={() => state.navigateTo('espace', 'espace_announcements')}>Tout consulter</button></div>{announcements.slice(0, 4).map(item => <article className="ledger-item" key={item.id}><strong>{item.title}</strong><p>{item.content}</p><span className="cell-sub">{displayDate(item.date)}</span></article>)}{!announcements.length && <p className="cell-sub">Aucune information publiée pour votre rôle.</p>}</div></div>
+    {student && <><div className="card card-full mt-2"><div className="card-header"><h2>Mes notes publiées</h2><div className="btn-group"><button className="btn btn-outline btn-sm" onClick={() => state.navigateTo('espace', 'espace_documents')}>Mes documents</button><button className="btn btn-outline btn-sm" onClick={() => state.navigateTo('espace', 'espace_finance')}>Ma scolarité</button></div></div><div className="table-wrap"><table className="data-table"><thead><tr><th>Matière</th><th>Évaluation</th><th>Date</th><th>Note /20</th></tr></thead><tbody>{evaluations.map(item => <tr key={item.id}><td>{classes.find(cls => cls.id === item.classId)?.name}</td><td>{item.name}<div className="cell-sub">{item.type}</div></td><td>{displayDate(item.date)}</td><td><strong>{item.grades.find(grade => grade.matricule === student.matricule)?.value ?? '—'}</strong></td></tr>)}{!evaluations.length && <tr><td colSpan={4}>Aucune note publiée.</td></tr>}</tbody></table></div></div>
+      <div className="content-grid mt-2"><form className="card" onSubmit={event => { event.preventDefault(); try { addReclamation(student.matricule, evaluationId, reason); setReason(''); setEvaluationId(''); setFeedback('Réclamation déposée. Vous pouvez suivre son traitement ci-contre.'); } catch (error) { setFeedback(error instanceof Error ? error.message : 'Dépôt impossible.', true); } }}><h2>Déposer une réclamation</h2><label className="form-group">Note concernée<select className="select-input" required value={evaluationId} onChange={event => setEvaluationId(event.target.value)}><option value="">Choisir une évaluation</option>{evaluations.map(item => <option key={item.id} value={item.id}>{classes.find(cls => cls.id === item.classId)?.name} · {item.name}</option>)}</select></label><label className="form-group">Motif<textarea className="input" required maxLength={1000} value={reason} onChange={event => setReason(event.target.value)} /></label><button className="btn btn-primary" disabled={!evaluations.length}>Déposer la réclamation</button><FormFeedback message={feedback} error={feedbackError} /></form><div className="card"><h2>Mes réclamations</h2>{reclamations.map(item => <article className="ledger-item" key={item.id}><strong>{evaluations.find(evaluation => evaluation.id === item.evaluationId)?.name}</strong><p>{displayLabel(item.status)}</p><p className="cell-sub">{item.response || item.reason}</p><details><summary>Suivi du traitement</summary>{item.history.map(entry => <p className="cell-sub" key={entry.id}>{new Date(entry.date).toLocaleDateString('fr-FR')} · {displayLabel(entry.to)} · {entry.comment}</p>)}</details></article>)}{!reclamations.length && <p className="cell-sub">Vous n’avez aucune réclamation.</p>}</div></div>
+    </>}
+  </div>;
 }

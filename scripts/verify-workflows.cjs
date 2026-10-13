@@ -118,3 +118,6 @@ assert.equal(announcement.title, 'Information');
 assert.equal(announcement.content, 'Message');
 assert.notEqual(createAnnouncement('Autre', 'Message', 'Tous', ROLES.MKT, [announcement]).id, announcement.id);
 console.log('Vérification réussie : publication, permissions et validation des annonces.');
+
+require('./verify-campus.cjs');
+require('./verify-routing.cjs');

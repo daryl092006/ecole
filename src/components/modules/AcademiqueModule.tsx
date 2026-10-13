@@ -1,37 +1,13 @@
-import React, { useState } from 'react';
+import { displayDate } from '@/utils/display';
+import FormFeedback from '@/components/ui/FormFeedback';
+import { useFeedback } from '@/hooks/useFeedback';
+import { useState } from 'react';
 import ScheduleResourcesForm from './academic/ScheduleResourcesForm';
-import { ShieldAlert, FilePlus, CheckCircle, Calendar, Plus } from 'lucide-react';
+import { CheckCircle, Calendar, Plus } from 'lucide-react';
 import type { ClassItem, Evaluation, Reclamation, PermissionSchema, RoleName, Student, Room, Session, BlockedPeriod } from '@/types';
-import { ROLES } from '@/types/permissions';
 import AcademicReferenceModule from '@/components/modules/academic/AcademicReferenceModule';
-import WorkflowStepper from '@/components/ui/WorkflowStepper';
-
-const GRADE_STEPS = [
-  { id: 'BROUILLON', label: 'Préparation', owner: 'Enseignant' },
-  { id: 'SAISIES', label: 'Notes saisies', owner: 'Enseignant' },
-  { id: 'SOUMISES', label: 'Soumission', owner: 'Direction académique' },
-  { id: 'A_CONTROLER', label: 'Contrôle', owner: 'Direction académique' },
-  { id: 'VALIDEES', label: 'Validation', owner: 'Direction académique' },
-  { id: 'PUBLIEES', label: 'Publication', owner: 'Étudiants' },
-];
-
-const COMPLAINT_STEPS = [
-  { id: 'NOUVELLE', label: 'Réception', owner: 'Direction académique' },
-  { id: 'EN_ANALYSE', label: 'Analyse', owner: 'Direction académique' },
-  { id: 'TRANSMISE_ENSEIGNANT', label: 'Transmission', owner: 'Enseignant concerné' },
-  { id: 'AVIS_ENSEIGNANT', label: 'Avis reçu', owner: 'Direction académique' },
-  { id: 'DECISION_ACADEMIQUE', label: 'Décision', owner: 'Direction académique' },
-  { id: 'CORRECTION_EVENTUELLE', label: 'Correction', owner: 'Direction académique' },
-  { id: 'CLOTUREE', label: 'Clôture', owner: 'Terminé' },
-];
-
-const EVALUATION_CREATION_STEPS = [
-  { id: 'class', label: "Choisir l'enseignement", owner: 'Enseignant affecté' },
-  { id: 'details', label: "Définir l'examen", owner: 'Enseignant affecté' },
-  { id: 'create', label: 'Créer le brouillon', owner: 'Enseignant affecté' },
-  { id: 'grades', label: 'Saisir les notes', owner: 'Enseignant affecté' },
-  { id: 'validation', label: 'Soumettre au contrôle', owner: 'Direction académique' },
-];
+import GradeWorkflowPanel from './academic/GradeWorkflowPanel';
+import ComplaintsPanel from './academic/ComplaintsPanel';
 
 type AttendanceStatus = NonNullable<Session['attendance']>[string];
 
@@ -58,7 +34,7 @@ interface AcademiqueModuleProps {
   setNewEvalType: (v: string) => void;
   addEvaluation: () => void;
   submitGrades: (ev: Evaluation) => void;
-  changeGradeStatus: (ev: Evaluation, status: Evaluation['status'], comment?: string) => void;
+  changeGradeStatus: (ev: Evaluation, status: Evaluation['status'], comment?: string) => boolean;
   updateGrade: (evaluationId: string, gradeIndex: number, value: number | null) => void;
   transitionReclamation: (id: string, target: Reclamation['status'], comment?: string, correctedGrade?: number) => void;
 }
@@ -69,7 +45,6 @@ export default function AcademiqueModule({
   perms,
   currentSubTab,
   classes,
-  reclamations,
   students,
   rooms,
   sessions,
@@ -85,7 +60,6 @@ export default function AcademiqueModule({
   submitGrades,
   changeGradeStatus,
   updateGrade,
-  transitionReclamation,
 }: AcademiqueModuleProps) {
 
   // Pour la planification de séances
@@ -99,6 +73,7 @@ export default function AcademiqueModule({
 
   // Pour la présence
   const [activeSessionForAttendance, setActiveSessionForAttendance] = useState<Session | null>(null);
+  const [attendanceFeedback, setAttendanceFeedback, attendanceError] = useFeedback();
 
   const handlePlanSessionSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -118,30 +93,6 @@ export default function AcademiqueModule({
       setSelectedRoomForPlan('');
       setPlanDate('');
     }
-  };
-
-  const complaintAction = (rec: Reclamation) => {
-    const ask = (label: string, target: Reclamation['status'], promptLabel?: string) => (
-      <button className="btn btn-sm btn-primary" onClick={() => {
-        const comment = promptLabel ? prompt(promptLabel) : undefined;
-        if (!promptLabel || comment) transitionReclamation(rec.id, target, comment ?? undefined);
-      }}>{label}</button>
-    );
-    if (perms.permissions.includes('complaint.review')) {
-      if (rec.status === 'NOUVELLE') return ask('Prendre en charge', 'EN_ANALYSE');
-      if (rec.status === 'EN_ANALYSE') return ask("Transmettre à l'enseignant", 'TRANSMISE_ENSEIGNANT', 'Instruction pour l’enseignant');
-      if (rec.status === 'AVIS_ENSEIGNANT') return ask('Prendre une décision', 'DECISION_ACADEMIQUE', 'Décision académique');
-      if (rec.status === 'DECISION_ACADEMIQUE') return <div className="btn-group">
-        {ask('Clôturer sans correction', 'CLOTUREE', 'Motif de clôture')}
-        {ask('Demander une correction', 'CORRECTION_EVENTUELLE', 'Motif de correction')}
-      </div>;
-      if (rec.status === 'CORRECTION_EVENTUELLE') return <button className="btn btn-sm btn-success" onClick={() => {
-        const value = prompt('Nouvelle note (0 à 20)'); const reason = prompt('Motif de la correction');
-        if (value && reason) transitionReclamation(rec.id, 'CLOTUREE', reason, Number(value));
-      }}>Appliquer la correction</button>;
-    }
-    if (activeRole === ROLES.ENS && rec.status === 'TRANSMISE_ENSEIGNANT') return ask('Donner mon avis', 'AVIS_ENSEIGNANT', 'Avis de l’enseignant');
-    return <span className="text-muted">En attente du rôle compétent</span>;
   };
 
   return (
@@ -179,6 +130,7 @@ export default function AcademiqueModule({
                       <td>{cls.semester}</td>
                     </tr>
                   ))}
+                  {!classes.length && <tr><td colSpan={5}>Aucun enseignement affecté dans votre périmètre.</td></tr>}
                 </tbody>
               </table>
             </div>
@@ -189,21 +141,21 @@ export default function AcademiqueModule({
       {/* ── SUBTAB: acad_schedule (Emploi du temps & Planification) ── */}
       {currentSubTab === 'acad_schedule' && (
         <div>
-          {perms.canPlanCourses && <ScheduleResourcesForm rooms={rooms} periods={blockedPeriods} onRoom={addRoom} onPeriod={addBlockedPeriod} />}
           <div className="module-header">
             <h1>Emploi du temps</h1>
             <p>Planification des séances de cours et examens avec détection automatique des conflits.</p>
           </div>
+          {perms.canPlanCourses && <ScheduleResourcesForm rooms={rooms} periods={blockedPeriods} onRoom={addRoom} onPeriod={addBlockedPeriod} />}
 
           <div className="content-grid">
             {/* Formulaire de planification */}
             <div className="card">
-              <div className="card-header"><h2>Planifier une nouvelle séance</h2></div>
+              <div className="card-header"><h2>{perms.canPlanCourses ? 'Planifier une nouvelle séance' : 'Consultation du planning'}</h2></div>
               {perms.canPlanCourses ? (
                 <form onSubmit={handlePlanSessionSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '0.85rem' }}>
                   <div className="form-group">
-                    <label className="form-label">Matière / Classe</label>
-                    <select className="select-input" value={selectedClassForPlan} onChange={e => setSelectedClassForPlan(e.target.value)}>
+                    <label className="form-label" htmlFor="session-class">Enseignement</label>
+                    <select id="session-class" required className="select-input" value={selectedClassForPlan} onChange={e => setSelectedClassForPlan(e.target.value)}>
                       <option value="">-- Choisir un enseignement --</option>
                       {classes.map(c => (
                         <option key={c.id} value={c.id}>{c.name} ({c.level} - {c.teacher})</option>
@@ -212,8 +164,8 @@ export default function AcademiqueModule({
                   </div>
 
                   <div className="form-group">
-                    <label className="form-label">Salle physique</label>
-                    <select className="select-input" value={selectedRoomForPlan} onChange={e => setSelectedRoomForPlan(e.target.value)}>
+                    <label className="form-label" htmlFor="session-room">Salle physique</label>
+                    <select id="session-room" required className="select-input" value={selectedRoomForPlan} onChange={e => setSelectedRoomForPlan(e.target.value)}>
                       <option value="">-- Choisir une salle --</option>
                       {rooms.map(r => (
                         <option key={r.code} value={r.code}>{r.name} ({r.building} - Cap: {r.capacity})</option>
@@ -223,27 +175,27 @@ export default function AcademiqueModule({
 
                   <div className="form-row">
                     <div className="form-group" style={{ flex: 1 }}>
-                      <label className="form-label">Date</label>
-                      <input type="date" className="input" value={planDate} onChange={e => setPlanDate(e.target.value)} />
+                      <label className="form-label" htmlFor="session-date">Date</label>
+                      <input id="session-date" required type="date" className="input" value={planDate} onChange={e => setPlanDate(e.target.value)} />
                     </div>
                     <div className="form-group" style={{ width: 100 }}>
-                      <label className="form-label">Début</label>
-                      <input type="text" className="input" placeholder="08:30" value={planStart} onChange={e => setPlanStart(e.target.value)} />
+                      <label className="form-label" htmlFor="session-start">Début</label>
+                      <input id="session-start" required type="time" className="input" value={planStart} onChange={e => setPlanStart(e.target.value)} />
                     </div>
                     <div className="form-group" style={{ width: 100 }}>
-                      <label className="form-label">Fin</label>
-                      <input type="text" className="input" placeholder="12:00" value={planEnd} onChange={e => setPlanEnd(e.target.value)} />
+                      <label className="form-label" htmlFor="session-end">Fin</label>
+                      <input id="session-end" required type="time" className="input" value={planEnd} onChange={e => setPlanEnd(e.target.value)} />
                     </div>
                   </div>
 
-                  {planError && <div className="restricted-box" style={{ padding: '0.5rem 1rem' }}>{planError}</div>}
-                  {planSuccess && <div style={{ color: 'var(--success)', fontSize: '0.85rem', fontWeight: 600 }}>{planSuccess}</div>}
+                  {planError && <div className="restricted-box" role="alert" style={{ padding: '0.5rem 1rem' }}>{planError}</div>}
+                  {planSuccess && <div role="status" style={{ color: 'var(--success)', fontSize: '0.85rem', fontWeight: 600 }}>{planSuccess}</div>}
 
                   <button className="btn btn-primary" type="submit" style={{ marginTop: '0.5rem' }}>
                     <Plus size={14} /> Valider la planification
                   </button>
                 </form>
-              ) : <div className="text-muted">Consultation du planning.</div>}
+              ) : <div className="text-muted">Les séances de votre périmètre sont affichées ci-dessous. La planification est réservée aux rôles autorisés.</div>}
             </div>
 
             {/* Liste des séances planifiées */}
@@ -265,7 +217,7 @@ export default function AcademiqueModule({
                           </td>
                           <td style={{ fontSize: '0.83rem' }}>
                             <Calendar size={12} style={{ display: 'inline', marginRight: 4, verticalAlign: 'middle' }} />
-                            {sess.date} ({sess.startTime} - {sess.endTime})
+                            {displayDate(sess.date)} ({sess.startTime} - {sess.endTime})
                           </td>
                           <td>
                             <span className="pill pill-success">{sess.status}</span>
@@ -273,6 +225,7 @@ export default function AcademiqueModule({
                         </tr>
                       );
                     })}
+                    {!sessions.length && <tr><td colSpan={3}>Aucune séance planifiée dans votre périmètre.</td></tr>}
                   </tbody>
                 </table>
               </div>
@@ -289,13 +242,14 @@ export default function AcademiqueModule({
             <p>Gestion des présences par séance de cours programmée.</p>
           </div>
 
+          <FormFeedback message={attendanceFeedback} error={attendanceError} />
           {!activeSessionForAttendance ? (
             <div className="card card-full">
-              <div className="card-header"><h2>Sélectionner une séance pour faire l'appel</h2></div>
+              <div className="card-header"><h2>{perms.permissions.includes('attendance.record') ? 'Sélectionner une séance pour faire l’appel' : 'Consulter les présences d’une séance'}</h2></div>
               <div className="table-wrap">
                 <table className="data-table">
                   <thead>
-                    <tr><th>Matière</th><th>Salle &amp; Date</th><th>Action</th></tr>
+                    <tr><th>Matière</th><th>Salle &amp; Date</th><th>Appel</th><th>Action</th></tr>
                   </thead>
                   <tbody>
                     {sessions.map(sess => {
@@ -306,15 +260,17 @@ export default function AcademiqueModule({
                             <div className="cell-main">{cls?.name}</div>
                             <div className="cell-sub">{cls?.level} · {cls?.teacher}</div>
                           </td>
-                          <td>{sess.date} · {sess.startTime} ({sess.roomCode})</td>
+                          <td>{displayDate(sess.date)} · {sess.startTime} ({sess.roomCode})</td>
+                          <td><span className={`pill ${Object.keys(sess.attendance || {}).length ? 'pill-success' : 'pill-default'}`}>{Object.keys(sess.attendance || {}).length ? 'Enregistré' : 'À renseigner'}</span></td>
                           <td>
-                            <button className="btn btn-sm btn-primary" onClick={() => setActiveSessionForAttendance({ ...sess, attendance: { ...sess.attendance } })}>
+                            <button className="btn btn-sm btn-primary" onClick={() => { setAttendanceFeedback(''); setActiveSessionForAttendance({ ...sess, attendance: { ...sess.attendance } }); }}>
                               Ouvrir la feuille →
                             </button>
                           </td>
                         </tr>
                       );
                     })}
+                    {!sessions.length && <tr><td colSpan={4}>Aucune séance disponible. Vérifiez votre identité et les séances qui vous sont affectées.</td></tr>}
                   </tbody>
                 </table>
               </div>
@@ -328,7 +284,7 @@ export default function AcademiqueModule({
 
               <div style={{ marginTop: '1rem' }}>
                 <p style={{ fontSize: '0.875rem', marginBottom: '1rem', color: 'var(--text-secondary)' }}>
-                  Séance du <strong>{activeSessionForAttendance.date}</strong> de <strong>{activeSessionForAttendance.startTime}</strong> · <strong>{activeSessionForAttendance.endTime}</strong> (Salle {activeSessionForAttendance.roomCode}).
+                  Séance du <strong>{displayDate(activeSessionForAttendance.date)}</strong> de <strong>{activeSessionForAttendance.startTime}</strong> · <strong>{activeSessionForAttendance.endTime}</strong> (Salle {activeSessionForAttendance.roomCode}).
                 </p>
 
                 <div className="table-wrap">
@@ -345,6 +301,7 @@ export default function AcademiqueModule({
                             <td>{stud.firstname} {stud.lastname}</td>
                             <td>
                               <select
+                                aria-label={`Présence de ${stud.firstname} ${stud.lastname}`}
                                 className="select-input"
                                 style={{ width: 'auto' }}
                                 value={currentStatus}
@@ -370,9 +327,14 @@ export default function AcademiqueModule({
                 {perms.permissions.includes('attendance.record') && <button
                   className="btn btn-success mt-2"
                   onClick={() => {
-                    const attendance = Object.fromEntries(students.filter(student => student.groupId === activeSessionForAttendance.groupId).map(student => [student.matricule, activeSessionForAttendance.attendance?.[student.matricule] ?? 'Présent'])) as NonNullable<Session['attendance']>;
-                    recordAttendance(activeSessionForAttendance.id, attendance);
-                    setActiveSessionForAttendance(null);
+                    try {
+                      const attendance = Object.fromEntries(students.filter(student => student.groupId === activeSessionForAttendance.groupId).map(student => [student.matricule, activeSessionForAttendance.attendance?.[student.matricule] ?? 'Présent'])) as NonNullable<Session['attendance']>;
+                      recordAttendance(activeSessionForAttendance.id, attendance);
+                      setActiveSessionForAttendance(null);
+                      setAttendanceFeedback('Appel enregistré. Les présences sont disponibles pour cette séance.');
+                    } catch (error) {
+                      setAttendanceFeedback(error instanceof Error ? error.message : 'Enregistrement impossible.', true);
+                    }
                   }}
                 >
                   <CheckCircle size={14} /> Valider l'appel
@@ -383,216 +345,9 @@ export default function AcademiqueModule({
         </div>
       )}
 
-      {/* ── SUBTAB: acad_grades (Évaluations & Notes) ── */}
-      {currentSubTab === 'acad_grades' && (
-        <div>
-          <div className="module-header">
-            <h1>Évaluations &amp; Saisie de notes</h1>
-            <p>Saisie sécurisée des notes par l'enseignant, soumission, validation et publication.</p>
-          </div>
+      {currentSubTab === 'acad_grades' && <div><div className="module-header"><h1>Évaluations et notes</h1><p>Saisie par l’enseignant, contrôle académique et publication aux étudiants.</p></div><GradeWorkflowPanel perms={perms} classes={classes} selectedClass={selectedClassForGrades} onSelectClass={setSelectedClassForGrades} evaluations={filteredEvals} newEvalName={newEvalName} onEvalNameChange={setNewEvalName} newEvalType={newEvalType} onEvalTypeChange={setNewEvalType} onCreate={addEvaluation} onGradeChange={updateGrade} onSubmit={submitGrades} onStatusChange={changeGradeStatus} /></div>}
 
-          <WorkflowStepper
-            steps={EVALUATION_CREATION_STEPS}
-            currentStep={!selectedClassForGrades ? 'class' : !newEvalName ? 'details' : 'create'}
-            title="Parcours : création d'un examen et publication des notes"
-          />
-
-          {!selectedClassForGrades ? (
-            <div className="card card-full">
-              <div className="card-header"><h2>Sélectionner un enseignement</h2></div>
-              <div className="table-wrap">
-                <table className="data-table">
-                  <thead>
-                    <tr><th>Matière</th><th>Classe / Niveau</th><th>Enseignant</th><th>Actions</th></tr>
-                  </thead>
-                  <tbody>
-                    {classes.map(cls => (
-                      <tr key={cls.id}>
-                        <td><div className="cell-main">{cls.name}</div></td>
-                        <td>{cls.level}</td>
-                        <td>{cls.teacher}</td>
-                        <td>
-                          <button className="btn btn-sm" onClick={() => setSelectedClassForGrades(cls)}>Saisir / Valider →</button>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            </div>
-          ) : (
-            <div className="card card-full">
-              <div className="card-header">
-                <h2>Notes : {selectedClassForGrades.name}</h2>
-                <button className="btn btn-sm btn-outline" onClick={() => setSelectedClassForGrades(null)}>← Retour</button>
-              </div>
-
-              {perms.permissions.includes('grade.view') ? (
-                <>
-                  {perms.permissions.includes('evaluation.create') && (
-                  <div className="form-row mt-2">
-                    <div className="form-group" style={{ flex: 1 }}>
-                      <label className="form-label">Nom de l&apos;évaluation</label>
-                      <input
-                        className="input"
-                        placeholder="ex: Devoir Sur Table n°2"
-                        value={newEvalName}
-                        onChange={e => setNewEvalName(e.target.value)}
-                      />
-                    </div>
-                    <div className="form-group">
-                      <label className="form-label">Type</label>
-                      <select
-                        className="select-input"
-                        value={newEvalType}
-                        onChange={e => setNewEvalType(e.target.value)}
-                        style={{ width: 'auto' }}
-                      >
-                        <option>Devoir</option>
-                        <option>Examen</option>
-                        <option>Projet</option>
-                        <option>TP</option>
-                      </select>
-                    </div>
-                    <button className="btn btn-primary" style={{ alignSelf: 'flex-end' }} onClick={addEvaluation}>
-                      <FilePlus size={14} /> Créer évaluation
-                    </button>
-                  </div>
-                  )}
-
-                  {filteredEvals.length === 0 && <p className="text-muted mt-2">Aucune évaluation enregistrée pour cette matière.</p>}
-
-                  {filteredEvals.map(ev => (
-                    <div key={ev.id} style={{ background: 'var(--bg-tertiary)', borderRadius: 'var(--radius)', padding: '1rem', marginTop: '1rem' }}>
-                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.75rem' }}>
-                        <div>
-                          <strong>{ev.name}</strong>
-                          <span className="pill pill-default" style={{ marginLeft: '0.5rem' }}>{ev.type}</span>
-                        </div>
-                        <span className={`pill ${ev.status === 'PUBLIEES' ? 'pill-success' : ['SOUMISES', 'A_CONTROLER', 'VALIDEES'].includes(ev.status) ? 'pill-warning' : 'pill-default'}`}>
-                          {ev.status}
-                        </span>
-                      </div>
-
-                      <WorkflowStepper steps={GRADE_STEPS} currentStep={ev.status} title="Circuit de validation des notes" />
-
-                      {ev.grades.map((g, i) => (
-                        <div key={i} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '0.5rem 0', borderTop: '1px solid var(--border)' }}>
-                          <code>{g.matricule}</code>
-                          <input
-                            type="number"
-                            min={0}
-                            max={20}
-                            step={0.5}
-                            value={g.value ?? ''}
-                            disabled={!perms.permissions.includes('grade.enter') || !['BROUILLON', 'SAISIES'].includes(ev.status)}
-                            onChange={e => {
-                              const val = e.target.value === '' ? null : Number(e.target.value);
-                              if (val !== null && (!Number.isFinite(val) || val < 0 || val > 20)) return;
-                              updateGrade(ev.id, i, val);
-                            }}
-                            style={{
-                              background: 'var(--bg-card)', border: '1px solid var(--border)',
-                              color: 'var(--text-primary)', padding: '0.3rem',
-                              width: 70, borderRadius: 6, textAlign: 'center',
-                            }}
-                          />
-                        </div>
-                      ))}
-
-                      <div className="btn-group mt-2">
-                        {perms.permissions.includes('grade.submit') && ['BROUILLON', 'SAISIES'].includes(ev.status) && (
-                          <button className="btn btn-sm btn-primary" onClick={() => submitGrades(ev)}>
-                            Soumettre à la direction
-                          </button>
-                        )}
-                        {ev.status === 'SOUMISES' && perms.canValidateGrades && (
-                          <button className="btn btn-sm btn-primary" onClick={() => changeGradeStatus(ev, 'A_CONTROLER')}>
-                            Prendre en contrôle
-                          </button>
-                        )}
-                        {ev.status === 'SOUMISES' && !perms.canValidateGrades && (
-                          <span className="text-muted" style={{ alignSelf: 'center' }}>
-                            Soumis. En attente de validation par le Directeur Académique.
-                          </span>
-                        )}
-                        {ev.status === 'PUBLIEES' && (
-                          <span className="text-muted" style={{ alignSelf: 'center' }}>
-                            Notes publiées. Modification restreinte et tracée dans le journal d'audit.
-                          </span>
-                        )}
-                        {ev.status === 'A_CONTROLER' && perms.permissions.includes('grade.approve') && (
-                          <button className="btn btn-sm btn-success" onClick={() => changeGradeStatus(ev, 'VALIDEES')}>Valider</button>
-                        )}
-                        {ev.status === 'VALIDEES' && perms.permissions.includes('grade.publish') && (
-                          <button className="btn btn-sm btn-success" onClick={() => changeGradeStatus(ev, 'PUBLIEES')}>Publier</button>
-                        )}
-                        {['SOUMISES', 'A_CONTROLER'].includes(ev.status) && perms.permissions.includes('grade.review') && (
-                          <button className="btn btn-sm btn-outline" onClick={() => {
-                            const motif = prompt('Motif du retour à l’enseignant');
-                            if (motif) changeGradeStatus(ev, 'SAISIES', motif);
-                          }}>Retourner à l&apos;enseignant</button>
-                        )}
-                      </div>
-                      {ev.corrections?.map((entry, index) => <p key={index}>{entry.studentId} : {entry.oldValue} → {entry.newValue}/20 · {entry.actor} · {entry.date} · {entry.reason}</p>)}
-                      {ev.history.length > 0 && (
-                        <details className="mt-2"><summary>Historique ({ev.history.length})</summary>
-                          {ev.history.map(entry => <div key={entry.id} className="text-muted" style={{ fontSize: '0.78rem', paddingTop: 4 }}>{new Date(entry.date).toLocaleString('fr-FR')} · {entry.role} · {entry.from} → {entry.to}{entry.comment ? ` · ${entry.comment}` : ''}</div>)}
-                        </details>
-                      )}
-                    </div>
-                  ))}
-                </>
-              ) : (
-                <div className="restricted-box mt-2">
-                  <ShieldAlert size={18} /> Seul l'Enseignant affecté à la matière ou le Directeur Académique peut modifier ces notes.
-                </div>
-              )}
-            </div>
-          )}
-        </div>
-      )}
-
-      {/* ── SUBTAB: acad_complaints (Réclamations) ── */}
-      {currentSubTab === 'acad_complaints' && (
-        <div>
-          <div className="module-header">
-            <h1>Suivi des réclamations</h1>
-            <p>Traitement des demandes de correction de notes introduites par les étudiants.</p>
-          </div>
-
-          <div className="card">
-            <div className="card-header"><h2>Liste des réclamations académiques</h2></div>
-            <div className="table-wrap">
-              <table className="data-table">
-                <thead>
-                  <tr><th>Étudiant</th><th>Motif</th><th>Statut</th><th>Action</th></tr>
-                </thead>
-                <tbody>
-                  {reclamations.map(rec => (
-                    <React.Fragment key={rec.id}>
-                    <tr>
-                      <td><code>{rec.studentMatricule}</code></td>
-                      <td style={{ fontSize: '0.85rem' }}>{rec.reason}</td>
-                      <td>
-                        <span className={`pill ${rec.status === 'CLOTUREE' ? 'pill-success' : 'pill-warning'}`}>
-                          {rec.status}
-                        </span>
-                      </td>
-                      <td>
-                        {rec.status !== 'CLOTUREE' ? complaintAction(rec) : <span className="text-muted">Clôturée</span>}
-                      </td>
-                    </tr>
-                    <tr><td colSpan={4}><WorkflowStepper steps={COMPLAINT_STEPS} currentStep={rec.status} title="Traitement de la réclamation" /></td></tr>
-                    {rec.history.length > 0 && <tr><td colSpan={4}><details><summary>Historique ({rec.history.length})</summary>{rec.history.map(entry => <div key={entry.id} className="text-muted" style={{ fontSize: '0.78rem' }}>{new Date(entry.date).toLocaleString('fr-FR')} · {entry.role} · {entry.from} → {entry.to}{entry.comment ? ` · ${entry.comment}` : ''}</div>)}</details>{rec.correction && <div className="text-muted">Correction : {rec.correction.previousGrade} → {rec.correction.newGrade} · {rec.correction.reason}</div>}</td></tr>}
-                    </React.Fragment>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </div>
-        </div>
-      )}
+      {currentSubTab === 'acad_complaints' && <ComplaintsPanel />}
     </div>
   );
 }

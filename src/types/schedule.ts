@@ -16,6 +16,7 @@ export interface Session {
   endTime: string;
   status: 'Confirmé' | 'Déplacé' | 'Annulé';
   attendance?: Record<string, 'Présent' | 'Absent' | 'Retard' | 'Absent justifié'>;
+  reason?: string;
 }
 
 export type BlockedPeriodType = 'JOUR_FERIE' | 'VACANCES' | 'FERMETURE' | 'EXAMEN' | 'AUTRE';

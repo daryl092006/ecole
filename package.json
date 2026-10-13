@@ -1,5 +1,5 @@
 {
-  "name": "temp-next-app",
+  "name": "escen-portal",
   "version": "0.1.0",
   "private": true,
   "scripts": {
@@ -7,21 +7,24 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
-    "test": "node scripts/verify-workflows.cjs"
+    "test": "node scripts/verify-workflows.cjs",
+    "test:ui": "playwright test"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.112.3",
     "lucide-react": "^1.31.0",
-    "next": "^15.3.3",
+    "next": "^15.5.27",
     "react": "19.2.8",
-    "react-dom": "19.2.8"
+    "react-dom": "19.2.8",
+    "zod": "^4.6.7"
   },
   "devDependencies": {
-    "@types/node": "^20",
+    "@playwright/test": "^1.64.0",
+    "@types/node": "^22.20.5",
     "@types/react": "^19",
     "@types/react-dom": "^19",
     "eslint": "^9",
-    "eslint-config-next": "^15.3.3",
+    "eslint-config-next": "^15.5.27",
     "typescript": "^5"
   }
 }

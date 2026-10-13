@@ -1,6 +1,9 @@
 'use client';
 
 import { useState, useCallback, useMemo } from 'react';
+import { useCampusRecords } from '@/hooks/useCampusRecords';
+import { executeCampusWorkflow, deriveEnrollments, type CampusAction } from '@/services/campusWorkflowService';
+import { emptyDataset, type Dataset } from '@/types/application';
 import { createAnnouncement } from '@/services/communicationService';
 import { useDemoUsers } from '@/hooks/useDemoUsers';
 import { createSupportTicket, transitionSupportTicket } from '@/services/supportService';
@@ -16,7 +19,11 @@ import {
 } from '@/mocks/data';
 import type { Student, ClassItem, Evaluation, Reclamation, Room, Session, PaymentMethod, Announcement, BlockedPeriod } from '@/types';
 import { ROLES } from '@/types/permissions';
-import type { Permission, RoleName } from '@/types/permissions';
+import type { RoleName } from '@/types/permissions';
+import { usePathname, useRouter } from 'next/navigation';
+import { getAvailableTabs, postLoginPath, isRouteAllowed } from '@/permissions/navigation';
+import { getPortalRoute, MODULE_PATHS, HOME_PATH, studentPath } from '@/constants/portalRoutes';
+import { authenticateDemoSession, type DemoSession } from '@/services/demoSessionService';
 import { ROLE_ACCESS, ROLE_PERMISSIONS } from '@/permissions/rolePermissions';
 import { hasPermission } from '@/permissions/rolePermissions';
 import { planSession } from '@/services/scheduleService';
@@ -39,148 +46,35 @@ export function getDocBadgeClass(status: string) {
   }
 }
 
-export const ALL_TABS = [
-  {
-    id: 'espace',
-    name: 'Mon Espace',
-    icon: 'Home',
-    subTabs: [
-      { id: 'espace_dashboard', name: 'Tableau de bord' },
-      { id: 'espace_support', name: 'Support technique' },
-      { id: 'espace_announcements', name: 'Annonces & Actualités' },
-    ],
-  },
-  {
-    id: 'dashboard_global',
-    name: 'Tableau de Bord',
-    icon: 'BarChart2',
-    subTabs: [
-      { id: 'dashboard_kpis', name: 'Statistiques Clés' },
-      { id: 'dashboard_reports', name: 'Rapports & Activités' },
-    ],
-  },
-  {
-    id: 'academique',
-    name: 'Académique',
-    icon: 'BookOpen',
-    subTabs: [
-      { id: 'acad_program', name: 'Filières & Matières' },
-      { id: 'acad_reference', name: 'Référentiel académique' },
-      { id: 'acad_schedule', name: 'Emploi du temps' },
-      { id: 'acad_attendance', name: 'Feuilles de présence' },
-      { id: 'acad_grades', name: 'Évaluations & Notes' },
-      { id: 'acad_complaints', name: 'Réclamations' },
-    ],
-  },
-  {
-    id: 'etudiants',
-    name: 'Étudiants',
-    icon: 'GraduationCap',
-    subTabs: [
-      { id: 'stud_list', name: 'Liste des Étudiants' },
-      { id: 'stud_cards', name: 'Cartes d\'Étudiant' },
-      { id: 'stud_status', name: 'Réinscriptions & Abandons' },
-    ],
-  },
-  {
-    id: 'finance',
-    name: 'Finance',
-    icon: 'CreditCard',
-    subTabs: [
-      { id: 'fin_kpis', name: 'Indicateurs Financiers' },
-      { id: 'fin_payments', name: 'Échéanciers & Versements' },
-      { id: 'fin_reports', name: 'Rapports Financiers' },
-    ],
-  },
-  {
-    id: 'personnel',
-    name: 'Personnel',
-    icon: 'Users',
-    subTabs: [
-      { id: 'staff_list', name: 'Utilisateurs & Rôles' },
-      { id: 'staff_teachers', name: 'Enseignants & Affectations' },
-    ],
-  },
-  {
-    id: 'marketing',
-    name: 'Communication',
-    icon: 'Megaphone',
-    subTabs: [
-      { id: 'comm_announcements', name: 'Créer une Annonce' },
-      { id: 'comm_news', name: 'Actualités ESCEN' },
-    ],
-  },
-  {
-    id: 'systeme',
-    name: 'Système & Audit',
-    icon: 'Settings',
-    subTabs: [
-      { id: 'sys_logs', name: 'Journal d\'Activité' },
-      { id: 'sys_backups', name: 'Export du journal' },
-      { id: 'sys_support', name: 'Tickets de Support' },
-    ],
-  },
-];
-
-const SUBTAB_PERMISSIONS: Record<string, Permission[]> = {
-  acad_program: ['academic.view'],
-  acad_reference: ['academic.structure.manage', 'academic.group.manage', 'academic.assignment.manage'],
-  acad_schedule: ['schedule.view'],
-  acad_attendance: ['attendance.view'],
-  acad_grades: ['grade.view'],
-  acad_complaints: ['complaint.view'],
-  stud_list: ['student.view'],
-  stud_cards: ['student.card.print'],
-  stud_status: ['student.lifecycle.manage'],
-  fin_kpis: ['finance.view'],
-  fin_payments: ['finance.view'],
-  fin_reports: ['finance.report.view'],
-  staff_list: ['user.manage'],
-  staff_teachers: ['academic.assignment.manage'],
-  comm_announcements: ['communication.manage'],
-  comm_news: ['communication.view'],
-  sys_logs: ['system.audit.view'],
-  sys_backups: ['system.backup.manage'],
-  sys_support: ['system.support.manage'],
-};
-
-function getAvailableTabs(role: RoleName) {
-  const rolePermissions = ROLE_PERMISSIONS[role];
-  const roleAccess = ROLE_ACCESS[role];
-  return ALL_TABS
-    .filter(tab => rolePermissions.allowedTabs.includes(tab.id))
-    .map(tab => ({
-      ...tab,
-      subTabs: tab.subTabs?.filter(subTab => {
-        const requiredPermissions = SUBTAB_PERMISSIONS[subTab.id];
-        return !requiredPermissions || requiredPermissions.some(permission => roleAccess.permissions.includes(permission));
-      }),
-    }));
-}
-
 export const ROLE_COLORS: Record<string, string> = {
   [ROLES.DG]: '#ef4444', [ROLES.DGA]: '#f97316', [ROLES.DA]: '#10b981',
   [ROLES.LOG]: '#06b6d4', [ROLES.ENS]: '#3b82f6',
   [ROLES.RAF]: '#eab308', [ROLES.MKT]: '#8b5cf6', [ROLES.IT]: '#3b82f6',
   [ROLES.STUD]: '#64748b', [ROLES.DEL]: '#64748b',
+  [ROLES.SURV]: '#0891b2', [ROLES.ACHATS]: '#d97706',
+  [ROLES.SITE]: '#0f766e', [ROLES.STG]: '#64748b',
 };
 
 // ─── hook ────────────────────────────────────────────────────────────────────
 
 export function useAppState() {
+  const router = useRouter();
+  const pathname = usePathname();
+  const route = getPortalRoute(pathname);
+  const [session, setSession] = useState<DemoSession | null>(null);
+  const [hasLoggedOut, setHasLoggedOut] = useState(false);
   const references = useAcademicReferenceStore();
+  const [campusRecords, setCampusRecords] = useCampusRecords();
   const groups = references.groups;
   const [demoIdentity, setDemoIdentity] = useState('');
   const [activeRole, setActiveRole] = useState<RoleName>(ROLES.DG);
-  const [currentTab, setCurrentTab] = useState('espace');
-  const [currentSubTab, setCurrentSubTab] = useState('espace_dashboard');
+  const currentTab = route?.tab || Object.entries(MODULE_PATHS).find(([, path]) => path === pathname)?.[0] || 'espace';
+  const currentSubTab = route?.section || '';
   const [searchQuery, setSearchQuery] = useState('');
-  const [onboardingOpen, setOnboardingOpen] = useState(true);
-  const [completedOnboardingRoles, setCompletedOnboardingRoles] = useState<RoleName[]>([]);
 
   // Data state
   const [students, setStudents] = useState<Student[]>(initialStudents);
-  const classes: ClassItem[] = [...initialClasses, ...references.assignments.filter(item => item.active).flatMap(item => {
+  const classes: ClassItem[] = [...initialClasses, ...references.assignments.flatMap(item => {
     const subject = references.subjects.find(value => value.id === item.subjectId);
     const teacher = references.teachers.find(value => value.id === item.teacherId);
     const group = groups.find(value => value.id === item.groupId);
@@ -208,17 +102,20 @@ export function useAppState() {
   const [paymentAmount, setPaymentAmount] = useState('');
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>('VIREMENT');
   const [notifications, setNotifications] = useState<Array<{ id: number; text: string }>>([]);
+  const [actionFeedback, setActionFeedback] = useState('');
 
   const perms = ROLE_PERMISSIONS[activeRole];
   const baseAccess = ROLE_ACCESS[activeRole];
   const identityStudent = students.find(item => item.matricule === demoIdentity);
   const access = { ...baseAccess, scope: baseAccess.scope.ownDataOnly
-    ? { ...baseAccess.scope, studentId: identityStudent?.matricule ?? '__NONE__', groupIds: identityStudent ? [identityStudent.groupId] : [] }
+    ? { ...baseAccess.scope, studentId: identityStudent?.matricule ?? '__NONE__', groupIds: identityStudent ? [...new Set([identityStudent.groupId, ...campusRecords.enrollments.filter(item => item.studentId === identityStudent.matricule).map(item => item.groupId)])] : [] }
     : activeRole === ROLES.ENS ? { teacherId: demoIdentity || '__NONE__', groupIds: classes.filter(item => item.teacherId === demoIdentity).map(item => item.groupId) }
-    : baseAccess.scope };
+    : activeRole === ROLES.SURV ? { ...baseAccess.scope, sessionIds: campusRecords.exams.filter(item => item.supervisorId === demoIdentity).map(item => item.id) } : baseAccess.scope };
   const availableTabs = useMemo(() => getAvailableTabs(activeRole), [activeRole]);
 
-  const visibleClasses = !hasPermission(activeRole, 'academic.view') && !hasPermission(activeRole, 'grade.view') && !hasPermission(activeRole, 'attendance.view') && !hasPermission(activeRole, 'schedule.view') ? [] : access.scope.teacherId
+  const visibleClasses = !hasPermission(activeRole, 'academic.view') && !hasPermission(activeRole, 'grade.view') && !hasPermission(activeRole, 'attendance.view') && !hasPermission(activeRole, 'schedule.view') ? [] : access.scope.sessionIds
+    ? classes.filter(classItem => sessions.some(session => session.classId === classItem.id && access.scope.sessionIds?.includes(session.id)))
+    : access.scope.teacherId
     ? classes.filter(classItem => classItem.teacherId === access.scope.teacherId && (!access.scope.groupIds || access.scope.groupIds.includes(classItem.groupId)))
     : access.scope.groupIds
       ? classes.filter(classItem => access.scope.groupIds?.includes(classItem.groupId))
@@ -240,12 +137,16 @@ export function useAppState() {
     visibleEvaluationIds.has(reclamation.evaluationId)
     && (!access.scope.studentId || reclamation.studentMatricule === access.scope.studentId)
   );
-  const visiblePayments = !hasPermission(activeRole, 'finance.view') ? [] : access.scope.studentId
+  const visiblePayments = !hasPermission(activeRole, 'finance.view') && !access.scope.ownDataOnly ? [] : access.scope.studentId
     ? payments.filter(payment => payment.studentId === access.scope.studentId)
     : payments;
   const visiblePaymentIds = new Set(visiblePayments.map(payment => payment.id));
   const visibleReceipts = receipts.filter(receipt => visiblePaymentIds.has(receipt.paymentId));
   const visiblePaymentCancellations = paymentCancellations.filter(cancellation => visiblePaymentIds.has(cancellation.paymentId));
+  const scopedStudents = visibleStudents.map(student => hasPermission(activeRole, 'finance.view') || access.scope.ownDataOnly ? student : {
+    ...student, financials: { expected: 0, paid: 0, remaining: 0, installments: [] }, bourse: { active: false, type: '', percent: 0, amount: 0 },
+    history: student.history.filter(entry => !/financ|contrat|bourse|FCFA/i.test(entry.text)),
+  });
 
   // ── Actions ──────────────────────────────────────────────────────────────
 
@@ -256,47 +157,42 @@ export function useAppState() {
 
   const demoUsers = useDemoUsers(activeRole, logEvent);
 
-  const handleTabChange = (tabId: string) => {
-    if (!getAvailableTabs(activeRole).some(item => item.id === tabId)) return;
-    setCurrentTab(tabId);
-    const tabObj = getAvailableTabs(activeRole).find(t => t.id === tabId);
-    if (tabObj && tabObj.subTabs && tabObj.subTabs.length > 0) {
-      setCurrentSubTab(tabObj.subTabs[0].id);
-    } else {
-      setCurrentSubTab('');
-    }
-  };
-
-  const handleRoleChange = (role: RoleName) => {
-    setActiveRole(role);
-    setDemoIdentity('');
-    setSearchQuery('');
-    setNotifications([]);
-    setPaymentStudent('');
-    setPaymentAmount('');
-    setPaymentMethod('VIREMENT');
-    setNewEvalName('');
-    setNewEvalType('Devoir');
-    setSelectedStudent(null);
-    setSelectedClassForGrades(null);
-    const roleTabs = getAvailableTabs(role);
-    const retainedTab = roleTabs.find(tab => tab.id === currentTab) ?? roleTabs[0];
-    setCurrentTab(retainedTab.id);
-    setCurrentSubTab(retainedTab.subTabs?.[0]?.id ?? '');
-    setOnboardingOpen(!completedOnboardingRoles.includes(role));
-  };
-
   const navigateTo = useCallback((tabId: string, subTabId?: string) => {
     const tab = getAvailableTabs(activeRole).find(item => item.id === tabId);
     if (!tab) return;
-    const allowedSubTab = subTabId && tab.subTabs?.some(item => item.id === subTabId) ? subTabId : tab.subTabs?.[0]?.id ?? '';
-    setCurrentTab(tab.id);
-    setCurrentSubTab(allowedSubTab);
-  }, [activeRole]);
-
-  const completeOnboarding = () => {
-    setCompletedOnboardingRoles(current => current.includes(activeRole) ? current : [...current, activeRole]);
-    setOnboardingOpen(false);
+    const section = tab.subTabs?.find(item => item.id === subTabId) || tab.subTabs?.[0];
+    if (section) router.push(section.href);
+  }, [activeRole, router]);
+  const handleTabChange = (tabId: string) => navigateTo(tabId);
+  const setCurrentSubTab = (sectionId: string) => navigateTo(currentTab, sectionId);
+  const handleRoleChange = (role: RoleName) => {
+    setActiveRole(role);
+    setDemoIdentity(''); setSearchQuery(''); setNotifications([]); setActionFeedback('');
+    setPaymentStudent(''); setPaymentAmount(''); setPaymentMethod('VIREMENT');
+    setNewEvalName(''); setNewEvalType('Devoir'); setSelectedStudent(null); setSelectedClassForGrades(null);
+    if (route && !isRouteAllowed(pathname, role)) router.replace(HOME_PATH);
+  };
+  const login = (email: string, password: string, requested?: string) => {
+    const account = authenticateDemoSession(email, password);
+    setSession(account); setHasLoggedOut(false); setActiveRole(account.role); setDemoIdentity('');
+    setSelectedStudent(null); setSelectedClassForGrades(null); setActionFeedback('');
+    setSystemLogs(previous => [{ date: new Date().toISOString(), user: account.email, action: 'Connexion de démonstration', details: account.role }, ...previous]);
+    router.replace(postLoginPath(requested, account.role));
+  };
+  const logout = () => {
+    logEvent('Déconnexion de démonstration', session?.email || '');
+    setSession(null); setHasLoggedOut(true); setDemoIdentity(''); setSelectedStudent(null); setSelectedClassForGrades(null);
+    setSearchQuery(''); setNotifications([]); setActionFeedback(''); router.replace('/connexion');
+  };
+  const requestAccessHelp = (email: string) => {
+    const address = email.trim().toLowerCase();
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(address)) throw new Error('Adresse email invalide.');
+    const ticket = createSupportTicket('Demande d’aide à la connexion', `Adresse indiquée : ${address}. Demande de récupération d’accès depuis la page de connexion.`, 'Connexion:' + address, ROLES.STG);
+    setTickets(previous => [...previous, ticket]);
+    setSystemLogs(previous => [{ date: new Date().toISOString(), user: 'Connexion:' + address, action: 'Demande d’accès de démonstration', details: ticket.id }, ...previous]);
+  };
+  const navigateToStudent = (studentId: string) => {
+    if (hasPermission(activeRole, 'student.view') && students.some(student => student.matricule === studentId)) router.push(studentPath(studentId));
   };
 
   // Ajout de cours avec détection automatique des conflits
@@ -355,7 +251,9 @@ export function useAppState() {
   const addEvaluation = () => {
     if (!hasPermission(activeRole, 'evaluation.create')) return;
     if (!newEvalName.trim() || !selectedClassForGrades || !visibleClasses.some(item => item.id === selectedClassForGrades.id)) return;
-    if (!students.some(item => item.groupId === selectedClassForGrades.groupId)) { alert('Aucun étudiant inscrit dans ce groupe.'); return; }
+    const assignment = references.assignments.find(item => item.id === selectedClassForGrades.id);
+    if (!assignment?.active || !references.academicYears.some(year => year.id === assignment.academicYearId && year.status === 'OUVERTE')) { setActionFeedback('Choisissez un enseignement actif d’une année ouverte.'); return; }
+    if (!students.some(item => item.groupId === selectedClassForGrades.groupId)) { setActionFeedback('Aucun étudiant inscrit dans ce groupe.'); return; }
     const ev = createEvaluation({
       id: `EV-${String(evaluations.length + 1).padStart(3, '0')}`,
       classId: selectedClassForGrades.id,
@@ -365,6 +263,7 @@ export function useAppState() {
       grades: students.filter(s => s.groupId === selectedClassForGrades.groupId).map(s => ({ matricule: s.matricule, value: null })),
     }, activeRole, selectedClassForGrades.teacherId, demoIdentity);
     setEvaluations(prev => [...prev, ev]);
+    setActionFeedback('');
     setNewEvalName('');
     logEvent('Création Évaluation', `${ev.name} – ${selectedClassForGrades.name}`);
   };
@@ -378,21 +277,24 @@ export function useAppState() {
       const entered = current.status === 'BROUILLON' ? transitionGradeWorkflow(current, 'SAISIES', context) : current;
       const submitted = transitionGradeWorkflow(entered, 'SOUMISES', context);
       setEvaluations(prev => prev.map(item => item.id === ev.id ? submitted : item));
+      setActionFeedback('');
       logEvent('Soumission Notes', ev.name);
-    } catch (error) { alert(error instanceof Error ? error.message : 'Soumission impossible.'); }
+    } catch (error) { setActionFeedback(error instanceof Error ? error.message : 'Soumission impossible.'); }
   };
 
   const changeGradeStatus = (ev: Evaluation, target: Evaluation['status'], comment?: string) => {
     const requiredPermission = target === 'A_CONTROLER' || target === 'SAISIES'
       ? 'grade.review' : target === 'VALIDEES' ? 'grade.approve' : 'grade.publish';
-    if (!hasPermission(activeRole, requiredPermission) || !visibleEvaluations.some(item => item.id === ev.id)) return;
+    if (!hasPermission(activeRole, requiredPermission) || !visibleEvaluations.some(item => item.id === ev.id)) return false;
     const current = evaluations.find(item => item.id === ev.id);
-    if (!current) return;
+    if (!current) return false;
     try {
       const updated = transitionGradeWorkflow(current, target, { actor: demoIdentity || activeRole, role: activeRole, comment });
       setEvaluations(previous => previous.map(item => item.id === ev.id ? updated : item));
+      setActionFeedback('');
       logEvent('Transition Notes', JSON.stringify({ entity: ev.id, oldValue: current.status, newValue: target, reason: comment }));
-    } catch (error) { alert(error instanceof Error ? error.message : 'Transition impossible.'); }
+      return true;
+    } catch (error) { setActionFeedback(error instanceof Error ? error.message : 'Transition impossible.'); return false; }
   };
 
   const updateGrade = (evaluationId: string, gradeIndex: number, value: number | null) => {
@@ -402,8 +304,9 @@ export function useAppState() {
     try {
       const updated = enterGrade(current, gradeIndex, value, activeRole, classes.find(item => item.id === current.classId)?.teacherId ?? '', demoIdentity);
       setEvaluations(previous => previous.map(item => item.id === evaluationId ? updated : item));
+      setActionFeedback('');
       logEvent('Saisie note', JSON.stringify({ entity: evaluationId, studentId: current.grades[gradeIndex].matricule, oldValue: current.grades[gradeIndex].value, newValue: value }));
-    } catch (error) { alert(error instanceof Error ? error.message : 'Saisie impossible.'); }
+    } catch (error) { setActionFeedback(error instanceof Error ? error.message : 'Saisie impossible.'); }
   };
 
   const createContract = (studentId: string, amount: number, dates: string[]) => {
@@ -449,10 +352,33 @@ export function useAppState() {
   };
 
   const createStudent = (input: StudentInput) => {
+    const group = groups.find(item => item.id === input.groupId);
+    if (!group || !references.academicYears.some(year => year.id === group.academicYearId && year.status === 'OUVERTE')) throw new Error('Choisissez un groupe d’une année ouverte.');
     const student = createRegisteredStudent(input, students, groups, activeRole);
     setStudents(previous => [...previous, student]);
     references.setGroups(previous => previous.map(group => group.id === student.groupId ? { ...group, studentIds: [...group.studentIds, student.matricule] } : group));
     logEvent('Création dossier Étudiant', JSON.stringify({ actor: activeRole, oldValue: null, newValue: student }));
+  };
+  const renameGroup = (groupId: string, name: string) => {
+    if (!hasPermission(activeRole, 'academic.group.manage')) throw new Error('Modification de groupe non autorisée.');
+    const group = groups.find(item => item.id === groupId); if (!group || !name.trim()) throw new Error('Nom du groupe obligatoire.');
+    if (!references.academicYears.some(year => year.id === group.academicYearId && year.status === 'OUVERTE')) throw new Error('La modification nécessite une année ouverte.');
+    if (groups.some(item => item.id !== group.id && item.academicYearId === group.academicYearId && item.levelId === group.levelId && item.name.toLocaleLowerCase('fr') === name.trim().toLocaleLowerCase('fr'))) throw new Error('Ce nom de groupe existe déjà pour ce niveau et cette année.');
+    const updated = { ...group, name: name.trim() };
+    references.setGroups(previous => previous.map(item => item.id === groupId ? updated : item));
+    setStudents(previous => previous.map(item => item.groupId === groupId ? { ...item, groupe: updated.name } : item));
+    logEvent('Renommage groupe', JSON.stringify({ entity: groupId, oldValue: group.name, newValue: updated.name }));
+  };
+  const updateStudentProfile = (studentId: string, input: Pick<Student, 'firstname' | 'lastname' | 'email' | 'phone' | 'gender' | 'birthDate' | 'nationality' | 'address' | 'city' | 'country'>) => {
+    if (!hasPermission(activeRole, 'student.group.assign')) throw new Error('Modification du dossier non autorisée.');
+    if (!input.firstname.trim() || !input.lastname.trim()) throw new Error('Prénom et nom obligatoires.');
+    if (input.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(input.email)) throw new Error('Email invalide.');
+    if (input.phone && !/^(?:\+228[ -]?)?[0-9 -]{8,15}$/.test(input.phone)) throw new Error('Numéro de téléphone invalide.');
+    if (input.birthDate && (Number.isNaN(Date.parse(input.birthDate)) || input.birthDate > new Date().toISOString().slice(0, 10))) throw new Error('Date de naissance invalide.');
+    const student = students.find(item => item.matricule === studentId); if (!student) throw new Error('Dossier introuvable.');
+    const updated = { ...student, ...input, firstname: input.firstname.trim(), lastname: input.lastname.trim(), history: [...student.history, { date: new Date().toISOString(), text: `Informations civiles mises à jour par ${activeRole}.` }] };
+    setStudents(previous => previous.map(item => item.matricule === studentId ? updated : item));
+    logEvent('Modification dossier étudiant', JSON.stringify({ entity: studentId, oldValue: student, newValue: updated }));
   };
 
   const assignStudentToGroup = (studentId: string, groupId: string): { success: boolean; error?: string } => {
@@ -466,7 +392,7 @@ export function useAppState() {
     setStudents(prev => prev.map(item => item.matricule === studentId
       ? { ...item, groupId: group.id, groupe: group.name, niveau: group.niveau }
       : item));
-    references.setGroups(previous => previous.map(item => ({ ...item, studentIds: item.id === groupId ? [...item.studentIds.filter(id => id !== studentId), studentId] : item.studentIds.filter(id => id !== studentId) })));
+    references.setGroups(previous => previous.map(item => item.academicYearId !== student.academicYearId ? item : ({ ...item, studentIds: item.id === groupId ? [...item.studentIds.filter(id => id !== studentId), studentId] : item.studentIds.filter(id => id !== studentId) })));
     logEvent('Affectation Groupe', `${studentId}: ${student.groupId} → ${group.id}`);
     return { success: true };
   };
@@ -548,9 +474,9 @@ export function useAppState() {
 
   const transitionReclamation = (id: string, target: Reclamation['status'], comment?: string, correctedGrade?: number) => {
     const reclamation = reclamations.find(item => item.id === id);
-    if (!reclamation || !visibleReclamations.some(item => item.id === id)) return;
+    if (!reclamation || !visibleReclamations.some(item => item.id === id)) return false;
     const teacherStep = reclamation.status === 'TRANSMISE_ENSEIGNANT' && activeRole === ROLES.ENS;
-    if (!teacherStep && !hasPermission(activeRole, 'complaint.review')) return;
+    if (!teacherStep && !hasPermission(activeRole, 'complaint.review')) return false;
     try {
       let updatedComplaint = transitionComplaint(reclamation, target, demoIdentity || activeRole, activeRole, comment);
       let updatedEvaluation: Evaluation | undefined;
@@ -566,28 +492,79 @@ export function useAppState() {
         setEvaluations(previous => previous.map(item => item.id === corrected.id ? corrected : item));
       }
       setReclamations(previous => previous.map(item => item.id === id ? updatedComplaint : item));
+      setActionFeedback('');
       logEvent('Transition Réclamation', JSON.stringify({ entity: id, oldValue: reclamation.status, newValue: target, reason: comment, correction: updatedComplaint.correction }));
-    } catch (error) { alert(error instanceof Error ? error.message : 'Traitement impossible.'); }
+      return true;
+    } catch (error) { setActionFeedback(error instanceof Error ? error.message : 'Traitement impossible.'); return false; }
   };
 
   const filteredEvals = visibleEvaluations.filter(e => e.classId === selectedClassForGrades?.id);
 
+  const dataset: Dataset = {
+    ...emptyDataset(), ...campusRecords,
+    academicYears: references.academicYears, programs: references.programs, tracks: references.tracks,
+    levels: references.levels, semesters: references.semesters, units: references.units, subjects: references.subjects,
+    teachers: references.teachers, assignments: references.assignments, groups,
+    students, evaluations, reclamations, rooms, sessions, blockedPeriods, tickets, fees, payments, receipts, paymentCancellations, announcements,
+  };
+  const runWorkflow = (action: CampusAction, payload: unknown) => {
+    const result = executeCampusWorkflow(dataset, { role: activeRole, actor: demoIdentity || activeRole, users: demoUsers.users }, action, payload);
+    const next = result.data;
+    setCampusRecords({ settings: next.settings, enrollments: next.enrollments, juryDecisions: next.juryDecisions, exams: next.exams, staff: next.staff, purchases: next.purchases, assets: next.assets, documents: next.documents });
+    setStudents(next.students); setSessions(next.sessions); setFees(next.fees); setPayments(next.payments); setReceipts(next.receipts); setPaymentCancellations(next.paymentCancellations);
+    references.setGroups(next.groups);
+    for (const event of result.audit) logEvent(action, JSON.stringify(event));
+  };
+  const ownData = !!access.scope.ownDataOnly;
+  const canFinance = hasPermission(activeRole, 'finance.view');
+  const canAcademic = hasPermission(activeRole, 'academic.view') || hasPermission(activeRole, 'grade.view');
+  const canOperations = [ROLES.DG, ROLES.DGA, ROLES.RAF, ROLES.ACHATS, ROLES.SITE].includes(activeRole as typeof ROLES.DG);
+  const enrollmentIds = new Set(visibleStudents.map(item => item.matricule));
+  const campusData: Dataset = {
+    ...emptyDataset(),
+    ...((canAcademic || canFinance) ? { academicYears: dataset.academicYears, programs: dataset.programs, tracks: dataset.tracks, levels: dataset.levels, semesters: dataset.semesters, units: dataset.units, subjects: dataset.subjects, assignments: dataset.assignments, teachers: dataset.teachers } : { academicYears: dataset.academicYears }),
+    settings: campusRecords.settings, students: scopedStudents, groups, evaluations: visibleEvaluations, sessions: visibleSessions, rooms, blockedPeriods, announcements,
+    payments: visiblePayments, receipts: visibleReceipts, paymentCancellations: visiblePaymentCancellations, fees: canFinance ? fees : [],
+    enrollments: deriveEnrollments(dataset).filter(item => enrollmentIds.has(item.studentId)).map(item => canFinance || ownData ? item : { ...item, financials: { expected: 0, paid: 0, remaining: 0, installments: [] } }),
+    juryDecisions: campusRecords.juryDecisions.filter(item => ownData ? item.studentId === demoIdentity : hasPermission(activeRole, 'grade.view') && activeRole !== ROLES.ENS),
+    exams: campusRecords.exams.filter(item => visibleSessions.some(session => session.id === item.id)),
+    staff: [ROLES.DG, ROLES.DGA, ROLES.RAF, ROLES.IT].includes(activeRole as typeof ROLES.DG) ? campusRecords.staff : [],
+    purchases: canOperations ? campusRecords.purchases : [], assets: canOperations ? campusRecords.assets : [],
+    documents: campusRecords.documents.filter(item => enrollmentIds.has(item.studentId) && (hasPermission(activeRole, 'student.view') || ownData)),
+  };
+  const visibleAnnouncements = announcements.filter(item => hasPermission(activeRole, 'communication.manage') || item.audience === 'Tous' || item.audience === activeRole || (ownData && item.audience === 'Étudiants') || (activeRole === ROLES.ENS && item.audience === 'Enseignants'));
+  const uiReferences = { ...references, setPrograms: (update: Parameters<typeof references.setPrograms>[0]) => {
+    if (!hasPermission(activeRole, 'academic.structure.manage')) throw new Error('Modification des filières non autorisée.');
+    const next = typeof update === 'function' ? update(references.programs) : update;
+    const renamed = next.flatMap(item => { const old = references.programs.find(program => program.id === item.id); return old && old.name !== item.name ? [{ id: item.id, oldName: old.name, newName: item.name }] : []; });
+    references.setPrograms(next);
+    if (renamed.length) {
+      references.setGroups(previous => previous.map(group => ({ ...group, filieres: group.filieres.map(name => renamed.find(change => change.oldName === name && group.programIds.includes(change.id))?.newName || name) })));
+      setStudents(previous => previous.map(student => ({ ...student, filiere: renamed.find(change => change.oldName === student.filiere)?.newName || student.filiere })));
+    }
+    for (const item of next) { const old = references.programs.find(program => program.id === item.id); if (JSON.stringify(old) !== JSON.stringify(item)) logEvent('Référentiel filière', JSON.stringify({ entity: item.id, oldValue: old || null, newValue: item })); }
+  } };
+
   return {
     // Role
+    session, hasLoggedOut, login, logout, pathname, navigateToStudent, requestAccessHelp,
+    actionFeedback, clearActionFeedback: () => setActionFeedback(''),
+    campus: { data: campusData, runWorkflow, supervisors: [ROLES.DA, ROLES.LOG].includes(activeRole as typeof ROLES.DA) ? demoUsers.users.filter(item => item.role === ROLES.SURV && item.active).map(item => ({ id: item.id, name: item.name })) : [] },
+    identitySupervisors: demoUsers.users.filter(item => item.role === ROLES.SURV && item.active),
     users: hasPermission(activeRole, 'user.manage') ? demoUsers.users : [], addUser: demoUsers.addUser, toggleUser: demoUsers.toggleUser,
-    activeRole, perms, availableTabs, handleRoleChange, references, demoIdentity, setDemoIdentity, identityStudents: students,
-    onboardingOpen, completeOnboarding, reopenOnboarding: () => setOnboardingOpen(true), navigateTo,
+    activeRole, perms, availableTabs, handleRoleChange, references: uiReferences, demoIdentity, setDemoIdentity, identityStudents: students,
+    navigateTo,
     // Navigation
     currentTab, currentSubTab, handleTabChange, setCurrentSubTab,
     // Search
     searchQuery, setSearchQuery,
     // Data
-    students: visibleStudents, setStudents, classes: visibleClasses,
+    students: scopedStudents, setStudents, classes: visibleClasses,
     evaluations: visibleEvaluations, setEvaluations,
-    reclamations: visibleReclamations, systemLogs: hasPermission(activeRole, 'system.audit.view') ? systemLogs : [], announcements, setAnnouncements, notifications,
+    reclamations: visibleReclamations, systemLogs: hasPermission(activeRole, 'system.audit.view') ? systemLogs : [], announcements: visibleAnnouncements, setAnnouncements, notifications,
     rooms, groups, sessions: visibleSessions, setSessions,
     // UI State
-    selectedStudent: selectedStudent ? visibleStudents.find(item => item.matricule === selectedStudent.matricule) ?? null : null, setSelectedStudent,
+    selectedStudent: selectedStudent ? scopedStudents.find(item => item.matricule === selectedStudent.matricule) ?? null : null, setSelectedStudent,
     selectedClassForGrades, setSelectedClassForGrades,
     newEvalName, setNewEvalName,
     newEvalType, setNewEvalType,
@@ -599,7 +576,7 @@ export function useAppState() {
     checkConflictsAndAddSession, addRoom, addBlockedPeriod, blockedPeriods, recordAttendance,
     addEvaluation, submitGrades, changeGradeStatus, updateGrade,
     createContract, recordPayment, cancelPayment, runBackup, transitionReclamation, assignStudentToGroup,
-    addReclamation, updateStudentStatus, addAnnouncement, createStudent,
+    addReclamation, updateStudentStatus, addAnnouncement, createStudent, updateStudentProfile, renameGroup,
     tickets: hasPermission(activeRole, 'system.support.manage') ? tickets : tickets.filter(item => item.author === ticketAuthor), openTicket, changeTicket,
     logEvent,
   };
