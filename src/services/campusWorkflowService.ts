@@ -1,3 +1,4 @@
+import { executeExamAction, type ExamAction } from '@/services/examService';
 import { z } from 'zod';
 import type { Dataset, Collection, Entity, InstitutionSettings, Enrollment, JuryDecision } from '@/types/application';
 import type { RoleName, Student, PaymentMethod, Installment } from '@/types';
@@ -8,7 +9,7 @@ import { createMockId } from '@/utils/createMockId';
 import { computeTranscript } from '@/services/transcriptService';
 import { planSession } from '@/services/scheduleService';
 
-export type CampusAction = 'settings.update' | 'student.reenroll' | 'student.status' | 'finance.contract' | 'finance.payment' | 'finance.cancel' | 'jury.decide' | 'exam.create' | 'exam.cancel' | 'schedule.change' | 'staff.save' | 'asset.save' | 'purchase.create' | 'purchase.transition' | 'student.document.add' | 'student.document.review';
+export type CampusAction = ExamAction | 'settings.update' | 'student.reenroll' | 'student.status' | 'finance.contract' | 'finance.payment' | 'finance.cancel' | 'jury.decide' | 'exam.create' | 'exam.cancel' | 'schedule.change' | 'staff.save' | 'asset.save' | 'purchase.create' | 'purchase.transition' | 'student.document.add' | 'student.document.review';
 export interface WorkflowContext { role: RoleName; actor: string; users: DemoUser[]; }
 export interface WorkflowAudit { collection: Collection; id: string; oldValue: unknown; newValue: unknown; reason: string; }
 const id = z.string().trim().min(1).max(160); const text = z.string().trim().max(1000); const reason = text.min(3);
@@ -33,6 +34,7 @@ function enrollmentStatus(student: Student): Enrollment['status'] {
 export function deriveEnrollments(data: Dataset): Enrollment[] {
   const records = [...data.enrollments];
   for (const student of data.students) {
+    if (!student.academicYearId) continue;
     const index = records.findIndex(item => item.studentId === student.matricule && item.academicYearId === student.academicYearId);
     if (index < 0) records.push(enrollmentFor(student)); else records[index] = { ...records[index], groupId: student.groupId, financials: student.financials, status: enrollmentStatus(student) };
   }
@@ -62,6 +64,16 @@ export function executeCampusWorkflow(source: Dataset, context: WorkflowContext,
     const record = data.enrollments.find(item => item.studentId === updated.matricule && item.academicYearId === updated.academicYearId);
     if (record) save('enrollments', { ...record, financials: updated.financials, status: enrollmentStatus(updated) }, record.id, motif);
   };
+  if (['exam.results', 'exam.paper', 'exam.authorize', 'exam.start', 'exam.answer', 'exam.submit', 'exam.correct'].includes(action)) {
+    executeExamAction(data, role, context.actor, action as ExamAction, payload);
+    for (const collection of ['exams', 'examPapers', 'examAttempts', 'evaluations'] as const) {
+      for (const item of data[collection]) {
+        const old = source[collection].find(value => value.id === item.id) ?? null;
+        if (JSON.stringify(old) !== JSON.stringify(item)) events.push({ collection, id: item.id, oldValue: old, newValue: item, reason: action });
+      }
+    }
+    return { data, audit: events };
+  }
   switch (action) {
     case 'student.document.add': {
       const values = z.object({ studentId: id, kind: z.enum(['IDENTITE', 'BAC', 'RELEVE', 'PHOTO', 'AUTRE']), fileName: id, mimeType: z.enum(['image/jpeg', 'image/png', 'application/pdf']), size: z.number().int().positive().max(5 * 1024 * 1024), dataUrl: z.string().max(7_000_000) }).parse(payload);
@@ -73,13 +85,13 @@ export function executeCampusWorkflow(source: Dataset, context: WorkflowContext,
       events[events.length - 1].newValue = { id: documentId, studentId: values.studentId, fileName: values.fileName, kind: values.kind, size: values.size, status: 'A_VERIFIER' }; break;
     }
     case 'student.document.review': {
-      permit(role === ROLES.DA || role === ROLES.LOG);
+      permit((role === ROLES.DA || role === ROLES.IT) || role === ROLES.LOG);
       const values = z.object({ documentId: id, status: z.enum(['CONFORME', 'NON_CONFORME']), reason }).parse(payload); const document = data.documents.find(item => item.id === values.documentId); assert(document, 'Pièce introuvable.');
       save('documents', { ...document, status: values.status, history: [...document.history, { date: now, actor: context.actor, status: values.status, reason: values.reason }] }, document.id, values.reason);
       const event = events[events.length - 1]; event.oldValue = { id: document.id, status: document.status }; event.newValue = { id: document.id, status: values.status }; break;
     }
     case 'settings.update': {
-      permit(role === ROLES.DG || role === ROLES.DA);
+      permit(role === ROLES.DG || (role === ROLES.DA || role === ROLES.IT));
       const values: InstitutionSettings = settingsSchema.parse(payload); assert(values.eliminationMark <= values.passMark, 'Le seuil éliminatoire ne peut dépasser le seuil de validation.');
       save('settings', values, values.id, values.rulesReason); break;
     }
@@ -108,7 +120,7 @@ export function executeCampusWorkflow(source: Dataset, context: WorkflowContext,
       const values = z.object({ studentId: id, status: z.enum(['Inscrit', 'Suspendu', 'Abandonné', 'Diplômé']), reason }).parse(payload);
       const student = studentById(values.studentId); openYear(student.academicYearId);
       if (values.status === 'Diplômé') {
-        permit(role === ROLES.DA); const group = data.groups.find(item => item.id === student.groupId); const level = data.levels.find(item => item.id === group?.levelId);
+        permit((role === ROLES.DA || role === ROLES.IT)); const group = data.groups.find(item => item.id === student.groupId); const level = data.levels.find(item => item.id === group?.levelId);
         assert(level && ['L3', 'M2'].includes(level.code), 'Le diplôme concerne la dernière année du cycle.');
         const decisions = new Map<string, JuryDecision>(); for (const entry of data.juryDecisions.filter(item => item.studentId === student.matricule)) decisions.set(entry.semesterId, entry);
         const credits = [...decisions.values()].filter(item => { const semester = data.semesters.find(semester => semester.id === item.semesterId); return item.decision === 'ADMIS' && data.levels.find(item => item.id === semester?.levelId)?.cycle === level.cycle; }).reduce((sum, item) => sum + item.credits, 0);
@@ -160,7 +172,7 @@ export function executeCampusWorkflow(source: Dataset, context: WorkflowContext,
       if (current) saveStudent({ ...student, financials: updated }, values.reason); else if (enrollment) save('enrollments', { ...enrollment, financials: updated }, enrollment.id, values.reason); break;
     }
     case 'jury.decide': {
-      permit(role === ROLES.DA); const values = z.object({ studentId: id, semesterId: id, decision: z.enum(['ADMIS', 'RATTRAPAGE', 'AJOURNE']), reason }).parse(payload);
+      permit((role === ROLES.DA || role === ROLES.IT)); const values = z.object({ studentId: id, semesterId: id, decision: z.enum(['ADMIS', 'RATTRAPAGE', 'AJOURNE']), reason }).parse(payload);
       const rules = data.settings[0]; assert(rules.rulesApproved, 'Validez les règles de délibération dans les paramètres académiques.');
       const result = computeTranscript(data, values.studentId, values.semesterId, rules); openYear(result.academicYearId);
       assert(result.complete, 'Crédits conformes et notes de devoir et d’examen publiées pour chaque matière obligatoires.');
@@ -168,18 +180,34 @@ export function executeCampusWorkflow(source: Dataset, context: WorkflowContext,
       const decisionId = createMockId('JURY'); save('juryDecisions', { id: decisionId, studentId: values.studentId, semesterId: values.semesterId, academicYearId: result.academicYearId, average: result.average, credits: result.credits, totalCredits: result.totalCredits, decision: values.decision, reason: values.reason, date: now, actor: context.actor, rules: structuredClone(rules), rows: result.rows }, decisionId, values.reason); break;
     }
     case 'exam.create': {
-      permit(role === ROLES.DA || role === ROLES.LOG);
-      const values = z.object({ assignmentId: id, roomCode: id, date, startTime: time, endTime: time, kind: z.enum(['EXAMEN', 'RATTRAPAGE']), supervisorId: id }).parse(payload);
+      permit((role === ROLES.DA || role === ROLES.IT) || role === ROLES.LOG);
+      const values = z.object({ assignmentId: id, mode: z.enum(['PAPIER', 'EN_LIGNE']).default('PAPIER'), roomCode: z.string().default(''), date, startTime: time, endTime: time, kind: z.enum(['EXAMEN', 'RATTRAPAGE']), supervisorId: z.string().default('') }).parse(payload);
       const assignment = data.assignments.find(item => item.id === values.assignmentId && item.active); const semester = data.semesters.find(item => item.id === assignment?.semesterId);
-      assert(assignment && semester && values.date >= semester.startDate && values.date <= semester.endDate, 'Examen hors du semestre actif.'); openYear(assignment.academicYearId);
-      assert(context.users.some(item => item.id === values.supervisorId && item.active && item.role === ROLES.SURV), 'Choisissez un surveillant actif dans l’annuaire.');
-      assert(!data.exams.some(item => item.status === 'PLANIFIE' && item.supervisorId === values.supervisorId && item.date === values.date && item.startTime < values.endTime && values.startTime < item.endTime), 'Ce surveillant est déjà affecté sur le créneau.');
-      const planned = planSession({ ...values, classId: values.assignmentId }, { classes: classesFor(data), rooms: data.rooms, sessions: data.sessions, students: data.students, groups: data.groups, blockedPeriods: data.blockedPeriods }); assert(planned.success, planned.success ? '' : planned.error);
-      const examId = createMockId('EXAM'); save('sessions', { ...planned.session, id: examId }, examId); save('exams', { ...values, id: examId, status: 'PLANIFIE', reason: '' }, examId); break;
+      assert(assignment && semester && semester.active && semester.academicYearId === assignment.academicYearId && values.date >= semester.startDate && values.date <= semester.endDate, 'Examen hors du semestre actif.'); openYear(assignment.academicYearId);
+      assert(values.startTime < values.endTime, 'Horaires invalides.');
+      const examId = createMockId('EXAM');
+      const candidateIds = data.students.filter(item => item.groupId === assignment.groupId && item.academicYearId === assignment.academicYearId).map(item => item.matricule);
+      if (values.mode === 'PAPIER') {
+        assert(context.users.some(item => item.id === values.supervisorId && item.active && (item.roles?.includes(ROLES.SURV) || item.role === ROLES.SURV)), 'Choisissez un surveillant actif dans l’annuaire.');
+        assert(!data.exams.some(item => item.status === 'PLANIFIE' && item.supervisorId === values.supervisorId && item.date === values.date && item.startTime < values.endTime && values.startTime < item.endTime), 'Ce surveillant est déjà affecté sur le créneau.');
+        const planned = planSession({ ...values, classId: values.assignmentId }, { classes: classesFor(data), rooms: data.rooms, sessions: data.sessions, students: data.students, groups: data.groups, blockedPeriods: data.blockedPeriods }); assert(planned.success, planned.success ? '' : planned.error);
+        save('sessions', { ...planned.session, id: examId, candidateIds }, examId);
+      } else {
+        assert(!data.blockedPeriods.some(item => values.date >= item.startDate && values.date <= item.endDate), 'Date bloquée.');
+        assert(!data.sessions.some(item => item.status !== 'Annulé' && item.date === values.date && item.startTime < values.endTime && values.startTime < item.endTime && (item.groupId === assignment.groupId || data.assignments.find(a => a.id === item.classId)?.teacherId === assignment.teacherId)), 'Conflit de groupe ou d’enseignant.');
+        save('sessions', { id: examId, candidateIds, classId: assignment.id, groupId: assignment.groupId, roomCode: 'EN_LIGNE', date: values.date, startTime: values.startTime, endTime: values.endTime, status: 'Confirmé' }, examId);
+      }
+      const evaluationId = createMockId('EVAL');
+      save('evaluations', { id: evaluationId, examMode: values.mode, examEndAt: `${values.date}T${values.endTime}:00Z`, classId: assignment.id, name: `${values.kind === 'RATTRAPAGE' ? 'Rattrapage' : 'Examen'} du ${values.date}`, type: values.kind === 'RATTRAPAGE' ? 'Rattrapage' : 'Examen', date: values.date, status: 'BROUILLON', history: [], grades: candidateIds.map(matricule => ({ matricule, value: null })) }, evaluationId);
+      save('exams', { ...values, evaluationId, id: examId, status: 'PLANIFIE', reason: '' }, examId); break;
     }
     case 'exam.cancel': {
-      permit(role === ROLES.DA || role === ROLES.LOG); const values = z.object({ examId: id, reason }).parse(payload); const exam = data.exams.find(item => item.id === values.examId);
-      assert(exam && exam.status === 'PLANIFIE', 'Examen absent ou déjà annulé.'); save('exams', { ...exam, status: 'ANNULE', reason: values.reason }, exam.id, values.reason);
+      permit((role === ROLES.DA || role === ROLES.IT) || role === ROLES.LOG); const values = z.object({ examId: id, reason }).parse(payload); const exam = data.exams.find(item => item.id === values.examId);
+      assert(exam && exam.status === 'PLANIFIE', 'Examen absent ou déjà annulé.');
+      const evaluation = data.evaluations.find(item => item.id === exam.evaluationId);
+      assert(!data.examAttempts.some(item => item.examId === exam.id) && (!evaluation || (evaluation.status === 'BROUILLON' && evaluation.grades.every(grade => grade.value === null && !grade.absent))), 'Une épreuve avec copies ou résultats doit conserver son historique et ne peut plus être annulée par la planification.');
+      save('exams', { ...exam, status: 'ANNULE', reason: values.reason }, exam.id, values.reason);
+      if (evaluation) save('evaluations', { ...evaluation, examCancelled: true }, evaluation.id, values.reason);
       const session = data.sessions.find(item => item.id === exam.id); if (session) save('sessions', { ...session, status: 'Annulé', reason: values.reason }, session.id, values.reason); break;
     }
     case 'schedule.change': {

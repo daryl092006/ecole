@@ -49,3 +49,7 @@ next-env.d.ts
 /.next-ui-tests/
 /test-results/
 /playwright-report/
+
+# Local Supabase CLI connection metadata
+/supabase/.temp/
+/supabase/.branches/

@@ -3,12 +3,12 @@ import { test, expect, type Page } from '@playwright/test';
 import { DEMO_ACCOUNTS, DEMO_PASSWORD } from '../../src/services/demoSessionService';
 import { ROLES } from '../../src/types/permissions';
 
-test('Les accès de direction adjointe restent administrés par le DG', async ({ page }) => {
+test('L’Informaticien administre aussi les rôles de direction', async ({ page }) => {
   await page.goto('/connexion?retour=%2Fpersonnel%2Futilisateurs');
   await connect(page, 'informatique@escen.demo');
   await expect(page).toHaveURL('http://127.0.0.1:3105/personnel/utilisateurs');
   const roleSelect = page.getByRole('combobox', { name: 'Rôle', exact: true });
-  await expect(roleSelect.locator('option').filter({ hasText: ROLES.DGA })).toHaveCount(0);
+  await expect(roleSelect.locator('option').filter({ hasText: ROLES.DGA })).toHaveCount(1);
   await page.locator('#active-role').selectOption({ label: ROLES.DG });
   await openActionPanel(page, 'Nouvel utilisateur');
   await page.getByLabel('Nom', { exact: true }).fill('Direction adjointe test');
@@ -19,7 +19,7 @@ test('Les accès de direction adjointe restent administrés par le DG', async ({
   await expect(record.getByRole('button', { name: 'Désactiver', exact: true })).toBeVisible();
   await page.locator('#active-role').selectOption({ label: ROLES.IT });
   await expect(record).toBeVisible();
-  await expect(record.getByRole('button', { name: 'Désactiver', exact: true })).toHaveCount(0);
+  await expect(record.getByRole('button', { name: 'Désactiver', exact: true })).toBeVisible();
 });
 
 async function connect(page: Page, email = DEMO_ACCOUNTS[0].email) {

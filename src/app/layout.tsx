@@ -1,4 +1,5 @@
 import type { Metadata } from 'next';
+import '../../public/fonts/nunito-sans.css';
 import './globals.css';
 import PortalProvider from '@/components/providers/PortalProvider';
 

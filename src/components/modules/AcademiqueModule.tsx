@@ -1,3 +1,5 @@
+import ResponsiveTable from '@/components/ui/ResponsiveTable';
+import { getSessionCandidateIds } from '@/services/scheduleService';
 import ActionPanel from '@/components/ui/ActionPanel';
 import { displayDate } from '@/utils/display';
 import FormFeedback from '@/components/ui/FormFeedback';
@@ -113,7 +115,7 @@ export default function AcademiqueModule({
           <div className="card">
             <div className="card-header"><h2>Matières actives ({classes.length})</h2></div>
             <div className="table-wrap">
-              <table className="data-table">
+              <ResponsiveTable className="data-table">
                 <thead>
                   <tr><th>Code</th><th>Matière</th><th>Enseignant</th><th>Coefficient</th><th>Semestre</th></tr>
                 </thead>
@@ -132,7 +134,7 @@ export default function AcademiqueModule({
                   ))}
                   {!classes.length && <tr><td colSpan={5}>Aucun enseignement affecté dans votre périmètre.</td></tr>}
                 </tbody>
-              </table>
+              </ResponsiveTable>
             </div>
           </div>
         </div>
@@ -168,15 +170,15 @@ export default function AcademiqueModule({
                   </div>
 
                   <div className="form-row">
-                    <div className="form-group" style={{ flex: 1 }}>
+                    <div className="form-group">
                       <label className="form-label" htmlFor="session-date">Date</label>
                       <input id="session-date" required type="date" className="input" value={planDate} onChange={e => setPlanDate(e.target.value)} />
                     </div>
-                    <div className="form-group" style={{ width: 100 }}>
+                    <div className="form-group session-time-field">
                       <label className="form-label" htmlFor="session-start">Début</label>
                       <input id="session-start" required type="time" className="input" value={planStart} onChange={e => setPlanStart(e.target.value)} />
                     </div>
-                    <div className="form-group" style={{ width: 100 }}>
+                    <div className="form-group session-time-field">
                       <label className="form-label" htmlFor="session-end">Fin</label>
                       <input id="session-end" required type="time" className="input" value={planEnd} onChange={e => setPlanEnd(e.target.value)} />
                     </div>
@@ -204,7 +206,7 @@ export default function AcademiqueModule({
             <div className="card card-full">
               <div className="card-header"><h2>{perms.permissions.includes('attendance.record') ? 'Sélectionner une séance pour faire l’appel' : 'Consulter les présences d’une séance'}</h2></div>
               <div className="table-wrap">
-                <table className="data-table">
+                <ResponsiveTable className="data-table">
                   <thead>
                     <tr><th>Matière</th><th>Salle &amp; Date</th><th>Appel</th><th>Action</th></tr>
                   </thead>
@@ -229,7 +231,7 @@ export default function AcademiqueModule({
                     })}
                     {!sessions.length && <tr><td colSpan={4}>Aucune séance disponible. Vérifiez votre identité et les séances qui vous sont affectées.</td></tr>}
                   </tbody>
-                </table>
+                </ResponsiveTable>
               </div>
             </div>
           ) : (
@@ -245,12 +247,12 @@ export default function AcademiqueModule({
                 </p>
 
                 <div className="table-wrap">
-                  <table className="data-table">
+                  <ResponsiveTable className="data-table">
                     <thead>
                       <tr><th>Matricule</th><th>Étudiant</th><th>Statut de présence</th></tr>
                     </thead>
                     <tbody>
-                      {students.filter(stud => stud.groupId === activeSessionForAttendance.groupId).map(stud => {
+                      {students.filter(stud => getSessionCandidateIds(activeSessionForAttendance, students).includes(stud.matricule)).map(stud => {
                         const currentStatus = activeSessionForAttendance.attendance?.[stud.matricule] || 'Présent';
                         return (
                           <tr key={stud.matricule}>
@@ -278,14 +280,14 @@ export default function AcademiqueModule({
                         );
                       })}
                     </tbody>
-                  </table>
+                  </ResponsiveTable>
                 </div>
 
                 {perms.permissions.includes('attendance.record') && <button
                   className="btn btn-success mt-2"
                   onClick={() => {
                     try {
-                      const attendance = Object.fromEntries(students.filter(student => student.groupId === activeSessionForAttendance.groupId).map(student => [student.matricule, activeSessionForAttendance.attendance?.[student.matricule] ?? 'Présent'])) as NonNullable<Session['attendance']>;
+                      const attendance = Object.fromEntries(students.filter(student => getSessionCandidateIds(activeSessionForAttendance, students).includes(student.matricule)).map(student => [student.matricule, activeSessionForAttendance.attendance?.[student.matricule] ?? 'Présent'])) as NonNullable<Session['attendance']>;
                       recordAttendance(activeSessionForAttendance.id, attendance);
                       setActiveSessionForAttendance(null);
                       setAttendanceFeedback('Appel enregistré. Les présences sont disponibles pour cette séance.');

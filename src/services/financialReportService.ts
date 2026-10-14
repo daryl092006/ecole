@@ -6,7 +6,7 @@ export function getFinancialReport(students: Student[], role: RoleName, asOfDate
   if (!hasPermission(role, 'finance.report.view')) throw new Error('Rapport financier non autorisé.');
   const parsedDate = new Date(asOfDate + 'T00:00:00Z');
   if (!/^\d{4}-\d{2}-\d{2}$/.test(asOfDate) || !Number.isFinite(parsedDate.getTime()) || parsedDate.toISOString().slice(0, 10) !== asOfDate) throw new Error('Date de référence invalide.');
-  return students.map(student => {
+  return students.filter(student => student.financials.available !== false).map(student => {
     let paid = student.financials.paid;
     let overdue = 0;
     for (const installment of [...student.financials.installments].filter(item => item.status !== 'Annulée').sort((a, b) => a.dueDate.localeCompare(b.dueDate))) {

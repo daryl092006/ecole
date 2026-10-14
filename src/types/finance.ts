@@ -14,6 +14,7 @@ export interface StudentBourse {
 }
 
 export interface StudentFinancials {
+  available?: boolean;
   expected: number;
   paid: number;
   remaining: number;

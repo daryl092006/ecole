@@ -74,6 +74,7 @@ export interface ClassItem {
 export interface GradeEntry {
   matricule: string;
   value: number | null;
+  absent?: boolean;
 }
 
 export type GradeWorkflowStatus =
@@ -85,6 +86,9 @@ export type GradeWorkflowStatus =
   | 'PUBLIEES';
 
 export interface Evaluation {
+  examMode?: 'PAPIER' | 'EN_LIGNE';
+  examEndAt?: string;
+  examCancelled?: boolean;
   id: string;
   classId: string;
   type: string;

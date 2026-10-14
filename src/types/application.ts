@@ -1,3 +1,4 @@
+import type { ExamPaper, ExamAttempt } from '@/types/exam';
 import type { AcademicYear, Program, Track, Level, Semester, TeachingUnit, Subject, Teacher, TeachingAssignment, Group, Evaluation, Reclamation } from '@/types/academic';
 import type { Student } from '@/types/student';
 import type { Fee, Payment, Receipt, PaymentCancellation } from '@/types/finance';
@@ -24,6 +25,8 @@ export interface JuryDecision {
 export interface TranscriptRow { subjectId: string; code: string; name: string; unitId: string; credits: number; coefficient: number; average: number | null; validated: boolean; }
 export interface Exam {
   id: string; assignmentId: string; roomCode: string; date: string; startTime: string; endTime: string;
+  mode?: 'PAPIER' | 'EN_LIGNE'; evaluationId?: string;
+  candidateIds?: string[]; cancellationBlocked?: boolean;
   kind: 'EXAMEN' | 'RATTRAPAGE'; supervisorId: string; status: 'PLANIFIE' | 'ANNULE'; reason: string;
 }
 export interface StaffRecord { id: string; name: string; email: string; phone: string; position: string; contract: 'PERMANENT' | 'VACATAIRE' | 'STAGIAIRE'; startDate: string; active: boolean; }
@@ -42,7 +45,7 @@ export interface Dataset {
   blockedPeriods: BlockedPeriod[]; tickets: SupportTicket[]; fees: Fee[]; payments: Payment[];
   receipts: Receipt[]; paymentCancellations: PaymentCancellation[]; announcements: Announcement[];
   enrollments: Enrollment[]; settings: InstitutionSettings[]; juryDecisions: JuryDecision[];
-  exams: Exam[]; staff: StaffRecord[]; purchases: Purchase[]; assets: Asset[];
+  examPapers: ExamPaper[]; examAttempts: ExamAttempt[]; exams: Exam[]; staff: StaffRecord[]; purchases: Purchase[]; assets: Asset[];
   documents: StudentDocument[];
 }
 export type Collection = keyof Dataset;
@@ -53,7 +56,7 @@ export const DEFAULT_SETTINGS: InstitutionSettings = {
   timezone: 'Africa/Lome', passMark: 10, compensation: false, eliminationMark: 0,
   creditsPerSemester: 30, examWeight: 60, rulesApproved: false, rulesReason: '', receiptPrefix: 'REC',
 };
-export const COLLECTIONS: Collection[] = ['academicYears', 'programs', 'tracks', 'levels', 'semesters', 'units', 'subjects', 'teachers', 'assignments', 'groups', 'students', 'evaluations', 'reclamations', 'rooms', 'sessions', 'blockedPeriods', 'tickets', 'fees', 'payments', 'receipts', 'paymentCancellations', 'announcements', 'enrollments', 'settings', 'juryDecisions', 'exams', 'staff', 'purchases', 'assets', 'documents'];
+export const COLLECTIONS: Collection[] = ['academicYears', 'programs', 'tracks', 'levels', 'semesters', 'units', 'subjects', 'teachers', 'assignments', 'groups', 'students', 'evaluations', 'reclamations', 'rooms', 'sessions', 'blockedPeriods', 'tickets', 'fees', 'payments', 'receipts', 'paymentCancellations', 'announcements', 'enrollments', 'settings', 'juryDecisions', 'exams', 'examPapers', 'examAttempts', 'staff', 'purchases', 'assets', 'documents'];
 export function emptyDataset(): Dataset { return Object.fromEntries(COLLECTIONS.map(key => [key, []])) as unknown as Dataset; }
 export function entityId(collection: Collection, item: Entity): string {
   return collection === 'students' ? (item as Student).matricule : collection === 'rooms' ? (item as Room).code : (item as { id: string }).id;

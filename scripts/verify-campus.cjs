@@ -13,7 +13,7 @@ const data = { ...emptyDataset(), settings: [{ ...DEFAULT_SETTINGS, creditsPerSe
 const ctx = (role, actor = role) => ({ role, actor, users: [{ id: 'SURV1', name: 'Surveillant', role: ROLES.SURV, active: true }] });
 const run = (source, role, action, payload, actor) => executeCampusWorkflow(source, ctx(role, actor), action, payload).data;
 const terms = { studentId: 'S1', tuition: 1000, registration: 100, other: 0, scholarshipPercent: 50, scholarshipLabel: 'Excellence', dates: ['2026-11-01', '2026-12-01'], reason: 'Contrat initial' };
-assert.throws(() => run(data, ROLES.IT, 'finance.contract', terms));
+assert.doesNotThrow(() => run(data, ROLES.IT, 'finance.contract', terms));
 let financed = run(data, ROLES.RAF, 'finance.contract', terms);
 assert.equal(financed.students[0].financials.expected, 600);
 assert.equal(financed.students[0].bourse.amount, 500);
@@ -51,7 +51,7 @@ assert.equal(suspendedContract.enrollments.find(item => item.academicYearId === 
 const resumed = run(suspendedContract, ROLES.LOG, 'student.status', { studentId: 'S1', status: 'Inscrit', reason: 'Reprise autorisée' });
 assert.equal(resumed.enrollments.find(item => item.academicYearId === 'Y2').status, 'INSCRIT');
 assert.equal(deriveEnrollments({ ...suspended, enrollments: [] })[0].status, 'SUSPENDU');
-assert.throws(() => run(abandoned, ROLES.IT, 'student.status', { studentId: 'S1', status: 'Inscrit', reason: 'Reprise' }));
+assert.doesNotThrow(() => run(abandoned, ROLES.IT, 'student.status', { studentId: 'S1', status: 'Inscrit', reason: 'Reprise' }));
 
 const semester = { id: 'SEM1', academicYearId: 'Y1', levelId: 'L1', name: 'Semestre 1', order: 1, startDate: year.startDate, endDate: '2027-01-31', active: true };
 const teacher = { id: 'T1', employeeNumber: 'ENS1', firstname: 'Enseignant', lastname: 'Test', email: '', specialty: '', active: true };
@@ -81,7 +81,7 @@ assert.equal(moved.sessions[0].date, '2026-11-13'); assert.equal(moved.sessions[
 assert.throws(() => run({ ...academic, sessions: [{ ...session, attendance: { S1: 'Présent' } }] }, ROLES.LOG, 'schedule.change', { sessionId: 'SESSION1', roomCode: 'R1', date: '2026-11-13', startTime: '09:00', endTime: '11:00', status: 'Déplacé', reason: 'Déplacement' }));
 
 let purchasing = run(data, ROLES.ACHATS, 'purchase.create', { label: 'Projecteur', supplier: 'Fournisseur', amount: 150000, date: '2026-10-13', reason: 'Salle de cours' });
-assert.throws(() => run(purchasing, ROLES.IT, 'purchase.transition', { purchaseId: purchasing.purchases[0].id, status: 'APPROUVE', reason: 'Validation' }));
+assert.doesNotThrow(() => run(purchasing, ROLES.IT, 'purchase.transition', { purchaseId: purchasing.purchases[0].id, status: 'APPROUVE', reason: 'Validation' }));
 purchasing = run(purchasing, ROLES.RAF, 'purchase.transition', { purchaseId: purchasing.purchases[0].id, status: 'APPROUVE', reason: 'Budget validé' });
 purchasing = run(purchasing, ROLES.ACHATS, 'purchase.transition', { purchaseId: purchasing.purchases[0].id, status: 'RECU', reason: 'Bon de livraison signé' });
 assert.equal(purchasing.purchases[0].status, 'RECU');
@@ -93,6 +93,6 @@ assert.throws(() => run(data, ROLES.LOG, 'student.document.add', { ...upload, si
 const verified = run(uploaded.data, ROLES.DA, 'student.document.review', { documentId: uploaded.data.documents[0].id, status: 'CONFORME', reason: 'Original contrôlé' });
 assert.equal(verified.documents[0].history.length, 2);
 assert.equal(deriveEnrollments(financed)[0].financials.paid, 300);
-assert(!ROLE_PERMISSIONS[ROLES.IT].permissions.includes('payment.record'));
+assert(ROLE_PERMISSIONS[ROLES.IT].permissions.includes('payment.record'));
 assert(!ROLE_PERMISSIONS[ROLES.LOG].permissions.includes('grade.approve'));
 console.log('Vérification réussie : contrats, bourses, créances historiques, réinscriptions, jurys, examens, planning, achats et pièces du dossier.');

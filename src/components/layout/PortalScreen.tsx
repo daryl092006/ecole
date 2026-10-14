@@ -1,5 +1,14 @@
 'use client';
 
+import HistoricalWorkspace, { HISTORY_SECTIONS } from '@/components/modules/history/HistoricalWorkspace';
+import PersonnelDossiers from '@/components/modules/personnel/PersonnelDossiers';
+import HistoricalExamsWorkspace from '@/components/modules/history/HistoricalExamsWorkspace';
+import ReferenceCrudWorkspace from '@/components/modules/academic/ReferenceCrudWorkspace';
+import { CRUD_SECTIONS } from '@/data/crudCatalog';
+import NativeAssessmentWorkspace from '@/components/modules/academic/NativeAssessmentWorkspace';
+import SubjectStudio from '@/components/modules/academic/SubjectStudio';
+import WorkspaceHome from '@/components/modules/WorkspaceHome';
+import UserDirectoryPanel from '@/components/modules/personnel/UserDirectoryPanel';
 import { usePortal } from '@/hooks/usePortal';
 import StudentLifecyclePanel from '@/components/modules/StudentLifecyclePanel';
 import StudentDocumentsPanel from '@/components/modules/StudentDocumentsPanel';
@@ -28,7 +37,17 @@ export default function PortalScreen({ tab, section }: { tab: string; section: s
   const { activeRole, perms } = state;
   const currentTab = tab;
   const currentSubTab = section;
+  if (state.history.enabled && (section === 'espace_dashboard' || section === 'dashboard_kpis' || section === 'dashboard_reports')) return <WorkspaceHome />;
+  if (state.history.enabled && section === 'acad_settings') return <section className="card"><div className="page-intro"><div><span className="page-eyebrow">RÈGLEMENT ACADÉMIQUE</span><h1>Règles à valider</h1><p>Les règles de compensation, de validation et de délibération doivent être confirmées par la direction académique avant leur application aux dossiers historiques.</p></div></div></section>;
+  if (state.session && section === 'staff_records') return <PersonnelDossiers />;
+  if(state.session && section==='acad_subjects')return <SubjectStudio />;
+  if(state.history.enabled && ['acad_exams','acad_resits','acad_assessments'].includes(section))return <HistoricalExamsWorkspace key={section} category={section==='acad_resits'?'resit':section==='acad_assessments'?'control':'exam'} />;
+  if(state.session && ['acad_exams','acad_resits','acad_assessments'].includes(section))return <NativeAssessmentWorkspace category={section==='acad_resits'?'resit':section==='acad_assessments'?'control':'exam'} />;
+  if (state.session && CRUD_SECTIONS[section]) return <ReferenceCrudWorkspace key={section} section={section} />;
+  if (state.history.enabled && HISTORY_SECTIONS[section]) return <HistoricalWorkspace key={section} section={section} />;
+  if (section === 'sys_data') return <HistoricalWorkspace section="history_all" />;
   return <>
+          {currentSubTab === 'stud_accounts' && <UserDirectoryPanel users={state.users} actor={activeRole} category="student" />}
           {currentTab === 'espace' && currentSubTab === 'espace_documents' && <StudentDocumentsPanel />}
           {currentTab === 'espace' && currentSubTab === 'espace_finance' && <FinancePaymentsPanel personal />}
           {currentTab === 'etudiants' && currentSubTab === 'stud_cards' && <StudentDocumentsPanel />}
@@ -108,6 +127,7 @@ export default function PortalScreen({ tab, section }: { tab: string; section: s
           {currentTab === 'etudiants' && currentSubTab === 'stud_list' && (
             <RoleGuard tab="etudiants" perms={perms}>
               <EtudiantsModule
+                persistent={!!state.session}
                 activeRole={activeRole}
                 createStudent={state.createStudent}
                 perms={perms}

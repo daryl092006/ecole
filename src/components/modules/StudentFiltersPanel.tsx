@@ -1,6 +1,6 @@
 import type { RoleName, Student } from '@/types';
 import { EMPTY_STUDENT_FILTERS, type StudentFilters } from '@/services/studentQueryService';
-import { filterRegisteredStudents } from '@/services/studentQueryService';
+import { filterRegisteredStudents, studentGroupFilterKey } from '@/services/studentQueryService';
 import { downloadCsv } from '@/utils/csv';
 interface Props { students: Student[]; filters: StudentFilters; onChange: (filters: StudentFilters) => void; role: RoleName; }
 export default function StudentFiltersPanel({ students, filters, onChange, role }: Props) {
@@ -12,7 +12,7 @@ export default function StudentFiltersPanel({ students, filters, onChange, role 
     <label className="form-group">Recherche<input className="input" type="search" value={filters.search} onChange={event => onChange({ ...filters, search: event.target.value })} placeholder="Nom, matricule, email…" /></label>
     <label className="form-group">Niveau<select className="select-input" value={filters.level} onChange={event => onChange({ ...filters, level: event.target.value, groupId: '' })}><option value="">Tous les niveaux</option>{levels.map(item => <option key={item}>{item}</option>)}</select></label>
     <label className="form-group">Filière<select className="select-input" value={filters.program} onChange={event => onChange({ ...filters, program: event.target.value, groupId: '' })}><option value="">Toutes les filières</option>{programs.map(item => <option key={item}>{item}</option>)}</select></label>
-    <label className="form-group">Groupe<select className="select-input" value={filters.groupId} onChange={event => onChange({ ...filters, groupId: event.target.value })}><option value="">Tous les groupes</option>{[...new Map(groups.map(item => [item.groupId, item.groupe])).entries()].map(([id, name]) => <option key={id} value={id}>{name}</option>)}</select></label>
+    <label className="form-group">Groupe<select className="select-input" value={filters.groupId} onChange={event => onChange({ ...filters, groupId: event.target.value })}><option value="">Tous les groupes</option>{[...new Map(groups.map(item => [studentGroupFilterKey(item), item.groupe])).entries()].map(([id, name]) => <option key={id} value={id}>{name}</option>)}</select></label>
   </div><p role="status">{results.length} résultat(s) filtré(s) sur {students.length} dossier(s) autorisé(s).</p>
     <div className="btn-group"><button className="btn btn-outline" onClick={() => onChange(EMPTY_STUDENT_FILTERS)}>Réinitialiser</button><button className="btn btn-primary" disabled={!results.length} onClick={() => {
       const permitted = filterRegisteredStudents(students, filters, role);

@@ -1,4 +1,6 @@
 import { useState } from 'react';
+import WorkPage from '@/components/ui/WorkPage';
+import FormFeedback from '@/components/ui/FormFeedback';
 import type { Announcement } from '@/types';
 import { announcementStatus } from '@/services/communicationService';
 import { displayDate } from '@/utils/display';
@@ -11,6 +13,7 @@ interface MarketingModuleProps {
 }
 
 export default function MarketingModule({ currentSubTab, announcements, addAnnouncement, withdrawAnnouncement }: MarketingModuleProps) {
+  const [composing, setComposing] = useState(false);
   const [feedback, setFeedback] = useState<{ error: boolean; text: string } | null>(null);
   const [newTitle, setNewTitle] = useState('');
   const [newContent, setNewContent] = useState('');
@@ -27,6 +30,7 @@ export default function MarketingModule({ currentSubTab, announcements, addAnnou
       setNewTitle('');
       setNewContent('');
       setExpiresOn('');
+      setComposing(false);
       setFeedback({ error: false, text: 'Annonce publiée et disponible dans Mon Espace.' });
     } catch (error) {
       setFeedback({ error: true, text: error instanceof Error ? error.message : 'Publication impossible.' });
@@ -38,9 +42,10 @@ export default function MarketingModule({ currentSubTab, announcements, addAnnou
       {/* ── SUBTAB: comm_announcements (Création Annonce / Alertes) ── */}
       {currentSubTab === 'comm_announcements' && (
         <div>
-          <div className="module-header"><h1>Publier une annonce</h1></div>
-          <div className="content-grid">
-          <div className="card">
+          <div className="module-header"><h1>Annonces</h1><button className="btn btn-primary" onClick={() => { setComposing(true); setFeedback(null); }}>Créer une annonce</button></div>
+          <FormFeedback message={feedback?.text || ''} error={feedback?.error || false} />
+          <div>
+          {composing && <WorkPage title="Créer une annonce" onClose={() => setComposing(false)}><div className="card">
             <div className="card-header"><h2>Publier une annonce opérationnelle</h2></div>
             <form onSubmit={handleCreateAnnouncement} style={{ display: 'flex', flexDirection: 'column', gap: '0.85rem' }}>
               <div className="form-group">
@@ -77,8 +82,7 @@ export default function MarketingModule({ currentSubTab, announcements, addAnnou
                 Diffuser l'annonce
               </button>
             </form>
-            {feedback && <div className={feedback.error ? 'field-error mt-2' : 'info-box mt-2'} role={feedback.error ? 'alert' : 'status'}>{feedback.text}</div>}
-          </div>
+            </div></WorkPage>}
 
           <div className="card">
             <div className="card-header"><h2>Flux des annonces diffusées</h2></div>
@@ -95,7 +99,7 @@ export default function MarketingModule({ currentSubTab, announcements, addAnnou
                   <p className="cell-sub">{ann.audience} · {announcementStatus(ann)}{ann.expiresOn ? ` · Expiration : ${displayDate(ann.expiresOn)}` : ''}</p>
                   {!ann.withdrawnAt && <button className="btn btn-outline btn-sm" aria-label={`Retirer l’annonce « ${ann.title} »`} onClick={() => { setWithdrawId(ann.id); setReason(''); setFeedback(null); }}>Retirer l’annonce</button>}
                   {!!ann.history?.length && <details><summary>Historique de diffusion</summary>{ann.history.map((entry, index) => <p className="cell-sub" key={index}>{new Date(entry.date).toLocaleString('fr-FR')} · {entry.actor} · {entry.role} · {entry.action === 'PUBLICATION' ? 'Publication' : 'Retrait'} · {entry.reason}</p>)}</details>}
-                  {withdrawId === ann.id && <form className="mt-2" onSubmit={event => {
+                  {withdrawId === ann.id && <WorkPage title={`Retirer l’annonce : ${ann.title}`} onClose={() => setWithdrawId('')}><form className="mt-2" onSubmit={event => {
                     event.preventDefault();
                     try {
                       withdrawAnnouncement(ann.id, reason);
@@ -104,7 +108,7 @@ export default function MarketingModule({ currentSubTab, announcements, addAnnou
                     } catch (error) {
                       setFeedback({ error: true, text: error instanceof Error ? error.message : 'Retrait impossible.' });
                     }
-                  }}><label className="form-group">Motif du retrait<textarea className="input" required minLength={3} maxLength={1000} value={reason} onChange={event => setReason(event.target.value)} /></label><div className="btn-group"><button className="btn btn-primary" type="submit">Confirmer le retrait</button><button className="btn btn-outline" type="button" onClick={() => setWithdrawId('')}>Annuler</button></div></form>}
+                  }}><label className="form-group">Motif du retrait<textarea className="input" required minLength={3} maxLength={1000} value={reason} onChange={event => setReason(event.target.value)} /></label><div className="btn-group"><button className="btn btn-primary" type="submit">Confirmer le retrait</button><button className="btn btn-outline" type="button" onClick={() => setWithdrawId('')}>Annuler</button></div></form></WorkPage>}
                 </div>
               ))}
             </div>

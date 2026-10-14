@@ -1,5 +1,7 @@
 import { Permission, PermissionSchema, RoleAccess, RoleName, ROLES } from '@/types/permissions';
 
+import { PERMISSION_LABELS } from '@/permissions/permissionLabels';
+
 const academicOversight: Permission[] = [
   'academic.view', 'schedule.view', 'attendance.view', 'grade.view',
   'grade.review', 'grade.approve', 'grade.publish', 'complaint.view', 'complaint.review',
@@ -22,7 +24,7 @@ export const ROLE_ACCESS: Record<RoleName, RoleAccess> = {
   [ROLES.MKT]: { role: ROLES.MKT, description: 'Communication institutionnelle.', permissions: ['communication.view', 'communication.manage'], scope: {} },
   [ROLES.ACHATS]: { role: ROLES.ACHATS, description: 'Achats et logistique non académique.', permissions: ['purchase.view', 'purchase.create', 'purchase.receive', 'asset.view', 'asset.manage'], scope: {} },
   [ROLES.SITE]: { role: ROLES.SITE, description: 'Supervision opérationnelle du site.', permissions: ['schedule.view', 'communication.view', 'purchase.view', 'asset.view', 'asset.manage'], scope: {} },
-  [ROLES.IT]: { role: ROLES.IT, description: 'Administration technique sans privilège académique ou financier.', permissions: ['user.manage', 'system.audit.view', 'system.backup.manage', 'system.support.manage', 'staff.view'], scope: {} },
+  [ROLES.IT]: { role: ROLES.IT, description: 'Accès complet aux modules et actions de la plateforme, avec validations et audit.', permissions: Object.keys(PERMISSION_LABELS) as Permission[], scope: {} },
   [ROLES.STUD]: { role: ROLES.STUD, description: 'Accès à ses propres données académiques.', permissions: ['schedule.view', 'grade.view', 'complaint.view'], scope: { groupIds: [], ownDataOnly: true } },
   [ROLES.DEL]: { role: ROLES.DEL, description: 'Étudiant avec responsabilités limitées de représentation.', permissions: ['schedule.view', 'grade.view', 'complaint.view'], scope: { groupIds: [], ownDataOnly: true } },
   [ROLES.STG]: { role: ROLES.STG, description: 'Aucune permission métier automatique.', permissions: [], scope: {} },
@@ -39,10 +41,10 @@ function getAllowedTabs(role: RoleName, permissions: Permission[]): string[] {
   if (permissions.includes('finance.view')) tabs.push('finance');
   if (permissions.includes('user.manage')) tabs.push('personnel');
   if (([ROLES.DG, ROLES.DGA, ROLES.RAF].includes(role as typeof ROLES.DG) || permissions.includes('academic.assignment.manage')) && !tabs.includes('personnel')) tabs.push('personnel');
-  if ([ROLES.DG, ROLES.DGA, ROLES.RAF, ROLES.ACHATS, ROLES.SITE].includes(role as typeof ROLES.DG)) tabs.push('logistique');
+  if ([ROLES.DG, ROLES.DGA, ROLES.RAF, ROLES.ACHATS, ROLES.SITE, ROLES.IT].includes(role as typeof ROLES.DG)) tabs.push('logistique');
   if (permissions.some(permission => permission.startsWith('communication.'))) tabs.push('marketing');
   if (permissions.some(permission => permission.startsWith('system.'))) tabs.push('systeme');
-  if (role === ROLES.DG || role === ROLES.DGA) tabs.splice(1, 0, 'dashboard_global');
+  if (role === ROLES.DG || role === ROLES.DGA || role === ROLES.IT) tabs.splice(1, 0, 'dashboard_global');
   return tabs;
 }
 

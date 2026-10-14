@@ -5,7 +5,7 @@ import { getSectionPath, getPortalRoute, HOME_PATH, MODULE_PATHS } from '@/const
 export const ALL_TABS = [
   {
     id: 'espace',
-    name: 'Mon Espace',
+    name: 'Accueil',
     icon: 'Home',
     subTabs: [
       { id: 'espace_dashboard', name: 'Tableau de bord' },
@@ -17,7 +17,7 @@ export const ALL_TABS = [
   },
   {
     id: 'dashboard_global',
-    name: 'Tableau de Bord',
+    name: 'Pilotage',
     icon: 'BarChart2',
     subTabs: [
       { id: 'dashboard_kpis', name: 'Statistiques Clés' },
@@ -26,16 +26,19 @@ export const ALL_TABS = [
   },
   {
     id: 'academique',
-    name: 'Académique',
+    name: 'Pédagogie',
     icon: 'BookOpen',
     subTabs: [
       { id: 'acad_program', name: 'Filières & Matières' },
       { id: 'acad_reference', name: 'Référentiel académique' },
       { id: 'acad_schedule', name: 'Emploi du temps' },
       { id: 'acad_attendance', name: 'Feuilles de présence' },
-      { id: 'acad_grades', name: 'Évaluations & Notes' },
+      {id:'acad_assessments',name:'Contrôles continus'},
+      {id:'acad_resits',name:'Rattrapages'},
+      {id:'acad_subjects',name:'Composition des épreuves'},
+      { id: 'acad_grades', name: 'Notes et résultats' },
       { id: 'acad_complaints', name: 'Réclamations' },
-      { id: 'acad_exams', name: 'Examens & Rattrapages' },
+      { id: 'acad_exams', name: 'Examens' },
       { id: 'acad_jury', name: 'Délibérations & Relevés' },
       { id: 'acad_settings', name: 'Paramètres académiques' },
     ],
@@ -46,6 +49,7 @@ export const ALL_TABS = [
     icon: 'GraduationCap',
     subTabs: [
       { id: 'stud_list', name: 'Liste des Étudiants' },
+      { id: 'stud_accounts', name: 'Comptes étudiants' },
       { id: 'stud_cards', name: 'Cartes d\'Étudiant' },
       { id: 'stud_status', name: 'Réinscriptions & Abandons' },
     ],
@@ -66,7 +70,7 @@ export const ALL_TABS = [
     name: 'Personnel',
     icon: 'Users',
     subTabs: [
-      { id: 'staff_list', name: 'Utilisateurs & Rôles' },
+      { id: 'staff_list', name: 'Comptes du personnel' },
       { id: 'staff_roles', name: 'Rôles ESCEN' },
       { id: 'staff_permissions', name: 'Matrice des permissions' },
       { id: 'staff_teachers', name: 'Enseignants & Affectations' },
@@ -88,14 +92,16 @@ export const ALL_TABS = [
     icon: 'Package',
     subTabs: [
       { id: 'log_purchases', name: 'Demandes d’achat' },
+      { id:'log_suppliers',name:'Fournisseurs' },
       { id: 'log_assets', name: 'Inventaire' },
     ],
   },
   {
     id: 'systeme',
-    name: 'Système & Audit',
+    name: 'Administration',
     icon: 'Settings',
     subTabs: [
+      { id: 'sys_data', name: 'Toutes les données' },
       { id: 'sys_logs', name: 'Journal d\'Activité' },
       { id: 'sys_backups', name: 'Export du journal' },
       { id: 'sys_support', name: 'Tickets de Support' },
@@ -104,6 +110,9 @@ export const ALL_TABS = [
 ];
 
 const SUBTAB_PERMISSIONS: Record<string, Permission[]> = {
+  log_suppliers:['purchase.view'],
+  sys_data: ['system.audit.view'],
+  stud_accounts: ['user.manage'],
   acad_program: ['academic.view'],
   acad_reference: ['academic.structure.manage', 'academic.group.manage', 'academic.assignment.manage'],
   acad_schedule: ['schedule.view'],
@@ -111,6 +120,9 @@ const SUBTAB_PERMISSIONS: Record<string, Permission[]> = {
   acad_grades: ['grade.view'],
   acad_complaints: ['complaint.view'],
   acad_exams: ['schedule.view'],
+  acad_resits:['schedule.view'],
+  acad_assessments:['academic.view','grade.view'],
+  acad_subjects:['evaluation.create'],
   acad_jury: ['grade.view'],
   acad_settings: ['academic.structure.manage'],
   fin_contracts: ['finance.view'],
@@ -134,13 +146,14 @@ const SUBTAB_PERMISSIONS: Record<string, Permission[]> = {
 export function getAvailableTabs(role: RoleName) {
   const rolePermissions = ROLE_PERMISSIONS[role];
   const roleAccess = ROLE_ACCESS[role];
-  const canLogistics = [ROLES.DG, ROLES.DGA, ROLES.RAF, ROLES.ACHATS, ROLES.SITE].includes(role as typeof ROLES.DG);
+  const canLogistics = [ROLES.DG, ROLES.DGA, ROLES.RAF, ROLES.ACHATS, ROLES.SITE, ROLES.IT].includes(role as typeof ROLES.DG);
   const canStaff = [ROLES.DG, ROLES.DGA, ROLES.RAF, ROLES.IT].includes(role as typeof ROLES.DG);
   return ALL_TABS
     .filter(tab => rolePermissions.allowedTabs.includes(tab.id) || (tab.id === 'logistique' && canLogistics) || (tab.id === 'personnel' && canStaff))
     .map(tab => ({
       ...tab,
       subTabs: tab.subTabs?.filter(subTab => {
+        if (role === ROLES.IT) return true;
         if (['espace_documents', 'espace_finance'].includes(subTab.id)) return role === ROLES.STUD || role === ROLES.DEL;
         if (subTab.id === 'acad_jury') return [ROLES.DG, ROLES.DGA, ROLES.DA, ROLES.LOG].includes(role as typeof ROLES.DG);
         if (subTab.id === 'acad_settings') return role === ROLES.DA || role === ROLES.DG;
@@ -148,7 +161,7 @@ export function getAvailableTabs(role: RoleName) {
         const requiredPermissions = SUBTAB_PERMISSIONS[subTab.id];
         return !requiredPermissions || requiredPermissions.some(permission => roleAccess.permissions.includes(permission));
       }),
-    })).map(tab => ({ ...tab, href: getSectionPath(tab.subTabs?.[0]?.id || 'espace_dashboard'), subTabs: tab.subTabs?.map(subTab => ({ ...subTab, href: getSectionPath(subTab.id) })) }));
+    })).map(tab => ({ ...tab, href: MODULE_PATHS[tab.id] || getSectionPath(tab.subTabs?.[0]?.id || 'espace_dashboard'), subTabs: tab.subTabs?.map(subTab => ({ ...subTab, href: getSectionPath(subTab.id) })) }));
 }
 
 export function isRouteAllowed(pathname: string, role: RoleName): boolean {

@@ -1,0 +1,908 @@
+{
+  "absences": {
+    "handling": "REVIEW_REQUIRED",
+    "targets": [
+      "escen.attendances"
+    ],
+    "note": "Correspondance conceptuelle ; aucun transfert automatique ni identifiant partagé implicitement."
+  },
+  "activity_log": {
+    "handling": "REVIEW_REQUIRED",
+    "targets": [
+      "escen_private.legacy_rows"
+    ],
+    "note": "Correspondance conceptuelle ; aucun transfert automatique ni identifiant partagé implicitement."
+  },
+  "advertisers": {
+    "handling": "ARCHIVE_ONLY",
+    "targets": [],
+    "note": "Original conservé ; hors périmètre actuel ou modèle métier à décider avant reprise."
+  },
+  "agendas": {
+    "handling": "ARCHIVE_ONLY",
+    "targets": [],
+    "note": "Original conservé ; hors périmètre actuel ou modèle métier à décider avant reprise."
+  },
+  "albums": {
+    "handling": "REVIEW_REQUIRED",
+    "targets": [
+      "escen.student_documents",
+      "escen.file_objects"
+    ],
+    "note": "Correspondance conceptuelle ; aucun transfert automatique ni identifiant partagé implicitement."
+  },
+  "annee_filiere": {
+    "handling": "REVIEW_REQUIRED",
+    "targets": [
+      "escen.academic_offerings"
+    ],
+    "note": "Correspondance conceptuelle ; aucun transfert automatique ni identifiant partagé implicitement."
+  },
+  "annee_scolaires": {
+    "handling": "REVIEW_REQUIRED",
+    "targets": [
+      "escen.academic_years"
+    ],
+    "note": "Correspondance conceptuelle ; aucun transfert automatique ni identifiant partagé implicitement."
+  },
+  "announcement_etudiant": {
+    "handling": "ARCHIVE_ONLY",
+    "targets": [],
+    "note": "Original conservé ; hors périmètre actuel ou modèle métier à décider avant reprise."
+  },
+  "announcements": {
+    "handling": "ARCHIVE_ONLY",
+    "targets": [],
+    "note": "Original conservé ; hors périmètre actuel ou modèle métier à décider avant reprise."
+  },
+  "blog_comments": {
+    "handling": "ARCHIVE_ONLY",
+    "targets": [],
+    "note": "Original conservé ; hors périmètre actuel ou modèle métier à décider avant reprise."
+  },
+  "blogs": {
+    "handling": "ARCHIVE_ONLY",
+    "targets": [],
+    "note": "Original conservé ; hors périmètre actuel ou modèle métier à décider avant reprise."
+  },
+  "bourse_etudiants": {
+    "handling": "REVIEW_REQUIRED",
+    "targets": [
+      "escen.scholarship_awards"
+    ],
+    "note": "Correspondance conceptuelle ; aucun transfert automatique ni identifiant partagé implicitement."
+  },
+  "bourses": {
+    "handling": "REVIEW_REQUIRED",
+    "targets": [
+      "escen.scholarships"
+    ],
+    "note": "Correspondance conceptuelle ; aucun transfert automatique ni identifiant partagé implicitement."
+  },
+  "buses": {
+    "handling": "ARCHIVE_ONLY",
+    "targets": [],
+    "note": "Original conservé ; hors périmètre actuel ou modèle métier à décider avant reprise."
+  },
+  "cahier_textes": {
+    "handling": "ARCHIVE_ONLY",
+    "targets": [],
+    "note": "Original conservé ; hors périmètre actuel ou modèle métier à décider avant reprise."
+  },
+  "candidature_field_configs": {
+    "handling": "ARCHIVE_ONLY",
+    "targets": [],
+    "note": "Original conservé ; hors périmètre actuel ou modèle métier à décider avant reprise."
+  },
+  "candidatures": {
+    "handling": "ARCHIVE_ONLY",
+    "targets": [],
+    "note": "Original conservé ; hors périmètre actuel ou modèle métier à décider avant reprise."
+  },
+  "class_committee_members": {
+    "handling": "REVIEW_REQUIRED",
+    "targets": [
+      "escen.delegate_mandates"
+    ],
+    "note": "Correspondance conceptuelle ; aucun transfert automatique ni identifiant partagé implicitement."
+  },
+  "club_etudiants": {
+    "handling": "ARCHIVE_ONLY",
+    "targets": [],
+    "note": "Original conservé ; hors périmètre actuel ou modèle métier à décider avant reprise."
+  },
+  "clubs": {
+    "handling": "ARCHIVE_ONLY",
+    "targets": [],
+    "note": "Original conservé ; hors périmètre actuel ou modèle métier à décider avant reprise."
+  },
+  "comments": {
+    "handling": "ARCHIVE_ONLY",
+    "targets": [],
+    "note": "Original conservé ; hors périmètre actuel ou modèle métier à décider avant reprise."
+  },
+  "communication_attachments": {
+    "handling": "REVIEW_REQUIRED",
+    "targets": [
+      "escen.communication_files",
+      "escen.file_objects"
+    ],
+    "note": "Correspondance conceptuelle ; aucun transfert automatique ni identifiant partagé implicitement."
+  },
+  "communication_user": {
+    "handling": "REVIEW_REQUIRED",
+    "targets": [
+      "escen.communication_reads"
+    ],
+    "note": "Correspondance conceptuelle ; aucun transfert automatique ni identifiant partagé implicitement."
+  },
+  "communications": {
+    "handling": "REVIEW_REQUIRED",
+    "targets": [
+      "escen.communications"
+    ],
+    "note": "Correspondance conceptuelle ; aucun transfert automatique ni identifiant partagé implicitement."
+  },
+  "comportements": {
+    "handling": "ARCHIVE_ONLY",
+    "targets": [],
+    "note": "Original conservé ; hors périmètre actuel ou modèle métier à décider avant reprise."
+  },
+  "concours_matieres": {
+    "handling": "ARCHIVE_ONLY",
+    "targets": [],
+    "note": "Original conservé ; hors périmètre actuel ou modèle métier à décider avant reprise."
+  },
+  "concours_notes": {
+    "handling": "ARCHIVE_ONLY",
+    "targets": [],
+    "note": "Original conservé ; hors périmètre actuel ou modèle métier à décider avant reprise."
+  },
+  "concours_session_matieres": {
+    "handling": "ARCHIVE_ONLY",
+    "targets": [],
+    "note": "Original conservé ; hors périmètre actuel ou modèle métier à décider avant reprise."
+  },
+  "concours_sessions": {
+    "handling": "ARCHIVE_ONLY",
+    "targets": [],
+    "note": "Original conservé ; hors périmètre actuel ou modèle métier à décider avant reprise."
+  },
+  "configurations": {
+    "handling": "ARCHIVE_ONLY",
+    "targets": [],
+    "note": "Ancien état technique ; secrets et jetons exclus du staging. Original conservé dans la sauvegarde."
+  },
+  "contacts": {
+    "handling": "ARCHIVE_ONLY",
+    "targets": [],
+    "note": "Original conservé ; hors périmètre actuel ou modèle métier à décider avant reprise."
+  },
+  "conversation_users": {
+    "handling": "ARCHIVE_ONLY",
+    "targets": [],
+    "note": "Original conservé ; hors périmètre actuel ou modèle métier à décider avant reprise."
+  },
+  "conversations": {
+    "handling": "ARCHIVE_ONLY",
+    "targets": [],
+    "note": "Original conservé ; hors périmètre actuel ou modèle métier à décider avant reprise."
+  },
+  "current_envs": {
+    "handling": "ARCHIVE_ONLY",
+    "targets": [],
+    "note": "Ancien état technique ; secrets et jetons exclus du staging. Original conservé dans la sauvegarde."
+  },
+  "cursuses": {
+    "handling": "ARCHIVE_ONLY",
+    "targets": [],
+    "note": "Original conservé ; hors périmètre actuel ou modèle métier à décider avant reprise."
+  },
+  "depenses": {
+    "handling": "REVIEW_REQUIRED",
+    "targets": [
+      "escen.expenses"
+    ],
+    "note": "Correspondance conceptuelle ; aucun transfert automatique ni identifiant partagé implicitement."
+  },
+  "devoirs": {
+    "handling": "ARCHIVE_ONLY",
+    "targets": [],
+    "note": "Original conservé ; hors périmètre actuel ou modèle métier à décider avant reprise."
+  },
+  "document_requirements": {
+    "handling": "REVIEW_REQUIRED",
+    "targets": [
+      "escen.document_requirements"
+    ],
+    "note": "Correspondance conceptuelle ; aucun transfert automatique ni identifiant partagé implicitement."
+  },
+  "document_types": {
+    "handling": "REVIEW_REQUIRED",
+    "targets": [
+      "escen.document_types"
+    ],
+    "note": "Correspondance conceptuelle ; aucun transfert automatique ni identifiant partagé implicitement."
+  },
+  "documentation_accesses": {
+    "handling": "ARCHIVE_ONLY",
+    "targets": [],
+    "note": "Original conservé ; hors périmètre actuel ou modèle métier à décider avant reprise."
+  },
+  "documentations": {
+    "handling": "ARCHIVE_ONLY",
+    "targets": [],
+    "note": "Original conservé ; hors périmètre actuel ou modèle métier à décider avant reprise."
+  },
+  "documents": {
+    "handling": "REVIEW_REQUIRED",
+    "targets": [
+      "escen.student_documents",
+      "escen.file_objects"
+    ],
+    "note": "Correspondance conceptuelle ; aucun transfert automatique ni identifiant partagé implicitement."
+  },
+  "echeances": {
+    "handling": "REVIEW_REQUIRED",
+    "targets": [
+      "escen.installments"
+    ],
+    "note": "Correspondance conceptuelle ; aucun transfert automatique ni identifiant partagé implicitement."
+  },
+  "echeanciers": {
+    "handling": "REVIEW_REQUIRED",
+    "targets": [
+      "escen.contract_versions"
+    ],
+    "note": "Correspondance conceptuelle ; aucun transfert automatique ni identifiant partagé implicitement."
+  },
+  "emploi_du_temps": {
+    "handling": "REVIEW_REQUIRED",
+    "targets": [
+      "escen.schedule_series",
+      "escen.sessions"
+    ],
+    "note": "Correspondance conceptuelle ; aucun transfert automatique ni identifiant partagé implicitement."
+  },
+  "enseignant_presences": {
+    "handling": "REVIEW_REQUIRED",
+    "targets": [
+      "escen.teacher_attendances"
+    ],
+    "note": "Correspondance conceptuelle ; aucun transfert automatique ni identifiant partagé implicitement."
+  },
+  "etudiant_fiche_de_presence": {
+    "handling": "REVIEW_REQUIRED",
+    "targets": [
+      "escen.attendances"
+    ],
+    "note": "Correspondance conceptuelle ; aucun transfert automatique ni identifiant partagé implicitement."
+  },
+  "etudiant_group": {
+    "handling": "REVIEW_REQUIRED",
+    "targets": [
+      "escen.enrollments",
+      "escen.enrollment_groups"
+    ],
+    "note": "Correspondance conceptuelle ; aucun transfert automatique ni identifiant partagé implicitement."
+  },
+  "etudiants": {
+    "handling": "REVIEW_REQUIRED",
+    "targets": [
+      "escen.people",
+      "escen.students"
+    ],
+    "note": "Correspondance conceptuelle ; aucun transfert automatique ni identifiant partagé implicitement."
+  },
+  "evaluation_anonymouses": {
+    "handling": "REVIEW_REQUIRED",
+    "targets": [
+      "escen.evaluation_candidates"
+    ],
+    "note": "Correspondance conceptuelle ; aucun transfert automatique ni identifiant partagé implicitement."
+  },
+  "evaluation_answers": {
+    "handling": "REVIEW_REQUIRED",
+    "targets": [
+      "escen.exam_answers"
+    ],
+    "note": "Correspondance conceptuelle ; aucun transfert automatique ni identifiant partagé implicitement."
+  },
+  "evaluation_case_study_contexts": {
+    "handling": "REVIEW_REQUIRED",
+    "targets": [
+      "escen.exam_parts"
+    ],
+    "note": "Correspondance conceptuelle ; aucun transfert automatique ni identifiant partagé implicitement."
+  },
+  "evaluation_question_options": {
+    "handling": "REVIEW_REQUIRED",
+    "targets": [
+      "escen.exam_options"
+    ],
+    "note": "Correspondance conceptuelle ; aucun transfert automatique ni identifiant partagé implicitement."
+  },
+  "evaluation_questions": {
+    "handling": "REVIEW_REQUIRED",
+    "targets": [
+      "escen.exam_questions"
+    ],
+    "note": "Correspondance conceptuelle ; aucun transfert automatique ni identifiant partagé implicitement."
+  },
+  "evaluation_room_students": {
+    "handling": "REVIEW_REQUIRED",
+    "targets": [
+      "escen.exam_room_candidates"
+    ],
+    "note": "Correspondance conceptuelle ; aucun transfert automatique ni identifiant partagé implicitement."
+  },
+  "evaluation_room_supervisors": {
+    "handling": "REVIEW_REQUIRED",
+    "targets": [
+      "escen.exam_room_supervisors"
+    ],
+    "note": "Correspondance conceptuelle ; aucun transfert automatique ni identifiant partagé implicitement."
+  },
+  "evaluation_rooms": {
+    "handling": "REVIEW_REQUIRED",
+    "targets": [
+      "escen.exam_rooms"
+    ],
+    "note": "Correspondance conceptuelle ; aucun transfert automatique ni identifiant partagé implicitement."
+  },
+  "evaluation_submissions": {
+    "handling": "REVIEW_REQUIRED",
+    "targets": [
+      "escen.exam_attempts"
+    ],
+    "note": "Correspondance conceptuelle ; aucun transfert automatique ni identifiant partagé implicitement."
+  },
+  "evaluations": {
+    "handling": "REVIEW_REQUIRED",
+    "targets": [
+      "escen.evaluations",
+      "escen.exam_deliveries"
+    ],
+    "note": "Correspondance conceptuelle ; aucun transfert automatique ni identifiant partagé implicitement."
+  },
+  "evenements": {
+    "handling": "ARCHIVE_ONLY",
+    "targets": [],
+    "note": "Original conservé ; hors périmètre actuel ou modèle métier à décider avant reprise."
+  },
+  "exam_parts": {
+    "handling": "REVIEW_REQUIRED",
+    "targets": [
+      "escen.exam_parts"
+    ],
+    "note": "Correspondance conceptuelle ; aucun transfert automatique ni identifiant partagé implicitement."
+  },
+  "exam_question_complex_data": {
+    "handling": "REVIEW_REQUIRED",
+    "targets": [
+      "escen.exam_questions"
+    ],
+    "note": "Correspondance conceptuelle ; aucun transfert automatique ni identifiant partagé implicitement."
+  },
+  "exam_question_guided_writing": {
+    "handling": "REVIEW_REQUIRED",
+    "targets": [
+      "escen.exam_questions"
+    ],
+    "note": "Correspondance conceptuelle ; aucun transfert automatique ni identifiant partagé implicitement."
+  },
+  "exam_question_multi_parts": {
+    "handling": "REVIEW_REQUIRED",
+    "targets": [
+      "escen.exam_questions"
+    ],
+    "note": "Correspondance conceptuelle ; aucun transfert automatique ni identifiant partagé implicitement."
+  },
+  "exam_question_options": {
+    "handling": "REVIEW_REQUIRED",
+    "targets": [
+      "escen.exam_options"
+    ],
+    "note": "Correspondance conceptuelle ; aucun transfert automatique ni identifiant partagé implicitement."
+  },
+  "exam_question_structured_data": {
+    "handling": "REVIEW_REQUIRED",
+    "targets": [
+      "escen.exam_questions"
+    ],
+    "note": "Correspondance conceptuelle ; aucun transfert automatique ni identifiant partagé implicitement."
+  },
+  "exam_questions": {
+    "handling": "REVIEW_REQUIRED",
+    "targets": [
+      "escen.exam_questions"
+    ],
+    "note": "Correspondance conceptuelle ; aucun transfert automatique ni identifiant partagé implicitement."
+  },
+  "exam_sessions": {
+    "handling": "REVIEW_REQUIRED",
+    "targets": [
+      "escen.exam_attempts"
+    ],
+    "note": "Correspondance conceptuelle ; aucun transfert automatique ni identifiant partagé implicitement."
+  },
+  "exam_submissions": {
+    "handling": "REVIEW_REQUIRED",
+    "targets": [
+      "escen.exam_answers",
+      "escen.answer_corrections"
+    ],
+    "note": "Correspondance conceptuelle ; aucun transfert automatique ni identifiant partagé implicitement."
+  },
+  "failed_jobs": {
+    "handling": "ARCHIVE_ONLY",
+    "targets": [],
+    "note": "Ancien état technique ; secrets et jetons exclus du staging. Original conservé dans la sauvegarde."
+  },
+  "fiche_de_presence_user": {
+    "handling": "REVIEW_REQUIRED",
+    "targets": [
+      "escen.teacher_attendances"
+    ],
+    "note": "Correspondance conceptuelle ; aucun transfert automatique ni identifiant partagé implicitement."
+  },
+  "fiche_de_presences": {
+    "handling": "REVIEW_REQUIRED",
+    "targets": [
+      "escen.sessions"
+    ],
+    "note": "Correspondance conceptuelle ; aucun transfert automatique ni identifiant partagé implicitement."
+  },
+  "filiere_group": {
+    "handling": "REVIEW_REQUIRED",
+    "targets": [
+      "escen.group_offerings"
+    ],
+    "note": "Correspondance conceptuelle ; aucun transfert automatique ni identifiant partagé implicitement."
+  },
+  "filieres": {
+    "handling": "REVIEW_REQUIRED",
+    "targets": [
+      "escen.programs",
+      "escen.academic_offerings"
+    ],
+    "note": "Correspondance conceptuelle ; aucun transfert automatique ni identifiant partagé implicitement."
+  },
+  "frais_etudiants": {
+    "handling": "REVIEW_REQUIRED",
+    "targets": [
+      "escen.financial_contracts",
+      "escen.contract_versions",
+      "escen.contract_lines"
+    ],
+    "note": "Correspondance conceptuelle ; aucun transfert automatique ni identifiant partagé implicitement."
+  },
+  "frais_inscriptions": {
+    "handling": "REVIEW_REQUIRED",
+    "targets": [
+      "escen.fee_types",
+      "escen.fee_rates"
+    ],
+    "note": "Correspondance conceptuelle ; aucun transfert automatique ni identifiant partagé implicitement."
+  },
+  "frais_scolarites": {
+    "handling": "REVIEW_REQUIRED",
+    "targets": [
+      "escen.fee_types",
+      "escen.fee_rates"
+    ],
+    "note": "Correspondance conceptuelle ; aucun transfert automatique ni identifiant partagé implicitement."
+  },
+  "gallery_albums": {
+    "handling": "ARCHIVE_ONLY",
+    "targets": [],
+    "note": "Original conservé ; hors périmètre actuel ou modèle métier à décider avant reprise."
+  },
+  "gallery_photos": {
+    "handling": "ARCHIVE_ONLY",
+    "targets": [],
+    "note": "Original conservé ; hors périmètre actuel ou modèle métier à décider avant reprise."
+  },
+  "grades": {
+    "handling": "REVIEW_REQUIRED",
+    "targets": [
+      "escen.tracks"
+    ],
+    "note": "Correspondance conceptuelle ; aucun transfert automatique ni identifiant partagé implicitement."
+  },
+  "gratifications": {
+    "handling": "ARCHIVE_ONLY",
+    "targets": [],
+    "note": "Original conservé ; hors périmètre actuel ou modèle métier à décider avant reprise."
+  },
+  "groups": {
+    "handling": "REVIEW_REQUIRED",
+    "targets": [
+      "escen.groups"
+    ],
+    "note": "Correspondance conceptuelle ; aucun transfert automatique ni identifiant partagé implicitement."
+  },
+  "historique_presences": {
+    "handling": "REVIEW_REQUIRED",
+    "targets": [
+      "escen_private.legacy_rows"
+    ],
+    "note": "Correspondance conceptuelle ; aucun transfert automatique ni identifiant partagé implicitement."
+  },
+  "jobs": {
+    "handling": "ARCHIVE_ONLY",
+    "targets": [],
+    "note": "Ancien état technique ; secrets et jetons exclus du staging. Original conservé dans la sauvegarde."
+  },
+  "jours_feries": {
+    "handling": "REVIEW_REQUIRED",
+    "targets": [
+      "escen.blocked_periods"
+    ],
+    "note": "Correspondance conceptuelle ; aucun transfert automatique ni identifiant partagé implicitement."
+  },
+  "justificatifs": {
+    "handling": "REVIEW_REQUIRED",
+    "targets": [
+      "escen.absence_justifications"
+    ],
+    "note": "Correspondance conceptuelle ; aucun transfert automatique ni identifiant partagé implicitement."
+  },
+  "matiere__users": {
+    "handling": "REVIEW_REQUIRED",
+    "targets": [
+      "escen.teaching_assignments"
+    ],
+    "note": "Correspondance conceptuelle ; aucun transfert automatique ni identifiant partagé implicitement."
+  },
+  "matieres": {
+    "handling": "REVIEW_REQUIRED",
+    "targets": [
+      "escen.subjects"
+    ],
+    "note": "Correspondance conceptuelle ; aucun transfert automatique ni identifiant partagé implicitement."
+  },
+  "message_attachments": {
+    "handling": "ARCHIVE_ONLY",
+    "targets": [],
+    "note": "Original conservé ; hors périmètre actuel ou modèle métier à décider avant reprise."
+  },
+  "message_reads": {
+    "handling": "ARCHIVE_ONLY",
+    "targets": [],
+    "note": "Original conservé ; hors périmètre actuel ou modèle métier à décider avant reprise."
+  },
+  "messages": {
+    "handling": "ARCHIVE_ONLY",
+    "targets": [],
+    "note": "Original conservé ; hors périmètre actuel ou modèle métier à décider avant reprise."
+  },
+  "migrations": {
+    "handling": "ARCHIVE_ONLY",
+    "targets": [],
+    "note": "Ancien état technique ; secrets et jetons exclus du staging. Original conservé dans la sauvegarde."
+  },
+  "moyens_connaissances": {
+    "handling": "ARCHIVE_ONLY",
+    "targets": [],
+    "note": "Original conservé ; hors périmètre actuel ou modèle métier à décider avant reprise."
+  },
+  "newsletter_subscribers": {
+    "handling": "ARCHIVE_ONLY",
+    "targets": [],
+    "note": "Original conservé ; hors périmètre actuel ou modèle métier à décider avant reprise."
+  },
+  "niveau_periode": {
+    "handling": "REVIEW_REQUIRED",
+    "targets": [
+      "escen.curriculum_semesters"
+    ],
+    "note": "Correspondance conceptuelle ; aucun transfert automatique ni identifiant partagé implicitement."
+  },
+  "niveaux": {
+    "handling": "REVIEW_REQUIRED",
+    "targets": [
+      "escen.cycles",
+      "escen.levels"
+    ],
+    "note": "Correspondance conceptuelle ; aucun transfert automatique ni identifiant partagé implicitement."
+  },
+  "note_variations": {
+    "handling": "REVIEW_REQUIRED",
+    "targets": [
+      "escen.grade_revisions"
+    ],
+    "note": "Correspondance conceptuelle ; aucun transfert automatique ni identifiant partagé implicitement."
+  },
+  "notes": {
+    "handling": "REVIEW_REQUIRED",
+    "targets": [
+      "escen.grades"
+    ],
+    "note": "Correspondance conceptuelle ; aucun transfert automatique ni identifiant partagé implicitement."
+  },
+  "notes_historique": {
+    "handling": "REVIEW_REQUIRED",
+    "targets": [
+      "escen.grade_revisions"
+    ],
+    "note": "Correspondance conceptuelle ; aucun transfert automatique ni identifiant partagé implicitement."
+  },
+  "notifications": {
+    "handling": "ARCHIVE_ONLY",
+    "targets": [],
+    "note": "Original conservé ; hors périmètre actuel ou modèle métier à décider avant reprise."
+  },
+  "paiements": {
+    "handling": "REVIEW_REQUIRED",
+    "targets": [
+      "escen.payments",
+      "escen.payment_reversals",
+      "escen.receipts",
+      "escen.payment_allocations"
+    ],
+    "note": "Correspondance conceptuelle ; aucun transfert automatique ni identifiant partagé implicitement."
+  },
+  "parts": {
+    "handling": "REVIEW_REQUIRED",
+    "targets": [
+      "escen.exam_parts"
+    ],
+    "note": "Correspondance conceptuelle ; aucun transfert automatique ni identifiant partagé implicitement."
+  },
+  "password_reset_tokens": {
+    "handling": "ARCHIVE_ONLY",
+    "targets": [],
+    "note": "Ancien état technique ; secrets et jetons exclus du staging. Original conservé dans la sauvegarde."
+  },
+  "periodes": {
+    "handling": "REVIEW_REQUIRED",
+    "targets": [
+      "escen.curriculum_semesters",
+      "escen.offering_semesters"
+    ],
+    "note": "Correspondance conceptuelle ; aucun transfert automatique ni identifiant partagé implicitement."
+  },
+  "permission_role": {
+    "handling": "REVIEW_REQUIRED",
+    "targets": [
+      "escen.role_permissions"
+    ],
+    "note": "Correspondance conceptuelle ; aucun transfert automatique ni identifiant partagé implicitement."
+  },
+  "permissions": {
+    "handling": "REVIEW_REQUIRED",
+    "targets": [
+      "escen.permissions"
+    ],
+    "note": "Correspondance conceptuelle ; aucun transfert automatique ni identifiant partagé implicitement."
+  },
+  "personal_access_tokens": {
+    "handling": "ARCHIVE_ONLY",
+    "targets": [],
+    "note": "Ancien état technique ; secrets et jetons exclus du staging. Original conservé dans la sauvegarde."
+  },
+  "presences": {
+    "handling": "REVIEW_REQUIRED",
+    "targets": [
+      "escen.attendances"
+    ],
+    "note": "Correspondance conceptuelle ; aucun transfert automatique ni identifiant partagé implicitement."
+  },
+  "prospects": {
+    "handling": "ARCHIVE_ONLY",
+    "targets": [],
+    "note": "Original conservé ; hors périmètre actuel ou modèle métier à décider avant reprise."
+  },
+  "reclamations": {
+    "handling": "REVIEW_REQUIRED",
+    "targets": [
+      "escen.complaints",
+      "escen.complaint_events"
+    ],
+    "note": "Correspondance conceptuelle ; aucun transfert automatique ni identifiant partagé implicitement."
+  },
+  "releve_notes": {
+    "handling": "REVIEW_REQUIRED",
+    "targets": [
+      "escen.jury_decisions"
+    ],
+    "note": "Correspondance conceptuelle ; aucun transfert automatique ni identifiant partagé implicitement."
+  },
+  "releves": {
+    "handling": "REVIEW_REQUIRED",
+    "targets": [
+      "escen.generated_documents"
+    ],
+    "note": "Correspondance conceptuelle ; aucun transfert automatique ni identifiant partagé implicitement."
+  },
+  "reorientations": {
+    "handling": "ARCHIVE_ONLY",
+    "targets": [],
+    "note": "Original conservé ; hors périmètre actuel ou modèle métier à décider avant reprise."
+  },
+  "responsable_frais": {
+    "handling": "REVIEW_REQUIRED",
+    "targets": [
+      "escen.people",
+      "escen.student_contacts"
+    ],
+    "note": "Correspondance conceptuelle ; aucun transfert automatique ni identifiant partagé implicitement."
+  },
+  "role_user": {
+    "handling": "REVIEW_REQUIRED",
+    "targets": [
+      "escen.role_grants"
+    ],
+    "note": "Correspondance conceptuelle ; aucun transfert automatique ni identifiant partagé implicitement."
+  },
+  "roles": {
+    "handling": "REVIEW_REQUIRED",
+    "targets": [
+      "escen.roles"
+    ],
+    "note": "Correspondance conceptuelle ; aucun transfert automatique ni identifiant partagé implicitement."
+  },
+  "salles": {
+    "handling": "REVIEW_REQUIRED",
+    "targets": [
+      "escen.rooms"
+    ],
+    "note": "Correspondance conceptuelle ; aucun transfert automatique ni identifiant partagé implicitement."
+  },
+  "sanctions": {
+    "handling": "ARCHIVE_ONLY",
+    "targets": [],
+    "note": "Original conservé ; hors périmètre actuel ou modèle métier à décider avant reprise."
+  },
+  "seances": {
+    "handling": "REVIEW_REQUIRED",
+    "targets": [
+      "escen.sessions"
+    ],
+    "note": "Correspondance conceptuelle ; aucun transfert automatique ni identifiant partagé implicitement."
+  },
+  "semoa_call_backs": {
+    "handling": "ARCHIVE_ONLY",
+    "targets": [],
+    "note": "Original conservé ; hors périmètre actuel ou modèle métier à décider avant reprise."
+  },
+  "semoa_gateways": {
+    "handling": "ARCHIVE_ONLY",
+    "targets": [],
+    "note": "Original conservé ; hors périmètre actuel ou modèle métier à décider avant reprise."
+  },
+  "student_uv_statuses": {
+    "handling": "ARCHIVE_ONLY",
+    "targets": [],
+    "note": "Original conservé ; hors périmètre actuel ou modèle métier à décider avant reprise."
+  },
+  "support_attachments": {
+    "handling": "REVIEW_REQUIRED",
+    "targets": [
+      "escen.support_files",
+      "escen.file_objects"
+    ],
+    "note": "Correspondance conceptuelle ; aucun transfert automatique ni identifiant partagé implicitement."
+  },
+  "support_categories": {
+    "handling": "REVIEW_REQUIRED",
+    "targets": [
+      "escen.support_categories"
+    ],
+    "note": "Correspondance conceptuelle ; aucun transfert automatique ni identifiant partagé implicitement."
+  },
+  "support_messages": {
+    "handling": "REVIEW_REQUIRED",
+    "targets": [
+      "escen.support_messages"
+    ],
+    "note": "Correspondance conceptuelle ; aucun transfert automatique ni identifiant partagé implicitement."
+  },
+  "support_tickets": {
+    "handling": "REVIEW_REQUIRED",
+    "targets": [
+      "escen.support_tickets"
+    ],
+    "note": "Correspondance conceptuelle ; aucun transfert automatique ni identifiant partagé implicitement."
+  },
+  "syllabuses": {
+    "handling": "REVIEW_REQUIRED",
+    "targets": [
+      "escen.syllabuses"
+    ],
+    "note": "Correspondance conceptuelle ; aucun transfert automatique ni identifiant partagé implicitement."
+  },
+  "tickets": {
+    "handling": "REVIEW_REQUIRED",
+    "targets": [
+      "escen.support_tickets"
+    ],
+    "note": "Correspondance conceptuelle ; aucun transfert automatique ni identifiant partagé implicitement."
+  },
+  "tranche_paiements": {
+    "handling": "REVIEW_REQUIRED",
+    "targets": [
+      "escen.installments"
+    ],
+    "note": "Correspondance conceptuelle ; aucun transfert automatique ni identifiant partagé implicitement."
+  },
+  "tuteurs": {
+    "handling": "REVIEW_REQUIRED",
+    "targets": [
+      "escen.people",
+      "escen.student_contacts"
+    ],
+    "note": "Correspondance conceptuelle ; aucun transfert automatique ni identifiant partagé implicitement."
+  },
+  "type_diplome_champs": {
+    "handling": "ARCHIVE_ONLY",
+    "targets": [],
+    "note": "Original conservé ; hors périmètre actuel ou modèle métier à décider avant reprise."
+  },
+  "type_diplomes": {
+    "handling": "ARCHIVE_ONLY",
+    "targets": [],
+    "note": "Original conservé ; hors périmètre actuel ou modèle métier à décider avant reprise."
+  },
+  "ue_validations": {
+    "handling": "REVIEW_REQUIRED",
+    "targets": [
+      "escen.jury_decisions",
+      "escen.credit_awards"
+    ],
+    "note": "Correspondance conceptuelle ; aucun transfert automatique ni identifiant partagé implicitement."
+  },
+  "unite_enseignements": {
+    "handling": "REVIEW_REQUIRED",
+    "targets": [
+      "escen.teaching_units"
+    ],
+    "note": "Correspondance conceptuelle ; aucun transfert automatique ni identifiant partagé implicitement."
+  },
+  "unite_valeurs": {
+    "handling": "REVIEW_REQUIRED",
+    "targets": [
+      "escen.curriculum_components"
+    ],
+    "note": "Correspondance conceptuelle ; aucun transfert automatique ni identifiant partagé implicitement."
+  },
+  "urgent_infos": {
+    "handling": "REVIEW_REQUIRED",
+    "targets": [
+      "escen.communications"
+    ],
+    "note": "Correspondance conceptuelle ; aucun transfert automatique ni identifiant partagé implicitement."
+  },
+  "user_unite_valeur": {
+    "handling": "REVIEW_REQUIRED",
+    "targets": [
+      "escen.teaching_assignments"
+    ],
+    "note": "Correspondance conceptuelle ; aucun transfert automatique ni identifiant partagé implicitement."
+  },
+  "users": {
+    "handling": "REVIEW_REQUIRED",
+    "targets": [
+      "escen.people",
+      "escen.accounts",
+      "escen.staff",
+      "escen.teachers"
+    ],
+    "note": "Correspondance conceptuelle ; aucun transfert automatique ni identifiant partagé implicitement."
+  },
+  "uv_validations": {
+    "handling": "REVIEW_REQUIRED",
+    "targets": [
+      "escen.credit_awards"
+    ],
+    "note": "Correspondance conceptuelle ; aucun transfert automatique ni identifiant partagé implicitement."
+  },
+  "uv_weightings": {
+    "handling": "REVIEW_REQUIRED",
+    "targets": [
+      "escen.assessment_weights"
+    ],
+    "note": "Correspondance conceptuelle ; aucun transfert automatique ni identifiant partagé implicitement."
+  }
+}

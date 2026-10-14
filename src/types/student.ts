@@ -6,6 +6,7 @@ export interface StudentHistoryEntry {
 }
 
 export interface Student {
+  historical?: { sourceId: string; batchId: string; groupName: string; groupSourceId: string; issues: string[] };
   matricule: string;
   firstname: string;
   lastname: string;

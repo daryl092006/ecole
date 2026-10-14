@@ -390,3 +390,36 @@ Avant toute livraison, il faut également tester manuellement chaque rôle, sous
 Le prototype dispose déjà d'un socle utile pour démontrer les rôles, les permissions, le référentiel académique, les groupes, la planification, les notes, les réclamations et les paiements. Les workflows de notes et de réclamations ainsi que plusieurs contrôles de planning et de finance sont réellement implémentés en mémoire.
 
 Le produit n'est toutefois pas encore une application de gestion complète. Les principaux chantiers sont la finalisation du référentiel académique, les crédits, les groupes et leur affectation automatique, l'historique étudiant, les délibérations, les documents, la finance complète et la personnalisation des espaces par rôle.
+
+## Examens sur papier et en ligne
+
+- Le Directeur Académique ou le Logisticien planifie une épreuve en choisissant le mode **Présentiel sur papier** ou **En ligne**. Une évaluation liée est créée automatiquement pour les étudiants du groupe et de l’année concernés.
+- Le papier conserve la salle, le surveillant, l’émargement et les contrôles de conflits existants. Après l’épreuve, l’enseignant affecté saisit les notes sur 20 dans **Examens & Rattrapages**. Une absence constatée est distincte d’une note de zéro.
+- Pour une épreuve en ligne, l’enseignant affecté prépare un sujet avant ouverture : QCM à choix unique et réponses ouvertes, barème total de 20, durée limitée à la fenêtre d’accès. Le Directeur Académique examine et autorise le sujet ; cette autorisation verrouille le sujet.
+- L’étudiant ou le délégué du groupe accède à l’épreuve depuis **Mon espace** ou **Examens & Rattrapages**. Une seule tentative est possible, avec une échéance égale au minimum entre la durée individuelle et la fermeture de l’épreuve. Les réponses sont conservées en mémoire au fil de la saisie. La remise et l’expiration verrouillent la copie ; l’interface remet automatiquement une tentative arrivée à échéance lorsqu’elle est affichée. Une copie expirée peut également être finalisée lors de sa correction.
+- Après fermeture, l’enseignant affecté corrige les réponses ouvertes. Les QCM sont calculés automatiquement ; l’enregistrement de la correction alimente les notes sur 20. Les copies ne sont pas corrigibles lorsque les notes ont été soumises, sauf retour académique à la saisie.
+- Les deux modes suivent ensuite `BROUILLON → SAISIES → SOUMISES → A_CONTROLER → VALIDEES → PUBLIEES`. Les scores provisoires et bonnes réponses ne sont pas transmis à l’espace étudiant ; les résultats deviennent visibles après publication. Les corrections ultérieures passent par le workflow de réclamation existant.
+- Le statut temporel de l’épreuve (planifiée, en cours, terminée, annulée) est distinct du statut des notes. Les opérations sur sujets, copies et résultats sont auditées avec ancienne et nouvelle valeurs, utilisateur, rôle et date.
+- **Règles à valider par ESCEN** : traitement des absences, étudiants sans tentative, remises tardives et reprises après interruption. Le prototype ne convertit pas les absences en zéro et bloque une soumission incomplète. Il n’autorise pas automatiquement de seconde tentative ou de prolongation.
+- **Limite du prototype** : état React en mémoire uniquement, sans sauvegarde après rafraîchissement. Le temps est contrôlé à partir de l’horloge du navigateur, aux horaires de Lomé. Aucun dispositif de surveillance ou de prévention de fraude n’est revendiqué.
+
+Vérification : `npm run test` inclut `src/services/examService.test.ts` ; `ESCEN_UI_DEV=1 npm run test:ui -- tests/ui/exams.spec.ts` exerce les parcours papier et en ligne à 390 et 1440 px.
+
+### Revue des examens : contrôles complémentaires
+
+- La liste des candidats est celle de l’évaluation créée lors de la planification. Un étudiant ajouté ultérieurement au groupe ne peut pas créer une tentative sans appartenir à cette liste. L’émargement utilise également cette liste.
+- L’annulation depuis la planification est bloquée dès qu’il existe une tentative ou des résultats enregistrés. Les opérations exceptionnelles sur une épreuve déjà passée nécessitent un workflow académique à définir ; elles ne sont pas simulées par une annulation silencieuse.
+- La remise manuelle demande confirmation avec le nombre de réponses saisies. Le chronomètre continue pendant cette confirmation, et l’expiration remet automatiquement la copie.
+- Un QCM non répondu affiche **Sans réponse** et reçoit zéro point pour cette question. Le champ de correction d’une réponse ouverte peut rester vide pendant la saisie ; une valeur explicite est requise avant enregistrement.
+- Les sujets et les copies restent dans l’audit complet en mémoire. Le journal consultable et l’export technique masquent leurs contenus ; les notes sont également masquées pour l’Informaticien. Les horaires et les données visibles se rafraîchissent à l’ouverture et à la fermeture, sans devoir quitter la page.
+- La couche de consultation `examQueryService.ts` applique les périmètres par rôle. Les composants du sujet, des résultats papier, du passage et de la correction sont séparés.
+
+## Dispositions mobiles
+
+- Jusqu’à 640 px, les listes courantes (étudiants, transactions, contrats, personnel, planning, examens, notes et journal) sont présentées en fiches verticales. Chaque valeur conserve le libellé de sa colonne ; les données, actions et contrôles de rôle restent identiques.
+- Le composant partagé `ResponsiveTable` conserve les balises et rôles du tableau pour l’accessibilité. Les lignes de message avec `colSpan` restent des messages, sans fausses valeurs ni libellés.
+- Les matrices de comparaison des permissions restent des tableaux avec défilement horizontal, car la comparaison dépend de l’alignement des colonnes.
+- Les formulaires, filtres, en-têtes de cartes et groupes d’actions s’empilent sur téléphone. Les boutons peuvent afficher leur texte sur plusieurs lignes, et les actions principales occupent la largeur disponible. Les étapes des workflows sont verticales.
+- Les domaines du référentiel utilisent une barre de navigation horizontale défilante sur téléphone. À moins de 360 px, les indicateurs sont également disposés sur une colonne.
+- Les présentations tablette et ordinateur conservent les tableaux et plusieurs colonnes lorsque l’espace le permet. Aucune donnée métier n’est masquée pour réduire la largeur.
+- Vérification : `npm run test:ui -- tests/ui/interface.spec.ts` couvre 320, 640, 768, 1024 et 1440 px ; les captures des parcours métier vérifient aussi que les champs des fiches mobiles sont réellement empilés.

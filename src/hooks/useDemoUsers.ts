@@ -22,5 +22,5 @@ export function useDemoUsers(role: RoleName, log: (action: string, details: stri
     setUsers(previous => previous.map(item => item.id === id ? updated : item));
     log('Rôle utilisateur simulé', JSON.stringify({ entity: id, oldValue: user.role, newValue: target, reason }));
   };
-  return { users, addUser, toggleUser, changeUserRole };
+  return { users, setUsers, addUser, toggleUser, changeUserRole };
 }

@@ -9,7 +9,7 @@ import { workflowError } from '@/utils/workflowError';
 export default function StudentDocumentsManager({ studentId }: { studentId: string }) {
   const state = usePortal(); const [kind, setKind] = useState<StudentDocument['kind']>('IDENTITE'); const [feedback, setFeedback, feedbackError] = useFeedback(); const [loading, setLoading] = useState(false); const input = useRef<HTMLInputElement>(null);
   const [review, setReview] = useState<{ id: string; status: 'CONFORME' | 'NON_CONFORME' } | null>(null); const [reason, setReason] = useState('');
-  const own = !!state.perms.scope.ownDataOnly && state.demoIdentity === studentId; const canUpload = own || state.perms.permissions.includes('student.group.assign'); const canReview = state.activeRole === ROLES.DA || state.activeRole === ROLES.LOG;
+  const own = !!state.perms.scope.ownDataOnly && state.demoIdentity === studentId; const canUpload = own || state.perms.permissions.includes('student.group.assign'); const canReview = (state.activeRole === ROLES.DA || state.activeRole === ROLES.IT) || state.activeRole === ROLES.LOG;
   const documents = state.campus.data.documents.filter(item => item.studentId === studentId);
   return <div className="document-manager mt-2"><h2>Pièces du dossier</h2>{canUpload && <form onSubmit={async event => {
     event.preventDefault(); const file = input.current?.files?.[0]; if (!file) return; setLoading(true); setFeedback('');

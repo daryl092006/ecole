@@ -1,0 +1,320 @@
+{
+  "source": "sauvegarde-complete-2026-10-14_11-41-02.zip",
+  "tables": 140,
+  "colonnes": 1361,
+  "foreign_keys": 68,
+  "row_counts": {
+    "absences": 0,
+    "activity_log": 1708,
+    "advertisers": 1,
+    "agendas": 2,
+    "albums": 32,
+    "annee_filiere": 1,
+    "annee_scolaires": 4,
+    "announcement_etudiant": 0,
+    "announcements": 0,
+    "blog_comments": 1,
+    "blogs": 7,
+    "bourse_etudiants": 1,
+    "bourses": 0,
+    "buses": 0,
+    "cahier_textes": 0,
+    "candidature_field_configs": 15,
+    "candidatures": 88,
+    "class_committee_members": 0,
+    "club_etudiants": 0,
+    "clubs": 0,
+    "comments": 0,
+    "communication_attachments": 0,
+    "communication_user": 0,
+    "communications": 0,
+    "comportements": 0,
+    "concours_matieres": 0,
+    "concours_notes": 0,
+    "concours_session_matieres": 0,
+    "concours_sessions": 0,
+    "configurations": 31,
+    "contacts": 8,
+    "conversation_users": 0,
+    "conversations": 0,
+    "current_envs": 2,
+    "cursuses": 0,
+    "depenses": 0,
+    "devoirs": 0,
+    "document_requirements": 32,
+    "document_types": 20,
+    "documentation_accesses": 0,
+    "documentations": 0,
+    "documents": 144,
+    "echeances": 576,
+    "echeanciers": 143,
+    "emploi_du_temps": 35,
+    "enseignant_presences": 0,
+    "etudiant_fiche_de_presence": 0,
+    "etudiant_group": 145,
+    "etudiants": 145,
+    "evaluation_anonymouses": 0,
+    "evaluation_answers": 0,
+    "evaluation_case_study_contexts": 0,
+    "evaluation_question_options": 0,
+    "evaluation_questions": 0,
+    "evaluation_room_students": 0,
+    "evaluation_room_supervisors": 0,
+    "evaluation_rooms": 0,
+    "evaluation_submissions": 0,
+    "evaluations": 33,
+    "evenements": 0,
+    "exam_parts": 66,
+    "exam_question_complex_data": 0,
+    "exam_question_guided_writing": 0,
+    "exam_question_multi_parts": 0,
+    "exam_question_options": 1864,
+    "exam_question_structured_data": 0,
+    "exam_questions": 557,
+    "exam_sessions": 0,
+    "exam_submissions": 3171,
+    "failed_jobs": 0,
+    "fiche_de_presence_user": 0,
+    "fiche_de_presences": 0,
+    "filiere_group": 20,
+    "filieres": 5,
+    "frais_etudiants": 143,
+    "frais_inscriptions": 1,
+    "frais_scolarites": 7,
+    "gallery_albums": 1,
+    "gallery_photos": 1,
+    "grades": 0,
+    "gratifications": 0,
+    "groups": 15,
+    "historique_presences": 0,
+    "jobs": 0,
+    "jours_feries": 0,
+    "justificatifs": 0,
+    "matiere__users": 0,
+    "matieres": 25,
+    "message_attachments": 0,
+    "message_reads": 0,
+    "messages": 0,
+    "migrations": 308,
+    "moyens_connaissances": 6,
+    "newsletter_subscribers": 1,
+    "niveau_periode": 9,
+    "niveaux": 6,
+    "note_variations": 0,
+    "notes": 640,
+    "notes_historique": 0,
+    "notifications": 2432,
+    "paiements": 62,
+    "parts": 0,
+    "password_reset_tokens": 23,
+    "periodes": 6,
+    "permission_role": 1200,
+    "permissions": 317,
+    "personal_access_tokens": 851,
+    "presences": 0,
+    "prospects": 133,
+    "reclamations": 0,
+    "releve_notes": 15,
+    "releves": 0,
+    "reorientations": 0,
+    "responsable_frais": 34,
+    "role_user": 268,
+    "roles": 30,
+    "salles": 4,
+    "sanctions": 0,
+    "seances": 2,
+    "semoa_call_backs": 0,
+    "semoa_gateways": 6,
+    "student_uv_statuses": 0,
+    "support_attachments": 0,
+    "support_categories": 5,
+    "support_messages": 0,
+    "support_tickets": 0,
+    "syllabuses": 0,
+    "tickets": 0,
+    "tranche_paiements": 28,
+    "tuteurs": 32,
+    "type_diplome_champs": 9,
+    "type_diplomes": 4,
+    "ue_validations": 0,
+    "unite_enseignements": 1,
+    "unite_valeurs": 26,
+    "urgent_infos": 1,
+    "user_unite_valeur": 26,
+    "users": 30,
+    "uv_validations": 0,
+    "uv_weightings": 1
+  },
+  "checks": [
+    {
+      "controle": "notes.etudiant_id -> etudiants (relation métier inférée)",
+      "nombre": 60,
+      "nature": "anomalie"
+    },
+    {
+      "controle": "notes.evaluation_id -> evaluations (relation métier inférée)",
+      "nombre": 71,
+      "nature": "anomalie"
+    },
+    {
+      "controle": "role_user.role_id -> roles (relation métier inférée)",
+      "nombre": 4,
+      "nature": "anomalie"
+    },
+    {
+      "controle": "unite_valeurs.filiere_id -> filieres (relation métier inférée)",
+      "nombre": 4,
+      "nature": "anomalie"
+    },
+    {
+      "controle": "bourse_etudiants.etudiant_id -> etudiants (relation métier inférée)",
+      "nombre": 1,
+      "nature": "anomalie"
+    },
+    {
+      "controle": "bourse_etudiants.bourse_id -> bourses (relation métier inférée)",
+      "nombre": 1,
+      "nature": "anomalie"
+    },
+    {
+      "controle": "candidatures.filiere_id -> filieres (relation métier inférée)",
+      "nombre": 9,
+      "nature": "anomalie"
+    },
+    {
+      "controle": "filiere_group.filiere_id -> filieres (relation métier inférée)",
+      "nombre": 1,
+      "nature": "anomalie"
+    },
+    {
+      "controle": "releve_notes.etudiant_id -> etudiants (relation métier inférée)",
+      "nombre": 14,
+      "nature": "anomalie"
+    },
+    {
+      "controle": "etudiants doublons (matricule)",
+      "nombre": 0,
+      "nature": "doublon à qualifier"
+    },
+    {
+      "controle": "etudiants doublons (email)",
+      "nombre": 0,
+      "nature": "doublon à qualifier"
+    },
+    {
+      "controle": "users doublons (email)",
+      "nombre": 0,
+      "nature": "doublon à qualifier"
+    },
+    {
+      "controle": "notes doublons (evaluation_id, etudiant_id)",
+      "nombre": 0,
+      "nature": "doublon à qualifier"
+    },
+    {
+      "controle": "etudiant_group doublons (etudiant_id, annee_scolaire_id)",
+      "nombre": 0,
+      "nature": "doublon à qualifier"
+    },
+    {
+      "controle": "permission_role doublons (permission_id, role_id)",
+      "nombre": 17,
+      "nature": "doublon à qualifier"
+    },
+    {
+      "controle": "filiere_group doublons (filiere_id, group_id)",
+      "nombre": 0,
+      "nature": "doublon à qualifier"
+    },
+    {
+      "controle": "evaluation_room_students doublons (evaluation_room_id, etudiant_id)",
+      "nombre": 0,
+      "nature": "doublon à qualifier"
+    },
+    {
+      "controle": "user_unite_valeur doublons (user_id, unite_valeur_id, annee_scolaire_id)",
+      "nombre": 0,
+      "nature": "doublon à qualifier"
+    },
+    {
+      "controle": "etudiant_group.annee_scolaire_id divergent de groups",
+      "nombre": 2,
+      "nature": "anomalie"
+    },
+    {
+      "controle": "etudiant_group.niveau_id divergent de groups",
+      "nombre": 0,
+      "nature": "anomalie"
+    },
+    {
+      "controle": "notes.annee_scolaire_id divergent de evaluations",
+      "nombre": 0,
+      "nature": "anomalie"
+    },
+    {
+      "controle": "notes.unite_valeur_id divergent de evaluations",
+      "nombre": 0,
+      "nature": "anomalie"
+    },
+    {
+      "controle": "unite_valeurs.annee_scolaire_id divergent de unite_enseignements",
+      "nombre": 0,
+      "nature": "anomalie"
+    },
+    {
+      "controle": "unite_valeurs.periode_id divergent de unite_enseignements",
+      "nombre": 0,
+      "nature": "anomalie"
+    },
+    {
+      "controle": "unite_valeurs.filiere_id divergent de unite_enseignements",
+      "nombre": 0,
+      "nature": "anomalie"
+    },
+    {
+      "controle": "frais_etudiants.annee_scolaire_id divergent de frais_scolarites",
+      "nombre": 0,
+      "nature": "anomalie"
+    },
+    {
+      "controle": "echeances.frais_etudiant_id divergent de echeanciers",
+      "nombre": 0,
+      "nature": "anomalie"
+    },
+    {
+      "controle": "notes hors de [0,20]",
+      "nombre": 0,
+      "nature": "anomalie"
+    },
+    {
+      "controle": "paiements montant <= 0",
+      "nombre": 0,
+      "nature": "anomalie"
+    },
+    {
+      "controle": "paiements année absente",
+      "nombre": 0,
+      "nature": "anomalie"
+    },
+    {
+      "controle": "paiements référence absente",
+      "nombre": 0,
+      "nature": "information à compléter"
+    },
+    {
+      "controle": "paiements annulés avec motif/date/auteur incomplets",
+      "nombre": 0,
+      "nature": "anomalie"
+    },
+    {
+      "controle": "exam_sessions étudiant absent de etudiants (autre cible que la FK)",
+      "nombre": 0,
+      "nature": "ambiguïté identité"
+    },
+    {
+      "controle": "uv_weightings somme différente de 100",
+      "nombre": 0,
+      "nature": "règle à confirmer"
+    }
+  ]
+}

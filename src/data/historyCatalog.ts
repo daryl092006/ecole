@@ -1,0 +1,6 @@
+import { z } from 'zod';
+import catalog from './historyTables.json';
+import type { HistoryTable, HistoryDomain } from '@/types/history';
+export const HISTORY_TABLES: HistoryTable[] = z.array(z.object({ table: z.string(), title: z.string(), domain: z.enum(['students', 'academic', 'finance', 'staff', 'communication', 'system']), fields: z.record(z.string(), z.string()), columns: z.array(z.string()) })).parse(catalog);
+export const HISTORY_DOMAINS: Record<HistoryDomain, string> = { students: 'Étudiants et dossiers', academic: 'Pédagogie', finance: 'Finance', staff: 'Personnel', communication: 'Communication', system: 'Administration' };
+export const HISTORY_REFERENCES: Record<string, string> = { etudiant_id: 'etudiants', filiere_id: 'filieres', niveau_id: 'niveaux', group_id: 'groups', annee_scolaire_id: 'annee_scolaires', matiere_id: 'matieres', periode_id: 'periodes', unite_valeur_id: 'unite_valeurs', uv_id: 'unite_valeurs', user_id: 'users', created_by: 'users', annule_par: 'users', salle_id: 'salles', evaluation_id: 'evaluations', frais_etudiant_id: 'frais_etudiants', frais_scolarite_id: 'frais_scolarites', echeancier_id: 'echeanciers', question_id: 'exam_questions', part_id: 'exam_parts', emploi_du_temps_id: 'emploi_du_temps' };

@@ -1,0 +1,51 @@
+{
+  "project": "zmxapemyktxhppdxenzb",
+  "database": {
+    "migrations": 14,
+    "business_tables": 104,
+    "private_tables": 10,
+    "tables_without_rls": 0,
+    "roles": 14,
+    "permissions": 42,
+    "source_rows": 15566,
+    "diagnostics": 264,
+    "recovery_candidates": 3,
+    "accounts": 175,
+    "imported_students": 145,
+    "inactive_unlinked_accounts": 175,
+    "imported_legacy_role_grants": 176,
+    "exact_source_mappings": 682,
+    "identity_import_runs": 1,
+    "mapped_source_rows": 362,
+    "anonymousRpcDenied": true
+  },
+  "identity_import": {
+    "people": 175,
+    "accounts": 175,
+    "students": 145,
+    "role_grants": 176,
+    "mapped_sources": 362,
+    "accountsAuthActivated": 0,
+    "passwordsTransferred": 0,
+    "tokensTransferred": 0,
+    "sourceRoleAssignmentsUnresolved": 92,
+    "status": "IMPORTED_INACTIVE"
+  },
+  "storage": {
+    "verified": 143,
+    "backups": 4,
+    "historicalFiles": 139,
+    "sha256Verified": true,
+    "anonymousAccessDenied": true,
+    "checkedAt": "2026-10-14T14:16:27.549Z"
+  },
+  "transferred_source_bytes": 296131603,
+  "normalized_academic_finance_operations_complete": false,
+  "frontend_persistence_complete": false,
+  "pending": [
+    "Vérifier les adresses avant liaison à Supabase Auth",
+    "Résoudre les diagnostics de source qui ont une solution démontrable",
+    "Reprendre les données académiques, financières et opérationnelles compatibles avec les contraintes",
+    "Raccorder l’interface aux commandes persistantes par domaine"
+  ]
+}

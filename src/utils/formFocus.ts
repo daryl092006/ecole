@@ -7,7 +7,8 @@ export function focusForm(form: HTMLFormElement | null): void {
     ancestor = ancestor.parentElement;
   }
   requestAnimationFrame(() => {
-    form.scrollIntoView({ block: 'start', behavior: window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth' });
-    form.querySelector<HTMLElement>('input:not(:disabled), select:not(:disabled), textarea:not(:disabled)')?.focus({ preventScroll: true });
+    const activeForm = form.isConnected ? form : document.querySelector<HTMLFormElement>('#main-content > .work-page form');
+    activeForm?.scrollIntoView({ block: 'start', behavior: window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth' });
+    activeForm?.querySelector<HTMLElement>('input:not(:disabled), select:not(:disabled), textarea:not(:disabled)')?.focus({ preventScroll: true });
   });
 }

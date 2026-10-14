@@ -22,13 +22,30 @@ Use strict TypeScript and functional React components. Follow the existing style
 
 Run npm run test to verify critical mock service workflows with Node assertions and the installed TypeScript transpiler. No external test framework is required. For every change, run `npm run lint` and `npm run build`, then manually exercise affected roles, tabs, forms, and responsive layouts in the development server. If adding tests, colocate them as `*.test.ts` or `*.test.tsx`, add the runner and script to `package.json`, and document the command here.
 
+Run `npm run test:ui -- tests/ui/persistent-data.spec.ts` to verify authenticated data loading, reload, errors and role changes using isolated API fixtures at mobile and desktop widths.
+
+`npm run test` also runs the colocated exam service assertions in `src/services/examService.test.ts`. Run `ESCEN_UI_DEV=1 npm run test:ui -- tests/ui/exams.spec.ts` to verify paper results, online attempts, expiration, correction and publication at mobile and desktop widths.
+
+`npm run test` also runs `npm run test:db`: the SQL migrations are executed in local PostgreSQL through the development dependency PGlite, with assertions covering relationships, histories, financial allocations, workflows and denied access. `npm run test:legacy` checks the offline backup parser. Python 3 is required for the backup preparation tools. `npm run db:describe` regenerates the relational data dictionary. `npm run db:stage` loads prepared source rows into a new private local staging database under `.tmp/`; it never connects to Supabase and refuses to replace an existing database.
+
 ## Commit & Pull Request Guidelines
 
 Git history is unavailable in this working copy, so use concise, imperative commit subjects such as `Add finance export filters`. Keep commits focused. Pull requests should explain the user-facing change, identify affected modules and roles, list verification performed, and link relevant issues. Include before/after screenshots for visual changes and call out configuration, dependency, or data-shape changes explicitly.
 
 ## ESCEN Business Rules & Project Constraints
 
-### Phase actuelle : prototype front-end sans persistance
+### Phase actuelle : préparation autorisée de la base relationnelle
+
+Instruction explicite du 14 octobre 2026 : corriger les tables, attributs et relations, puis préparer Supabase. Les schémas PostgreSQL, nouvelles migrations, contrôles locaux et outils de reprise non destructifs sont désormais autorisés. Le projet `zmxapemyktxhppdxenzb` est créé et lié au dépôt par la CLI ; la connexion PostgreSQL distante est vérifiée. Les 21 migrations sont appliquées ; les 15 566 lignes source sont conservées dans le staging privé distant et les sauvegardes/fichiers sont transférés dans Storage privé. La reprise initiale des identités historiques crée des comptes inactifs sans liaison Auth ; la reprise des autres domaines reste à réaliser. L’interface charge désormais les identités réelles en lecture via les routes serveur authentifiées. Les données métier historiques sont consultables dans 49 collections via des RPC réservées au serveur authentifié (direction générale et Informaticien global). Les sources restent immuables et les anomalies signalées. Les actions sur les comptes, les informations civiles étudiantes, les CRUD des dossiers étudiants et du personnel ainsi que des référentiels sont persistants et audités ; la composition des sujets préparatoires est persistante et versionnée ; les autres workflows historiques restent en consultation, sans validation ou rattachement inventé. La migration 202610140015 synchronise les 42 permissions de l’Informaticien sans attribuer de rôle ni ouvrir la RLS.
+
+- Conserver les sauvegardes originales et l'ancienne migration académique ; ajouter les évolutions dans de nouveaux fichiers.
+- Le schéma cible est `escen`, avec provenance, quarantaines et audits dans `escen_private`. Les données locales de travail restent sous `.tmp/`, ignoré par Git.
+- Ne pas inventer les parents absents, règles institutionnelles ou équivalences entre identifiants de tables différentes. Isoler les anomalies et documenter leur résolution.
+- Les tables restent fermées par RLS jusqu'à l'implémentation et la validation des parcours d'accès réels. Le catalogue des rôles n'accorde aucun droit à un compte sans attribution explicite.
+
+### Phase initiale : prototype front-end sans persistance (historique)
+
+Les restrictions de cette section décrivent la phase précédente. Elles sont remplacées, pour la préparation de la base, par l'autorisation explicite ci-dessus ; elles restent le contexte de l'interface non encore branchée.
 
 Jusqu'à instruction explicite contraire, le projet doit rester un prototype fonctionnel exclusivement front-end. L'absence de persistance est volontaire et ne constitue pas un défaut à corriger pendant cette phase.
 
@@ -57,7 +74,7 @@ Ne pas développer sans instruction explicite : CRM, prospects, campagnes commer
 Les rôles ESCEN sont : Directeur Général, Directeur Général Adjoint, Directeur Académique, Logisticien académique, Enseignant, Surveillant, Responsable Administratif et Financier, Responsable marketing, Responsable des achats et de la logistique, Responsable du site, Informaticien, Étudiant, Délégué et Stagiaire.
 
 - Appliquer le principe du moindre privilège et contrôler les autorisations côté serveur, jamais uniquement dans l'interface.
-- Ne jamais considérer l'Informaticien comme un super-administrateur métier.
+- Instruction explicite : l’Informaticien possède tous les accès métier de la plateforme. Les validations et audits restent obligatoires.
 - Un Enseignant accède uniquement aux enseignements et groupes qui lui sont affectés.
 - Un Étudiant accède uniquement à ses propres données.
 - Un Délégué reste un Étudiant avec quelques permissions supplémentaires.

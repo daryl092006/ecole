@@ -1,3 +1,4 @@
+import ResponsiveTable from '@/components/ui/ResponsiveTable';
 import { Database, RefreshCw } from 'lucide-react';
 import { useState } from 'react';
 import type { SystemLog } from '@/types';
@@ -25,7 +26,7 @@ export default function SystemeModule({ currentSubTab, systemLogs, runBackup }: 
               <h2>Événements ({visibleLogs.length} / {systemLogs.length})</h2>
             </div>
             <label className="form-group">Rechercher un événement<input className="input" type="search" placeholder="Action, auteur ou dossier" value={search} onChange={event => setSearch(event.target.value)} /></label>
-            <div className="table-wrap"><table className="data-table"><thead><tr><th>Date et heure</th><th>Auteur / Rôle</th><th>Action</th><th>Détails</th></tr></thead><tbody>{visibleLogs.map((log, index) => <tr key={index}><td><time dateTime={log.date}>{new Date(log.date).toLocaleString('fr-FR')}</time></td><td>{log.user}</td><td><strong>{log.action}</strong></td><td><details><summary>Voir les valeurs et le motif</summary><pre className="audit-values">{log.details}</pre></details></td></tr>)}{!visibleLogs.length && <tr><td colSpan={4}>{systemLogs.length ? 'Aucun événement ne correspond à la recherche.' : 'Aucune activité enregistrée.'}</td></tr>}</tbody></table></div>
+            <div className="table-wrap"><ResponsiveTable className="data-table"><thead><tr><th>Date et heure</th><th>Auteur / Rôle</th><th>Action</th><th>Détails</th></tr></thead><tbody>{visibleLogs.map((log, index) => <tr key={index}><td><time dateTime={log.date}>{new Date(log.date).toLocaleString('fr-FR')}</time></td><td>{log.user}</td><td><strong>{log.action}</strong></td><td><details><summary>Voir les valeurs et le motif</summary><pre className="audit-values">{log.details}</pre></details></td></tr>)}{!visibleLogs.length && <tr><td colSpan={4}>{systemLogs.length ? 'Aucun événement ne correspond à la recherche.' : 'Aucune activité enregistrée.'}</td></tr>}</tbody></ResponsiveTable></div>
           </div>
         </div>
       )}

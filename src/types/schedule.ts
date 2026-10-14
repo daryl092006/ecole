@@ -15,6 +15,7 @@ export interface Session {
   startTime: string;
   endTime: string;
   status: 'Confirmé' | 'Déplacé' | 'Annulé';
+  candidateIds?: string[];
   attendance?: Record<string, 'Présent' | 'Absent' | 'Retard' | 'Absent justifié'>;
   reason?: string;
 }

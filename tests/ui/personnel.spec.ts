@@ -53,7 +53,7 @@ for (const width of [390, 1440]) {
     await page.getByRole('combobox', { name: 'Comparer avec', exact: true }).selectOption({ label: ROLES.DG });
     await page.getByRole('combobox', { name: 'Domaine', exact: true }).selectOption('finance');
     const cancellation = page.getByRole('row').filter({ hasText: 'Annuler les paiements avec motif' });
-    await expect(cancellation.getByRole('cell').nth(2)).toHaveText('Non attribué');
+    await expect(cancellation.getByRole('cell').nth(2)).toHaveText('Autorisé');
     await expect(cancellation.getByRole('cell').nth(3)).toHaveText('Autorisé');
     await captureWorkspace(page, 'personnel-matrice-finance');
     await page.getByRole('searchbox', { name: 'Rechercher une permission', exact: true }).fill('introuvable');

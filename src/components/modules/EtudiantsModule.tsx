@@ -1,7 +1,9 @@
+import ResponsiveTable from '@/components/ui/ResponsiveTable';
 import ActionPanel from '@/components/ui/ActionPanel';
 import Link from 'next/link';
 import { studentPath } from '@/constants/portalRoutes';
 import { useState } from 'react';
+import StudentCrudActions from './StudentCrudActions';
 import StudentProfilePanel from './StudentProfilePanel';
 import StudentFiltersPanel from './StudentFiltersPanel';
 import { EMPTY_STUDENT_FILTERS, filterRegisteredStudents } from '@/services/studentQueryService';
@@ -11,6 +13,7 @@ import type { Group, PermissionSchema, Student, RoleName } from '@/types';
 import { fmtMoney } from '@/hooks/useAppState';
 
 interface EtudiantsModuleProps {
+  persistent?: boolean;
   activeRole: RoleName;
   createStudent: (input: StudentInput) => void;
   perms: PermissionSchema;
@@ -22,7 +25,7 @@ interface EtudiantsModuleProps {
   assignStudentToGroup: (studentId: string, groupId: string) => { success: boolean; error?: string };
 }
 
-export default function EtudiantsModule({ activeRole, createStudent, perms, currentSubTab, students, groups, selectedStudent, setSelectedStudent, assignStudentToGroup }: EtudiantsModuleProps) {
+export default function EtudiantsModule({ persistent = false, activeRole, createStudent, perms, currentSubTab, students, groups, selectedStudent, setSelectedStudent, assignStudentToGroup }: EtudiantsModuleProps) {
   const [filters, setFilters] = useState(EMPTY_STUDENT_FILTERS);
   const filteredStudents = filterRegisteredStudents(students, filters, activeRole);
   const [studentToAssign, setStudentToAssign] = useState('');
@@ -41,11 +44,11 @@ export default function EtudiantsModule({ activeRole, createStudent, perms, curr
       {currentSubTab === 'stud_list' && (
         <div>
           <div className="module-header">
-            <h1>Liste des étudiants inscrits</h1>
+            <h1>Dossiers étudiants</h1>{persistent && <StudentCrudActions />}
           </div>
 
-          {perms.permissions.includes('student.group.assign') && <StudentRegistrationForm groups={groups} onCreate={createStudent} />}
-          {perms.permissions.includes('student.group.assign') && <ActionPanel label="Affecter un étudiant à un groupe">
+          {!persistent && perms.permissions.includes('student.group.assign') && <StudentRegistrationForm groups={groups} onCreate={createStudent} />}
+          {!persistent && perms.permissions.includes('student.group.assign') && <ActionPanel label="Affecter un étudiant à un groupe">
 
             {perms.permissions.includes('student.group.assign') ? <div className="guided-form">
               <div className="guided-field"><div className="form-group"><label className="form-label" htmlFor="assignment-student">Étudiant inscrit</label><select id="assignment-student" className="select-input" value={studentToAssign} onChange={event => { setStudentToAssign(event.target.value); setTargetGroup(''); setAssignmentMessage(''); }}><option value="">Sélectionner un étudiant</option>{students.map(student => <option key={student.matricule} value={student.matricule}>{student.firstname} {student.lastname} · {student.groupe}</option>)}</select></div></div>
@@ -61,7 +64,7 @@ export default function EtudiantsModule({ activeRole, createStudent, perms, curr
               <h2>Dossiers filtrés ({filteredStudents.length} / {students.length})</h2>
             </div>
             <div className="table-wrap">
-              <table className="data-table">
+              <ResponsiveTable className="data-table">
                 <thead>
                   <tr>
                     <th>Matricule</th>
@@ -86,13 +89,13 @@ export default function EtudiantsModule({ activeRole, createStudent, perms, curr
                         <div className="cell-sub">{s.niveau} · {s.groupe}</div>
                       </td>
                       {canViewFinance && <td>
-                        <div style={{ fontSize: '0.8rem' }}>
+                        {s.financials.available === false ? <span className="cell-sub">Historique financier à consulter</span> : <div style={{ fontSize: '0.8rem' }}>
                           <span style={{ color: 'var(--success)' }}>Payé: {fmtMoney(s.financials.paid)}</span><br />
                           <span style={{ color: 'var(--warning)' }}>Reste: {fmtMoney(s.financials.remaining)}</span>
-                        </div>
+                        </div>}
                       </td>}
                       {canViewFinance && <td>
-                        {s.bourse.active
+                        {s.financials.available === false ? <span className="cell-sub">À reprendre</span> : s.bourse.active
                           ? <span className="pill pill-purple">{s.bourse.percent}% – {s.bourse.type}</span>
                           : <span className="text-muted">Aucune</span>}
                       </td>}
@@ -106,7 +109,7 @@ export default function EtudiantsModule({ activeRole, createStudent, perms, curr
                   ))}
                   {filteredStudents.length === 0 && <tr><td colSpan={canViewFinance ? 7 : 5}>{students.length ? 'Aucun étudiant ne correspond aux filtres.' : 'Aucun dossier étudiant créé.'}</td></tr>}
                 </tbody>
-              </table>
+              </ResponsiveTable>
             </div>
           </div>
         </div>

@@ -109,3 +109,7 @@ export function planSession(input: ScheduleInput, context: ScheduleContext): Sch
     },
   };
 }
+
+export function getSessionCandidateIds(session: Session, students: Student[]): string[] {
+  return session.candidateIds ?? students.filter(student => student.groupId === session.groupId).map(student => student.matricule);
+}

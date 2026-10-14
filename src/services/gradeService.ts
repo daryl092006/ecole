@@ -24,10 +24,12 @@ export function transitionGradeWorkflow(
   target: GradeWorkflowStatus,
   context: TransitionContext
 ): Evaluation {
+  if (evaluation.examCancelled) throw new Error('Les notes d’une épreuve annulée ne peuvent pas avancer dans le workflow.');
   if (context.role === ROLES.ENS && (!context.teacherId || context.teacherId !== context.actor)) throw new Error('Enseignement non affecté à cet enseignant.');
   const permission = target === 'SOUMISES' || (target === 'SAISIES' && evaluation.status === 'BROUILLON') ? 'grade.submit' : target === 'VALIDEES' ? 'grade.approve' : target === 'PUBLIEES' ? 'grade.publish' : 'grade.review';
   if (!hasPermission(context.role, permission)) throw new Error('Transition non autorisée pour ce rôle.');
-  if (target === 'SOUMISES' && (!evaluation.grades.length || evaluation.grades.some(grade => grade.value === null))) throw new Error('Saisissez toutes les notes avant la soumission.');
+  if (target === 'SOUMISES' && evaluation.grades.some(grade => grade.absent)) throw new Error('Le traitement des absences doit être défini avant soumission.');
+  if (target === 'SOUMISES' && (!evaluation.grades.length || evaluation.grades.some(grade => grade.value === null || !Number.isFinite(grade.value) || grade.value < 0 || grade.value > 20))) throw new Error('Saisissez toutes les notes entre 0 et 20 avant la soumission.');
   if (!ALLOWED_TRANSITIONS[evaluation.status]?.includes(target)) {
     throw new Error(`Transition de notes interdite : ${evaluation.status} → ${target}.`);
   }
@@ -44,6 +46,10 @@ export function transitionGradeWorkflow(
 
 export function enterGrade(evaluation: Evaluation, gradeIndex: number, value: number | null, role: RoleName, teacherId: string, actorId: string): Evaluation {
   if (role === ROLES.ENS && (!teacherId || teacherId !== actorId)) throw new Error('Enseignement non affecté à cet enseignant.');
+  if (evaluation.examCancelled) throw new Error('Épreuve annulée.');
+  if (evaluation.examMode === 'EN_LIGNE') throw new Error('Corrigez les copies depuis le module Examens.');
+  if (evaluation.examEndAt && Date.now() < Date.parse(evaluation.examEndAt)) throw new Error('La saisie ouvre après la fin de l’épreuve.');
+  if (evaluation.grades[gradeIndex]?.absent) throw new Error('Modifiez le constat d’absence depuis les résultats papier.');
   if (!hasPermission(role, 'grade.enter')) throw new Error('Saisie non autorisée.');
   if (!Number.isInteger(gradeIndex) || !evaluation.grades[gradeIndex]) throw new Error('Étudiant absent de l’évaluation.');
   if (!['BROUILLON', 'SAISIES'].includes(evaluation.status)) throw new Error('Les notes ne sont modifiables que pendant la saisie.');

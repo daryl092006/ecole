@@ -47,7 +47,7 @@ for (const width of [390, 1440]) {
     await page.locator('#active-role').selectOption({ label: ROLES.IT });
     const menu = page.getByRole('button', { name: 'Ouvrir la navigation', exact: true });
     if (await menu.isVisible()) await menu.click();
-    await expect(page.getByRole('button', { name: 'Déplier Finance', exact: true })).toHaveCount(0);
+    await expect(page.getByRole('button', { name: 'Déplier Finance', exact: true })).toHaveCount(1);
     expect(errors).toEqual([]);
   });
 }

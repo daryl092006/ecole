@@ -1,10 +1,26 @@
 # Statut fonctionnel ESCEN
 
-Mise à jour : 13 octobre 2026.
+Mise à jour : 14 octobre 2026.
 
 ## Phase actuelle
 
-Front-end fonctionnel en mémoire, conformément à la demande de terminer d’abord l’interface. Aucun serveur de données ni système de connexion réel n’est intégré. Les données et pièces jointes sont perdues au rafraîchissement. L’interface ne doit pas être présentée comme une application de production avec sauvegarde.
+La [réorganisation pédagogique](ORGANISATION_PEDAGOGIE.md) sépare les contrôles continus, examens, rattrapages, sujets et notes. Les formulaires et détails de gestion utilisent une page centrale. Les références ne sont plus présentées deux fois après reprise. La composition des épreuves (parties, questions, QCM, barème, corrigé, aperçu et impression) enregistre des versions dans Supabase. La migration 21 est appliquée. Les sujets préparatoires restent en brouillon ; ils n’ouvrent pas automatiquement une session. Validation : lint, build, 31 groupes PostgreSQL, 18 tests navigateur et contrôle distant.
+
+Les [CRUD persistants](CRUD_PERSISTANTS.md) sont branchés pour les étudiants, le personnel, dix référentiels académiques, l’inventaire et les fournisseurs. La migration 20 est appliquée. Les référentiels historiques peuvent être repris avec provenance avant modification, sans altérer les originaux. Les CRUD incluent des validations serveur, un contrôle de concurrence et un archivage motivé. Les anciens workflows de démonstration ne peuvent plus annoncer une écriture réelle via `runWorkflow`. Validation : lint, build, 30 groupes PostgreSQL, 14 tests navigateur et contrôle distant. Les autres workflows persistants restent à porter comme détaillé dans le document lié.
+
+## Historique des étapes précédentes
+
+Refonte de l’espace de gestion : navigation regroupée, accueil avec données réelles, annuaires séparés (145 comptes étudiants, 28 comptes du personnel). Les comptes `admin@test.com` et `support@neostart.tech` sont retirés des annuaires, leurs accès Auth bloqués et leurs attributions clôturées ; les traces historiques sont conservées. La consultation historique couvre 49 collections et 12 526 lignes métier. Les anomalies sont visibles, sans création de parents manquants. Les 18 migrations sont appliquées, la RLS reste fermée et les RPC réservées au serveur. Les modifications de comptes et des informations civiles sont persistantes ; les archives métier restent en lecture. Les 120 pièces retrouvées peuvent être téléchargées par lien privé temporaire ; 24 références sans fichier transféré sont signalées.
+
+Validation de la refonte : lint, build de production isolé, tests métier, 26 groupes de contrôles PostgreSQL, préparateur de sauvegarde et cinq tests navigateur à 390 et 1440 px réussis. Captures de l’accueil mobile et ordinateur relues. Contrôles distants : deux comptes retirés et interdits d’accès, 173 comptes visibles, source de 15 566 lignes conservée, téléchargement privé vérifié et accès anonymes refusés.
+
+Correction du chargement : les écrans chargent désormais les identités réelles via `/api/campus` après authentification. La migration additive `202610140015_it_full_platform_access.sql` synchronise les 42 permissions de l’Informaticien. Vérification distante : 145 dossiers étudiants et 175 comptes visibles pour ce rôle ; aucune inscription encore reprise. Les erreurs de chargement sont visibles et réessayables. Les données financières absentes ne sont pas présentées comme des soldes nuls. Les commandes métier restent en mémoire ; la reprise des autres domaines et leur projection complète restent à réaliser.
+
+Validation de cette correction : `npm run lint`, `npm run test`, build de production isolé sous `.tmp/next-data-reviewed`, quatre tests `tests/ui/persistent-data.spec.ts` réussis à 390 et 1440 px (dossiers, annuaire, rechargement, finances inconnues, erreurs et changement de rôle). Captures `.tmp/interface/390/donnees-etudiants.png` et `.tmp/interface/1440/donnees-annuaire.png` ; capture mobile relue. `npm run db:verify:remote` confirme 15 migrations, les 42 permissions IT, les 15 566 lignes source conservées et le refus anonyme. Le filtre serveur et la projection ont été vérifiés sur les données réelles : 145 étudiants, 175 comptes, aucun identifiant Auth exposé.
+
+Base et Supabase autorisés le 14 octobre : le [modèle relationnel corrigé](BASE_RELATIONNELLE_ESCEN.md) est déployé sur Espace Etudiant ESCEN (`zmxapemyktxhppdxenzb`), avec 14 migrations appliquées, 104 tables métier et 10 tables privées. Les 15 566 lignes source restent en staging distant ; 175 profils, 145 étudiants et 176 attributions de rôles ont été repris avec comptes désactivés, 264 diagnostics et 3 suggestions restent à traiter. Les quatre sauvegardes et 139 fichiers historiques sont transférés dans Storage privé. Les routes serveur exigent un compte Auth réellement attribué et filtrent les lectures. Aucun compte historique n’est lié à Auth ; le POST générique refuse les écritures jusqu’au portage des commandes. Les services de l'interface restent en mémoire : les limites front-end ci-dessous s'appliquent encore. La normalisation des dossiers historiques, les décisions métier manquantes et le branchement des écrans restent à terminer.
+
+Les écrans utilisent encore l’état de démonstration en mémoire ; leur connexion à Supabase et leur persistance par domaine restent à réaliser. La plateforme ne doit pas être présentée comme opérationnelle avec des comptes de production.
 
 Le guide interactif, son bouton d’aide, les surbrillances d’onboarding et les emojis décoratifs sont retirés. Les étapes visibles dans les notes décrivent uniquement leur état de traitement.
 
@@ -25,7 +41,7 @@ Les modules et sous-écrans ont des routes Next.js distinctes, avec dossiers ét
 | Parcours annuel | Réinscription dans une nouvelle année, conservation des inscriptions, groupes historiques, notes, décisions et créances. Abandon, suspension, reprise et diplôme avec motif. |
 | Planning | Salles, capacité, conflits enseignant/groupe/salle, périodes bloquées, déplacement et annulation tracés, filtre par date et export CSV. |
 | Présences | Appel par séance, enregistrement partagé, audit et restriction aux affectations de l’enseignant ou du surveillant. |
-| Examens | Planification de première session et de rattrapage, compte surveillant actif, conflits, séance liée et annulation cohérente ; feuille d’émargement imprimable. |
+| Examens | Épreuves papier et en ligne, première session et rattrapage ; conflits, surveillant, émargement et résultats papier. Sujet autorisé par le DA, tentative personnelle chronométrée, remise et expiration, correction puis circuit de publication des notes. |
 | Notes | Brouillon → saisie → soumission → contrôle → validation → publication. Notes de devoir, examen, projet, TP et rattrapage. Consultation personnelle après publication, export CSV et historique. |
 | Réclamations | Dépôt personnel, analyse, transmission, avis enseignant, décision académique, correction avec ancienne/nouvelle valeur et clôture. Formulaires intégrés à la page. |
 | Jury | Pondération contrôle continu/examen, seuils, compensation et budget semestriel configurables. Calcul des moyennes et crédits ; décision du DA avec motif et instantané des règles et notes. Export CSV et relevé imprimable. |
@@ -67,6 +83,8 @@ Ces choix sont des règles de fonctionnement de l’interface à confronter au r
 11. Marketing : diffuser une annonce ciblée. Informaticien : traiter un ticket et exporter le journal.
 
 ## Vérifications et limites
+
+Vérification du 14 octobre 2026 : `npm run test`, `npm run lint` et `ESCEN_BUILD_DIR=.next-verification npm run build` passent. Les 27 tests navigateur passent sur ce build de production (3 minutes), dont les examens papier et en ligne à 390 et 1440 px, les pages autorisées des 14 rôles à 320, 640, 768, 1024 et 1440 px, ainsi que les parcours métier complets. Résultats : `.tmp/ui-results/` ; captures : `.tmp/interface/`. La capture de correction des examens à 390 px a été relue. Chrome a nécessité une exécution hors du sandbox ; l’échec initial au lancement du navigateur ne concernait pas l’application.
 
 La [revue page par page](REVUE_PAGE_PAR_PAGE.md) détaille désormais les 35 pages du portail, les autres routes, les actions exercées et les limites. Lint, build et tests métier passent ; les 22 tests navigateur passent sur le build de production, avec relevés individuels à 390 et 1440 px et contrôle des 14 rôles aux quatre tailles. La nouvelle [revue du portail de référence](reference-escen/REVUE_PERSONNEL_2026-10-13.md) documente les 53 pages consultées et les améliorations Personnel : annuaire, changement de rôle audité, catalogue et matrice reposant sur les droits réellement appliqués dans les services mock. Résultats après la revue de lisibilité : `.tmp/clarity-final-results/` (22 réussites, 5,5 minutes).
 

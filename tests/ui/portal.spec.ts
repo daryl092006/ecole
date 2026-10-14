@@ -245,7 +245,7 @@ test(`Parcours métier complet et formulaires à ${width}px`, async ({ page }) =
     await role(page, ROLES.LOG);
     await navigate(page, 'Étudiants', 'Réinscriptions & Abandons');
     await openActionPanel(page, 'Mettre à jour le parcours');
-    await page.getByLabel('Étudiant').selectOption({ index: 1 });
+    await page.getByRole('combobox', { name: 'Étudiant', exact: true }).selectOption({ index: 1 });
     await page.getByLabel('Opération').selectOption('Suspendu');
     await page.getByLabel('Motif', { exact: true }).fill('Suspension temporaire autorisée.');
     await page.getByRole('button', { name: 'Confirmer l’opération', exact: true }).click();
@@ -256,7 +256,7 @@ test(`Parcours métier complet et formulaires à ${width}px`, async ({ page }) =
     await role(page, ROLES.LOG);
     await navigate(page, 'Étudiants', 'Réinscriptions & Abandons');
     await openActionPanel(page, 'Mettre à jour le parcours');
-    await page.getByLabel('Étudiant').selectOption({ index: 1 });
+    await page.getByRole('combobox', { name: 'Étudiant', exact: true }).selectOption({ index: 1 });
     await page.getByLabel('Opération').selectOption('Inscrit');
     await page.getByLabel('Motif', { exact: true }).fill('Reprise autorisée après suspension.');
     await page.getByRole('button', { name: 'Confirmer l’opération', exact: true }).click();

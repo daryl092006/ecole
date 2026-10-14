@@ -12,7 +12,7 @@ async function follow(page: Page, href: string) {
   await expect(page.locator('#application-navigation .subnav-item.active')).toHaveAttribute('href', href);
 }
 
-for (const width of [320, 768, 1024, 1440]) {
+for (const width of [320, 640, 768, 1024, 1440]) {
   test(`Toutes les pages et tous les rôles à ${width}px`, async ({ page }) => {
     test.setTimeout(180000);
     await page.setViewportSize({ width, height: 900 });

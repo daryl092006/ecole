@@ -1,6 +1,10 @@
 'use client';
 
-import { useState, useCallback, useMemo } from 'react';
+import { getVisibleExamRecords, getVisibleExamAuditLogs, examTime } from '@/services/examQueryService';
+import { useExamClock } from '@/hooks/useExamClock';
+
+import { useState, useCallback, useMemo, useEffect } from 'react';
+import { useHistoricalCampus } from '@/hooks/useHistoricalCampus';
 import { useCampusRecords } from '@/hooks/useCampusRecords';
 import { executeCampusWorkflow, deriveEnrollments, type CampusAction } from '@/services/campusWorkflowService';
 import { emptyDataset, type Dataset } from '@/types/application';
@@ -23,13 +27,16 @@ import type { RoleName } from '@/types/permissions';
 import { usePathname, useRouter } from 'next/navigation';
 import { getAvailableTabs, postLoginPath, isRouteAllowed } from '@/permissions/navigation';
 import { getPortalRoute, MODULE_PATHS, HOME_PATH, studentPath } from '@/constants/portalRoutes';
-import { authenticateDemoSession, type DemoSession } from '@/services/demoSessionService';
 import { ROLE_ACCESS, ROLE_PERMISSIONS } from '@/permissions/rolePermissions';
 import { hasPermission } from '@/permissions/rolePermissions';
-import { planSession } from '@/services/scheduleService';
+import { planSession, getSessionCandidateIds } from '@/services/scheduleService';
 import { correctPublishedGrade, createEvaluation, enterGrade, transitionGradeWorkflow } from '@/services/gradeService';
 import { transitionComplaint } from '@/services/complaintService';
 import { cancelLocalPayment, recordLocalPayment } from '@/services/financeService';
+import { getSupabaseBrowserClient } from '@/lib/supabase/client';
+import { loadAccountSession, loadRelationalCampus, saveStudentProfile } from '@/services/remoteCampusService';
+import { enrichHistoricalStudent } from '@/services/historyStudentService';
+import { projectRelationalCampus } from '@/services/relationalCampusAdapter';
 
 // ─── helpers ─────────────────────────────────────────────────────────────────
 
@@ -61,7 +68,11 @@ export function useAppState() {
   const router = useRouter();
   const pathname = usePathname();
   const route = getPortalRoute(pathname);
-  const [session, setSession] = useState<DemoSession | null>(null);
+  const [session, setSession] = useState<{
+    accountId: string; name: string; email: string; role: RoleName; availableRoles: RoleName[];
+    studentId: string | null; teacherId: string | null; matricule: string | null; mustChangePassword: boolean;
+  } | null>(null);
+  const [authReady, setAuthReady] = useState(false);
   const [hasLoggedOut, setHasLoggedOut] = useState(false);
   const references = useAcademicReferenceStore();
   const [campusRecords, setCampusRecords] = useCampusRecords();
@@ -71,6 +82,34 @@ export function useAppState() {
   const currentTab = route?.tab || Object.entries(MODULE_PATHS).find(([, path]) => path === pathname)?.[0] || 'espace';
   const currentSubTab = route?.section || '';
   const [searchQuery, setSearchQuery] = useState('');
+  const examNow = useExamClock((currentSubTab === 'acad_exams' || currentTab === 'espace')
+    && campusRecords.exams.some(exam => exam.status !== 'ANNULE' && Date.now() < examTime(exam, 'end')));
+
+  useEffect(() => {
+    let cancelled = false;
+    if (window.location.pathname === '/mot-de-passe-reinitialiser') { setAuthReady(true); return () => { cancelled = true; }; }
+    const restoreSession = async () => {
+      try {
+        const { data, error } = await getSupabaseBrowserClient().auth.getSession();
+        if (error) throw error;
+        if (data.session) {
+          const profile = await loadAccountSession();
+          if (!cancelled) {
+            setSession(profile);
+            setActiveRole(profile.role);
+            setDemoIdentity(profile.role === ROLES.STUD || profile.role === ROLES.DEL ? profile.matricule || '' : profile.role === ROLES.ENS ? profile.teacherId || '' : '');
+          }
+        }
+      } catch {
+        try { await getSupabaseBrowserClient().auth.signOut(); } catch { /* The unavailable session remains blocked by the server. */ }
+        if (!cancelled) setSession(null);
+      } finally {
+        if (!cancelled) setAuthReady(true);
+      }
+    };
+    void restoreSession();
+    return () => { cancelled = true; };
+  }, []);
 
   // Data state
   const [students, setStudents] = useState<Student[]>(initialStudents);
@@ -92,6 +131,7 @@ export function useAppState() {
   const [payments, setPayments] = useState(initialPayments);
   const [receipts, setReceipts] = useState(initialReceipts);
   const [paymentCancellations, setPaymentCancellations] = useState(initialPaymentCancellations);
+  const [announcements, setAnnouncements] = useState<Announcement[]>(initialAnnouncements);
 
   // UI state
   const [selectedStudent, setSelectedStudent] = useState<Student | null>(null);
@@ -103,6 +143,11 @@ export function useAppState() {
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>('VIREMENT');
   const [notifications, setNotifications] = useState<Array<{ id: number; text: string }>>([]);
   const [actionFeedback, setActionFeedback] = useState('');
+  const [campusRevision,setCampusRevision]=useState(0);
+  const [campusLoad, setCampusLoad] = useState<{ status: 'idle' | 'loading' | 'ready' | 'error'; error: string; students: number; users: number; enrollments: number }>({ status: 'idle', error: '', students: 0, users: 0, enrollments: 0 });
+  const [reloadCampusIndex, setReloadCampusIndex] = useState(0);
+  const reloadCampus = () => setReloadCampusIndex(index => index + 1);
+  const history = useHistoricalCampus(activeRole, session?.accountId, session?.mustChangePassword, reloadCampusIndex);
 
   const perms = ROLE_PERMISSIONS[activeRole];
   const baseAccess = ROLE_ACCESS[activeRole];
@@ -120,11 +165,16 @@ export function useAppState() {
     : access.scope.groupIds
       ? classes.filter(classItem => access.scope.groupIds?.includes(classItem.groupId))
       : classes;
-  const visibleSessions = !hasPermission(activeRole, 'schedule.view') ? [] : access.scope.sessionIds
+  const scopedSessions = !hasPermission(activeRole, 'schedule.view') ? [] : access.scope.sessionIds
     ? sessions.filter(session => access.scope.sessionIds?.includes(session.id))
     : access.scope.groupIds
       ? sessions.filter(session => access.scope.groupIds?.includes(session.groupId))
       : sessions;
+  const visibleSessions = access.scope.ownDataOnly ? scopedSessions.map(session => ({
+    ...session,
+    candidateIds: session.candidateIds?.filter(id => id === demoIdentity),
+    attendance: session.attendance ? Object.fromEntries(Object.entries(session.attendance).filter(([id]) => id === demoIdentity)) : undefined,
+  })) : scopedSessions;
   const visibleStudents = access.scope.studentId
     ? students.filter(student => student.matricule === access.scope.studentId)
     : access.scope.groupIds && access.scope.teacherId
@@ -143,7 +193,7 @@ export function useAppState() {
   const visiblePaymentIds = new Set(visiblePayments.map(payment => payment.id));
   const visibleReceipts = receipts.filter(receipt => visiblePaymentIds.has(receipt.paymentId));
   const visiblePaymentCancellations = paymentCancellations.filter(cancellation => visiblePaymentIds.has(cancellation.paymentId));
-  const scopedStudents = visibleStudents.map(student => hasPermission(activeRole, 'finance.view') || access.scope.ownDataOnly ? student : {
+  const scopedStudents = visibleStudents.map(student => history.catalog ? enrichHistoricalStudent(student, history.catalog) : student).map(student => hasPermission(activeRole, 'finance.view') || access.scope.ownDataOnly ? student : {
     ...student, financials: { expected: 0, paid: 0, remaining: 0, installments: [] }, bourse: { active: false, type: '', percent: 0, amount: 0 },
     history: student.history.filter(entry => !/financ|contrat|bourse|FCFA/i.test(entry.text)),
   });
@@ -156,6 +206,46 @@ export function useAppState() {
   }, [activeRole, demoIdentity]);
 
   const demoUsers = useDemoUsers(activeRole, logEvent, session?.email || activeRole);
+  const { setAcademicYears, setPrograms, setTracks, setLevels, setSemesters, setUnits, setSubjects, setTeachers, setAssignments, setGroups } = references;
+  const { setUsers } = demoUsers;
+  const hydrateCampus = useCallback((projection: ReturnType<typeof projectRelationalCampus>) => {
+    const { data, users } = projection;
+    setCampusRevision(projection.revision);
+    setAcademicYears(data.academicYears); setPrograms(data.programs); setTracks(data.tracks); setLevels(data.levels);
+    setSemesters(data.semesters); setUnits(data.units); setSubjects(data.subjects); setTeachers(data.teachers);
+    setAssignments(data.assignments); setGroups(data.groups); setUsers(users);
+    setStudents(data.students); setEvaluations(data.evaluations); setReclamations(data.reclamations);
+    setRooms(data.rooms); setSessions(data.sessions); setBlockedPeriods(data.blockedPeriods); setTickets(data.tickets);
+    setFees(data.fees); setPayments(data.payments); setReceipts(data.receipts); setPaymentCancellations(data.paymentCancellations);
+    setAnnouncements(data.announcements); setSystemLogs([]);
+    setCampusRecords({ settings: data.settings, enrollments: data.enrollments, juryDecisions: data.juryDecisions,
+      exams: data.exams, examPapers: data.examPapers, examAttempts: data.examAttempts, staff: data.staff,
+      purchases: data.purchases, assets: data.assets, documents: data.documents });
+    setSelectedStudent(null); setSelectedClassForGrades(null);
+  }, [setAcademicYears, setPrograms, setTracks, setLevels, setSemesters, setUnits, setSubjects, setTeachers, setAssignments, setGroups, setUsers, setCampusRecords]);
+
+  const accountId = session?.accountId;
+  const mustChangePassword = session?.mustChangePassword;
+  useEffect(() => {
+    const controller = new AbortController();
+    hydrateCampus(projectRelationalCampus({ revision: 0, tables: {} }));
+    if (!accountId || mustChangePassword) {
+      setCampusLoad({ status: 'idle', error: '', students: 0, users: 0, enrollments: 0 });
+      return () => controller.abort();
+    }
+    setCampusLoad({ status: 'loading', error: '', students: 0, users: 0, enrollments: 0 });
+    void loadRelationalCampus(activeRole, controller.signal).then(snapshot => {
+      if (controller.signal.aborted) return;
+      const projection = projectRelationalCampus(snapshot);
+      hydrateCampus(projection);
+      setCampusLoad({ status: 'ready', error: '', students: projection.data.students.length, users: projection.users.length, enrollments: projection.data.enrollments.length });
+    }).catch(error => {
+      if (controller.signal.aborted) return;
+      setCampusLoad({ status: 'error', error: error instanceof Error ? error.message : 'Chargement des dossiers impossible.', students: 0, users: 0, enrollments: 0 });
+    });
+    return () => controller.abort();
+  }, [accountId, mustChangePassword, activeRole, reloadCampusIndex, hydrateCampus]);
+
 
   const navigateTo = useCallback((tabId: string, subTabId?: string) => {
     const tab = getAvailableTabs(activeRole).find(item => item.id === tabId);
@@ -166,21 +256,29 @@ export function useAppState() {
   const handleTabChange = (tabId: string) => navigateTo(tabId);
   const setCurrentSubTab = (sectionId: string) => navigateTo(currentTab, sectionId);
   const handleRoleChange = (role: RoleName) => {
+    if (!session?.availableRoles.includes(role)) return;
     setActiveRole(role);
-    setDemoIdentity(''); setSearchQuery(''); setNotifications([]); setActionFeedback('');
+    setDemoIdentity(role === ROLES.STUD || role === ROLES.DEL ? session.matricule || '' : role === ROLES.ENS ? session.teacherId || '' : ''); setSearchQuery(''); setNotifications([]); setActionFeedback('');
     setPaymentStudent(''); setPaymentAmount(''); setPaymentMethod('VIREMENT');
     setNewEvalName(''); setNewEvalType('Devoir'); setSelectedStudent(null); setSelectedClassForGrades(null);
     if (route && !isRouteAllowed(pathname, role)) router.replace(HOME_PATH);
   };
-  const login = (email: string, password: string, requested?: string) => {
-    const account = authenticateDemoSession(email, password);
-    setSession(account); setHasLoggedOut(false); setActiveRole(account.role); setDemoIdentity('');
-    setSelectedStudent(null); setSelectedClassForGrades(null); setActionFeedback('');
-    setSystemLogs(previous => [{ date: new Date().toISOString(), user: account.email, action: 'Connexion de démonstration', details: account.role }, ...previous]);
-    router.replace(postLoginPath(requested, account.role));
+  const login = async (email: string, password: string, requested?: string) => {
+    const { data, error } = await getSupabaseBrowserClient().auth.signInWithPassword({ email: email.trim().toLowerCase(), password });
+    if (error || !data.session) throw new Error(error?.message === 'Email not confirmed' ? 'Adresse email à confirmer auprès de l’administration ESCEN.' : 'Adresse email ou mot de passe incorrect.');
+    try {
+      const profile = await loadAccountSession();
+      setSession(profile); setHasLoggedOut(false); setAuthReady(true); setActiveRole(profile.role);
+      setDemoIdentity(profile.role === ROLES.STUD || profile.role === ROLES.DEL ? profile.matricule || '' : profile.role === ROLES.ENS ? profile.teacherId || '' : '');
+      setSelectedStudent(null); setSelectedClassForGrades(null); setActionFeedback('');
+      router.replace(profile.mustChangePassword ? '/mot-de-passe-modifier' : postLoginPath(requested, profile.role));
+    } catch (error) {
+      await getSupabaseBrowserClient().auth.signOut();
+      throw error;
+    }
   };
-  const logout = () => {
-    logEvent('Déconnexion de démonstration', session?.email || '');
+  const logout = async () => {
+    await getSupabaseBrowserClient().auth.signOut();
     setSession(null); setHasLoggedOut(true); setDemoIdentity(''); setSelectedStudent(null); setSelectedClassForGrades(null);
     setSearchQuery(''); setNotifications([]); setActionFeedback(''); router.replace('/connexion');
   };
@@ -242,7 +340,7 @@ export function useAppState() {
     if (!hasPermission(activeRole, 'attendance.record') || !visibleSessions.some(item => item.id === sessionId)) throw new Error('Séance non autorisée.');
     const session = sessions.find(item => item.id === sessionId);
     if (!session || session.status === 'Annulé') throw new Error('Séance indisponible.');
-    const members = students.filter(item => item.groupId === session.groupId).map(item => item.matricule);
+    const members = getSessionCandidateIds(session, students);
     if (Object.keys(attendance).some(id => !members.includes(id)) || Object.values(attendance).some(value => !['Présent', 'Absent', 'Retard', 'Absent justifié'].includes(value))) throw new Error('Feuille de présence invalide.');
     setSessions(previous => previous.map(item => item.id === sessionId ? { ...item, attendance: { ...attendance } } : item));
     logEvent('Enregistrement présences', JSON.stringify({ entity: sessionId, oldValue: session.attendance, newValue: attendance }));
@@ -369,8 +467,9 @@ export function useAppState() {
     setStudents(previous => previous.map(item => item.groupId === groupId ? { ...item, groupe: updated.name } : item));
     logEvent('Renommage groupe', JSON.stringify({ entity: groupId, oldValue: group.name, newValue: updated.name }));
   };
-  const updateStudentProfile = (studentId: string, input: Pick<Student, 'firstname' | 'lastname' | 'email' | 'phone' | 'gender' | 'birthDate' | 'nationality' | 'address' | 'city' | 'country'>) => {
+  const updateStudentProfile = async (studentId: string, input: Pick<Student, 'firstname' | 'lastname' | 'email' | 'phone' | 'gender' | 'birthDate' | 'nationality' | 'address' | 'city' | 'country'>, expectedRevision?: number) => {
     if (!hasPermission(activeRole, 'student.update')) throw new Error('Modification du dossier non autorisée.');
+    if (session) { await saveStudentProfile(studentId, input, activeRole, expectedRevision ?? campusRevision); reloadCampus(); return; }
     if (!input.firstname.trim() || !input.lastname.trim()) throw new Error('Prénom et nom obligatoires.');
     if (input.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(input.email)) throw new Error('Email invalide.');
     if (input.phone && !/^(?:\+228[ -]?)?[0-9 -]{8,15}$/.test(input.phone)) throw new Error('Numéro de téléphone invalide.');
@@ -397,7 +496,6 @@ export function useAppState() {
     return { success: true };
   };
 
-  const [announcements, setAnnouncements] = useState<Announcement[]>(initialAnnouncements);
 
   const addReclamation = useCallback((studentMatricule: string, evaluationId: string, reason: string) => {
     const evaluation = evaluations.find(item => item.id === evaluationId && item.status === 'PUBLIEES');
@@ -444,34 +542,38 @@ export function useAppState() {
   }, [activeRole, logEvent]);
 
   const addAnnouncement = useCallback((title: string, content: string, audience: string, expiresOn = '') => {
-    const newAnn = createAnnouncement(title, content, audience, activeRole, announcements, expiresOn, session?.name || activeRole);
+    if (session) throw new Error('La diffusion des annonces en base n’est pas encore disponible. Aucune annonce n’a été enregistrée.');
+    const newAnn = createAnnouncement(title, content, audience, activeRole, announcements, expiresOn, activeRole);
     setAnnouncements(prev => [newAnn, ...prev]);
     logEvent('Publication Annonce', JSON.stringify({ entity: newAnn.id, oldValue: null, newValue: newAnn }));
     setNotifications(prev => [{ id: Date.now(), text: `Nouvelle annonce publiée : ${title}` }, ...prev]);
   }, [announcements, activeRole, logEvent, session]);
 
   const withdrawAnnouncement = (id: string, reason: string) => {
+    if (session) throw new Error('Le retrait des annonces en base n’est pas encore disponible. Aucune annonce n’a été modifiée.');
     const announcement = announcements.find(item => item.id === id);
     if (!announcement) throw new Error('Annonce introuvable.');
-    const updated = withdrawLocalAnnouncement(announcement, reason, activeRole, session?.name || activeRole);
+    const updated = withdrawLocalAnnouncement(announcement, reason, activeRole, activeRole);
     setAnnouncements(previous => previous.map(item => item.id === id ? updated : item));
     logEvent('Retrait Annonce', JSON.stringify({ entity: id, oldValue: announcement, newValue: updated, reason }));
   };
 
   const ticketAuthor = `${activeRole}:${demoIdentity || 'demo'}`;
   const openTicket = (title: string, description: string) => {
+    if (session) throw new Error('L’enregistrement des tickets en base n’est pas encore disponible. Aucune demande n’a été enregistrée.');
     const ticket = createSupportTicket(title, description, ticketAuthor, activeRole);
     setTickets(previous => [...previous, ticket]); logEvent('Ouverture support', ticket.id);
   };
   const changeTicket = (id: string, target: SupportTicket['status'], reason: string) => {
+    if (session) throw new Error('Le traitement des tickets en base n’est pas encore disponible. Aucune demande n’a été modifiée.');
     const ticket = tickets.find(item => item.id === id);
     if (!ticket) throw new Error('Ticket introuvable.');
-    const updated = transitionSupportTicket(ticket, target, reason, activeRole, session?.email || ticketAuthor);
+    const updated = transitionSupportTicket(ticket, target, reason, activeRole, ticketAuthor);
     setTickets(previous => previous.map(item => item.id === id ? updated : item)); logEvent('Traitement support', `${id}: ${ticket.status} → ${target}, ${reason}`);
   };
   const runBackup = () => {
     if (!hasPermission(activeRole, 'system.backup.manage')) return;
-    const blob = new Blob([JSON.stringify({ exportedAt: new Date().toISOString(), systemLogs }, null, 2)], { type: 'application/json' });
+    const blob = new Blob([JSON.stringify({ exportedAt: new Date().toISOString(), systemLogs: getVisibleExamAuditLogs(systemLogs, activeRole) }, null, 2)], { type: 'application/json' });
     const url = URL.createObjectURL(blob);
     const anchor = document.createElement('a');
     anchor.href = url; anchor.download = 'escen-journal.json'; anchor.click();
@@ -516,10 +618,11 @@ export function useAppState() {
     students, evaluations, reclamations, rooms, sessions, blockedPeriods, tickets, fees, payments, receipts, paymentCancellations, announcements,
   };
   const runWorkflow = (action: CampusAction, payload: unknown) => {
+    if (session) throw new Error('Utilisez le formulaire de gestion connecté à la base. Cette ancienne commande de démonstration ne peut pas enregistrer une opération réelle.');
     const result = executeCampusWorkflow(dataset, { role: activeRole, actor: demoIdentity || activeRole, users: demoUsers.users }, action, payload);
     const next = result.data;
-    setCampusRecords({ settings: next.settings, enrollments: next.enrollments, juryDecisions: next.juryDecisions, exams: next.exams, staff: next.staff, purchases: next.purchases, assets: next.assets, documents: next.documents });
-    setStudents(next.students); setSessions(next.sessions); setFees(next.fees); setPayments(next.payments); setReceipts(next.receipts); setPaymentCancellations(next.paymentCancellations);
+    setCampusRecords({ settings: next.settings, enrollments: next.enrollments, juryDecisions: next.juryDecisions, exams: next.exams, examPapers: next.examPapers, examAttempts: next.examAttempts, staff: next.staff, purchases: next.purchases, assets: next.assets, documents: next.documents });
+    setEvaluations(next.evaluations); setStudents(next.students); setSessions(next.sessions); setFees(next.fees); setPayments(next.payments); setReceipts(next.receipts); setPaymentCancellations(next.paymentCancellations);
     references.setGroups(next.groups);
     for (const event of result.audit) logEvent(action, JSON.stringify(event));
   };
@@ -532,9 +635,9 @@ export function useAppState() {
     ...((canAcademic || canFinance) ? { academicYears: dataset.academicYears, programs: dataset.programs, tracks: dataset.tracks, levels: dataset.levels, semesters: dataset.semesters, units: dataset.units, subjects: dataset.subjects, assignments: dataset.assignments, teachers: dataset.teachers } : { academicYears: dataset.academicYears }),
     settings: campusRecords.settings, students: scopedStudents, groups, evaluations: visibleEvaluations, sessions: visibleSessions, rooms, blockedPeriods, announcements: getVisibleAnnouncements(announcements, activeRole),
     payments: visiblePayments, receipts: visibleReceipts, paymentCancellations: visiblePaymentCancellations, fees: canFinance ? fees : [],
-    enrollments: deriveEnrollments(dataset).filter(item => enrollmentIds.has(item.studentId)).map(item => canFinance || ownData ? item : { ...item, financials: { expected: 0, paid: 0, remaining: 0, installments: [] } }),
+    enrollments: (campusLoad.status === 'ready' ? dataset.enrollments : deriveEnrollments(dataset)).filter(item => enrollmentIds.has(item.studentId)).map(item => canFinance || ownData ? item : { ...item, financials: { expected: 0, paid: 0, remaining: 0, installments: [] } }),
     juryDecisions: campusRecords.juryDecisions.filter(item => ownData ? item.studentId === demoIdentity : hasPermission(activeRole, 'grade.view') && activeRole !== ROLES.ENS),
-    exams: campusRecords.exams.filter(item => visibleSessions.some(session => session.id === item.id)),
+    ...getVisibleExamRecords(dataset, activeRole, demoIdentity, examNow),
     staff: hasPermission(activeRole, 'staff.view') ? campusRecords.staff : [],
     purchases: hasPermission(activeRole, 'purchase.view') ? campusRecords.purchases : [], assets: hasPermission(activeRole, 'asset.view') ? campusRecords.assets : [],
     documents: campusRecords.documents.filter(item => enrollmentIds.has(item.studentId) && (hasPermission(activeRole, 'student.view') || ownData)),
@@ -554,12 +657,12 @@ export function useAppState() {
 
   return {
     // Role
-    session, hasLoggedOut, login, logout, pathname, navigateToStudent, requestAccessHelp,
+    session, authReady, hasLoggedOut, campusLoad, campusRevision, history, reloadCampus, login, logout, pathname, navigateToStudent, requestAccessHelp,
     actionFeedback, clearActionFeedback: () => setActionFeedback(''),
-    campus: { data: campusData, runWorkflow, supervisors: [ROLES.DA, ROLES.LOG].includes(activeRole as typeof ROLES.DA) ? demoUsers.users.filter(item => item.role === ROLES.SURV && item.active).map(item => ({ id: item.id, name: item.name })) : [] },
-    identitySupervisors: demoUsers.users.filter(item => item.role === ROLES.SURV && item.active),
+    campus: { data: campusData, runWorkflow, supervisors: [ROLES.DA, ROLES.LOG, ROLES.IT].includes(activeRole as typeof ROLES.DA) ? demoUsers.users.filter(item => (item.roles?.includes(ROLES.SURV) || item.role === ROLES.SURV) && item.active).map(item => ({ id: item.id, name: item.name })) : [] },
+    identitySupervisors: demoUsers.users.filter(item => (item.roles?.includes(ROLES.SURV) || item.role === ROLES.SURV) && item.active),
     users: hasPermission(activeRole, 'user.manage') ? demoUsers.users : [], addUser: demoUsers.addUser, toggleUser: demoUsers.toggleUser, changeUserRole: demoUsers.changeUserRole,
-    activeRole, perms, availableTabs, handleRoleChange, references: uiReferences, demoIdentity, setDemoIdentity, identityStudents: students,
+    examNow, activeRole, perms, availableTabs, handleRoleChange, references: uiReferences, demoIdentity, setDemoIdentity, identityStudents: students,
     navigateTo,
     // Navigation
     currentTab, currentSubTab, handleTabChange, setCurrentSubTab,
@@ -568,7 +671,7 @@ export function useAppState() {
     // Data
     students: scopedStudents, setStudents, classes: visibleClasses,
     evaluations: visibleEvaluations, setEvaluations,
-    reclamations: visibleReclamations, systemLogs: hasPermission(activeRole, 'system.audit.view') ? systemLogs : [], announcements: visibleAnnouncements, notifications,
+    reclamations: visibleReclamations, systemLogs: getVisibleExamAuditLogs(systemLogs, activeRole), announcements: visibleAnnouncements, notifications,
     rooms, groups, sessions: visibleSessions, setSessions,
     // UI State
     selectedStudent: selectedStudent ? scopedStudents.find(item => item.matricule === selectedStudent.matricule) ?? null : null, setSelectedStudent,

@@ -3,12 +3,24 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "next dev",
-    "build": "next build",
-    "start": "next start",
+    "dev": "ESCEN_BUILD_DIR=${ESCEN_BUILD_DIR:-.tmp/next-development} next dev",
+    "build": "ESCEN_BUILD_DIR=${ESCEN_BUILD_DIR:-.next-verification} next build",
+    "start": "ESCEN_BUILD_DIR=${ESCEN_BUILD_DIR:-.next-verification} next start",
     "lint": "eslint",
-    "test": "node scripts/verify-workflows.cjs",
-    "test:ui": "playwright test"
+    "test": "node scripts/verify-workflows.cjs && npm run test:db",
+    "test:db": "node scripts/verify-database.mjs",
+    "test:legacy": "python3 scripts/prepare-legacy-data.py --self-test",
+    "db:describe": "node scripts/describe-database.mjs",
+    "db:stage": "node scripts/load-legacy-stage.mjs",
+    "test:ui": "playwright test",
+    "db:stage:remote": "node scripts/push-legacy-stage.mjs",
+    "db:verify:remote": "node scripts/verify-remote-database.mjs",
+    "storage:upload:legacy": "node scripts/upload-legacy-archives.mjs",
+    "storage:verify:legacy": "node scripts/verify-remote-storage.mjs",
+    "db:prepare-identities": "node scripts/prepare-legacy-identities.mjs",
+    "db:import-identities": "node scripts/import-legacy-identities.mjs",
+    "db:verify-identities-local": "node scripts/import-legacy-identities.mjs --verify-local",
+    "auth:restore-legacy": "node scripts/restore-legacy-auth-users.mjs"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.112.3",
@@ -16,9 +28,11 @@
     "next": "^15.5.27",
     "react": "19.2.8",
     "react-dom": "19.2.8",
+    "server-only": "^0.0.1",
     "zod": "^4.6.7"
   },
   "devDependencies": {
+    "@electric-sql/pglite": "^0.5.9",
     "@playwright/test": "^1.64.0",
     "@types/node": "^22.20.5",
     "@types/react": "^19",

@@ -19,7 +19,7 @@ export function roleScopeDescription(role: RoleName): string {
   if (role === ROLES.ENS) return 'Uniquement ses enseignements et les groupes qui lui sont affectés.';
   if (role === ROLES.SURV) return 'Uniquement les séances dont il assure la surveillance.';
   if (role === ROLES.STUD || role === ROLES.DEL) return 'Uniquement ses propres données et les séances de ses groupes.';
-  if (role === ROLES.IT) return 'Annuaire, administration technique et support ; aucune note ni opération financière.';
+  if (role === ROLES.IT) return 'Tout l’établissement : tous les modules et actions, avec validations et audit.';
   if (role === ROLES.STG) return 'Aucune permission métier automatique.';
   return 'Périmètre de l’établissement, limité aux actions attribuées à ce rôle.';
 }
@@ -34,8 +34,9 @@ export function getPermissionCatalog(actor: RoleName) {
   }));
 }
 
-export function getRolePermissionSummary(role: RoleName, actor: RoleName) {
+export function getRolePermissionSummary(role: RoleName | null, actor: RoleName) {
   const domains = getPermissionCatalog(actor);
+  if (role === null) return { role, description: 'Aucun rôle attribué.', scope: 'Aucun accès métier attribué à ce compte.', count: 0, domains: domains.map(domain => ({ ...domain, permissions: domain.permissions.map(permission => ({ ...permission, granted: false })) })) };
   const access = ROLE_ACCESS[role];
   if (!access) throw new Error('Rôle inconnu.');
   return {
