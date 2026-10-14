@@ -12,7 +12,9 @@ La session porte sur l’audit du portail https://escendemo.neostart.tech/ le 4 
 - [Couverture des écrans et parcours](reference-escen/COUVERTURE-FONCTIONNELLE.md).
 - [Statut de notre prototype](FUNCTIONAL_STATUS.md).
 
-Les identifiants de connexion, cookies et secrets ne sont pas importés dans le dépôt. Aucune connexion au portail ni opération distante n’a été effectuée pendant cette reprise.
+Les identifiants de connexion, cookies et secrets ne sont pas importés dans le dépôt. Aucune connexion au portail ni opération distante n’a été effectuée pendant la reprise initiale.
+
+Nouvelle consultation du 13 octobre 2026, demandée explicitement : les 53 pages du menu ont été parcourues en lecture avec le compte fourni, puis les écrans Personnel, rôles et permissions examinés en détail. Le [rapport actuel](reference-escen/REVUE_PERSONNEL_2026-10-13.md) distingue observations, limites et améliorations implémentées dans notre prototype.
 
 ## Application à notre périmètre
 
@@ -20,7 +22,7 @@ Les identifiants de connexion, cookies et secrets ne sont pas importés dans le 
 |---|---|---|
 | Recherche et filtres étudiants ; options parfois vides | Options issues des dossiers autorisés ; recherche tolérante aux accents, niveau, filière, groupe ; décompte filtré/total | Implémenté |
 | Lien « étudiants en retard » mal raccordé au filtre | Bouton qui sélectionne effectivement EN_RETARD et réinitialise les autres filtres | Implémenté |
-| Périmètre du statut « Soldé » ambigu | Libellé Scolarité soldée ; frais d’inscription explicitement exclus | Implémenté |
+| Périmètre du statut « Soldé » ambigu | Revue du 13 octobre : libellé Contrat soldé ; les frais d’inscription et annexes sont inclus lorsqu’ils figurent dans le contrat net | Corrigé après extension des contrats |
 | Échéances doublonnées et allocation incertaine | Conserver le contrat déjà validé ; classer les échéances par date et calculer le montant échu restant à partir des versements cumulés | Implémenté |
 | Exports financiers par périmètre | Export CSV des résultats filtrés par niveau, filière et situation ; contrôle de permission dans le service | Implémenté |
 | Décomptes et pourcentages sans dénominateur | Décompte filtré/total ; périmètre et formule du recouvrement visibles ; intitulé Dossiers étudiants | Implémenté |
@@ -40,7 +42,7 @@ Les identifiants de connexion, cookies et secrets ne sont pas importés dans le 
 Le rapport utilise le solde actuel et les paiements actuellement enregistrés. La date choisie classe les échéances comme échues ou futures ; elle ne produit pas un historique des soldes à une ancienne date.
 
 - Sans contrat : montant de scolarité attendu nul.
-- Scolarité soldée : contrat existant et montant restant nul.
+- Contrat soldé : contrat existant et montant restant nul, y compris les frais d’inscription et annexes prévus au contrat, après bourse.
 - En retard : au moins une échéance antérieure à la date choisie reste partiellement impayée.
 - À jour : contrat non soldé, sans montant échu impayé.
 

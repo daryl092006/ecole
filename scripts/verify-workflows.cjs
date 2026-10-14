@@ -14,6 +14,11 @@ require.extensions['.ts'] = (module, filename) => {
   module._compile(result.outputText, filename);
 };
 const { ROLES } = require('../src/types/permissions.ts');
+const { createDemoUser, toggleDemoUser } = require('../src/services/userService.ts');
+assert.throws(() => createDemoUser('Direction adjointe', 'adjoint@example.test', ROLES.DGA, [], ROLES.IT));
+const deputy = createDemoUser('Direction adjointe', 'adjoint@example.test', ROLES.DGA, [], ROLES.DG);
+assert.throws(() => toggleDemoUser(deputy, 'Désactivation motivée', ROLES.IT));
+assert.equal(toggleDemoUser(deputy, 'Désactivation motivée', ROLES.DG).active, false);
 const { createRegisteredStudent } = require('../src/services/studentService.ts');
 const { createFinancialContract } = require('../src/services/financeContractService.ts');
 const { recordLocalPayment, cancelLocalPayment } = require('../src/services/financeService.ts');
@@ -79,6 +84,11 @@ assert.throws(() => createTeachingUnit(unitRefs, { ...unit, code: 'UE2' }, ROLES
 assert.equal(planSession({ ...sessionInput, date: '2026-02-30' }, context).success, false);
 assert.throws(() => recordLocalPayment(contract.student, contract.fee, 1, 'INVALID', ROLES.RAF, 3));
 const ticket = createSupportTicket('Incident', 'Description', 'S1', ROLES.STUD);
+assert.throws(() => createSupportTicket('x'.repeat(161), 'Description', 'S1', ROLES.STUD));
+assert.throws(() => createSupportTicket('Incident', 'x'.repeat(5001), 'S1', ROLES.STUD));
+assert.throws(() => transitionSupportTicket(ticket, 'EN_COURS', ' x ', ROLES.IT));
+assert.throws(() => transitionSupportTicket(ticket, 'EN_COURS', 'x'.repeat(1001), ROLES.IT));
+assert.equal(transitionSupportTicket(ticket, 'EN_COURS', 'Analyse', ROLES.IT, 'support@escen.demo').history.at(-1).actor, 'support@escen.demo');
 assert.throws(() => transitionSupportTicket(ticket, 'EN_COURS', 'Analyse', ROLES.STUD));
 const inProgress = transitionSupportTicket(ticket, 'EN_COURS', 'Analyse', ROLES.IT);
 assert.equal(transitionSupportTicket(inProgress, 'RESOLU', 'Corrigé', ROLES.IT).history.length, 3);
@@ -107,7 +117,7 @@ console.log('Vérification réussie : filtres autorisés, recouvrement et export
 
 assert.throws(() => getFinancialReport([student], ROLES.RAF, '2026-02-30'));
 
-const { createAnnouncement } = require('../src/services/communicationService.ts');
+const { createAnnouncement, getVisibleAnnouncements, withdrawAnnouncement, announcementStatus } = require('../src/services/communicationService.ts');
 assert.throws(() => createAnnouncement('Titre', 'Message', 'Tous', ROLES.IT, []));
 assert.throws(() => createAnnouncement('   ', 'Message', 'Tous', ROLES.MKT, []));
 assert.throws(() => createAnnouncement('Titre', '   ', 'Tous', ROLES.MKT, []));
@@ -117,7 +127,31 @@ const announcement = createAnnouncement('  Information  ', '  Message  ', 'Tous'
 assert.equal(announcement.title, 'Information');
 assert.equal(announcement.content, 'Message');
 assert.notEqual(createAnnouncement('Autre', 'Message', 'Tous', ROLES.MKT, [announcement]).id, announcement.id);
+const expiry = '2099-12-31';
+const targeted = createAnnouncement('Étudiants', 'Message privé', 'Étudiants', ROLES.MKT, [announcement], expiry, 'Communication ESCEN');
+assert.equal(targeted.history[0].actor, 'Communication ESCEN');
+assert.deepEqual(getVisibleAnnouncements([targeted], ROLES.STUD, expiry), [targeted]);
+assert.deepEqual(getVisibleAnnouncements([targeted], ROLES.DEL, expiry), [targeted]);
+assert.deepEqual(getVisibleAnnouncements([targeted], ROLES.ENS, expiry), []);
+assert.deepEqual(getVisibleAnnouncements([targeted], ROLES.STG, expiry), []);
+assert.equal(announcementStatus(targeted, '2100-01-01'), 'Expirée');
+assert.deepEqual(getVisibleAnnouncements([targeted], ROLES.STUD, '2100-01-01'), []);
+assert.deepEqual(getVisibleAnnouncements([targeted], ROLES.MKT, '2100-01-01'), [targeted]);
+assert.throws(() => createAnnouncement('Titre', 'Message', 'Tous', ROLES.MKT, [], '2099-02-30'));
+assert.throws(() => createAnnouncement('Titre', 'Message', 'Tous', ROLES.MKT, [], '2000-01-01'));
+assert.throws(() => withdrawAnnouncement(targeted, 'Retrait justifié', ROLES.IT));
+assert.throws(() => withdrawAnnouncement(targeted, ' ', ROLES.MKT));
+const withdrawn = withdrawAnnouncement(targeted, 'Information remplacée', ROLES.MKT, 'Communication ESCEN');
+assert.equal(announcementStatus(withdrawn), 'Retirée');
+assert.equal(targeted.withdrawnAt, undefined);
+assert.equal(withdrawn.content, targeted.content);
+assert.equal(withdrawn.history.length, 2);
+assert.equal(withdrawn.history[1].reason, 'Information remplacée');
+assert.deepEqual(getVisibleAnnouncements([withdrawn], ROLES.STUD), []);
+assert.deepEqual(getVisibleAnnouncements([withdrawn], ROLES.MKT), [withdrawn]);
+assert.throws(() => withdrawAnnouncement(withdrawn, 'Second retrait', ROLES.MKT));
 console.log('Vérification réussie : publication, permissions et validation des annonces.');
 
 require('./verify-campus.cjs');
 require('./verify-routing.cjs');
+require('./verify-access.cjs');

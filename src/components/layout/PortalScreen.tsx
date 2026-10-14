@@ -37,7 +37,7 @@ export default function PortalScreen({ tab, section }: { tab: string; section: s
           {currentTab === 'academique' && currentSubTab === 'acad_jury' && <JuryPanel />}
           {currentTab === 'academique' && currentSubTab === 'acad_settings' && <AcademicSettingsPanel />}
           {currentTab === 'personnel' && currentSubTab === 'staff_records' && <StaffRecordsPanel />}
-          {currentTab === 'personnel' && currentSubTab === 'staff_teachers' && <div><div className="module-header"><h1>Enseignants et affectations</h1><p>Annuaire pédagogique et enseignements affectés par année et semestre.</p></div><div className="card card-full mb-2"><TeachersPanel role={activeRole} /></div><div className="card card-full"><h2>Affectations pédagogiques</h2><PlanningReferenceForms mode="assignment" role={activeRole} /></div></div>}
+          {currentTab === 'personnel' && currentSubTab === 'staff_teachers' && <div><div className="module-header"><h1>Enseignants et affectations</h1></div><div className="card card-full mb-2"><TeachersPanel role={activeRole} /></div><div className="card card-full"><h2>Affectations pédagogiques</h2><PlanningReferenceForms mode="assignment" role={activeRole} /></div></div>}
           {currentTab === 'logistique' && <LogisticsModule />}
 
           {/* ═══ MON ESPACE ═══ */}
@@ -129,12 +129,13 @@ export default function PortalScreen({ tab, section }: { tab: string; section: s
           )}
 
           {/* ═══ PERSONNEL ═══ */}
-          {currentTab === 'personnel' && currentSubTab === 'staff_list' && (
+          {currentTab === 'personnel' && ['staff_list', 'staff_roles', 'staff_permissions'].includes(currentSubTab) && (
             <RoleGuard tab="personnel" perms={perms}>
               <PersonnelModule
                 users={state.users}
                 addUser={state.addUser}
                 toggleUser={state.toggleUser}
+                changeUserRole={state.changeUserRole}
                 currentSubTab={currentSubTab}
               />
             </RoleGuard>
@@ -146,6 +147,7 @@ export default function PortalScreen({ tab, section }: { tab: string; section: s
               <MarketingModule
                 announcements={state.announcements}
                 addAnnouncement={state.addAnnouncement}
+                withdrawAnnouncement={state.withdrawAnnouncement}
                 currentSubTab={currentSubTab}
               />
             </RoleGuard>

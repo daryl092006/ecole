@@ -6,7 +6,7 @@ import type { Announcement } from '@/types/communication';
 import type { SupportTicket } from '@/types/support';
 export interface Enrollment {
   id: string; studentId: string; academicYearId: string; groupId: string; level: string; program: string;
-  status: 'INSCRIT' | 'ABANDON' | 'DIPLOME'; date: string; reason: string;
+  status: 'INSCRIT' | 'REINSCRIT' | 'SUSPENDU' | 'ABANDON' | 'DIPLOME'; date: string; reason: string;
   financials: Student['financials'];
 }
 export interface InstitutionSettings {

@@ -4,7 +4,7 @@ import { useState, useCallback, useMemo } from 'react';
 import { useCampusRecords } from '@/hooks/useCampusRecords';
 import { executeCampusWorkflow, deriveEnrollments, type CampusAction } from '@/services/campusWorkflowService';
 import { emptyDataset, type Dataset } from '@/types/application';
-import { createAnnouncement } from '@/services/communicationService';
+import { createAnnouncement, getVisibleAnnouncements, withdrawAnnouncement as withdrawLocalAnnouncement } from '@/services/communicationService';
 import { useDemoUsers } from '@/hooks/useDemoUsers';
 import { createSupportTicket, transitionSupportTicket } from '@/services/supportService';
 import type { SupportTicket } from '@/types/support';
@@ -155,7 +155,7 @@ export function useAppState() {
     setSystemLogs(prev => [{ date: now, user: activeRole + (demoIdentity ? ':' + demoIdentity : ':demo'), action, details }, ...prev]);
   }, [activeRole, demoIdentity]);
 
-  const demoUsers = useDemoUsers(activeRole, logEvent);
+  const demoUsers = useDemoUsers(activeRole, logEvent, session?.email || activeRole);
 
   const navigateTo = useCallback((tabId: string, subTabId?: string) => {
     const tab = getAvailableTabs(activeRole).find(item => item.id === tabId);
@@ -370,7 +370,7 @@ export function useAppState() {
     logEvent('Renommage groupe', JSON.stringify({ entity: groupId, oldValue: group.name, newValue: updated.name }));
   };
   const updateStudentProfile = (studentId: string, input: Pick<Student, 'firstname' | 'lastname' | 'email' | 'phone' | 'gender' | 'birthDate' | 'nationality' | 'address' | 'city' | 'country'>) => {
-    if (!hasPermission(activeRole, 'student.group.assign')) throw new Error('Modification du dossier non autorisée.');
+    if (!hasPermission(activeRole, 'student.update')) throw new Error('Modification du dossier non autorisée.');
     if (!input.firstname.trim() || !input.lastname.trim()) throw new Error('Prénom et nom obligatoires.');
     if (input.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(input.email)) throw new Error('Email invalide.');
     if (input.phone && !/^(?:\+228[ -]?)?[0-9 -]{8,15}$/.test(input.phone)) throw new Error('Numéro de téléphone invalide.');
@@ -443,12 +443,20 @@ export function useAppState() {
     logEvent('Mise à jour statut Étudiant', `${matricule} -> ${newStatus} (${reason ?? 'Aucun motif'})`);
   }, [activeRole, logEvent]);
 
-  const addAnnouncement = useCallback((title: string, content: string, audience: string) => {
-    const newAnn = createAnnouncement(title, content, audience, activeRole, announcements);
+  const addAnnouncement = useCallback((title: string, content: string, audience: string, expiresOn = '') => {
+    const newAnn = createAnnouncement(title, content, audience, activeRole, announcements, expiresOn, session?.name || activeRole);
     setAnnouncements(prev => [newAnn, ...prev]);
-    logEvent('Publication Annonce', `Titre: "${title}" | Audience: ${audience}`);
+    logEvent('Publication Annonce', JSON.stringify({ entity: newAnn.id, oldValue: null, newValue: newAnn }));
     setNotifications(prev => [{ id: Date.now(), text: `Nouvelle annonce publiée : ${title}` }, ...prev]);
-  }, [announcements, activeRole, logEvent]);
+  }, [announcements, activeRole, logEvent, session]);
+
+  const withdrawAnnouncement = (id: string, reason: string) => {
+    const announcement = announcements.find(item => item.id === id);
+    if (!announcement) throw new Error('Annonce introuvable.');
+    const updated = withdrawLocalAnnouncement(announcement, reason, activeRole, session?.name || activeRole);
+    setAnnouncements(previous => previous.map(item => item.id === id ? updated : item));
+    logEvent('Retrait Annonce', JSON.stringify({ entity: id, oldValue: announcement, newValue: updated, reason }));
+  };
 
   const ticketAuthor = `${activeRole}:${demoIdentity || 'demo'}`;
   const openTicket = (title: string, description: string) => {
@@ -458,7 +466,7 @@ export function useAppState() {
   const changeTicket = (id: string, target: SupportTicket['status'], reason: string) => {
     const ticket = tickets.find(item => item.id === id);
     if (!ticket) throw new Error('Ticket introuvable.');
-    const updated = transitionSupportTicket(ticket, target, reason, activeRole);
+    const updated = transitionSupportTicket(ticket, target, reason, activeRole, session?.email || ticketAuthor);
     setTickets(previous => previous.map(item => item.id === id ? updated : item)); logEvent('Traitement support', `${id}: ${ticket.status} → ${target}, ${reason}`);
   };
   const runBackup = () => {
@@ -518,21 +526,20 @@ export function useAppState() {
   const ownData = !!access.scope.ownDataOnly;
   const canFinance = hasPermission(activeRole, 'finance.view');
   const canAcademic = hasPermission(activeRole, 'academic.view') || hasPermission(activeRole, 'grade.view');
-  const canOperations = [ROLES.DG, ROLES.DGA, ROLES.RAF, ROLES.ACHATS, ROLES.SITE].includes(activeRole as typeof ROLES.DG);
   const enrollmentIds = new Set(visibleStudents.map(item => item.matricule));
   const campusData: Dataset = {
     ...emptyDataset(),
     ...((canAcademic || canFinance) ? { academicYears: dataset.academicYears, programs: dataset.programs, tracks: dataset.tracks, levels: dataset.levels, semesters: dataset.semesters, units: dataset.units, subjects: dataset.subjects, assignments: dataset.assignments, teachers: dataset.teachers } : { academicYears: dataset.academicYears }),
-    settings: campusRecords.settings, students: scopedStudents, groups, evaluations: visibleEvaluations, sessions: visibleSessions, rooms, blockedPeriods, announcements,
+    settings: campusRecords.settings, students: scopedStudents, groups, evaluations: visibleEvaluations, sessions: visibleSessions, rooms, blockedPeriods, announcements: getVisibleAnnouncements(announcements, activeRole),
     payments: visiblePayments, receipts: visibleReceipts, paymentCancellations: visiblePaymentCancellations, fees: canFinance ? fees : [],
     enrollments: deriveEnrollments(dataset).filter(item => enrollmentIds.has(item.studentId)).map(item => canFinance || ownData ? item : { ...item, financials: { expected: 0, paid: 0, remaining: 0, installments: [] } }),
     juryDecisions: campusRecords.juryDecisions.filter(item => ownData ? item.studentId === demoIdentity : hasPermission(activeRole, 'grade.view') && activeRole !== ROLES.ENS),
     exams: campusRecords.exams.filter(item => visibleSessions.some(session => session.id === item.id)),
-    staff: [ROLES.DG, ROLES.DGA, ROLES.RAF, ROLES.IT].includes(activeRole as typeof ROLES.DG) ? campusRecords.staff : [],
-    purchases: canOperations ? campusRecords.purchases : [], assets: canOperations ? campusRecords.assets : [],
+    staff: hasPermission(activeRole, 'staff.view') ? campusRecords.staff : [],
+    purchases: hasPermission(activeRole, 'purchase.view') ? campusRecords.purchases : [], assets: hasPermission(activeRole, 'asset.view') ? campusRecords.assets : [],
     documents: campusRecords.documents.filter(item => enrollmentIds.has(item.studentId) && (hasPermission(activeRole, 'student.view') || ownData)),
   };
-  const visibleAnnouncements = announcements.filter(item => hasPermission(activeRole, 'communication.manage') || item.audience === 'Tous' || item.audience === activeRole || (ownData && item.audience === 'Étudiants') || (activeRole === ROLES.ENS && item.audience === 'Enseignants'));
+  const visibleAnnouncements = getVisibleAnnouncements(announcements, activeRole);
   const uiReferences = { ...references, setPrograms: (update: Parameters<typeof references.setPrograms>[0]) => {
     if (!hasPermission(activeRole, 'academic.structure.manage')) throw new Error('Modification des filières non autorisée.');
     const next = typeof update === 'function' ? update(references.programs) : update;
@@ -551,7 +558,7 @@ export function useAppState() {
     actionFeedback, clearActionFeedback: () => setActionFeedback(''),
     campus: { data: campusData, runWorkflow, supervisors: [ROLES.DA, ROLES.LOG].includes(activeRole as typeof ROLES.DA) ? demoUsers.users.filter(item => item.role === ROLES.SURV && item.active).map(item => ({ id: item.id, name: item.name })) : [] },
     identitySupervisors: demoUsers.users.filter(item => item.role === ROLES.SURV && item.active),
-    users: hasPermission(activeRole, 'user.manage') ? demoUsers.users : [], addUser: demoUsers.addUser, toggleUser: demoUsers.toggleUser,
+    users: hasPermission(activeRole, 'user.manage') ? demoUsers.users : [], addUser: demoUsers.addUser, toggleUser: demoUsers.toggleUser, changeUserRole: demoUsers.changeUserRole,
     activeRole, perms, availableTabs, handleRoleChange, references: uiReferences, demoIdentity, setDemoIdentity, identityStudents: students,
     navigateTo,
     // Navigation
@@ -561,7 +568,7 @@ export function useAppState() {
     // Data
     students: scopedStudents, setStudents, classes: visibleClasses,
     evaluations: visibleEvaluations, setEvaluations,
-    reclamations: visibleReclamations, systemLogs: hasPermission(activeRole, 'system.audit.view') ? systemLogs : [], announcements: visibleAnnouncements, setAnnouncements, notifications,
+    reclamations: visibleReclamations, systemLogs: hasPermission(activeRole, 'system.audit.view') ? systemLogs : [], announcements: visibleAnnouncements, notifications,
     rooms, groups, sessions: visibleSessions, setSessions,
     // UI State
     selectedStudent: selectedStudent ? scopedStudents.find(item => item.matricule === selectedStudent.matricule) ?? null : null, setSelectedStudent,
@@ -576,7 +583,7 @@ export function useAppState() {
     checkConflictsAndAddSession, addRoom, addBlockedPeriod, blockedPeriods, recordAttendance,
     addEvaluation, submitGrades, changeGradeStatus, updateGrade,
     createContract, recordPayment, cancelPayment, runBackup, transitionReclamation, assignStudentToGroup,
-    addReclamation, updateStudentStatus, addAnnouncement, createStudent, updateStudentProfile, renameGroup,
+    addReclamation, updateStudentStatus, addAnnouncement, withdrawAnnouncement, createStudent, updateStudentProfile, renameGroup,
     tickets: hasPermission(activeRole, 'system.support.manage') ? tickets : tickets.filter(item => item.author === ticketAuthor), openTicket, changeTicket,
     logEvent,
   };

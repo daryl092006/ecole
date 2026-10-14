@@ -8,8 +8,8 @@ export default function StudentFiltersPanel({ students, filters, onChange, role 
   const programs = [...new Set(students.map(item => item.filiere))].sort();
   const levels = [...new Set(students.map(item => item.niveau))].sort();
   const groups = students.filter(item => (!filters.program || item.filiere === filters.program) && (!filters.level || item.niveau === filters.level));
-  return <div className="card card-full mb-2"><div className="form-row">
-    <label className="form-group">Recherche<input className="input" value={filters.search} onChange={event => onChange({ ...filters, search: event.target.value })} placeholder="Nom, matricule, email…" /></label>
+  return <div className="card card-full mb-2"><div className="form-row filter-grid">
+    <label className="form-group">Recherche<input className="input" type="search" value={filters.search} onChange={event => onChange({ ...filters, search: event.target.value })} placeholder="Nom, matricule, email…" /></label>
     <label className="form-group">Niveau<select className="select-input" value={filters.level} onChange={event => onChange({ ...filters, level: event.target.value, groupId: '' })}><option value="">Tous les niveaux</option>{levels.map(item => <option key={item}>{item}</option>)}</select></label>
     <label className="form-group">Filière<select className="select-input" value={filters.program} onChange={event => onChange({ ...filters, program: event.target.value, groupId: '' })}><option value="">Toutes les filières</option>{programs.map(item => <option key={item}>{item}</option>)}</select></label>
     <label className="form-group">Groupe<select className="select-input" value={filters.groupId} onChange={event => onChange({ ...filters, groupId: event.target.value })}><option value="">Tous les groupes</option>{[...new Map(groups.map(item => [item.groupId, item.groupe])).entries()].map(([id, name]) => <option key={id} value={id}>{name}</option>)}</select></label>

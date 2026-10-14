@@ -1,6 +1,6 @@
 import { test, expect, type Page } from '@playwright/test';
 import { ROLES } from '../../src/types/permissions';
-import { getAvailableTabs } from '../../src/permissions/navigation';
+import { getAvailableTabs, isRouteAllowed } from '../../src/permissions/navigation';
 import { DEMO_ACCOUNTS, DEMO_PASSWORD } from '../../src/services/demoSessionService';
 import { captureWorkspace } from './helpers';
 
@@ -49,7 +49,10 @@ for (const width of [320, 768, 1024, 1440]) {
       }
     }
     for (const role of Object.values(ROLES)) {
+      const previousPath = new URL(page.url()).pathname;
       await page.locator('#active-role').selectOption({ label: role });
+      if (!isRouteAllowed(previousPath, role)) await expect(page).toHaveURL('http://127.0.0.1:3105/mon-espace');
+      await expect(page.locator('.role-scope-banner strong')).toHaveText(role);
       for (const tab of getAvailableTabs(role)) {
         await follow(page, tab.href);
         for (const section of tab.subTabs || []) {
@@ -82,7 +85,7 @@ test('Le menu mobile se ferme au clavier et conserve le focus', async ({ page })
   const close = drawer.getByRole('button', { name: 'Fermer le menu' });
   await expect(close).toBeFocused();
   await page.keyboard.press('Shift+Tab');
-  await expect(drawer.getByRole('link').last()).toBeFocused();
+  await expect(drawer.locator('a[href], button:not(:disabled)').last()).toBeFocused();
   await page.keyboard.press('Tab');
   await expect(close).toBeFocused();
   await page.keyboard.press('Escape');

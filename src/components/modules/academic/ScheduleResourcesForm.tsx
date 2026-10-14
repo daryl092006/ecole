@@ -1,3 +1,4 @@
+import ActionPanel from '@/components/ui/ActionPanel';
 import FormFeedback from '@/components/ui/FormFeedback';
 import { useFeedback } from '@/hooks/useFeedback';
 import { useState } from 'react';
@@ -7,7 +8,7 @@ export default function ScheduleResourcesForm({ rooms, periods, onRoom, onPeriod
   const [code, setCode] = useState(''); const [name, setName] = useState(''); const [capacity, setCapacity] = useState('');
   const [label, setLabel] = useState(''); const [start, setStart] = useState(''); const [end, setEnd] = useState(''); const [feedback, setFeedback, feedbackError] = useFeedback();
   const run = (action: () => void) => { try { action(); setFeedback('Enregistrement effectué.'); } catch (error) { setFeedback(error instanceof Error ? error.message : 'Opération impossible.', true); } };
-  return <div className="card card-full mb-2"><div className="card-header"><h2>Salles et périodes bloquées</h2></div>
+  return <ActionPanel label={`Salles (${rooms.length}) et périodes bloquées (${periods.length})`}>
     <form className="form-row mb-2" onSubmit={event => { event.preventDefault(); run(() => { onRoom({ code: code.trim(), name: name.trim(), capacity: Number(capacity), building: '', status: 'Disponible' }); setCode(''); setName(''); setCapacity(''); }); }}>
       <label>Code salle<input className="input" required value={code} onChange={event => setCode(event.target.value)} /></label>
       <label>Nom salle<input className="input" required value={name} onChange={event => setName(event.target.value)} /></label>
@@ -23,5 +24,5 @@ export default function ScheduleResourcesForm({ rooms, periods, onRoom, onPeriod
     <FormFeedback message={feedback} error={feedbackError} />
     <p>{rooms.map(room => `${room.name} (${room.capacity} places)`).join(' · ') || 'Aucune salle.'}</p>
     {periods.map(period => <p key={period.id}>{period.label} : {period.startDate} · {period.endDate}</p>)}
-  </div>;
+  </ActionPanel>;
 }

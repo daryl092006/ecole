@@ -22,13 +22,19 @@ function reconcile(installments: Installment[], paid: number): Installment[] {
     return { ...item, status: allocated === item.amount ? 'Payée' : allocated > 0 ? 'Partiellement payée' : item.dueDate < new Date().toISOString().slice(0, 10) ? 'En retard' : 'A venir' }; });
 }
 export function enrollmentFor(student: Student): Enrollment {
-  return { id: `${student.matricule}:${student.academicYearId}`, studentId: student.matricule, academicYearId: student.academicYearId, groupId: student.groupId, level: student.niveau, program: student.filiere, status: student.status === 'Abandonné' ? 'ABANDON' : student.status === 'Diplômé' ? 'DIPLOME' : 'INSCRIT', date: student.history[0]?.date || new Date().toISOString(), reason: 'Inscription académique', financials: student.financials };
+  return { id: `${student.matricule}:${student.academicYearId}`, studentId: student.matricule, academicYearId: student.academicYearId, groupId: student.groupId, level: student.niveau, program: student.filiere, status: enrollmentStatus(student), date: student.history[0]?.date || new Date().toISOString(), reason: 'Inscription académique', financials: student.financials };
+}
+function enrollmentStatus(student: Student): Enrollment['status'] {
+  if (student.status === 'Abandonné') return 'ABANDON';
+  if (student.status === 'Diplômé') return 'DIPLOME';
+  if (student.status === 'Suspendu') return 'SUSPENDU';
+  return student.status === 'Réinscrit' ? 'REINSCRIT' : 'INSCRIT';
 }
 export function deriveEnrollments(data: Dataset): Enrollment[] {
   const records = [...data.enrollments];
   for (const student of data.students) {
     const index = records.findIndex(item => item.studentId === student.matricule && item.academicYearId === student.academicYearId);
-    if (index < 0) records.push(enrollmentFor(student)); else records[index] = { ...records[index], groupId: student.groupId, financials: student.financials };
+    if (index < 0) records.push(enrollmentFor(student)); else records[index] = { ...records[index], groupId: student.groupId, financials: student.financials, status: enrollmentStatus(student) };
   }
   return records;
 }
@@ -54,7 +60,7 @@ export function executeCampusWorkflow(source: Dataset, context: WorkflowContext,
   const saveStudent = (updated: Student, motif: string) => {
     save('students', updated, updated.matricule, motif);
     const record = data.enrollments.find(item => item.studentId === updated.matricule && item.academicYearId === updated.academicYearId);
-    if (record) save('enrollments', { ...record, financials: updated.financials, status: updated.status === 'Abandonné' ? 'ABANDON' : updated.status === 'Diplômé' ? 'DIPLOME' : 'INSCRIT' }, record.id, motif);
+    if (record) save('enrollments', { ...record, financials: updated.financials, status: enrollmentStatus(updated) }, record.id, motif);
   };
   switch (action) {
     case 'student.document.add': {
@@ -191,22 +197,22 @@ export function executeCampusWorkflow(source: Dataset, context: WorkflowContext,
       save('sessions', { ...session, roomCode: values.roomCode, date: values.date, startTime: values.startTime, endTime: values.endTime, status: values.status, reason: values.reason }, session.id, values.reason); break;
     }
     case 'staff.save': {
-      permit(role === ROLES.DG || role === ROLES.RAF);
+      permit(hasPermission(role, 'staff.manage'));
       const values = z.object({ id, name: id, email: z.union([z.email(), z.literal('')]), phone: text, position: id, contract: z.enum(['PERMANENT', 'VACATAIRE', 'STAGIAIRE']), startDate: date, active: z.boolean() }).parse(payload);
       save('staff', values, values.id); break;
     }
     case 'asset.save': {
-      permit(role === ROLES.ACHATS || role === ROLES.SITE);
+      permit(hasPermission(role, 'asset.manage'));
       const values = z.object({ id, name: id, location: id, quantity: z.number().int().min(1).max(100000), status: z.enum(['DISPONIBLE', 'MAINTENANCE', 'HORS_SERVICE']) }).parse(payload); save('assets', values, values.id); break;
     }
     case 'purchase.create': {
-      permit(role === ROLES.ACHATS);
+      permit(hasPermission(role, 'purchase.create'));
       const values = z.object({ label: id, supplier: id, amount: money.positive(), date, reason: text }).parse(payload); const purchaseId = createMockId('ACHAT'); save('purchases', { ...values, id: purchaseId, status: 'DEMANDE' }, purchaseId); break;
     }
     case 'purchase.transition': {
       const values = z.object({ purchaseId: id, status: z.enum(['APPROUVE', 'REFUSE', 'RECU']), reason }).parse(payload); const item = data.purchases.find(item => item.id === values.purchaseId); assert(item, 'Achat introuvable.');
-      if (values.status === 'RECU') { permit(role === ROLES.ACHATS); assert(item.status === 'APPROUVE', 'Seul un achat approuvé peut être réceptionné.'); }
-      else { permit(role === ROLES.DG || role === ROLES.RAF); assert(item.status === 'DEMANDE', 'Cette demande a déjà reçu une décision.'); }
+      if (values.status === 'RECU') { permit(hasPermission(role, 'purchase.receive')); assert(item.status === 'APPROUVE', 'Seul un achat approuvé peut être réceptionné.'); }
+      else { permit(hasPermission(role, 'purchase.approve')); assert(item.status === 'DEMANDE', 'Cette demande a déjà reçu une décision.'); }
       save('purchases', { ...item, status: values.status, reason: values.reason }, item.id, values.reason); break;
     }
   }

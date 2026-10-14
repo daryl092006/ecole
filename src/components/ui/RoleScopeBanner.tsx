@@ -18,12 +18,12 @@ function describeScope(role: RoleName) {
 export default function RoleScopeBanner({ role }: RoleScopeBannerProps) {
   const access = ROLE_ACCESS[role];
   return (
-    <div className="role-scope-banner">
-      <ShieldCheck size={18} />
+    <details className="role-scope-banner">
+      <summary><ShieldCheck size={14} /><span>Périmètre d’accès</span></summary>
       <div>
         <strong>{role}</strong>
         <span>{access.description} · {describeScope(role)}</span>
       </div>
-    </div>
+    </details>
   );
 }

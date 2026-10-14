@@ -84,7 +84,7 @@ export default function AcademicYearsPanel({ academicYears, actorRole, onChange 
 
   return <>
     <div className="card-header">
-      <div><h2>Années scolaires</h2><div className="cell-sub">Création indépendante avec dates, statut et historique local.</div></div>
+      <div><h2>Années scolaires</h2></div>
     </div>
     <form ref={formRef} className="academic-year-form" onSubmit={submit} noValidate>
       <div className="form-group">

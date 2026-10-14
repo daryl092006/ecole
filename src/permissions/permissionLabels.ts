@@ -15,6 +15,10 @@ export const PERMISSION_LABELS: Record<Permission, string> = {
   'student.group.assign': 'Créer les dossiers et affecter les groupes', 'student.card.print': 'Éditer les cartes et certificats',
   'student.lifecycle.manage': 'Gérer les réinscriptions et statuts', 'communication.view': 'Consulter les annonces',
   'communication.manage': 'Diffuser les annonces', 'user.manage': 'Gérer les utilisateurs',
+  'staff.view': 'Consulter les dossiers du personnel', 'staff.manage': 'Gérer les dossiers du personnel',
+  'purchase.view': 'Consulter les demandes d’achat', 'purchase.create': 'Demander un achat',
+  'purchase.approve': 'Approuver ou refuser un achat', 'purchase.receive': 'Réceptionner un achat approuvé',
+  'asset.view': 'Consulter l’inventaire', 'asset.manage': 'Gérer les équipements',
   'system.audit.view': 'Consulter le journal d’activité', 'system.backup.manage': 'Exporter le journal',
   'system.support.manage': 'Prendre en charge les demandes de support',
 };

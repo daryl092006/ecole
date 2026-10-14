@@ -8,6 +8,10 @@ Front-end fonctionnel en mémoire, conformément à la demande de terminer d’a
 
 Le guide interactif, son bouton d’aide, les surbrillances d’onboarding et les emojis décoratifs sont retirés. Les étapes visibles dans les notes décrivent uniquement leur état de traitement.
 
+La [revue de lisibilité](REVUE_LISIBILITE.md) reprend les 35 pages : introductions répétées retirées, formulaires secondaires dépliables, compteurs et filtres compacts sur mobile, catalogue des rôles avec fiche directement accessible. Les listes affichent la filière étudiante, le nom du payeur, les modifications des accès et les inscriptions par année. Le planning utilise un seul tableau avec filtres et actions ; les règles et historiques restent consultables.
+
+Correction de navigation du 14 octobre : la flèche déplie une rubrique sans changer de page ni fermer le panneau mobile. Le nom de la rubrique ouvre toujours sa première page ; choisir une sous-page ferme le panneau. La rubrique dépliée et la page active sont distinguées, et les menus restent filtrés par rôle.
+
 Les modules et sous-écrans ont des routes Next.js distinctes, avec dossiers étudiants accessibles par matricule. `/connexion` vérifie des identifiants de démonstration, puis ouvre une session en mémoire. Les accès directs, retours du navigateur et menus respectent les autorisations simulées. La déconnexion ferme l’accès au portail. `/mot-de-passe-oublie` crée un ticket local sans envoyer d’email. Une page 404 traite les URL inconnues. Le logo fourni est intégré à la connexion, au portail et aux documents imprimables.
 
 ## Couverture
@@ -28,9 +32,9 @@ Les modules et sous-écrans ont des routes Next.js distinctes, avec dossiers ét
 | Contrats | Scolarité annuelle, frais d’inscription et annexes ; bourse sur la scolarité ; révision motivée sans effacement des encaissements ; échéances et reliquat. |
 | Versements | Montants entiers en FCFA, référence unique, versements partiels, reçu, solde par année et règlement d’une créance antérieure. Modes espèces, Mobile money, virement, chèque et carte. |
 | Annulations financières | DG uniquement, motif obligatoire ; transaction, reçu et historique conservés, solde de l’année concernée recalculé. |
-| Personnel | Utilisateurs simulés, activation/désactivation motivée, consultation des autorisations, dossiers permanents/vacataires/stagiaires et export CSV. |
+| Personnel | Annuaire filtrable, activation et changement de rôle motivés avec historique ; catalogue des 14 rôles et matrice comparative des droits ; dossiers permanents/vacataires/stagiaires et export CSV. |
 | Logistique | Demande d’achat par les achats, approbation/refus DG ou RAF, réception par les achats. Inventaire par les achats ou le responsable de site. Exports CSV. |
-| Communication | Diffusion générale, étudiants/délégués, enseignants ou surveillants. Filtrage des annonces selon l’audience. |
+| Communication | Diffusion générale, étudiants/délégués, enseignants ou surveillants. Date d’expiration facultative, retrait motivé sans suppression et historique de diffusion. Filtrage par audience dans le service mock et les espaces personnels. |
 | Support et audit | Tickets personnels, prise en charge et résolution motivées par l’Informaticien ; journal d’activité et export JSON du journal. |
 | Pilotage | Effectifs, abandons, semestres admis, recouvrement, synthèse par année et filière. Données calculées, sans indicateurs de démonstration inventés. |
 
@@ -64,9 +68,15 @@ Ces choix sont des règles de fonctionnement de l’interface à confronter au r
 
 ## Vérifications et limites
 
+La [revue page par page](REVUE_PAGE_PAR_PAGE.md) détaille désormais les 35 pages du portail, les autres routes, les actions exercées et les limites. Lint, build et tests métier passent ; les 22 tests navigateur passent sur le build de production, avec relevés individuels à 390 et 1440 px et contrôle des 14 rôles aux quatre tailles. La nouvelle [revue du portail de référence](reference-escen/REVUE_PERSONNEL_2026-10-13.md) documente les 53 pages consultées et les améliorations Personnel : annuaire, changement de rôle audité, catalogue et matrice reposant sur les droits réellement appliqués dans les services mock. Résultats après la revue de lisibilité : `.tmp/clarity-final-results/` (22 réussites, 5,5 minutes).
+
+La revue transversale couvre les pages autorisées des 14 rôles à 320, 768, 1024 et 1440 px : erreurs JavaScript, débordements, libellés des champs et explications des tableaux vides. Le parcours des annonces vérifie également la diffusion ciblée, la visibilité pour les étudiants et délégués, le refus pour les enseignants et le retrait conservé avec motif, à 320 et 1440 px. Les assertions du service contrôlent les dates invalides, l’expiration après la date incluse, les permissions de retrait et la conservation du contenu et de l’historique.
+
 Les assertions de services, le lint et le build vérifient les parcours et les types. La suite Playwright couvre les menus des 14 rôles, l’absence de guide/emoji, un parcours métier complet et la navigation/recherche à 390 px. Les résultats d’exécution doivent être distingués de la couverture déclarée par les tests.
 
-Vérification du 13 octobre 2026 : `npm run lint`, `npm run test` et le build de production isolé passent. Les sept tests d’interface passent également (19,4 secondes) : 14 rôles, parcours de création jusqu’à la délibération et au dépôt d’une pièce, navigation à 390 px, connexion et déconnexion, accès directs et historique, refus selon le rôle, aide au mot de passe et page 404. Cette exécution utilise Chrome hors sandbox, le sandbox empêchant son démarrage. Les captures de connexion et du portail sur ordinateur/mobile ont été relues lors de la vérification précédente ; cette reprise confirme les assertions automatisées.
+Vérification précédente du 13 octobre 2026 : `npm run lint`, `npm run test` et `npm run build` avec `ESCEN_BUILD_DIR=.next-verification` passent. Les 17 tests navigateur passent sur ce build de production (4,3 minutes), avec Chrome : pages autorisées des 14 rôles aux quatre tailles, parcours métier à 390 et 1440 px, annonces ciblées et retrait conservé, connexion/déconnexion, refus d’accès, historique du navigateur, recherche et navigation au clavier. Les captures des annonces à 320 px et du contrat financier à 390 px ont été relues. Résultats Playwright : `.tmp/final-ui-results/` ; captures : `.tmp/interface/`.
+
+Les premières exécutions sur le serveur de développement ont été interrompues par des redémarrages automatiques à son seuil de mémoire pendant la compilation à la demande. Elles ne constituent pas une validation. Le résultat final ci-dessus provient du serveur de production isolé. Le test transversal attend aussi la redirection après un changement de rôle avant d’ouvrir le menu mobile.
 
 Le backend, l’authentification, le stockage des fichiers, les sauvegardes/restaurations de données et les contrôles de permissions côté serveur restent à intégrer après validation du front. L’export du journal ne sauvegarde pas les dossiers. Mobile money est un mode de comptabilisation d’un versement déjà reçu, sans appel à un opérateur de paiement.
 

@@ -24,6 +24,8 @@ export const PORTAL_ROUTES: PortalRoute[] = [
   { tab: 'finance', section: 'fin_reports', href: '/finance/rapports', title: 'Rapports financiers' },
   { tab: 'finance', section: 'fin_contracts', href: '/finance/contrats', title: 'Contrats, frais et bourses' },
   { tab: 'personnel', section: 'staff_list', href: '/personnel/utilisateurs', title: 'Utilisateurs et rôles' },
+  { tab: 'personnel', section: 'staff_roles', href: '/personnel/roles', title: 'Rôles ESCEN' },
+  { tab: 'personnel', section: 'staff_permissions', href: '/personnel/permissions', title: 'Matrice des permissions' },
   { tab: 'personnel', section: 'staff_teachers', href: '/personnel/enseignants', title: 'Enseignants et affectations' },
   { tab: 'personnel', section: 'staff_records', href: '/personnel', title: 'Dossiers du personnel' },
   { tab: 'marketing', section: 'comm_announcements', href: '/communication/annonces', title: 'Publier une annonce' },

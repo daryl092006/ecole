@@ -1,3 +1,4 @@
+import ActionPanel from '@/components/ui/ActionPanel';
 import Link from 'next/link';
 import { studentPath } from '@/constants/portalRoutes';
 import { useState } from 'react';
@@ -41,19 +42,18 @@ export default function EtudiantsModule({ activeRole, createStudent, perms, curr
         <div>
           <div className="module-header">
             <h1>Liste des étudiants inscrits</h1>
-            <p>Dossier unique, informations civiles et parcours académique d'ESCEN.</p>
           </div>
 
           {perms.permissions.includes('student.group.assign') && <StudentRegistrationForm groups={groups} onCreate={createStudent} />}
-          <div className="card card-full mb-2">
-            <div className="card-header"><h2>Affecter un étudiant à un groupe</h2></div>
+          {perms.permissions.includes('student.group.assign') && <ActionPanel label="Affecter un étudiant à un groupe">
+
             {perms.permissions.includes('student.group.assign') ? <div className="guided-form">
               <div className="guided-field"><div className="form-group"><label className="form-label" htmlFor="assignment-student">Étudiant inscrit</label><select id="assignment-student" className="select-input" value={studentToAssign} onChange={event => { setStudentToAssign(event.target.value); setTargetGroup(''); setAssignmentMessage(''); }}><option value="">Sélectionner un étudiant</option>{students.map(student => <option key={student.matricule} value={student.matricule}>{student.firstname} {student.lastname} · {student.groupe}</option>)}</select></div></div>
               <div className="guided-field"><div className="form-group"><label className="form-label" htmlFor="assignment-group">Groupe compatible</label><select id="assignment-group" className="select-input" disabled={!studentToAssign} value={targetGroup} onChange={event => { setTargetGroup(event.target.value); setAssignmentMessage(''); }}><option value="">Sélectionner un groupe</option>{groups.filter(group => { const student = students.find(item => item.matricule === studentToAssign); return student && group.academicYearId === student.academicYearId && group.niveau === student.niveau && group.filieres.includes(student.filiere); }).map(group => <option key={group.id} value={group.id}>{group.name} · {group.niveau} · {group.filieres.join(', ')}</option>)}</select></div></div>
               <div className="guided-field"><div><div className="form-label">Confirmation</div><button className="btn btn-primary" disabled={!studentToAssign || !targetGroup} onClick={confirmAssignment}>Confirmer l'affectation</button></div></div>
             </div> : <div className="info-box">Consultation uniquement. L'affectation d'un étudiant à un groupe est réservée au Logisticien académique.</div>}
             {assignmentMessage && <div className="info-box mt-2" role="status">{assignmentMessage}</div>}
-          </div>
+          </ActionPanel>}
 
           <StudentFiltersPanel students={students} filters={filters} onChange={setFilters} role={activeRole} />
           <div className="card card-full">
@@ -82,8 +82,8 @@ export default function EtudiantsModule({ activeRole, createStudent, perms, curr
                         <div className="cell-sub">{s.email}</div>
                       </td>
                       <td>
-                        <div className="cell-main">{s.niveau}</div>
-                        <div className="cell-sub">{s.groupe}</div>
+                        <div className="cell-main">{s.filiere}</div>
+                        <div className="cell-sub">{s.niveau} · {s.groupe}</div>
                       </td>
                       {canViewFinance && <td>
                         <div style={{ fontSize: '0.8rem' }}>
@@ -96,7 +96,7 @@ export default function EtudiantsModule({ activeRole, createStudent, perms, curr
                           ? <span className="pill pill-purple">{s.bourse.percent}% – {s.bourse.type}</span>
                           : <span className="text-muted">Aucune</span>}
                       </td>}
-                      <td><span className="pill pill-success">{s.status}</span></td>
+                      <td><span className={`pill ${['Inscrit', 'Réinscrit'].includes(s.status) ? 'pill-success' : 'pill-default'}`}>{s.status}</span></td>
                       <td>
                         <Link className="btn btn-sm btn-outline" href={studentPath(s.matricule)}>
                           Fiche &amp; Dossier

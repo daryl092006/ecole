@@ -1,9 +1,10 @@
+import ActionPanel from '@/components/ui/ActionPanel';
 import { displayDate } from '@/utils/display';
 import FormFeedback from '@/components/ui/FormFeedback';
 import { useFeedback } from '@/hooks/useFeedback';
 import { useState } from 'react';
 import ScheduleResourcesForm from './academic/ScheduleResourcesForm';
-import { CheckCircle, Calendar, Plus } from 'lucide-react';
+import { CheckCircle, Plus } from 'lucide-react';
 import type { ClassItem, Evaluation, Reclamation, PermissionSchema, RoleName, Student, Room, Session, BlockedPeriod } from '@/types';
 import AcademicReferenceModule from '@/components/modules/academic/AcademicReferenceModule';
 import GradeWorkflowPanel from './academic/GradeWorkflowPanel';
@@ -87,7 +88,7 @@ export default function AcademiqueModule({
     if (!res.success) {
       setPlanError(res.error || "Erreur de planification.");
     } else {
-      setPlanSuccess('Séance ajoutée avec succès sans aucun conflit de planning !');
+      setPlanSuccess('Séance planifiée.');
       // Reset form
       setSelectedClassForPlan('');
       setSelectedRoomForPlan('');
@@ -108,7 +109,6 @@ export default function AcademiqueModule({
         <div>
           <div className="module-header">
             <h1>Filières &amp; Matières</h1>
-            <p>Organisation des matières, coefficients et affectations des enseignants d'ESCEN.</p>
           </div>
           <div className="card">
             <div className="card-header"><h2>Matières actives ({classes.length})</h2></div>
@@ -143,16 +143,10 @@ export default function AcademiqueModule({
         <div>
           <div className="module-header">
             <h1>Emploi du temps</h1>
-            <p>Planification des séances de cours et examens avec détection automatique des conflits.</p>
           </div>
           {perms.canPlanCourses && <ScheduleResourcesForm rooms={rooms} periods={blockedPeriods} onRoom={addRoom} onPeriod={addBlockedPeriod} />}
 
-          <div className="content-grid">
-            {/* Formulaire de planification */}
-            <div className="card">
-              <div className="card-header"><h2>{perms.canPlanCourses ? 'Planifier une nouvelle séance' : 'Consultation du planning'}</h2></div>
-              {perms.canPlanCourses ? (
-                <form onSubmit={handlePlanSessionSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '0.85rem' }}>
+          {perms.canPlanCourses && <ActionPanel label="Planifier une séance"><form onSubmit={handlePlanSessionSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '0.85rem' }}>
                   <div className="form-group">
                     <label className="form-label" htmlFor="session-class">Enseignement</label>
                     <select id="session-class" required className="select-input" value={selectedClassForPlan} onChange={e => setSelectedClassForPlan(e.target.value)}>
@@ -194,43 +188,7 @@ export default function AcademiqueModule({
                   <button className="btn btn-primary" type="submit" style={{ marginTop: '0.5rem' }}>
                     <Plus size={14} /> Valider la planification
                   </button>
-                </form>
-              ) : <div className="text-muted">Les séances de votre périmètre sont affichées ci-dessous. La planification est réservée aux rôles autorisés.</div>}
-            </div>
-
-            {/* Liste des séances planifiées */}
-            <div className="card">
-              <div className="card-header"><h2>Séances planifiées ({sessions.length})</h2></div>
-              <div className="table-wrap">
-                <table className="data-table">
-                  <thead>
-                    <tr><th>Matière / Salle</th><th>Date &amp; Horaire</th><th>Statut</th></tr>
-                  </thead>
-                  <tbody>
-                    {sessions.map(sess => {
-                      const cls = classes.find(c => c.id === sess.classId);
-                      return (
-                        <tr key={sess.id}>
-                          <td>
-                            <div className="cell-main">{cls?.name}</div>
-                            <div className="cell-sub">{sess.roomCode} · {cls?.level}</div>
-                          </td>
-                          <td style={{ fontSize: '0.83rem' }}>
-                            <Calendar size={12} style={{ display: 'inline', marginRight: 4, verticalAlign: 'middle' }} />
-                            {displayDate(sess.date)} ({sess.startTime} - {sess.endTime})
-                          </td>
-                          <td>
-                            <span className="pill pill-success">{sess.status}</span>
-                          </td>
-                        </tr>
-                      );
-                    })}
-                    {!sessions.length && <tr><td colSpan={3}>Aucune séance planifiée dans votre périmètre.</td></tr>}
-                  </tbody>
-                </table>
-              </div>
-            </div>
-          </div>
+                </form></ActionPanel>}
         </div>
       )}
 
@@ -239,7 +197,6 @@ export default function AcademiqueModule({
         <div>
           <div className="module-header">
             <h1>Feuilles de présence</h1>
-            <p>Gestion des présences par séance de cours programmée.</p>
           </div>
 
           <FormFeedback message={attendanceFeedback} error={attendanceError} />
@@ -345,7 +302,7 @@ export default function AcademiqueModule({
         </div>
       )}
 
-      {currentSubTab === 'acad_grades' && <div><div className="module-header"><h1>Évaluations et notes</h1><p>Saisie par l’enseignant, contrôle académique et publication aux étudiants.</p></div><GradeWorkflowPanel perms={perms} classes={classes} selectedClass={selectedClassForGrades} onSelectClass={setSelectedClassForGrades} evaluations={filteredEvals} newEvalName={newEvalName} onEvalNameChange={setNewEvalName} newEvalType={newEvalType} onEvalTypeChange={setNewEvalType} onCreate={addEvaluation} onGradeChange={updateGrade} onSubmit={submitGrades} onStatusChange={changeGradeStatus} /></div>}
+      {currentSubTab === 'acad_grades' && <div><div className="module-header"><h1>Évaluations et notes</h1></div><GradeWorkflowPanel perms={perms} classes={classes} selectedClass={selectedClassForGrades} onSelectClass={setSelectedClassForGrades} evaluations={filteredEvals} newEvalName={newEvalName} onEvalNameChange={setNewEvalName} newEvalType={newEvalType} onEvalTypeChange={setNewEvalType} onCreate={addEvaluation} onGradeChange={updateGrade} onSubmit={submitGrades} onStatusChange={changeGradeStatus} /></div>}
 
       {currentSubTab === 'acad_complaints' && <ComplaintsPanel />}
     </div>

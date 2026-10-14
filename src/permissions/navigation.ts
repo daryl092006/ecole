@@ -67,6 +67,8 @@ export const ALL_TABS = [
     icon: 'Users',
     subTabs: [
       { id: 'staff_list', name: 'Utilisateurs & Rôles' },
+      { id: 'staff_roles', name: 'Rôles ESCEN' },
+      { id: 'staff_permissions', name: 'Matrice des permissions' },
       { id: 'staff_teachers', name: 'Enseignants & Affectations' },
       { id: 'staff_records', name: 'Dossiers du personnel' },
     ],
@@ -119,6 +121,8 @@ const SUBTAB_PERMISSIONS: Record<string, Permission[]> = {
   fin_payments: ['finance.view'],
   fin_reports: ['finance.report.view'],
   staff_list: ['user.manage'],
+  staff_roles: ['user.manage'],
+  staff_permissions: ['user.manage'],
   staff_teachers: ['academic.assignment.manage'],
   comm_announcements: ['communication.manage'],
   comm_news: ['communication.view'],

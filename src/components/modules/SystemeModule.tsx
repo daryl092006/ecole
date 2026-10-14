@@ -1,4 +1,5 @@
-import { CheckCircle, Database, RefreshCw } from 'lucide-react';
+import { Database, RefreshCw } from 'lucide-react';
+import { useState } from 'react';
 import type { SystemLog } from '@/types';
 
 interface SystemeModuleProps {
@@ -8,32 +9,23 @@ interface SystemeModuleProps {
 }
 
 export default function SystemeModule({ currentSubTab, systemLogs, runBackup }: SystemeModuleProps) {
+  const [search, setSearch] = useState('');
+  const visibleLogs = systemLogs.filter(log => `${log.user} ${log.action} ${log.details}`.toLocaleLowerCase('fr').includes(search.trim().toLocaleLowerCase('fr')));
   return (
     <div>
       {/* ── SUBTAB: sys_logs (Journal d'Activité / Audit) ── */}
       {currentSubTab === 'sys_logs' && (
         <div>
           <div className="module-header">
-            <h1>Journal d&apos;activité &amp; Audit</h1>
-            <p>Traçabilité complète des actions sensibles et modifications de données d'ESCEN.</p>
+            <h1>Journal d&apos;activité</h1>
           </div>
 
           <div className="card card-full">
             <div className="card-header">
-              <h2>Journal d&apos;activité ({systemLogs.length} entrées)</h2>
-              <span className="pill pill-success"><CheckCircle size={11} /> Journal Actif</span>
+              <h2>Événements ({visibleLogs.length} / {systemLogs.length})</h2>
             </div>
-            <div className="log-list" style={{ maxHeight: '450px' }}>
-              {systemLogs.length === 0 && <div className="empty-state"><strong>Aucune activité enregistrée</strong><span>Les actions réalisées dans le prototype alimenteront ce journal.</span></div>}
-              {systemLogs.map((log, i) => (
-                <div key={i} className="log-entry">
-                  <span className="log-date">[{log.date}]</span>
-                  <span className="log-user">{log.user}:</span>
-                  <span className="log-action">{log.action}</span>
-                  <span className="log-details">({log.details})</span>
-                </div>
-              ))}
-            </div>
+            <label className="form-group">Rechercher un événement<input className="input" type="search" placeholder="Action, auteur ou dossier" value={search} onChange={event => setSearch(event.target.value)} /></label>
+            <div className="table-wrap"><table className="data-table"><thead><tr><th>Date et heure</th><th>Auteur / Rôle</th><th>Action</th><th>Détails</th></tr></thead><tbody>{visibleLogs.map((log, index) => <tr key={index}><td><time dateTime={log.date}>{new Date(log.date).toLocaleString('fr-FR')}</time></td><td>{log.user}</td><td><strong>{log.action}</strong></td><td><details><summary>Voir les valeurs et le motif</summary><pre className="audit-values">{log.details}</pre></details></td></tr>)}{!visibleLogs.length && <tr><td colSpan={4}>{systemLogs.length ? 'Aucun événement ne correspond à la recherche.' : 'Aucune activité enregistrée.'}</td></tr>}</tbody></table></div>
           </div>
         </div>
       )}
@@ -43,7 +35,6 @@ export default function SystemeModule({ currentSubTab, systemLogs, runBackup }: 
         <div>
           <div className="module-header">
             <h1>Export du journal technique</h1>
-            <p>Administration technique, historique et contrôle de conservation des données.</p>
           </div>
 
           <div className="card card-full">
@@ -68,7 +59,6 @@ export default function SystemeModule({ currentSubTab, systemLogs, runBackup }: 
         <div>
           <div className="module-header">
             <h1>Centre de support technique</h1>
-            <p>Suivi et résolution des anomalies et demandes techniques des utilisateurs d'ESCEN.</p>
           </div>
 
           <div className="card card-full">

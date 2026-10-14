@@ -42,6 +42,15 @@ assert.equal(enrolled.enrollments.find(item => item.academicYearId === 'Y1').fin
 assert.throws(() => run(enrolled, ROLES.LOG, 'student.reenroll', { studentId: 'S1', groupId: 'G2', reason: 'Inscription doublon' }));
 const abandoned = run(enrolled, ROLES.LOG, 'student.status', { studentId: 'S1', status: 'Abandonné', reason: 'Demande écrite étudiant' });
 assert.equal(abandoned.students.length, 1); assert.equal(abandoned.enrollments.find(item => item.academicYearId === 'Y2').status, 'ABANDON');
+assert.equal(enrolled.enrollments.find(item => item.academicYearId === 'Y2').status, 'REINSCRIT');
+const suspended = run(enrolled, ROLES.LOG, 'student.status', { studentId: 'S1', status: 'Suspendu', reason: 'Suspension demandée' });
+assert.equal(suspended.enrollments.find(item => item.academicYearId === 'Y2').status, 'SUSPENDU');
+assert.equal(suspended.enrollments.find(item => item.academicYearId === 'Y1').status, 'INSCRIT');
+const suspendedContract = run(suspended, ROLES.RAF, 'finance.contract', { ...terms, scholarshipPercent: 0 });
+assert.equal(suspendedContract.enrollments.find(item => item.academicYearId === 'Y2').status, 'SUSPENDU', 'A financial update must preserve suspension.');
+const resumed = run(suspendedContract, ROLES.LOG, 'student.status', { studentId: 'S1', status: 'Inscrit', reason: 'Reprise autorisée' });
+assert.equal(resumed.enrollments.find(item => item.academicYearId === 'Y2').status, 'INSCRIT');
+assert.equal(deriveEnrollments({ ...suspended, enrollments: [] })[0].status, 'SUSPENDU');
 assert.throws(() => run(abandoned, ROLES.IT, 'student.status', { studentId: 'S1', status: 'Inscrit', reason: 'Reprise' }));
 
 const semester = { id: 'SEM1', academicYearId: 'Y1', levelId: 'L1', name: 'Semestre 1', order: 1, startDate: year.startDate, endDate: '2027-01-31', active: true };

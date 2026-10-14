@@ -1,5 +1,12 @@
 import { expect, type Page } from '@playwright/test';
 
+export async function openActionPanel(page: Page, label: string) {
+  const escaped = label.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  const summary = page.locator('details.action-panel > summary').filter({ hasText: new RegExp('^' + escaped + '$') });
+  await expect(summary).toHaveCount(1);
+  if (!await summary.evaluate(element => (element.parentElement as HTMLDetailsElement).open)) await summary.click();
+}
+
 export async function expectWorkspaceFits(page: Page) {
   expect(await page.evaluate(() => {
     const main = document.getElementById('main-content');

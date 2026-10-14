@@ -1,3 +1,4 @@
+import ActionPanel from '@/components/ui/ActionPanel';
 import FormFeedback from '@/components/ui/FormFeedback';
 import { useFeedback } from '@/hooks/useFeedback';
 import { useState } from 'react';
@@ -9,12 +10,12 @@ export default function StudentRegistrationForm({ groups, onCreate }: Props) {
   const [input, setInput] = useState(empty);
   const [feedback, setFeedback, feedbackError] = useFeedback();
   const group = groups.find(item => item.id === input.groupId);
-  return <form className="card card-full mb-2" onSubmit={event => {
+  return <ActionPanel label="Ajouter un étudiant inscrit"><form className="action-form" onSubmit={event => {
     event.preventDefault();
     try { onCreate(input); setInput(empty); setFeedback('Dossier enregistré.'); }
     catch (error) { setFeedback(error instanceof Error ? error.message : 'Enregistrement impossible.', true); }
   }}>
-    <div className="card-header"><h2>Ajouter le dossier d’un Étudiant déjà inscrit</h2></div>
+
     <div className="form-row">
       {(['matricule', 'firstname', 'lastname', 'email'] as const).map((field, index) => <label className="form-group" key={field}>{['Matricule', 'Prénom', 'Nom', 'Email'][index]}<input className="input" type={field === 'email' ? 'email' : 'text'} required={field !== 'email'} value={input[field]} onChange={event => setInput({ ...input, [field]: event.target.value })} /></label>)}
       <label className="form-group">Groupe<select className="select-input" required value={input.groupId} onChange={event => setInput({ ...input, groupId: event.target.value, filiere: '' })}><option value="">Sélectionner</option>{groups.map(item => <option key={item.id} value={item.id}>{item.name} · {item.academicYear}</option>)}</select></label>
@@ -22,5 +23,5 @@ export default function StudentRegistrationForm({ groups, onCreate }: Props) {
     </div><button className="btn btn-primary" disabled={!groups.length}>Enregistrer le dossier</button>
     {!groups.length && <p>Créez d’abord une année ouverte, une filière et un groupe dans le référentiel académique.</p>}
     <FormFeedback message={feedback} error={feedbackError} />
-  </form>;
+  </form></ActionPanel>;
 }

@@ -5,13 +5,15 @@ import { useState } from 'react';
 import type { Announcement, RoleName, Student, ClassItem, Evaluation, Session, Reclamation } from '@/types';
 import { usePortal } from '@/hooks/usePortal';
 import { ROLES } from '@/types/permissions';
+import { announcementStatus } from '@/services/communicationService';
 interface Props { students: Student[]; classes: ClassItem[]; evaluations: Evaluation[]; sessions: Session[]; reclamations: Reclamation[]; ownDataOnly: boolean; addReclamation: (studentId: string, evaluationId: string, reason: string) => void; activeRole: RoleName; currentSubTab: string; announcements: Announcement[]; }
-export default function EspaceModule({ activeRole, currentSubTab, announcements, students, classes, evaluations, sessions, reclamations, ownDataOnly, addReclamation }: Props) {
+export default function EspaceModule({ activeRole, currentSubTab, announcements: allAnnouncements, students, classes, evaluations, sessions, reclamations, ownDataOnly, addReclamation }: Props) {
+  const announcements = allAnnouncements.filter(item => announcementStatus(item) === 'Active');
   const state = usePortal(); const [reason, setReason] = useState(''); const [evaluationId, setEvaluationId] = useState(''); const [feedback, setFeedback, feedbackError] = useFeedback();
   const student = ownDataOnly ? students[0] : undefined;
   const upcoming = sessions.filter(item => item.status !== 'Annulé' && item.date >= new Date().toISOString().slice(0, 10)).sort((a, b) => (a.date + a.startTime).localeCompare(b.date + b.startTime));
   const quickLinks = state.availableTabs.filter(item => item.id !== 'espace').slice(0, 6);
-  if (currentSubTab === 'espace_announcements') return <div><div className="module-header"><h1>Annonces et actualités</h1><p>Informations de l’établissement destinées à votre rôle.</p></div><div className="ann-grid">{announcements.map(item => <article className="ann-card" key={item.id}><div className="ann-meta"><span className="ann-tag">{item.audience}</span><span className="ann-date">{displayDate(item.date)}</span></div><h3>{item.title}</h3><p>{item.content}</p><div className="ann-author">{item.author}</div></article>)}{!announcements.length && <div className="empty-state"><strong>Aucune annonce</strong><span>Les informations destinées à votre rôle apparaîtront ici.</span></div>}</div></div>;
+  if (currentSubTab === 'espace_announcements') return <div><div className="module-header"><h1>Annonces et actualités</h1></div><div className="ann-grid">{announcements.map(item => <article className="ann-card" key={item.id}><div className="ann-meta"><span className="ann-tag">{item.audience}</span><span className="ann-date">{displayDate(item.date)}</span></div><h3>{item.title}</h3><p>{item.content}</p><div className="ann-author">{item.author}</div></article>)}{!announcements.length && <div className="empty-state"><strong>Aucune annonce</strong><span>Les informations destinées à votre rôle apparaîtront ici.</span></div>}</div></div>;
   const scoped = [ROLES.ENS, ROLES.SURV, ROLES.STUD, ROLES.DEL].includes(activeRole as typeof ROLES.ENS);
   return <div><div className="module-header"><h1>{student ? `${student.firstname} ${student.lastname}` : 'Mon espace'}</h1><p>{student ? `${student.matricule} · ${student.filiere} · ${student.niveau} · ${student.groupe}` : activeRole}</p></div>
     {scoped && !state.demoIdentity && <div className="empty-state"><strong>Sélectionnez votre identité</strong><span>Votre emploi du temps et vos données personnelles seront affichés après cette sélection.</span></div>}

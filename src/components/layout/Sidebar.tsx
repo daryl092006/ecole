@@ -1,4 +1,5 @@
 import Link from 'next/link';
+import { useEffect, useState } from 'react';
 import type { RoleName } from '@/types/permissions';
 import * as Icons from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
@@ -46,6 +47,8 @@ export default function Sidebar({
   onNavigate,
   menuOpen,
 }: SidebarProps) {
+  const [expandedTab, setExpandedTab] = useState(currentTab);
+  useEffect(() => { setExpandedTab(currentTab); }, [currentTab, activeRole]);
   return (
     <aside className="sidebar" id="application-navigation" aria-label="Navigation principale" role={menuOpen ? 'dialog' : undefined} aria-modal={menuOpen || undefined}>
       <div className="sidebar-heading"><div className="nav-section-title">Navigation</div><button className="notif-btn sidebar-close" aria-label="Fermer le menu" onClick={onNavigate}><Icons.X size={20} /></button></div>
@@ -55,33 +58,39 @@ export default function Sidebar({
           // Résolution dynamique de l'icône Lucide
           const IconComponent = NAV_ICONS[tab.icon] ?? Icons.HelpCircle;
           const isSelected = currentTab === tab.id;
+          const isExpanded = expandedTab === tab.id;
 
           return (
             <div key={tab.id} className="nav-group">
-              <Link
-                href={tab.href}
-                aria-current={isSelected && (!tab.subTabs?.length || currentSubTab === tab.subTabs[0].id) ? 'page' : undefined}
-                className={`nav-item ${isSelected ? 'active' : ''}`}
-                onClick={onNavigate}
-                style={{ width: '100%' }}
-              >
-                <IconComponent size={16} className="nav-icon" />
-                <span style={{ flex: 1 }}>{tab.name}</span>
+              <div className="nav-group-heading">
+                <Link
+                  href={tab.href}
+                  aria-current={isSelected && (!tab.subTabs?.length || currentSubTab === tab.subTabs[0].id) ? 'page' : undefined}
+                  className={`nav-item ${isSelected ? 'active' : ''}`}
+                  onClick={() => { setExpandedTab(tab.id); onNavigate(); }}
+                  style={{ width: '100%' }}
+                >
+                  <IconComponent size={16} className="nav-icon" />
+                  <span style={{ flex: 1 }}>{tab.name}</span>
+                </Link>
                 {tab.subTabs && tab.subTabs.length > 0 && (
-                  <Icons.ChevronDown
-                    size={14}
-                    style={{
-                      transform: isSelected ? 'rotate(180deg)' : 'rotate(0deg)',
-                      transition: 'transform 0.2s',
-                      opacity: 0.6,
-                    }}
-                  />
+                  <button type="button" className="nav-toggle" aria-label={`${isExpanded ? 'Replier' : 'Déplier'} ${tab.name}`} aria-expanded={isExpanded} aria-controls={`subnav-${tab.id}`} onClick={() => setExpandedTab(isExpanded ? '' : tab.id)}>
+                    <Icons.ChevronDown
+                      size={14}
+                      style={{
+                        transform: isExpanded ? 'rotate(180deg)' : 'rotate(0deg)',
+                        transition: 'transform 0.2s',
+                        opacity: 0.6,
+                      }}
+                    />
+                  </button>
                 )}
-              </Link>
+              </div>
 
-              {/* Sous-onglets si l'onglet est sélectionné */}
-              {isSelected && tab.subTabs && tab.subTabs.length > 0 && (
+              {/* Déplier une rubrique ne change pas la page courante. */}
+              {isExpanded && tab.subTabs && tab.subTabs.length > 0 && (
                 <div
+                  id={`subnav-${tab.id}`}
                   className="subnav-list"
                   style={{
                     paddingLeft: '2rem',
@@ -98,15 +107,15 @@ export default function Sidebar({
                     <Link
                       href={sub.href}
                       key={sub.id}
-                      aria-current={currentSubTab === sub.id ? 'page' : undefined}
-                      className={`subnav-item ${currentSubTab === sub.id ? 'active' : ''}`}
+                      aria-current={isSelected && currentSubTab === sub.id ? 'page' : undefined}
+                      className={`subnav-item ${isSelected && currentSubTab === sub.id ? 'active' : ''}`}
                       onClick={onNavigate}
                       style={{
                         background: 'transparent',
                         border: 'none',
-                        color: currentSubTab === sub.id ? 'var(--accent)' : 'var(--text-secondary)',
+                        color: isSelected && currentSubTab === sub.id ? 'var(--accent)' : 'var(--text-secondary)',
                         fontSize: '0.8rem',
-                        fontWeight: currentSubTab === sub.id ? 600 : 400,
+                        fontWeight: isSelected && currentSubTab === sub.id ? 600 : 400,
                         textAlign: 'left',
                         padding: '0.35rem 0.5rem',
                         borderRadius: 'var(--radius-sm)',
@@ -124,15 +133,6 @@ export default function Sidebar({
         })}
       </div>
 
-      <div className="sidebar-footer">
-        <div className="permission-card">
-          <div className="perm-title">Accès selon le rôle</div>
-          <p>
-            En tant que <strong>{activeRole}</strong>, vous n&apos;accédez
-            qu&apos;aux modules et données relevant de votre rôle.
-          </p>
-        </div>
-      </div>
     </aside>
   );
 }
