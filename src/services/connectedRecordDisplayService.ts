@@ -5,6 +5,21 @@ const references: Record<string, Record<string, string>> = referenceMap;
 export const connectedFieldLabel = (key: string) => NATIVE_FIELD_LABELS[key] || ({ candidate_id: 'Candidat à l’évaluation', component_id: 'Composante pédagogique', version_id: 'Version du contrat', offering_semester_id: 'Semestre de l’offre', file_id: 'Pièce jointe', body: 'Message', currency: 'Devise', paid_on: 'Date du versement', payer_name: 'Payeur', terms_snapshot: 'Conditions de la bourse', happened_at: 'Date de l’opération', reversed_at: 'Date d’annulation', old_status: 'État précédent', new_status: 'Nouvel état', unit_amount: 'Montant unitaire FCFA', average: 'Moyenne', held_at: 'Date du jury', minutes: 'Compte rendu', absence_status: 'État d’absence', comment: 'Commentaire', recorded_at: 'Enregistré le', arrived_at: 'Arrivée', left_at: 'Départ', withdrawn_at: 'Retiré le', expires_at: 'Expire le', withdrawal_reason: 'Motif du retrait' } as Record<string, string>)[key] || key.replace(/_/g, ' ');
 
 export function connectedRecordName(table: string, row: DatabaseRow, snapshot: RelationalSnapshot, depth = 0): string {
+  if (table === 'evaluation_candidates' && depth < 4) {
+    const enrollment = snapshot.tables.enrollments?.find(item => item.id === row.enrollment_id);
+    const evaluation = snapshot.tables.evaluations?.find(item => item.id === row.evaluation_id);
+    return `${enrollment ? connectedRecordName('enrollments', enrollment, snapshot, depth + 1) : 'Inscription non retrouvée'} · ${evaluation ? connectedRecordName('evaluations', evaluation, snapshot, depth + 1) : 'Évaluation non retrouvée'}`;
+  }
+  if (table === 'curricula') {
+    const program=snapshot.tables.programs?.find(item=>item.id===row.program_id);
+    const level=snapshot.tables.levels?.find(item=>item.id===row.level_id);
+    return `${program?.name || 'Filière non retrouvée'} · ${level?.name || 'Niveau non retrouvé'} · version ${row.version}`;
+  }
+  if (table === 'academic_offerings' && depth < 4) {
+    const curriculum=snapshot.tables.curricula?.find(item=>item.id===row.curriculum_id);
+    const year=snapshot.tables.academic_years?.find(item=>item.id===row.academic_year_id);
+    return `${curriculum ? connectedRecordName('curricula',curriculum,snapshot,depth+1) : String(snapshot.tables.levels?.find(level => level.id === row.level_id)?.name || 'Formation sans filière renseignée')} · ${year?.name || 'Année non retrouvée'}${row.delivery_mode ? ` · ${row.delivery_mode}` : ''}`;
+  }
   const name = [row.firstname, row.lastname].filter(Boolean).join(' ') || row.name || row.title || row.reference || row.code;
   if (name) return String(name);
   if (depth < 4) {
@@ -24,7 +39,7 @@ export function connectedRecordValue(table: string, key: string, value: unknown,
   }
   if (typeof value === 'boolean') return value ? 'Oui' : 'Non';
   if (['amount', 'unit_amount', 'withdrawal_fee'].includes(key) && Number.isFinite(Number(value))) return Number(value).toLocaleString('fr-FR') + ' FCFA';
-  const states: Record<string, string> = { OPEN: 'Ouverte', IN_PROGRESS: 'En cours', WAITING: 'En attente', RESOLVED: 'Résolue', CLOSED: 'Clôturée', DRAFT: 'Brouillon', APPROVED: 'Approuvé', SUPERSEDED: 'Remplacé par une nouvelle version', INSCRIT: 'Inscrit', REINSCRIT: 'Réinscrit', PRESENT: 'Présent', ABSENT: 'Absent', ABSENT_JUSTIFIE: 'Absent justifié', RETARD: 'Retard', ESPECES: 'Espèces', VIREMENT: 'Virement', MOBILE_MONEY: 'Mobile money', CHEQUE: 'Chèque', CARTE: 'Carte', BROUILLON: 'Brouillon', SAISIES: 'Saisies', SOUMISES: 'Soumises', A_CONTROLER: 'À contrôler', VALIDEES: 'Validées', PUBLIEES: 'Publiées', NOUVELLE: 'Nouvelle', EN_ANALYSE: 'En analyse', TRANSMISE_ENSEIGNANT: 'Transmise à l’enseignant', AVIS_ENSEIGNANT: 'Avis enseignant', DECISION_ACADEMIQUE: 'Décision académique', CORRECTION_EVENTUELLE: 'Correction éventuelle', CLOTUREE: 'Clôturée', DEMANDE: 'Demandé', APPROUVE: 'Approuvé', REFUSE: 'Refusé', RECU: 'Reçu', RECEPTION_PARTIELLE: 'Réception partielle', A_VERIFIER: 'À vérifier', CONFORME: 'Conforme', NON_CONFORME: 'Non conforme', PLANIFIE: 'Planifié', TERMINE: 'Terminé', ANNULE: 'Annulé', REPORTE: 'Reporté' };
+  const states: Record<string, string> = { OPEN: 'Ouverte', IN_PROGRESS: 'En cours', WAITING: 'En attente', RESOLVED: 'Résolue', CLOSED: 'Clôturée', POSTED: 'Validé', PENDING: 'En attente', EN_COURS: 'En cours', DRAFT: 'Brouillon', APPROVED: 'Approuvé', SUPERSEDED: 'Remplacé par une nouvelle version', INSCRIT: 'Inscrit', REINSCRIT: 'Réinscrit', PRESENT: 'Présent', ABSENT: 'Absent', ABSENT_JUSTIFIE: 'Absent justifié', RETARD: 'Retard', ESPECES: 'Espèces', VIREMENT: 'Virement', MOBILE_MONEY: 'Mobile money', CHEQUE: 'Chèque', CARTE: 'Carte', BROUILLON: 'Brouillon', SAISIES: 'Saisies', SOUMISES: 'Soumises', A_CONTROLER: 'À contrôler', VALIDEES: 'Validées', PUBLIEES: 'Publiées', NOUVELLE: 'Nouvelle', EN_ANALYSE: 'En analyse', TRANSMISE_ENSEIGNANT: 'Transmise à l’enseignant', AVIS_ENSEIGNANT: 'Avis enseignant', DECISION_ACADEMIQUE: 'Décision académique', CORRECTION_EVENTUELLE: 'Correction éventuelle', CLOTUREE: 'Clôturée', DEMANDE: 'Demandé', APPROUVE: 'Approuvé', REFUSE: 'Refusé', RECU: 'Reçu', RECEPTION_PARTIELLE: 'Réception partielle', A_VERIFIER: 'À vérifier', CONFORME: 'Conforme', NON_CONFORME: 'Non conforme', PLANIFIE: 'Planifié', TERMINE: 'Terminé', ANNULE: 'Annulé', REPORTE: 'Reporté' };
   if (states[String(value)]) return states[String(value)];
   if (typeof value === 'object') return JSON.stringify(value, null, 2);
   if (typeof value === 'string' && /(?:_at|_on|valid_from|valid_until)$/.test(key) && /^\d{4}-\d{2}-\d{2}/.test(value)) {

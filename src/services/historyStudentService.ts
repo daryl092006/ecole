@@ -10,8 +10,8 @@ export function enrichHistoricalStudent(student: Student, catalog: HistoryCatalo
   const program = find('filieres', record?.values.filiere_id);
   const level = find('niveaux', record?.values.niveau_id);
   const issues = [...identity.issues, ...enrollments.flatMap(row => row.issues)];
-  return { ...student, filiere: program ? String(program.values.nom) : student.filiere, niveau: level ? String(level.values.libelle) : student.niveau,
-    groupe: group ? String(group.values.nom) : student.groupe,
-    status: record && !issues.length ? String(record.values.statut_scolaire || student.status) : issues.length ? 'Dossier à vérifier' : student.status,
+  return { ...student, filiere: !student.academicYearId && program ? String(program.values.nom) : student.filiere, niveau: !student.academicYearId && level ? String(level.values.libelle) : student.niveau,
+    groupe: !student.academicYearId && group ? String(group.values.nom) : student.groupe,
+    status: student.academicYearId ? student.status : record && !issues.length ? String(record.values.statut_scolaire || student.status) : issues.length ? 'Dossier à vérifier' : student.status,
     historical: { sourceId: identity.sourceId, batchId: identity.batchId, groupName: group ? String(group.values.nom) : '', groupSourceId: group?.sourceId || '', issues } };
 }

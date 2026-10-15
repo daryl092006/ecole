@@ -1,3 +1,9 @@
+import { ROLES } from '@/types/permissions';
+import { enrichHistoricalStudent } from '@/services/historyStudentService';
+import type { HistoryCatalog } from '@/types/history';
+import { resolveAcademicYear } from '@/server/academicYearContext';
+import { filterSnapshotForAcademicYear } from '@/services/academicYearScopeService';
+import { projectRelationalCampus } from '@/services/relationalCampusAdapter';
 import { z } from 'zod';
 import { requireAccount, requirePermission, errorResponse, RequestError } from '@/server/auth';
 import { identityArchiveChanges, personFormSchema } from '@/services/identityCrudService';
@@ -5,6 +11,35 @@ import { filterRelationalSnapshot } from '@/services/persistentPermissionsServic
 import type { RelationalSnapshot } from '@/types/persistence';
 export const dynamic = 'force-dynamic';
 const formSchema = personFormSchema.safeExtend({revision:z.number().int().nonnegative()});
+export async function GET(request: Request, {params}: {params: Promise<{matricule: string}>}) {
+  try {
+    const {client,context}=await requireAccount(request); requirePermission(context,'student.view');
+    const matricule=z.string().min(1).max(160).parse((await params).matricule);
+    const result=await client.rpc('escen_backend_snapshot');
+    if(result.error)throw new RequestError(503,'Chargement du dossier indisponible.');
+    const snapshot=result.data as RelationalSnapshot;
+    const permitted=filterRelationalSnapshot(snapshot,context);
+    const row=permitted.tables.students?.find(item=>item.matricule===matricule && !item.archived_at);
+    if(!row)throw new RequestError(404,'Dossier introuvable ou non autorisé.');
+    const year=await resolveAcademicYear(request,client,context,snapshot);
+    const scoped=filterSnapshotForAcademicYear(permitted,year.selectedYearId || (year.selection==='all'?null:'00000000-0000-0000-0000-000000000000'));
+    scoped.tables.students=[row];
+    let student=projectRelationalCampus(scoped).data.students[0];
+    if([ROLES.IT,ROLES.DG].includes(context.role as typeof ROLES.IT) && context.permissions.includes('system.audit.view') && context.grants.some(grant=>!grant.site_id && !grant.group_id && !grant.academic_year_id)) {
+      const catalog=await client.rpc('escen_history_catalog');
+      if(catalog.error)throw new RequestError(503,'L’historique du dossier est indisponible.');
+      const all=catalog.data as HistoryCatalog;
+      const identities=all.references.etudiants?.filter(item=>item.values.matricule===matricule) || [];
+      if(identities.length===1){
+        const annual=year.selectedYearId ? await client.rpc('escen_history_catalog_year',{p_year_id:year.selectedYearId}) : year.selection==='all' ? catalog : {data:{...all,references:{}},error:null};
+        if(annual.error)throw new RequestError(503,'Le parcours annuel est indisponible.');
+        const scopedCatalog=annual.data as HistoryCatalog;
+        student=enrichHistoricalStudent(student,{...scopedCatalog,references:{...scopedCatalog.references,etudiants:identities}});
+      }
+    }
+    return Response.json({student},{headers:{'Cache-Control':'no-store'}});
+  }catch(error){return errorResponse(error);}
+}
 export async function PATCH(request: Request, { params }: { params: Promise<{ matricule: string }> }) {
   try {
     const { client, context } = await requireAccount(request);

@@ -45,3 +45,25 @@ assert.deepEqual(changeDemoUserRole(technician, ROLES.ENS, 'Changement motivé',
 assert.deepEqual(technician.roles, [ROLES.IT, ROLES.MKT]);
 assert.deepEqual(projectRelationalCampus({ revision: 0, tables: {} }).data.students, []);
 console.log('Vérification réussie : projection des identités réelles, comptes sans rôle, attributions multiples, absence de données financières et aucune inscription inventée.');
+
+const operational: RelationalSnapshot = { revision: 1, tables: { ...snapshot.tables,
+  academic_years: [{ id: 'YEAR', name: '2025-2026', starts_on: '2025-10-13', ends_on: '2026-06-30', status: 'OUVERTE' }],
+  levels: [{ id: 'LEVEL', name: 'Licence 1', code: 'L1', position: 1, cycle_id: null }],
+  groups: [{ id: 'GROUP', academic_year_id: 'YEAR', level_id: 'LEVEL', name: 'Groupe existant' }],
+  academic_offerings: [{ id: 'OFFER', curriculum_id: null, academic_year_id: 'YEAR', level_id: 'LEVEL' }],
+  enrollments: [{ id: 'ENROLL', student_id: 'S1', offering_id: 'OFFER', status: 'INSCRIT' }],
+  enrollment_groups: [{ id: 'MEMBER', enrollment_id: 'ENROLL', offering_id: 'OFFER', group_id: 'GROUP', valid_from: null }],
+  financial_contracts: [{ id: 'CONTRACT', enrollment_id: 'ENROLL' }],
+  contract_versions: [{ id: 'VERSION', contract_id: 'CONTRACT', status: 'EN_COURS' }],
+  contract_lines: [{ id: 'LINE', version_id: 'VERSION', amount: 480000 }],
+  payments: [{ id: 'PAID', enrollment_id: 'ENROLL', amount: 100000, status: 'POSTED' }, { id: 'PENDING', enrollment_id: 'ENROLL', amount: 50000, status: 'PENDING' }, { id: 'CANCELLED', enrollment_id: 'ENROLL', amount: 10000, status: 'POSTED' }],
+  payment_reversals: [{ id: 'REV', payment_id: 'CANCELLED' }],
+} };
+const actual = projectRelationalCampus(operational).data;
+assert.equal(actual.students[0].groupe, 'Groupe existant');
+assert.equal(actual.students[0].filiere, 'Filière non renseignée');
+assert.equal(actual.levels.length, 1);
+assert.equal(actual.levels[0].cycle, '');
+assert.deepEqual(actual.students[0].financials, { available: true, expected: 480000, paid: 100000, remaining: 380000, installments: [] });
+assert.equal(actual.enrollments[0].financials.paid, 100000);
+console.log('Dossiers opérationnels : groupe sans date supposée, filière absente conservée et paiements en attente ou annulés exclus du solde.');

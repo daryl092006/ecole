@@ -1,3 +1,4 @@
+import { connectedRecordName } from './connectedRecordDisplayService';
 import { z } from 'zod';
 import { CRUD_CATALOG } from '@/data/crudCatalog';
 import type { DatabaseRow, RelationalSnapshot, PersistentContext } from '@/types/persistence';
@@ -5,8 +6,8 @@ export function catalogSpec(key: string) { const spec = CRUD_CATALOG.find(item =
 export function parseCatalogRecord(key: string, input: unknown): Record<string, unknown> {
   const spec = catalogSpec(key); const fields: Record<string,z.ZodType> = {};
   for (const field of spec.fields) {
-    if (field.type === 'reference') fields[field.key] = z.uuid();
-    else if (field.type === 'select') fields[field.key] = z.enum(field.options!.map(option=>option.value));
+    if (field.type === 'reference') fields[field.key] = field.required === false ? z.union([z.uuid(),z.literal(''),z.null()]).transform(value=>value || null) : z.uuid();
+    else if (field.type === 'select') fields[field.key] = field.required === false ? z.union([z.enum(field.options!.map(option=>option.value)),z.literal(''),z.null()]).transform(value=>value || null) : z.enum(field.options!.map(option=>option.value));
     else if (field.type === 'email') fields[field.key] = z.union([z.email(),z.literal('')]);
     else if (field.type === 'number') fields[field.key] = z.number().int().min(field.min || 0).max(field.key==='position'?32767:2147483647);
     else if (field.type === 'date') fields[field.key] = z.iso.date();
@@ -21,17 +22,16 @@ export function canManageCatalog(context: PersistentContext, key: string): boole
 }
 export function validateCatalogReferences(key: string, values: Record<string,unknown>, snapshot: RelationalSnapshot) {
   for (const field of catalogSpec(key).fields.filter(field => field.reference)) {
+    if (field.required === false && !values[field.key]) continue;
     const row = snapshot.tables[field.reference!]?.find(row => row.id === values[field.key] && !row.archived_at && row.active !== false);
     if (!row) throw new Error(`${field.label} introuvable ou archivé.`);
   }
-  if (key === 'rooms') {
-    const building = snapshot.tables.buildings?.find(row => row.id === values.building_id);
-    if (building?.site_id !== values.site_id) throw new Error('Le bâtiment doit appartenir au site choisi.');
-  }
+  if (key === 'groups' && snapshot.tables.academic_years?.find(year => year.id === values.academic_year_id)?.status !== 'OUVERTE' && snapshot.tables.academic_years?.find(year => year.id === values.academic_year_id)?.status !== 'BROUILLON') throw new Error('Choisissez une année en préparation ou ouverte pour ce groupe.');
+
 }
 export function catalogLabel(table: string, row: DatabaseRow, snapshot: RelationalSnapshot): string {
-  const spec = catalogSpec(table);
+  const spec = CRUD_CATALOG.find(item=>item.key===table);
+  if (!spec) return String(row.name || row.code || row.id);
   const pieces = spec.fields.filter(field => field.key === 'name' || field.key === 'code').map(field => row[field.key]).filter(Boolean);
-  if (table === 'buildings') pieces.push(snapshot.tables.sites?.find(site => site.id === row.site_id)?.name || 'Site non renseigné');
-  return pieces.join(' · ');
+  return pieces.length ? pieces.join(' · ') : connectedRecordName(table,row,snapshot);
 }

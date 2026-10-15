@@ -1,0 +1,21 @@
+import {expect,test} from '@playwright/test';
+import {authenticateFixture,snapshot} from './persistent-fixture';
+for(const width of [390,1440])test(`Paiement relu et enregistré une seule fois à ${width}px`,async({page})=>{
+ await page.setViewportSize({width,height:1000});await authenticateFixture(page);
+ await page.route('**/api/campus',route=>route.fulfill({json:snapshot}));
+ const operations:Record<string,unknown>[]=[];let paid=0;
+ await page.route('**/api/students/*/operations',route=>{
+  if(route.request().method()==='POST'){const body=route.request().postDataJSON();operations.push(body);paid=body.amount;return route.fulfill({status:201,json:{revision:2}});}
+  return route.fulfill({json:{revision:1,enrollments:[{id:'00000000-0000-4000-8000-000000000101',status:'REINSCRIT'}],payments:[],paid}});
+ });
+ await page.goto('/etudiants/ESCEN-TEST-001');
+ await page.getByRole('button',{name:'Enregistrer un paiement',exact:true}).click();
+ await page.getByLabel('Montant FCFA',{exact:true}).fill('50000');await page.getByLabel('Payeur',{exact:true}).fill('Parent de recette');await page.getByLabel('Référence du versement').fill('RECETTE-001');await page.getByLabel('Organisme ou caisse').fill('Caisse ESCEN');await page.getByLabel('Date du paiement').fill('2026-10-15');await page.getByLabel('Motif',{exact:true}).fill('Versement contrôlé de recette');
+ await page.getByRole('button',{name:'Vérifier l’opération'}).click();expect(operations).toHaveLength(0);
+ await page.getByRole('button',{name:'Confirmer le paiement',exact:true}).click();
+ await expect(page.getByText('Paiement et reçu enregistrés.',{exact:true})).toBeVisible();expect(operations).toHaveLength(1);expect(operations[0]).toMatchObject({action:'payment',amount:50000,reference:'RECETTE-001'});
+});
+test('Sans inscription officielle, aucun encaissement proposé',async({page})=>{
+ await authenticateFixture(page);await page.route('**/api/campus',route=>route.fulfill({json:snapshot}));await page.route('**/api/students/*/operations',route=>route.fulfill({json:{revision:1,enrollments:[],payments:[],paid:0}}));
+ await page.goto('/etudiants/ESCEN-TEST-001');await expect(page.getByText('Aucune inscription officielle pour cette année. Une inscription est nécessaire avant un encaissement.')).toBeVisible();await expect(page.getByRole('button',{name:'Enregistrer un paiement',exact:true})).toHaveCount(0);
+});

@@ -1,0 +1,11 @@
+import assert from 'node:assert/strict';
+import { previousAcademicYear, reenrollmentCandidates } from './reenrollmentService';
+const years=[{id:'Y0',name:'2023-2024'},{id:'Y1',name:'2024-2025'},{id:'Y2',name:'2025-2026'}];
+assert.equal(previousAcademicYear(years,years[2])?.id,'Y1');
+assert.equal(previousAcademicYear([years[0],years[2]],years[2]),null);
+assert.equal(previousAcademicYear([...years,{id:'DUP',name:'2024-2025'}],years[2]),null);
+const snapshot={revision:1,tables:{academic_offerings:[{id:'O0',academic_year_id:'Y0'},{id:'O1',academic_year_id:'Y1'},{id:'O2',academic_year_id:'Y2'}],students:['A','B','C','D','E'].map(id=>({id,matricule:id})),enrollments:[{id:'E1',student_id:'A',offering_id:'O1'},{id:'E2',student_id:'B',offering_id:'O1'},{id:'E3',student_id:'B',offering_id:'O2'},{id:'E4',student_id:'C',offering_id:'O0'},{id:'E5',student_id:'D',offering_id:'O2'}]}};
+assert.deepEqual(reenrollmentCandidates(snapshot,'Y1','Y2').map(row=>row.id),['A']);
+assert.deepEqual(reenrollmentCandidates(snapshot,'Y1','Y2',['E'],['A']).map(row=>row.id),['E']);
+assert.equal(snapshot.tables.enrollments.length,5);
+console.log('Réinscription : année précédente exacte, inscriptions cible exclues et historique conservé.');

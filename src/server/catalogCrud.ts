@@ -1,9 +1,11 @@
 import 'server-only';
+import { resolveAcademicYear } from './academicYearContext';
 import { z } from 'zod';
 import { requireAccount, requirePermission, RequestError } from '@/server/auth';
 import { ROLES } from '@/types/permissions';
 import { CRUD_CATALOG } from '@/data/crudCatalog';
 import { catalogSpec, parseCatalogRecord, canManageCatalog, validateCatalogReferences } from '@/services/catalogCrudService';
+import { buildReconductChanges } from '@/services/yearPreparationService';
 import type { RelationalSnapshot, PersistentChange } from '@/types/persistence';
 export async function catalogRequest(request: Request, key: string) {
   if (!CRUD_CATALOG.some(spec => spec.key === key)) throw new RequestError(404,'Collection inconnue.');
@@ -23,6 +25,23 @@ export async function writeCatalog(request: Request, key: string, id?: string) {
   const target = id ? snapshot.tables[key]?.find(row => row.id === z.uuid().parse(id)) : undefined;
   if (id && !target) throw new RequestError(404,'Enregistrement introuvable.');
   if (target?.archived_at) throw new RequestError(409,'Cet enregistrement est archivé.');
+  let offeringIds: string[] = [];
+  if (key === 'groups' && !id && !archive && !body.sourceRowId) {
+    offeringIds = z.array(z.uuid()).min(1).parse(body.values?.offering_ids);
+    if (new Set(offeringIds).size !== offeringIds.length) throw new RequestError(400, 'Sélection de filières dupliquée.');
+    const { offering_ids: _ids, ...values } = body.values!;
+    void _ids;
+    body.values = values;
+    for (const offeringId of offeringIds) {
+      const offering = snapshot.tables.academic_offerings?.find(row => row.id === offeringId && !row.archived_at);
+      if (!offering || offering.academic_year_id !== values.academic_year_id || offering.level_id !== values.level_id) throw new RequestError(400, 'Choisissez des filières de la même année et du même niveau que le groupe.');
+    }
+  }
+  let reconductYearId: string | undefined;
+  if (key === 'academic_years' && !id && !archive && !body.sourceRowId && body.values?.reconduct_from_year_id) {
+    reconductYearId = z.string().uuid().parse(body.values.reconduct_from_year_id);
+    delete body.values.reconduct_from_year_id;
+  }
   let record: Record<string,unknown>;
   if (archive) {
     if (!id) throw new RequestError(400,'Enregistrement requis.');
@@ -33,10 +52,33 @@ export async function writeCatalog(request: Request, key: string, id?: string) {
     record = { ...record, id: id || crypto.randomUUID(), reason: body.reason };
 
   }
+  if (['groups','subjects','annual_fee_schedules','annual_payment_channels','academic_offerings','group_offerings'].includes(key)) {
+    const year = await resolveAcademicYear(request,client,context,snapshot);
+    if (!year.selectedYearId) throw new RequestError(409,'Choisissez une année précise pour cette opération.');
+    if (year.selectedYearId && (record.academic_year_id || target?.academic_year_id) !== year.selectedYearId) throw new RequestError(409, 'La définition doit appartenir à l’année consultée.');
+  }
   const changes: PersistentChange[] = [{ table: key, operation: id ? 'update' : 'insert', record }];
-  if(body.sourceRowId && (id || archive || ![ROLES.IT,ROLES.DG].includes(context.role as typeof ROLES.IT))) throw new RequestError(403,'Cette reprise nécessite un accès global de direction ou d’administration.');
-  const response = body.sourceRowId ? await client.rpc('escen_catalog_resume',{p_actor_id:context.accountId,p_expected_revision:snapshot.revision,p_table:key,p_record:record,p_source_id:body.sourceRowId}) : await client.rpc('escen_backend_transaction',{p_actor_id:context.accountId,p_expected_revision:snapshot.revision,p_changes:changes});
-  if (response.error?.message.includes('Source déjà reprise')) throw new RequestError(409,'Ce dossier a déjà été repris. Modifiez son enregistrement dans le référentiel actuel.');
-  if (response.error) throw new RequestError(409,'Enregistrement refusé : doublon, relation incompatible ou modification concurrente.');
-  return Response.json({ id: record.id, revision: response.data },{status: id ? 200 : 201,headers:{'Cache-Control':'no-store'}});
+  for (const offeringId of offeringIds) changes.push({ table: 'group_offerings', operation: 'insert', record: { id: crypto.randomUUID(), group_id: record.id, offering_id: offeringId, academic_year_id: record.academic_year_id, level_id: record.level_id, reason: body.reason } });
+  if (reconductYearId) {
+    const reconductChanges = buildReconductChanges(snapshot, reconductYearId, record.id as string, body.reason);
+    changes.push(...reconductChanges);
+  }
+  let currentRevision = snapshot.revision;
+  if (body.sourceRowId) {
+    if (id || archive || ![ROLES.IT,ROLES.DG].includes(context.role as typeof ROLES.IT)) throw new RequestError(403,'Cette reprise nécessite un accès global de direction ou d’administration.');
+    const response = await client.rpc('escen_catalog_resume',{p_actor_id:context.accountId,p_expected_revision:snapshot.revision,p_table:key,p_record:record,p_source_id:body.sourceRowId});
+    if (response.error?.message.includes('Source déjà reprise')) throw new RequestError(409,'Ce dossier a déjà été repris. Modifiez son enregistrement dans le référentiel actuel.');
+    if (response.error) throw new RequestError(409,'Enregistrement refusé : doublon, relation incompatible ou modification concurrente.');
+    currentRevision = response.data;
+  } else {
+    for (let i = 0; i < changes.length; i += 100) {
+      const chunk = changes.slice(i, i + 100);
+      const response = await client.rpc('escen_backend_transaction', { p_actor_id: context.accountId, p_expected_revision: currentRevision, p_changes: chunk });
+      if (response.error) throw new RequestError(409, 'Enregistrement refusé : doublon, relation incompatible ou modification concurrente.');
+      currentRevision = response.data;
+    }
+  }
+  return Response.json({ id: record.id, revision: currentRevision },{status: id ? 200 : 201,headers:{'Cache-Control':'no-store'}});
 }
+
+

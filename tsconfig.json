@@ -36,21 +36,11 @@
     ".next-verification/types/**/*.ts",
     ".next/dev/types/**/*.ts",
     ".next/types/**/*.ts",
-    ".tmp/next-crud-verification/types/**/*.ts",
-    ".tmp/next-data-final/types/**/*.ts",
-    ".tmp/next-data-reviewed/types/**/*.ts",
-    ".tmp/next-data-verification/types/**/*.ts",
-    ".tmp/next-details-verification/types/**/*.ts",
-    ".tmp/next-development/types/**/*.ts",
-    ".tmp/next-exam-reader/types/**/*.ts",
-    ".tmp/next-global-verification/types/**/*.ts",
-    ".tmp/next-pedagogy-verification/types/**/*.ts",
-    ".tmp/next-refonte-check/types/**/*.ts",
-    ".tmp/next-refonte-final/types/**/*.ts",
-    ".tmp/next-refonte-ready/types/**/*.ts",
-    ".tmp/next-ui-development/types/**/*.ts",
+    ".tmp/next-bottom-up-checked/types/**/*.ts",
+    ".tmp/next-bottom-up-final/types/**/*.ts",
+    ".tmp/next-bottom-up-ready/types/**/*.ts",
     "next-env.d.ts",
-    ".tmp/next-menu-verification/types/**/*.ts"
+    ".tmp/next-development/types/**/*.ts"
   ],
   "exclude": [
     "node_modules"

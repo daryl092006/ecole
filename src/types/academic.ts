@@ -19,7 +19,7 @@ export interface AcademicYear {
   active: boolean;
   history: AcademicYearHistoryEntry[];
 }
-export type AcademicCycle = 'LICENCE' | 'MASTER';
+export type AcademicCycle = 'LICENCE' | 'MASTER' | '';
 export interface Semester { id: string; academicYearId: string; levelId: string; name: string; order: number; startDate: string; endDate: string; active: boolean; }
 export interface CatalogHistoryEntry {
   id: string;

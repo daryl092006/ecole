@@ -10,6 +10,10 @@ const routeSections = new Set(PORTAL_ROUTES.map(route => route.section));
 const connected = new Set([...Object.keys(DOMAIN_WORKSPACES), ...Object.keys(CRUD_SECTIONS), 'espace_dashboard', 'dashboard_kpis', 'dashboard_reports', 'acad_settings', 'acad_subjects', 'acad_exams', 'acad_resits', 'acad_assessments', 'stud_list', 'stud_accounts', 'staff_records', 'staff_list', 'staff_roles', 'staff_permissions', 'sys_data']);
 for (const route of PORTAL_ROUTES) assert.ok(connected.has(route.section), `${route.href} doit disposer d’un écran connecté explicite.`);
 for (const stages of Object.values(MODULE_JOURNEYS)) for (const stage of stages) for (const section of stage.sections) assert.ok(routeSections.has(section), `Destination de parcours inconnue : ${section}`);
+for (const [tab, stages] of Object.entries(MODULE_JOURNEYS)) {
+  const sections = stages.flatMap(stage => stage.sections);
+  for (const route of PORTAL_ROUTES.filter(item => item.tab === tab)) assert.equal(sections.filter(section => section === route.section).length, 1, `${route.href} doit apparaître une fois dans le parcours de navigation.`);
+}
 const columns = new Map<string, Set<string>>();
 const migrations = join(process.cwd(), 'supabase', 'migrations');
 for (const file of readdirSync(migrations)) {

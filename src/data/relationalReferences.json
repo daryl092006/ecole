@@ -416,5 +416,21 @@
   "exam_room_supervisors": {
     "exam_room_id": "exam_rooms",
     "account_id": "accounts"
+  },
+  "website_articles": {
+    "created_by": "accounts"
+  },
+  "website_intakes": {
+    "id": "levels",
+    "program_id": "programs"
+  },
+  "online_applications": {
+    "intake_id": "website_intakes"
+  },
+  "application_documents": {
+    "id": "online_applications"
+  },
+  "academic_working_year": {
+    "academic_year_id": "academic_years"
   }
 }

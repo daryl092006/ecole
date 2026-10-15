@@ -3,7 +3,9 @@
 import { getVisibleExamRecords, getVisibleExamAuditLogs, examTime } from '@/services/examQueryService';
 import { useExamClock } from '@/hooks/useExamClock';
 
-import { useState, useCallback, useMemo, useEffect } from 'react';
+import { useState, useCallback, useMemo, useEffect, useRef } from 'react';
+import { setResolvedAcademicYearRequest } from '@/services/academicYearSelection';
+import { useAcademicYearSelection } from '@/hooks/useAcademicYearSelection';
 import { useHistoricalCampus } from '@/hooks/useHistoricalCampus';
 import { useCampusRecords } from '@/hooks/useCampusRecords';
 import { executeCampusWorkflow, deriveEnrollments, type CampusAction } from '@/services/campusWorkflowService';
@@ -83,6 +85,8 @@ export function useAppState() {
   const [activeRole, setActiveRole] = useState<RoleName>(ROLES.DG);
   const currentTab = route?.tab || Object.entries(MODULE_PATHS).find(([, path]) => path === pathname)?.[0] || 'espace';
   const currentSubTab = route?.section || '';
+  const academicYearChoice = useAcademicYearSelection(session?.accountId, activeRole);
+  const academicYearSelection = academicYearChoice.selection;
   const [searchQuery, setSearchQuery] = useState('');
   const examNow = useExamClock((currentSubTab === 'acad_exams' || currentTab === 'espace')
     && campusRecords.exams.some(exam => exam.status !== 'ANNULE' && Date.now() < examTime(exam, 'end')));
@@ -150,8 +154,11 @@ export function useAppState() {
   const [relationalSnapshot, setRelationalSnapshot] = useState<RelationalSnapshot>({ revision: 0, tables: {} });
   const [campusLoad, setCampusLoad] = useState<{ status: 'idle' | 'loading' | 'ready' | 'error'; error: string; students: number; users: number; enrollments: number }>({ status: 'idle', error: '', students: 0, users: 0, enrollments: 0 });
   const [reloadCampusIndex, setReloadCampusIndex] = useState(0);
-  const reloadCampus = () => setReloadCampusIndex(index => index + 1);
-  const history = useHistoricalCampus(activeRole, session?.accountId, session?.mustChangePassword || (!!session && (!session.capabilities?.[activeRole]?.globalAccess || !session.capabilities?.[activeRole]?.permissions.includes('system.audit.view'))), reloadCampusIndex);
+  const preserveCampusScreen = useRef(false);
+  const loadedCampusScope = useRef('');
+  const reloadCampus = () => { preserveCampusScreen.current = false; setReloadCampusIndex(index => index + 1); };
+  const refreshCampus = () => { preserveCampusScreen.current = true; setReloadCampusIndex(index => index + 1); };
+  const history = useHistoricalCampus(activeRole, session?.accountId, session?.mustChangePassword || (!!session && (!session.capabilities?.[activeRole]?.globalAccess || !session.capabilities?.[activeRole]?.permissions.includes('system.audit.view'))), reloadCampusIndex, academicYearSelection + ':' + (relationalSnapshot.academicContext?.selectedYearId || ''));
 
   const capabilities = session?.capabilities?.[activeRole];
   const perms = session ? { ...ROLE_PERMISSIONS[activeRole], permissions: ROLE_PERMISSIONS[activeRole].permissions.filter(permission => capabilities?.permissions.includes(permission)) } : ROLE_PERMISSIONS[activeRole];
@@ -233,15 +240,19 @@ export function useAppState() {
   const mustChangePassword = session?.mustChangePassword;
   useEffect(() => {
     const controller = new AbortController();
-    hydrateCampus(projectRelationalCampus({ revision: 0, tables: {} }));
-    setRelationalSnapshot({ revision: 0, tables: {} });
+    const scope = `${accountId}:${activeRole}:${academicYearSelection}`;
+    const preserve = preserveCampusScreen.current && loadedCampusScope.current === scope;
+    preserveCampusScreen.current = false;
+    loadedCampusScope.current = scope;
+    if (!preserve) { hydrateCampus(projectRelationalCampus({ revision: 0, tables: {} })); setRelationalSnapshot({ revision: 0, tables: {} }); }
     if (!accountId || mustChangePassword) {
       setCampusLoad({ status: 'idle', error: '', students: 0, users: 0, enrollments: 0 });
       return () => controller.abort();
     }
-    setCampusLoad({ status: 'loading', error: '', students: 0, users: 0, enrollments: 0 });
+    if (!preserve) setCampusLoad({ status: 'loading', error: '', students: 0, users: 0, enrollments: 0 });
     void loadRelationalCampus(activeRole, controller.signal).then(snapshot => {
       if (controller.signal.aborted) return;
+      setResolvedAcademicYearRequest(snapshot.academicContext?.selectedYearId || null);
       const projection = projectRelationalCampus(snapshot);
       setRelationalSnapshot(snapshot);
       hydrateCampus(projection);
@@ -251,7 +262,7 @@ export function useAppState() {
       setCampusLoad({ status: 'error', error: error instanceof Error ? error.message : 'Chargement des dossiers impossible.', students: 0, users: 0, enrollments: 0 });
     });
     return () => controller.abort();
-  }, [accountId, mustChangePassword, activeRole, reloadCampusIndex, hydrateCampus]);
+  }, [accountId, mustChangePassword, activeRole, reloadCampusIndex, academicYearSelection, hydrateCampus]);
 
 
   const navigateTo = useCallback((tabId: string, subTabId?: string) => {
@@ -491,7 +502,7 @@ export function useAppState() {
   };
   const updateStudentProfile = async (studentId: string, input: Pick<Student, 'firstname' | 'lastname' | 'email' | 'phone' | 'gender' | 'birthDate' | 'nationality' | 'address' | 'city' | 'country'>, expectedRevision?: number) => {
     if (!hasPermission(activeRole, 'student.update')) throw new Error('Modification du dossier non autorisée.');
-    if (session) { await saveStudentProfile(studentId, input, activeRole, expectedRevision ?? campusRevision); reloadCampus(); return; }
+    if (session) { await saveStudentProfile(studentId, input, activeRole, expectedRevision ?? campusRevision); refreshCampus(); return; }
     if (!input.firstname.trim() || !input.lastname.trim()) throw new Error('Prénom et nom obligatoires.');
     if (input.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(input.email)) throw new Error('Email invalide.');
     if (input.phone && !/^(?:\+228[ -]?)?[0-9 -]{8,15}$/.test(input.phone)) throw new Error('Numéro de téléphone invalide.');
@@ -683,6 +694,7 @@ export function useAppState() {
 
   return {
     // Role
+    refreshCampus, academicYearSelection, changeAcademicYearSelection: academicYearChoice.change, academicYearContext: relationalSnapshot.academicContext,
     session, authReady, hasLoggedOut, campusLoad, campusRevision, relationalSnapshot, history, reloadCampus, login, logout, pathname, navigateToStudent, requestAccessHelp,
     globalAccess: !session || capabilities?.globalAccess === true,
     actionFeedback, clearActionFeedback: () => setActionFeedback(''),

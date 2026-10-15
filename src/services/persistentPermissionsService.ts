@@ -10,7 +10,7 @@ const domainTables: Array<{ permission: Permission; tables: string[] }> = [
   { permission: 'attendance.view', tables: ['attendances','teacher_attendances','absence_justifications'] },
   { permission: 'grade.view', tables: ['evaluations','evaluation_candidates','evaluation_transitions','exam_deliveries','exam_papers','exam_parts','exam_questions','exam_options','exam_attempts','exam_answers','answer_corrections','grades','grade_revisions','academic_rule_versions','juries','jury_members','jury_decisions','jury_grade_inputs','credit_awards','exam_rooms','exam_room_candidates','exam_room_supervisors'] },
   { permission: 'complaint.view', tables: ['complaints','complaint_events'] },
-  { permission: 'finance.view', tables: ['fee_types','fee_rates','scholarships','scholarship_awards','financial_contracts','contract_versions','contract_lines','contract_discounts','installments','payments','payment_reversals','receipts','payment_allocations','allocation_reversals','refunds','credit_notes','payment_documents'] },
+  { permission: 'finance.view', tables: ['annual_payment_channels','annual_fee_schedules','fee_types','fee_rates','scholarships','scholarship_awards','financial_contracts','contract_versions','contract_lines','contract_discounts','installments','payments','payment_reversals','receipts','payment_allocations','allocation_reversals','refunds','credit_notes','payment_documents'] },
   { permission: 'staff.view', tables: ['staff','staff_contracts'] },
   { permission: 'user.manage', tables: ['accounts','roles','permissions','role_permissions','role_grants'] },
   { permission: 'communication.view', tables: ['communications','communication_audiences','communication_reads','communication_files'] },

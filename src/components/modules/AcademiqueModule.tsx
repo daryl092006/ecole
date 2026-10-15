@@ -164,7 +164,7 @@ export default function AcademiqueModule({
                     <select id="session-room" required className="select-input" value={selectedRoomForPlan} onChange={e => setSelectedRoomForPlan(e.target.value)}>
                       <option value="">-- Choisir une salle --</option>
                       {rooms.map(r => (
-                        <option key={r.code} value={r.code}>{r.name} ({r.building} - Cap: {r.capacity})</option>
+                        <option key={r.code} value={r.code}>{r.name} (Capacité : {r.capacity})</option>
                       ))}
                     </select>
                   </div>

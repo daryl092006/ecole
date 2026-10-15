@@ -57,7 +57,7 @@ for (const width of [390, 1440]) {
     await page.goto('/communication/annonces');
     await expect(page.locator('#main-content h1')).toBeVisible();
     await expect(page.locator('.availability-details')).toBeVisible();
-    await expect(page.locator('.work-page')).toHaveCount(0);
+    await expect(page.getByRole('dialog')).toHaveCount(0);
 
   });
 }

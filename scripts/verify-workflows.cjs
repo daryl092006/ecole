@@ -175,7 +175,9 @@ const {identityArchiveChanges}=require('../src/services/identityCrudService.ts')
 const crudUuid='00000000-0000-4000-8000-000000000010';
 assert.throws(()=>parseCatalogRecord('programs',{name:'Test',code:'T',description:'',auth_user_id:crudUuid}));
 assert.throws(()=>parseCatalogRecord('academic_years',{name:'2026',code:'2026',starts_on:'2026-12-01',ends_on:'2026-01-01'}),/postérieure/);
-assert.throws(()=>validateCatalogReferences('rooms',{site_id:crudUuid,building_id:crudUuid},{revision:0,tables:{sites:[{id:crudUuid}],buildings:[{id:crudUuid,site_id:'autre'}]}}),/appartenir/);
+assert.doesNotThrow(()=>validateCatalogReferences('rooms',{code:'A1',name:'Salle A1',capacity:40},{revision:0,tables:{}}));
+assert.deepEqual(parseCatalogRecord('rooms',{code:'A1',name:'Salle A1',capacity:40}),{code:'A1',name:'Salle A1',capacity:40});
+assert.ok(!require('../src/data/crudCatalog.ts').CRUD_CATALOG.some(spec=>['sites','buildings'].includes(spec.key) || spec.fields.some(field=>['site_id','building_id'].includes(field.key))));
 assert.equal(canManageCatalog({permissions:['academic.structure.manage'],grants:[{site_id:crudUuid,group_id:null,academic_year_id:null}]},'subjects'),false);
 assert.equal(canManageCatalog({permissions:['academic.view'],grants:[{site_id:null,group_id:null,academic_year_id:null}]},'subjects'),false);
 const archiveContext={role:ROLES.IT,accountId:'ACTOR-ACCOUNT',personId:'ACTOR',permissions:['user.manage'],grants:[{site_id:null,group_id:null,academic_year_id:null}]};
@@ -207,3 +209,8 @@ console.log('Vérification réussie : catégories pédagogiques distinctes, comp
 require('../src/services/connectedRecordDisplayService.test.ts');
 require('../src/services/processCatalog.test.ts');
 console.log('Vérification réussie : tous les écrans disposent d’un parcours connecté ; attributs réels et références entre tables contrôlés.');
+require('../src/services/websiteService.test.ts');
+require('../src/services/academicYearScopeService.test.ts');
+require('../src/services/reenrollmentService.test.ts');
+require('../src/services/yearPreparationService.test.ts');
+require('../src/services/catalogDependencyService.test.ts').verifyCatalogDependencies().catch(error => { console.error(error); process.exitCode = 1; });

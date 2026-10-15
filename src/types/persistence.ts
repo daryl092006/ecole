@@ -1,7 +1,7 @@
 import type { Permission, RoleName } from '@/types/permissions';
 
 export type DatabaseRow = Record<string, unknown> & { id: string };
-export interface RelationalSnapshot { revision: number; tables: Record<string, DatabaseRow[]>; }
+export interface RelationalSnapshot { revision: number; tables: Record<string, DatabaseRow[]>; academicContext?: import('@/types/academicYearContext').AcademicYearContext; }
 export interface AccountGrant {
   role_code: string; role_name: string; site_id: string | null;
   academic_year_id: string | null; group_id: string | null;

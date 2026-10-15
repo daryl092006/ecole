@@ -1,10 +1,12 @@
+import EnrollmentDialog from './EnrollmentDialog';
+import OnlineAdmissionsPanel from './website/OnlineAdmissionsPanel';
 import ResponsiveTable from '@/components/ui/ResponsiveTable';
 import ActionPanel from '@/components/ui/ActionPanel';
-import Link from 'next/link';
-import { studentPath } from '@/constants/portalRoutes';
+import StudentRecordDialog from './StudentRecordDialog';
+
 import { useState } from 'react';
 import StudentCrudActions from './StudentCrudActions';
-import StudentProfilePanel from './StudentProfilePanel';
+
 import StudentFiltersPanel from './StudentFiltersPanel';
 import { EMPTY_STUDENT_FILTERS, filterRegisteredStudents } from '@/services/studentQueryService';
 import StudentRegistrationForm from './StudentRegistrationForm';
@@ -26,6 +28,8 @@ interface EtudiantsModuleProps {
 }
 
 export default function EtudiantsModule({ persistent = false, activeRole, createStudent, perms, currentSubTab, students, groups, selectedStudent, setSelectedStudent, assignStudentToGroup }: EtudiantsModuleProps) {
+  const [newEnrollment,setNewEnrollment]=useState(false);
+  const [online, setOnline] = useState(false);
   const [filters, setFilters] = useState(EMPTY_STUDENT_FILTERS);
   const filteredStudents = filterRegisteredStudents(students, filters, activeRole);
   const [studentToAssign, setStudentToAssign] = useState('');
@@ -38,13 +42,15 @@ export default function EtudiantsModule({ persistent = false, activeRole, create
     setAssignmentMessage(result.success ? 'Affectation enregistrée et journalisée.' : result.error ?? 'Affectation impossible.');
     if (result.success) { setStudentToAssign(''); setTargetGroup(''); }
   };
+  if (online) return <OnlineAdmissionsPanel onClose={() => setOnline(false)} />;
   return (
     <div>
+      {newEnrollment && <EnrollmentDialog kind="new" onClose={()=>setNewEnrollment(false)} />}
       {/* ── SUBTAB: stud_list (Liste des Étudiants & Dossiers) ── */}
       {currentSubTab === 'stud_list' && (
         <div>
           <div className="module-header">
-            <h1>Dossiers étudiants</h1>{persistent && <StudentCrudActions />}
+            <h1>Dossiers étudiants</h1>{persistent && <div className="btn-group"><button className="btn btn-outline" onClick={() => setOnline(true)}>Inscriptions en ligne</button><StudentCrudActions />{perms.permissions.includes('student.lifecycle.manage') && perms.permissions.includes('payment.record') && <button className="btn btn-primary" onClick={()=>setNewEnrollment(true)}>Nouvelle inscription</button>}</div>}
           </div>
 
           {!persistent && perms.permissions.includes('student.group.assign') && <StudentRegistrationForm groups={groups} onCreate={createStudent} />}
@@ -101,9 +107,9 @@ export default function EtudiantsModule({ persistent = false, activeRole, create
                       </td>}
                       <td><span className={`pill ${['Inscrit', 'Réinscrit'].includes(s.status) ? 'pill-success' : 'pill-default'}`}>{s.status}</span></td>
                       <td>
-                        <Link className="btn btn-sm btn-outline" href={studentPath(s.matricule)} prefetch={false}>
+                        <button className="btn btn-sm btn-outline" onClick={() => setSelectedStudent(s)}>
                           Fiche &amp; Dossier
-                        </Link>
+                        </button>
                       </td>
                     </tr>
                   ))}
@@ -115,21 +121,7 @@ export default function EtudiantsModule({ persistent = false, activeRole, create
         </div>
       )}
 
-      {/* Student detail modal */}
-      {selectedStudent && (
-        <div className="modal-overlay" onClick={() => setSelectedStudent(null)}>
-          <div className="modal-box" onClick={e => e.stopPropagation()}>
-            <h3>Fiche Individuelle : {selectedStudent.firstname} {selectedStudent.lastname}</h3>
-            <p className="modal-sub">Matricule : {selectedStudent.matricule}</p>
-
-            <StudentProfilePanel key={selectedStudent.matricule} student={selectedStudent} />
-
-            <div className="modal-footer">
-              <button className="btn btn-outline" onClick={() => setSelectedStudent(null)}>Fermer</button>
-            </div>
-          </div>
-        </div>
-      )}
+      {selectedStudent && <StudentRecordDialog matricule={selectedStudent.matricule} onClose={() => setSelectedStudent(null)} />}
     </div>
   );
 }

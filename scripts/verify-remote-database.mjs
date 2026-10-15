@@ -21,18 +21,34 @@ const report = remoteQuery(`select
   (select count(*) from escen.role_grants where legacy_source_row_id is not null) as imported_legacy_role_grants,
   (select count(*) from escen_private.source_mappings where mapping_method='SOURCE_EXACT') as exact_source_mappings,
   (select count(*) from escen_private.import_runs where run_code='LEGACY_IDENTITIES_V1') as identity_import_runs,
-  (select count(*) from escen_private.legacy_rows where status='MAPPED') as mapped_source_rows;`)[0];
-if (Number(report.migrations) !== 21 || Number(report.it_permissions) !== 42 || Number(report.business_tables) !== 104 || Number(report.private_tables) !== 11
+  (select count(*) from escen_private.legacy_rows where status='MAPPED') as mapped_source_rows,
+  (select count(*) from escen_private.import_runs where run_code='CANONICAL_2025_V1') as canonical_import_runs,
+  (select count(*) from escen.enrollments) as enrollments,
+  (select count(*) from escen.grades) as grades,
+  (select sum(amount) from escen.payments where status='POSTED') as paid,
+  (select sum(amount) from escen.payments where status='PENDING') as pending;`)[0];
+if (Number(report.migrations) !== 29 || Number(report.it_permissions) !== 42 || Number(report.business_tables) !== 111 || Number(report.private_tables) !== 13
   || Number(report.tables_without_rls) !== 0 || Number(report.source_rows) !== 15566
-  || Number(report.diagnostics) !== 264 || Number(report.recovery_candidates) !== 3
+  || Number(report.diagnostics) !== 383 || Number(report.recovery_candidates) !== 3
   || Number(report.accounts) !== 175 || Number(report.imported_students) !== 145
-  || Number(report.imported_legacy_role_grants) !== 176 || Number(report.exact_source_mappings) !== 682
-  || Number(report.identity_import_runs) !== 1 || Number(report.mapped_source_rows) !== 362) throw new Error('État distant différent des contrôles attendus.');
+  || Number(report.imported_legacy_role_grants) !== 176 || Number(report.exact_source_mappings) !== 3500
+  || Number(report.identity_import_runs) !== 1 || Number(report.mapped_source_rows) !== 1928) throw new Error('État distant différent des contrôles attendus.');
+if (Number(report.canonical_import_runs) !== 1 || Number(report.enrollments) !== 143 || Number(report.grades) !== 521 || Number(report.paid) !== 49300000 || Number(report.pending) !== 325000) throw new Error('Reprise opérationnelle distante non conforme.');
 const anonymous = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL,process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY,{ auth:{ persistSession:false,autoRefreshToken:false } });
 for (const [name,args] of [
   ['escen_catalog_resume',{p_actor_id:'00000000-0000-4000-8000-000000000001',p_expected_revision:0,p_table:'subjects',p_record:{},p_source_id:'00000000-0000-4000-8000-000000000002'}],
   ['escen_subject_transaction',{p_actor_id:'00000000-0000-4000-8000-000000000001',p_expected_revision:0,p_changes:[]}],
   ['escen_catalog_history_links',{p_table:'programs'}],
+  ['escen_academic_year_context',{}],
+  ['escen_academic_year_command',{p_actor_id:'00000000-0000-4000-8000-000000000001',p_role_code:'IT',p_action:'current',p_year_id:null,p_expected_revision:0,p_reason:'Refus anonyme'}],
+  ['escen_history_catalog_year',{p_year_id:'00000000-0000-4000-8000-000000000001'}],
+  ['escen_history_row_matches_year',{p_year_id:'00000000-0000-4000-8000-000000000001',p_row_id:'00000000-0000-4000-8000-000000000001'}],
+  ['escen_history_student_ids_year',{p_year_id:'00000000-0000-4000-8000-000000000001'}],
+  ['escen_website_public',{p_action:'articles'}],
+  ['escen_website_public_before_annual_scope',{p_action:'articles'}],
+  ['escen_website_manage_before_annual_scope',{p_actor_id:'00000000-0000-4000-8000-000000000001',p_role_code:'IT',p_action:'articles'}],
+  ['escen_website_manage',{p_actor_id:'00000000-0000-4000-8000-000000000001',p_role_code:'IT',p_action:'articles'}],
+  ['escen_website_rate',{p_key:'a'.repeat(64),p_limit:1}],
   ['escen_backend_snapshot',{}],['escen_history_catalog',{}],['escen_history_page',{p_table:'notes'}],['escen_history_document',{p_row_id:'00000000-0000-0000-0000-000000000001',p_field:'file_path'}],
   ['escen_manage_account',{p_actor_id:'00000000-0000-0000-0000-000000000001',p_target_id:'00000000-0000-0000-0000-000000000002',p_action:'archive',p_reason:'Unauthorized'}],['escen_import_overview',{}],
   ['escen_account_session',{ p_auth_user_id:'00000000-0000-0000-0000-000000000001' }],

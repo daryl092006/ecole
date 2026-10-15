@@ -1,8 +1,10 @@
 # Statut fonctionnel ESCEN
 
-Mise à jour : 14 octobre 2026.
+Mise à jour : 15 octobre 2026.
 
 ## Phase actuelle
+
+[Inscriptions et articles du site](INTERCONNEXION_SITE_LOCAL.md) : le formulaire en quatre étapes de la copie Nuxt envoie ses dossiers à la plateforme, avec reprise de brouillon, consentement, pièces privées et référence de réception. Le panneau « Inscriptions en ligne » permet la consultation et le suivi motivé ; les formations publiables sont configurées explicitement à partir des référentiels canoniques. « Actualités institutionnelles » permet de rédiger, publier et retirer les articles affichés par le site. Les migrations 22 et 23 sont appliquées. Aucun compte ni inscription académique officielle n’est créé par la réception. Le site original en production reste inchangé.
 
 La [réorganisation pédagogique](ORGANISATION_PEDAGOGIE.md) sépare les contrôles continus, examens, rattrapages, sujets et notes. Les formulaires et détails de gestion utilisent une page centrale. Les références ne sont plus présentées deux fois après reprise. La composition des épreuves (parties, questions, QCM, barème, corrigé, aperçu et impression) enregistre des versions dans Supabase. La migration 21 est appliquée. Les sujets préparatoires restent en brouillon ; ils n’ouvrent pas automatiquement une session. Validation : lint, build, 31 groupes PostgreSQL, 18 tests navigateur et contrôle distant.
 
@@ -99,3 +101,45 @@ Les premières exécutions sur le serveur de développement ont été interrompu
 Le backend, l’authentification, le stockage des fichiers, les sauvegardes/restaurations de données et les contrôles de permissions côté serveur restent à intégrer après validation du front. L’export du journal ne sauvegarde pas les dossiers. Mobile money est un mode de comptabilisation d’un versement déjà reçu, sans appel à un opérateur de paiement.
 
 L’admission/CRM et le portail public restent hors périmètre. Les transferts de crédits externes, diplômes nationaux, paie complète et comptabilité générale nécessitent des parcours spécifiques avant d’être considérés comme couverts.
+
+## Contexte annuel connecté — 15 octobre 2026
+
+Les pages Notes et résultats, Délibérations et relevés et Documents étudiants commencent par le choix d’un dossier étudiant. Les listes, détails et exports sont ensuite limités à ce dossier et au contexte annuel existant, aussi bien dans les archives que dans les données actuelles. Les relations passent par les inscriptions, candidats, notes et décisions réelles ; un dossier sans archive reliée affiche cette absence sans présenter toutes les archives. Les types de pièces et exigences partagés ne sont plus mélangés aux documents personnels. La consultation technique transversale reste dans Données et contrôle de reprise, pour les rôles autorisés. Recette mobile et ordinateur : `npm run test:ui -- tests/ui/document-context.spec.ts`.
+
+Le sélecteur « Année » distingue la consultation personnelle et l’année de travail institutionnelle. Les routes serveur filtrent les données annuelles selon les relations réelles et les droits existants. Ouverture, désignation et clôture sont persistantes, motivées, auditées et protégées contre les modifications concurrentes. Les campagnes du site et leurs dossiers conservent leur année. Aucune année officielle n’est choisie automatiquement ; les archives sans rattachement confirmé restent accessibles en consultation globale aux rôles autorisés. Les autres workflows historiques ne deviennent pas persistants par cette évolution. Voir [les règles et limites](ANNEE_DE_TRAVAIL.md).
+
+## Revue comparative des parcours — 15 octobre 2026
+
+La [revue du portail de référence](reference-escen/REVUE_PARCOURS_2026-10-15.md) couvre ses 53 destinations de menu, des formulaires et fiches représentatives. Elle confirme que les navigateurs de collections actuels ne remplacent pas les parcours pédagogiques, documentaires et financiers. Le choix individuel d’un étudiant reste insuffisant pour traiter les notes d’un groupe et les relevés d’un semestre. La refonte de ces parcours reste à réaliser ; les tests existants ne la certifient pas. Le mélange des collections dans les onglets du dossier étudiant a été corrigé et fait l’objet d’un test navigateur dédié.
+
+## Année scolaire obligatoire pour les activités — migration 24
+
+Les racines métier de communication, support, achats, mouvements, sujets, documents et articles portent désormais une année ; les données dérivées suivent leurs parents réels. Les dossiers sans inscription annuelle et les éléments dont l’année est inconnue sont conservés mais exclus d’une vue annuelle. Sans année de travail configurée, l’interface demande une année au lieu de montrer toutes les activités implicitement. Une consultation transversale reste explicite ; les écritures de sujets et du site exigent une année précise. Les identités et catalogues communs restent partagés. Voir `ANNEE_DE_TRAVAIL.md`. Cette évolution ne réalise pas les écritures métier encore en consultation.
+
+## Liste de réinscription par année cible
+
+La page Réinscriptions compare les inscriptions de l’année immédiatement précédente avec celles de l’année sélectionnée. Seuls les étudiants présents l’année précédente et sans inscription cible sont proposés ; les correspondances historiques exactes sont utilisées uniquement pour les rôles autorisés aux archives. Une année précédente absente ou ambiguë empêche le calcul, sans substitution par une année plus ancienne. La liste utilise une route serveur dédiée pour examiner les deux années avec les droits du compte, indépendamment du filtre du campus cible. Aucune écriture de réinscription n’est activée par ce changement. Tests : `npm run test` et `npm run test:ui -- tests/ui/reenrollment.spec.ts`.
+
+## Chargements et enregistrements visibles
+
+Un composant partagé affiche une animation, un libellé explicite et des lignes de préparation pendant les chargements des dossiers, référentiels, personnel, finances, planning, examens, copies, archives, sujets, réinscriptions, articles et inscriptions du site. Les animations respectent la préférence de réduction des mouvements. Les formulaires avec relecture et les pages de saisie signalent l’enregistrement en cours ; les champs partagés sont désactivés pendant la requête. Les erreurs de lecture des articles sont séparées de la liste vide et proposent une reprise ; les réponses annulées ne remplacent plus la nouvelle consultation du site. Après une mutation de référentiel, le contexte partagé et les archives sont actualisés. Les écritures métier encore indisponibles restent en consultation : ce travail ne les active pas. Recette : `npm run test:ui -- tests/ui/loading-feedback.spec.ts tests/ui/crud.spec.ts tests/ui/persistent-data.spec.ts tests/ui/website-exchange.spec.ts`.
+
+## Dossiers sans multiplication des pages
+
+La liste Étudiants et les candidats à la réinscription ouvrent leur dossier dans une fenêtre latérale, sans navigation ni perte des filtres. Les détails d’archives utilisent également cette présentation. La fiche directe reste accessible pour les liens existants. Si le dossier ne figure pas dans le campus de l’année cible, une route serveur charge ses informations civiles après contrôle des droits et filtre ses données annuelles ; l’absence dans la liste cible ne constitue plus à elle seule une erreur d’accès. Les fenêtres demandent confirmation avant abandon de saisie et bloquent la fermeture pendant les enregistrements partagés. Test : `npm run test:ui -- tests/ui/student-dialog.spec.ts`.
+
+## Situation du dossier étudiant
+
+La fiche distingue l’inscription officielle annuelle, les références historiques et les montants financiers établis. Un statut Réinscrit exige une inscription annuelle enregistrée ; un paiement ne constitue pas une réinscription. En l’absence de reprise financière vérifiée, les montants restent non établis et ne sont pas affichés comme zéro. La lecture serveur conserve le lien d’identité historique exact même lorsque l’étudiant ne possède pas d’inscription dans l’année cible ; les relations pédagogiques consultées restent filtrées par année. La réinscription et l’encaissement connectés restent à implémenter, et cette limite est indiquée dans la fiche.
+
+## Commandes dans le dossier étudiant
+
+Une inscription officielle dans l’année sélectionnée permet désormais un versement connecté (permission `payment.record`) et un changement de statut limité à suspension, abandon ou reprise (permission `student.lifecycle.manage`). La route serveur contrôle le dossier, les permissions et l’année, puis utilise la transaction existante avec révision concurrente : paiement et reçu sont atomiques ; changement de statut et événement motivé sont atomiques. Les anciens paiements sont conservés. Le montant présenté dans ce panneau est la somme des versements enregistrés non annulés, sans prétendre constituer le solde d’un contrat ni la reprise de tous les versements historiques. Les commandes refusent les dossiers sans inscription canonique cible. La reprise des inscriptions historiques, la réinscription, l’approbation des contrats, les allocations et la génération imprimable du reçu restent des parcours distincts à terminer. Aucune de ces opérations n’a été exécutée sur un dossier réel pendant la validation. Tests : `npm run test:ui -- tests/ui/student-operations.spec.ts`.
+
+## Configuration annuelle des frais et matières
+
+Tarifs annuels persistants pour scolarité et inscription, communs ou propres à une filière et éventuellement à un niveau. Les contrats et bourses restent dans une vue distincte. Les matières créées portent une année et leur code peut être réutilisé dans une autre année ; les maquettes refusent les matières rattachées à une autre année d’offre. Les anciens catalogues sans année ne sont pas arbitrairement réaffectés. Les examens et notes suivent déjà leurs offres et inscriptions annuelles. Cette configuration ne crée pas les maquettes/offres manquantes ni les contrats et ne choisit pas automatiquement entre des tarifs concurrents. Migration 26 ; recette `tests/ui/annual-configuration.spec.ts`.
+
+## Préparation avant ouverture et distinction des inscriptions
+
+Le référentiel annuel possède un contrôle de préparation avec liens de configuration. Les paramètres peuvent être saisis dans une année en brouillon ; l’ouverture via le serveur exige offres annuelles, groupes reliés, matières, frais et modes/caisses de paiement. Deux commandes séparées gèrent nouvelle inscription et réinscription. Elles créent atomiquement l’inscription annuelle, le groupe, l’événement motivé et un contrat en brouillon contenant les tarifs choisis. Les dossiers historiques ne sont jamais présentés comme de nouveaux entrants. L’ancien étudiant dont l’inscription précédente n’est pas encore reprise reste bloqué avec une indication explicite. La promotion/changement de filière, l’approbation des contrats et les allocations financières restent à terminer ; le nouveau parcours ne les simule pas. Voir `ANNEE_DE_TRAVAIL.md`. Recette : `tests/ui/year-preparation.spec.ts`, services de préparation et assertions SQL en brouillon.

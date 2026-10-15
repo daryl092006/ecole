@@ -1,4 +1,5 @@
 'use client';
+import LoadingState from '@/components/ui/LoadingState';
 import { useEffect, useState } from 'react';
 import { usePortal } from '@/hooks/usePortal';
 import { loadHistoricalExam } from '@/services/historyService';
@@ -24,7 +25,7 @@ export default function ExamCopies({ exam, onBack, backLabel='Tous les examens' 
     return () => controller.abort();
   }, [exam.id, activeRole, retry]);
   const catalog = history.catalog;
-  if (!catalog) return <p role="status">Chargement de l’examen…</p>;
+  if (!catalog) return <LoadingState label="Chargement de l’examen…" />;
   const category=assessmentCategory(exam);
   const parent=catalog.references.evaluations?.find(row=>row.batchId===exam.batchId && row.sourceId===String(exam.values.parent_id));
   const title = historyValue('unite_valeur_id', exam.values.unite_valeur_id, exam, catalog);
@@ -39,7 +40,7 @@ export default function ExamCopies({ exam, onBack, backLabel='Tous les examens' 
   const partFor = (question: HistoryRecord) => tables?.exam_parts?.find(part => part.sourceId === String(question.values.part_id));
   return <div className="exam-copy-workspace">
     <div className="exam-copy-top"><div>{onBack && <button className="btn btn-outline" onClick={onBack}>← {backLabel}</button>}<span className="page-eyebrow">CONSULTATION DES COPIES</span><h1>{title}</h1><p>{historyValue('group_id',exam.values.group_id,exam,catalog)} · {String(exam.values.date || 'Date non renseignée')} · {category==='resit'?'Rattrapage':String(exam.values.type || 'Évaluation')}</p>{category==='resit' && (parent?<Link className="btn btn-outline" href={`/academique/examens?epreuve=${encodeURIComponent(parent.id)}`}>Voir l’examen initial</Link>:<p>Épreuve initiale non renseignée ou non retrouvée.</p>)}</div><span className="source-badge">{students.length} étudiant(s)</span></div>
-    {error ? <section className="card" role="alert"><p>{error}</p><button className="btn btn-outline" onClick={() => setRetry(value => value + 1)}>Réessayer les copies</button></section> : !tables ? <section className="card" role="status">Chargement des copies…</section> : !students.length ? <section className="card"><h2>Aucune copie disponible</h2><p>Aucune réponse ni note conservée pour cet examen. Les copies papier doivent être numérisées pour pouvoir être consultées.</p></section> : <div className="exam-copy-layout">
+    {error ? <section className="card" role="alert"><p>{error}</p><button className="btn btn-outline" onClick={() => setRetry(value => value + 1)}>Réessayer les copies</button></section> : !tables ? <LoadingState label="Chargement des copies…" /> : !students.length ? <section className="card"><h2>Aucune copie disponible</h2><p>Aucune réponse ni note conservée pour cet examen. Les copies papier doivent être numérisées pour pouvoir être consultées.</p></section> : <div className="exam-copy-layout">
       <aside className="exam-copy-roster"><h2>Étudiants ({students.length})</h2><label className="form-group">Rechercher un étudiant<input className="input" type="search" placeholder="Nom de l’étudiant" value={query} onChange={event => setQuery(event.target.value)} /></label><label className="exam-mobile-selector form-group">Copie de l’étudiant<select className="select-input" value={visible.includes(student) ? student : ''} onChange={event => { if (event.target.value) setStudent(event.target.value); }}><option value="">Choisir une copie</option>{visible.map(id => <option key={id} value={id}>{name(id)}</option>)}</select></label><div className="exam-roster-list">{visible.map(id => { const rows = submissions.filter(row => String(row.values.etudiant_id) === id); return <button className={id === student ? 'selected' : ''} key={id} aria-pressed={id === student} onClick={() => setStudent(id)}><strong>{name(id)}</strong><span>{rows.length ? `${rows.length} réponse(s)` : 'Résultat uniquement'}</span></button>; })}{!visible.length && <p>Aucun étudiant pour cette recherche.</p>}</div></aside>
       <section className="exam-copy-paper" aria-label="Copie sélectionnée" key={student}>
         <header className="exam-student-header"><div><span className="page-eyebrow">COPIE DE L’ÉTUDIANT</span><h2>{name(student)}</h2><p>{answers.length} réponse(s) conservée(s) · {questions.length} question(s) dans le sujet</p></div><div className="exam-result">{results.length ? results.map(note => <div key={note.id}><span>Note enregistrée</span><strong>{note.values.note == null ? 'Non renseignée' : `${note.values.note} / 20`}</strong></div>) : <div><span>Note finale</span><strong>Non renseignée</strong></div>}</div></header>

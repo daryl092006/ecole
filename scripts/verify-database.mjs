@@ -1,4 +1,6 @@
 import assert from 'node:assert/strict';
+import { verifyAcademicYears } from './verify-academic-years.mjs';
+import { verifyWebsiteDatabase } from './verify-website-database.mjs';
 import { readFile } from 'node:fs/promises';
 import { fileURLToPath } from 'node:url';
 import { randomUUID } from 'node:crypto';
@@ -51,7 +53,7 @@ try {
   const building = await insert('buildings', { site_id: site.id, code: 'A', name: 'Bâtiment A' });
   const room = await insert('rooms', { site_id: site.id, building_id: building.id, code: 'R1', name: 'Salle 1', capacity: 30 });
   const year = await insert('academic_years', { code: '2026-2027', name: '2026-2027', starts_on: '2026-01-01', ends_on: '2027-12-31', status: 'OUVERTE' });
-  const nextYear = await insert('academic_years', { code: '2028-2029', name: '2028-2029', starts_on: '2028-01-01', ends_on: '2029-12-31' });
+  const nextYear = await insert('academic_years', { code: '2028-2029', name: '2028-2029', starts_on: '2028-01-01', ends_on: '2029-12-31', status: 'OUVERTE' });
   const cycle = await insert('cycles', { code: 'LICENCE', name: 'Licence' });
   const level = await insert('levels', { cycle_id: cycle.id, code: 'L1', name: 'Licence 1', position: 1 });
   const program = await insert('programs', { code: 'INF', name: 'Informatique' });
@@ -235,14 +237,14 @@ try {
     assert.equal(await scalar('select status as value from escen.complaints where id = $1',[complaint.id]),'CLOTUREE');
   });
   await check('Réceptions partielles et mouvements de stock bornés et tracés', async () => {
-    const purchase = await insert('purchases', { site_id: site.id, reference: 'ACHAT-TEST', requested_by: account.id, status: 'APPROUVE', reason: 'Achat approuvé' });
+    const purchase = await insert('purchases', { academic_year_id: year.id, site_id: site.id, reference: 'ACHAT-TEST', requested_by: account.id, status: 'APPROUVE', reason: 'Achat approuvé' });
     const purchaseLine = await insert('purchase_lines', { purchase_id: purchase.id, description: 'Chaises', quantity: 5, unit_amount: 1000 });
     const receipt = await insert('purchase_receipts', { purchase_id: purchase.id, line_id: purchaseLine.id, quantity: 3, received_by: account.id, reason: 'Livraison partielle' });
     await assert.rejects(insert('purchase_receipts', { purchase_id: purchase.id, line_id: purchaseLine.id, quantity: 3, received_by: account.id, reason: 'Dépassement' }), /quantité/i);
     const asset = await insert('assets', { site_id: site.id, code: 'CHAIS-TEST', name: 'Chaises', status: 'DISPONIBLE' });
-    await insert('asset_movements', { asset_id: asset.id, receipt_id: receipt.id, quantity: 3, actor_id: account.id, reason: 'Entrée de stock' });
-    await assert.rejects(insert('asset_movements', { asset_id: asset.id, receipt_id: receipt.id, quantity: 1, actor_id: account.id, reason: 'Double entrée' }), /réception/i);
-    await assert.rejects(insert('asset_movements', { asset_id: asset.id, quantity: -4, actor_id: account.id, reason: 'Sortie excessive' }), /Stock/i);
+    await insert('asset_movements', { academic_year_id: year.id, asset_id: asset.id, receipt_id: receipt.id, quantity: 3, actor_id: account.id, reason: 'Entrée de stock' });
+    await assert.rejects(insert('asset_movements', { academic_year_id: year.id, asset_id: asset.id, receipt_id: receipt.id, quantity: 1, actor_id: account.id, reason: 'Double entrée' }), /réception/i);
+    await assert.rejects(insert('asset_movements', { academic_year_id: year.id, asset_id: asset.id, quantity: -4, actor_id: account.id, reason: 'Sortie excessive' }), /Stock/i);
   });
   await check('Provenance des imports et payload source immuables', async () => {
     const batch = (await db.query("insert into escen_private.import_batches(source_name,archive_sha256,sql_sha256,source_rows) values('TEST',$1,$2,1) returning id",['a'.repeat(64),'b'.repeat(64)])).rows[0].id;
@@ -391,16 +393,35 @@ try {
   });
   await check('Sujet préparatoire : persistance, version et interdiction de diffusion sans évaluation',async()=>{
     const id=randomUUID();const partId=randomUUID();const questionId=randomUUID();const library=randomUUID();const revision=await scalar('select revision as value from escen_private.portal_revision');
-    const changes=[{table:'exam_papers',operation:'insert',record:{id,evaluation_id:null,library_id:library,author_id:account.id,title:'Sujet préparatoire',purpose:'EXAMEN',version:1,reason:'Composition du sujet'}},{table:'exam_parts',operation:'insert',record:{id:partId,paper_id:id,title:'Première partie',position:1}},{table:'exam_questions',operation:'insert',record:{id:questionId,paper_id:id,part_id:partId,kind:'TEXTE',prompt:'Expliquez',points:5,position:1,configuration:{correction:'Corrigé privé'}}}];
+    const changes=[{table:'exam_papers',operation:'insert',record:{id,academic_year_id:year.id,evaluation_id:null,library_id:library,author_id:account.id,title:'Sujet préparatoire',purpose:'EXAMEN',version:1,reason:'Composition du sujet'}},{table:'exam_parts',operation:'insert',record:{id:partId,paper_id:id,title:'Première partie',position:1}},{table:'exam_questions',operation:'insert',record:{id:questionId,paper_id:id,part_id:partId,kind:'TEXTE',prompt:'Expliquez',points:5,position:1,configuration:{correction:'Corrigé privé'}}}];
     const saved=await scalar('select public.escen_subject_transaction($1,$2,$3::jsonb) as value',[account.id,revision,JSON.stringify(changes)]);
     assert.equal(await scalar('select title as value from escen.exam_papers where id=$1',[id]),'Sujet préparatoire');
     assert.equal(await scalar("select actor_id as value from escen_private.audit_events where table_name='exam_questions' and entity_id=$1",[questionId]),account.id);
     await reject("update escen.exam_papers set status='AUTORISE',authorized_by=$1,authorized_at=now() where id=$2",[account.id,id],/check/i);
     await reject('select public.escen_subject_transaction($1,$2,$3::jsonb)',[account.id,saved,JSON.stringify([{table:'people',operation:'update',record:{id:account.person_id,firstname:'Interdit'}}])],/hors sujet/i);
     const second=randomUUID();
-    await scalar('select public.escen_subject_transaction($1,$2,$3::jsonb) as value',[account.id,saved,JSON.stringify([{table:'exam_papers',operation:'insert',record:{id:second,library_id:library,evaluation_id:null,author_id:account.id,title:'Sujet révisé',version:2,reason:'Nouvelle version'}},{table:'exam_papers',operation:'update',record:{id,archived_at:new Date().toISOString(),reason:'Version remplacée'}}])]);
+    await scalar('select public.escen_subject_transaction($1,$2,$3::jsonb) as value',[account.id,saved,JSON.stringify([{table:'exam_papers',operation:'insert',record:{id:second,academic_year_id:year.id,library_id:library,evaluation_id:null,author_id:account.id,title:'Sujet révisé',version:2,reason:'Nouvelle version'}},{table:'exam_papers',operation:'update',record:{id,archived_at:new Date().toISOString(),reason:'Version remplacée'}}])]);
     assert.equal(await scalar('select count(*)::integer as value from escen.exam_questions where paper_id=$1',[id]),1);
     assert.equal(await scalar('select count(*)::integer as value from escen.exam_papers where library_id=$1',[library]),2);
+  });
+  await verifyWebsiteDatabase({ db, check, account, level, program, year });
+  await verifyAcademicYears({ db, check, insert, account, year, level, site, curriculum, component, teacher, student });
+  await check('Gestion sans site ni bâtiment : salles, formations, groupes et équipements', async () => {
+    const noLocationYear = await insert('academic_years', { code: 'NO-LOCATION', name: 'Année sans localisation', starts_on: '2031-01-01', ends_on: '2031-12-31', status: 'OUVERTE' });
+    const room = await insert('rooms', { code: 'NO-LOCATION', name: 'Salle directe', capacity: 40 });
+    assert.equal(room.site_id, null); assert.equal(room.building_id, null);
+    await assert.rejects(insert('rooms', { code: 'NO-LOCATION', name: 'Doublon', capacity: 20 }), /unique/i);
+    const offering = await insert('academic_offerings', { academic_year_id: noLocationYear.id, curriculum_id: curriculum.id, level_id: level.id });
+    const group = await insert('groups', { academic_year_id: noLocationYear.id, level_id: level.id, name: 'Groupe direct' });
+    await insert('group_offerings', { group_id: group.id, offering_id: offering.id, academic_year_id: noLocationYear.id, level_id: level.id });
+    await assert.rejects(insert('academic_offerings', { academic_year_id: noLocationYear.id, curriculum_id: curriculum.id, level_id: level.id }), /unique/i);
+    await assert.rejects(insert('groups', { academic_year_id: noLocationYear.id, level_id: level.id, name: 'Groupe direct' }), /unique/i);
+    await insert('assets', { code: 'NO-LOCATION', name: 'Équipement direct', status: 'DISPONIBLE' });
+  });
+  await check('Reprise : aucune donnée manquante autorisée sans provenance exacte', async () => {
+    await assert.rejects(insert('levels', { code: 'NO-PROOF', name: 'Sans preuve', position: 0 }), /check/i);
+    await assert.rejects(insert('academic_offerings', { academic_year_id: year.id, level_id: level.id }), /check/i);
+    await assert.rejects(insert('payments', { enrollment_id: enrollment.id, amount: 100, method: 'ESPECES', provider: 'Test', reference: 'NO-PROOF', paid_on: '2026-01-01', recorded_by: account.id, status: 'PENDING' }), /check/i);
   });
   await check('Aucune FK sensible en cascade, RLS activée partout et accès public refusé', async () => {
     assert.equal(await scalar("select count(*)::integer as value from pg_constraint c join pg_namespace n on n.oid = c.connamespace where n.nspname in ('escen','escen_private') and c.contype = 'f' and c.confdeltype = 'c'"), 0);
@@ -419,10 +440,36 @@ try {
     await reject("select public.escen_catalog_resume($1,0,'subjects',$2::jsonb,$3)",[account.id,JSON.stringify({}),randomUUID()],/permission/i);
     await reject("select public.escen_catalog_history_links('subjects')",[],/permission/i);
     await reject('select public.escen_subject_transaction($1,0,$2::jsonb)',[account.id,JSON.stringify([])],/permission/i);
+    await reject('select public.escen_academic_year_context()',[],/permission/i);
+    await reject("select public.escen_academic_year_command($1,'IT','current',null,0,'Interdit')",[account.id],/permission/i);
+    await reject('select public.escen_history_catalog_year($1)',[year.id],/permission/i);
+    await reject("select public.escen_website_public('articles')",[],/permission/i);
+    await reject("select public.escen_website_manage($1,'IT','articles')",[account.id],/permission/i);
+    await reject("select public.escen_website_rate($1,1)",['c'.repeat(64)],/permission/i);
     await reject('select public.escen_history_exam($1)',[randomUUID()],/permission/i);
     await reject('select count(*) from escen_private.history_catalog',[],/permission/i);
     await db.exec('reset role');
     await reject('delete from escen.academic_years where id = $1', [year.id], /Suppression/i);
+  });
+  await check('Groupe partagé : deux filières du même niveau, inscriptions distinctes et autre niveau refusé', async () => {
+    const sharedYear = await insert('academic_years', { code: 'SHARED-2030', name: '2030-2031', starts_on: '2030-09-01', ends_on: '2031-07-01', status: 'OUVERTE' });
+    const sharedGroup = await insert('groups', { academic_year_id: sharedYear.id, level_id: level.id, name: 'Tronc commun L1' });
+    for (const code of ['GESTION-SHARED', 'COMMERCE-SHARED']) {
+      const p = await insert('programs', { code, name: code });
+      const c = await insert('curricula', { program_id: p.id, level_id: level.id, version: 1 });
+      const o = await insert('academic_offerings', { academic_year_id: sharedYear.id, curriculum_id: c.id, level_id: level.id });
+      await insert('group_offerings', { group_id: sharedGroup.id, offering_id: o.id, academic_year_id: sharedYear.id, level_id: level.id });
+      const person = await insert('people', { firstname: code, lastname: 'Test' });
+      const pupil = await insert('students', { person_id: person.id, matricule: code });
+      const registered = await insert('enrollments', { student_id: pupil.id, offering_id: o.id, status: 'INSCRIT' });
+      await insert('enrollment_groups', { enrollment_id: registered.id, offering_id: o.id, group_id: sharedGroup.id, valid_from: '2030-09-01', changed_by: account.id, reason: 'Groupe commun à plusieurs filières' });
+    }
+    const result = await db.query('select count(distinct c.program_id)::int as n from escen.enrollment_groups eg join escen.enrollments e on e.id=eg.enrollment_id join escen.academic_offerings o on o.id=e.offering_id join escen.curricula c on c.id=o.curriculum_id where eg.group_id=$1', [sharedGroup.id]);
+    assert.equal(result.rows[0].n, 2);
+    const otherLevel = await insert('levels', { cycle_id: cycle.id, code: 'SHARED-L2', name: 'Licence 2', position: 2 });
+    const otherCurriculum = await insert('curricula', { program_id: program.id, level_id: otherLevel.id, version: 1 });
+    const otherOffering = await insert('academic_offerings', { academic_year_id: sharedYear.id, curriculum_id: otherCurriculum.id, level_id: otherLevel.id });
+    await assert.rejects(insert('group_offerings', { group_id: sharedGroup.id, offering_id: otherOffering.id, academic_year_id: sharedYear.id, level_id: level.id }), /foreign key/i);
   });
   console.log(`Base relationnelle : ${checks} groupes de contrôles PostgreSQL réussis.`);
 } catch (error) {

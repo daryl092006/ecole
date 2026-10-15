@@ -28,13 +28,27 @@ export function projectRelationalCampus(snapshot: RelationalSnapshot, now = new 
     && text(row, 'valid_from') <= today && (!text(row, 'valid_until') || text(row, 'valid_until') > today))
     .sort((a, b) => text(b, 'valid_from').localeCompare(text(a, 'valid_from')))[0];
 
-  data.academicYears = rows('academic_years').map(row => ({ id: row.id, label: text(row, 'name'), startDate: text(row, 'starts_on'), endDate: text(row, 'ends_on'), status: text(row, 'status') as Dataset['academicYears'][number]['status'], active: row.status !== 'CLOTUREE', history: [] }));
+  const financials = (enrollmentId: string): Dataset['students'][number]['financials'] => {
+    const contract = rows('financial_contracts').find(row => row.enrollment_id === enrollmentId);
+    const version = contract && rows('contract_versions').find(row => row.contract_id === contract.id && ['APPROVED', 'EN_COURS'].includes(text(row, 'status')));
+    const payments = rows('payments').filter(row => row.enrollment_id === enrollmentId && row.status !== 'PENDING' && !rows('payment_reversals').some(reversal => reversal.payment_id === row.id));
+    const paid = payments.reduce((sum, row) => sum + numeric(row, 'amount'), 0);
+    if (!version) return { available: false, expected: 0, paid, remaining: 0, installments: [] };
+    const lines = rows('contract_lines').filter(row => row.version_id === version.id);
+    const expected = lines.reduce((sum, row) => sum + numeric(row, 'amount'), 0) - rows('contract_discounts').filter(row => row.version_id === version.id).reduce((sum, row) => sum + numeric(row, 'amount'), 0);
+    return { available: true, expected, paid, remaining: expected - paid, installments: rows('installments').filter(row => row.version_id === version.id).sort((a,b) => numeric(a, 'position') - numeric(b, 'position')).map(row => {
+      const settled = row.settled_amount == null ? rows('payment_allocations').filter(allocation => allocation.installment_id === row.id && !rows('allocation_reversals').some(reversal => reversal.allocation_id === allocation.id)).reduce((sum, allocation) => sum + numeric(allocation, 'amount'), 0) : numeric(row, 'settled_amount');
+      return { dueDate: text(row, 'due_on'), amount: numeric(row, 'amount'), status: settled >= numeric(row, 'amount') ? 'Payée' : settled > 0 ? 'Partiellement payée' : text(row, 'due_on') < today ? 'En retard' : 'A venir' };
+    }) };
+  };
+
+  data.academicYears = rows('academic_years').map(row => ({ id: row.id, label: text(row, 'name'), startDate: text(row, 'starts_on'), endDate: text(row, 'ends_on'), status: text(row, 'status') as Dataset['academicYears'][number]['status'], active: row.status === 'OUVERTE' && !row.archived_at, history: [] }));
   data.programs = rows('programs').map(row => ({ id: row.id, code: text(row, 'code'), name: text(row, 'name'), description: text(row, 'description'), active: row.active === true, history: [] }));
   data.tracks = rows('tracks').map(row => ({ id: row.id, programId: text(row, 'program_id'), code: text(row, 'code'), name: text(row, 'name'), active: row.active === true, history: [] }));
   const cycles = byId('cycles');
   data.levels = rows('levels').flatMap(row => {
     const cycle = text(cycles.get(text(row, 'cycle_id')), 'code');
-    return cycle === 'LICENCE' || cycle === 'MASTER' ? [{ id: row.id, code: text(row, 'code'), name: text(row, 'name'), cycle, order: numeric(row, 'position'), active: true } as Dataset['levels'][number]] : [];
+    return [{ id: row.id, code: text(row, 'code'), name: text(row, 'name'), cycle: cycle === 'LICENCE' || cycle === 'MASTER' ? cycle : '', order: numeric(row, 'position'), active: true } as Dataset['levels'][number]];
   });
   data.groups = rows('groups').map(row => {
     const linkedCurricula = rows('group_offerings').filter(link => link.group_id === row.id)
@@ -55,16 +69,16 @@ export function projectRelationalCampus(snapshot: RelationalSnapshot, now = new 
     const curriculum = offering && curricula.get(text(offering, 'curriculum_id'));
     const group = enrollment && groups.get(text(membership(enrollment.id), 'group_id'));
     return [{ matricule: text(row, 'matricule'), firstname: text(person, 'firstname'), lastname: text(person, 'lastname'), email: text(person, 'email'), phone: text(person, 'phone'), gender: text(person, 'gender'), birthDate: text(person, 'birth_date'), nationality: text(person, 'nationality'), address: text(person, 'address'), city: text(person, 'city'), country: text(person, 'country'),
-      filiere: text(programs.get(text(curriculum, 'program_id')), 'name') || 'À reprendre', niveau: text(levels.get(text(offering, 'level_id')), 'name') || 'À reprendre', groupe: text(group, 'name') || 'Non affecté', groupId: group?.id || '', academicYearId: text(offering, 'academic_year_id'),
+      filiere: text(programs.get(text(curriculum, 'program_id')), 'name') || (enrollment ? 'Filière non renseignée' : 'À reprendre'), niveau: text(levels.get(text(offering, 'level_id')), 'name') || 'À reprendre', groupe: text(group, 'name') || 'Non affecté', groupId: group?.id || '', academicYearId: text(offering, 'academic_year_id'),
       status: enrollment ? statuses[text(enrollment, 'status')] || 'Statut à vérifier' : 'Inscription à reprendre',
-      financials: { available: false, expected: 0, paid: 0, remaining: 0, installments: [] }, bourse: { active: false, type: '', percent: 0, amount: 0 }, history: [] }];
+      financials: enrollment ? financials(enrollment.id) : { available: false, expected: 0, paid: 0, remaining: 0, installments: [] }, bourse: { active: false, type: '', percent: 0, amount: 0 }, history: [] }];
   }).sort((a, b) => a.lastname.localeCompare(b.lastname, 'fr') || a.firstname.localeCompare(b.firstname, 'fr'));
   data.enrollments = rows('enrollments').flatMap(row => {
     const matricule = studentMatricules.get(text(row, 'student_id'));
     const offering = enrollmentOffering(row);
     if (!matricule || !offering) return [];
     const curriculum = curricula.get(text(offering, 'curriculum_id'));
-    return [{ id: row.id, studentId: matricule, academicYearId: text(offering, 'academic_year_id'), groupId: text(membership(row.id), 'group_id'), level: text(levels.get(text(offering, 'level_id')), 'name'), program: text(programs.get(text(curriculum, 'program_id')), 'name'), status: text(row, 'status') as Dataset['enrollments'][number]['status'], date: text(row, 'enrolled_on'), reason: '', financials: { available: false, expected: 0, paid: 0, remaining: 0, installments: [] } }];
+    return [{ id: row.id, studentId: matricule, academicYearId: text(offering, 'academic_year_id'), groupId: text(membership(row.id), 'group_id'), level: text(levels.get(text(offering, 'level_id')), 'name'), program: text(programs.get(text(curriculum, 'program_id')), 'name'), status: text(row, 'status') as Dataset['enrollments'][number]['status'], date: text(row, 'enrolled_on'), reason: '', financials: financials(row.id) }];
   });
   const staff = byId('staff');
   data.teachers = rows('teachers').flatMap(row => {

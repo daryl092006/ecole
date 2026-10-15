@@ -1,10 +1,10 @@
 {
   "stats": {
-    "businessTables": 104,
-    "privateTables": 11,
-    "columns": 824,
-    "foreignKeys": 227,
-    "checks": 163,
+    "businessTables": 111,
+    "privateTables": 13,
+    "columns": 903,
+    "foreignKeys": 249,
+    "checks": 182,
     "exclusions": 4
   },
   "tables": [
@@ -25,6 +25,11 @@
     },
     {
       "schema": "escen",
+      "name": "academic_working_year",
+      "rls": true
+    },
+    {
+      "schema": "escen",
       "name": "academic_years",
       "rls": true
     },
@@ -40,7 +45,22 @@
     },
     {
       "schema": "escen",
+      "name": "annual_fee_schedules",
+      "rls": true
+    },
+    {
+      "schema": "escen",
+      "name": "annual_payment_channels",
+      "rls": true
+    },
+    {
+      "schema": "escen",
       "name": "answer_corrections",
+      "rls": true
+    },
+    {
+      "schema": "escen",
+      "name": "application_documents",
       "rls": true
     },
     {
@@ -335,6 +355,11 @@
     },
     {
       "schema": "escen",
+      "name": "online_applications",
+      "rls": true
+    },
+    {
+      "schema": "escen",
       "name": "payment_allocations",
       "rls": true
     },
@@ -529,6 +554,21 @@
       "rls": true
     },
     {
+      "schema": "escen",
+      "name": "website_articles",
+      "rls": true
+    },
+    {
+      "schema": "escen",
+      "name": "website_intakes",
+      "rls": true
+    },
+    {
+      "schema": "escen_private",
+      "name": "application_access",
+      "rls": true
+    },
+    {
       "schema": "escen_private",
       "name": "archive_objects",
       "rls": true
@@ -581,6 +621,11 @@
     {
       "schema": "escen_private",
       "name": "source_mappings",
+      "rls": true
+    },
+    {
+      "schema": "escen_private",
+      "name": "website_rate_limits",
       "rls": true
     }
   ],
@@ -758,6 +803,51 @@
     },
     {
       "schema": "escen",
+      "table": "academic_working_year",
+      "name": "id",
+      "type": "uuid",
+      "nullable": "NO",
+      "default": "gen_random_uuid()",
+      "generated": "NEVER"
+    },
+    {
+      "schema": "escen",
+      "table": "academic_working_year",
+      "name": "singleton",
+      "type": "bool",
+      "nullable": "NO",
+      "default": "true",
+      "generated": "NEVER"
+    },
+    {
+      "schema": "escen",
+      "table": "academic_working_year",
+      "name": "academic_year_id",
+      "type": "uuid",
+      "nullable": "YES",
+      "default": null,
+      "generated": "NEVER"
+    },
+    {
+      "schema": "escen",
+      "table": "academic_working_year",
+      "name": "reason",
+      "type": "text",
+      "nullable": "NO",
+      "default": "'Année de travail à définir'::text",
+      "generated": "NEVER"
+    },
+    {
+      "schema": "escen",
+      "table": "academic_working_year",
+      "name": "updated_at",
+      "type": "timestamptz",
+      "nullable": "NO",
+      "default": "now()",
+      "generated": "NEVER"
+    },
+    {
+      "schema": "escen",
       "table": "academic_years",
       "name": "id",
       "type": "uuid",
@@ -826,6 +916,15 @@
       "type": "text",
       "nullable": "YES",
       "default": null,
+      "generated": "NEVER"
+    },
+    {
+      "schema": "escen",
+      "table": "academic_years",
+      "name": "version",
+      "type": "int4",
+      "nullable": "NO",
+      "default": "1",
       "generated": "NEVER"
     },
     {
@@ -1037,6 +1136,132 @@
     },
     {
       "schema": "escen",
+      "table": "annual_fee_schedules",
+      "name": "id",
+      "type": "uuid",
+      "nullable": "NO",
+      "default": "gen_random_uuid()",
+      "generated": "NEVER"
+    },
+    {
+      "schema": "escen",
+      "table": "annual_fee_schedules",
+      "name": "academic_year_id",
+      "type": "uuid",
+      "nullable": "NO",
+      "default": null,
+      "generated": "NEVER"
+    },
+    {
+      "schema": "escen",
+      "table": "annual_fee_schedules",
+      "name": "category",
+      "type": "text",
+      "nullable": "NO",
+      "default": null,
+      "generated": "NEVER"
+    },
+    {
+      "schema": "escen",
+      "table": "annual_fee_schedules",
+      "name": "program_id",
+      "type": "uuid",
+      "nullable": "YES",
+      "default": null,
+      "generated": "NEVER"
+    },
+    {
+      "schema": "escen",
+      "table": "annual_fee_schedules",
+      "name": "level_id",
+      "type": "uuid",
+      "nullable": "YES",
+      "default": null,
+      "generated": "NEVER"
+    },
+    {
+      "schema": "escen",
+      "table": "annual_fee_schedules",
+      "name": "amount",
+      "type": "escen.xof_amount",
+      "nullable": "NO",
+      "default": null,
+      "generated": "NEVER"
+    },
+    {
+      "schema": "escen",
+      "table": "annual_fee_schedules",
+      "name": "reason",
+      "type": "escen.nonempty_text",
+      "nullable": "NO",
+      "default": null,
+      "generated": "NEVER"
+    },
+    {
+      "schema": "escen",
+      "table": "annual_fee_schedules",
+      "name": "archived_at",
+      "type": "timestamptz",
+      "nullable": "YES",
+      "default": null,
+      "generated": "NEVER"
+    },
+    {
+      "schema": "escen",
+      "table": "annual_payment_channels",
+      "name": "id",
+      "type": "uuid",
+      "nullable": "NO",
+      "default": "gen_random_uuid()",
+      "generated": "NEVER"
+    },
+    {
+      "schema": "escen",
+      "table": "annual_payment_channels",
+      "name": "academic_year_id",
+      "type": "uuid",
+      "nullable": "NO",
+      "default": null,
+      "generated": "NEVER"
+    },
+    {
+      "schema": "escen",
+      "table": "annual_payment_channels",
+      "name": "name",
+      "type": "escen.nonempty_text",
+      "nullable": "NO",
+      "default": null,
+      "generated": "NEVER"
+    },
+    {
+      "schema": "escen",
+      "table": "annual_payment_channels",
+      "name": "method",
+      "type": "text",
+      "nullable": "NO",
+      "default": null,
+      "generated": "NEVER"
+    },
+    {
+      "schema": "escen",
+      "table": "annual_payment_channels",
+      "name": "reason",
+      "type": "escen.nonempty_text",
+      "nullable": "NO",
+      "default": null,
+      "generated": "NEVER"
+    },
+    {
+      "schema": "escen",
+      "table": "annual_payment_channels",
+      "name": "archived_at",
+      "type": "timestamptz",
+      "nullable": "YES",
+      "default": null,
+      "generated": "NEVER"
+    },
+    {
+      "schema": "escen",
       "table": "answer_corrections",
       "name": "id",
       "type": "uuid",
@@ -1087,6 +1312,105 @@
       "type": "timestamptz",
       "nullable": "NO",
       "default": "now()",
+      "generated": "NEVER"
+    },
+    {
+      "schema": "escen",
+      "table": "application_documents",
+      "name": "id",
+      "type": "uuid",
+      "nullable": "NO",
+      "default": "gen_random_uuid()",
+      "generated": "NEVER"
+    },
+    {
+      "schema": "escen",
+      "table": "application_documents",
+      "name": "application_id",
+      "type": "uuid",
+      "nullable": "NO",
+      "default": null,
+      "generated": "NEVER"
+    },
+    {
+      "schema": "escen",
+      "table": "application_documents",
+      "name": "document_key",
+      "type": "text",
+      "nullable": "NO",
+      "default": null,
+      "generated": "NEVER"
+    },
+    {
+      "schema": "escen",
+      "table": "application_documents",
+      "name": "filename",
+      "type": "text",
+      "nullable": "NO",
+      "default": null,
+      "generated": "NEVER"
+    },
+    {
+      "schema": "escen",
+      "table": "application_documents",
+      "name": "mime_type",
+      "type": "text",
+      "nullable": "NO",
+      "default": null,
+      "generated": "NEVER"
+    },
+    {
+      "schema": "escen",
+      "table": "application_documents",
+      "name": "byte_size",
+      "type": "int4",
+      "nullable": "NO",
+      "default": null,
+      "generated": "NEVER"
+    },
+    {
+      "schema": "escen",
+      "table": "application_documents",
+      "name": "bucket",
+      "type": "text",
+      "nullable": "NO",
+      "default": null,
+      "generated": "NEVER"
+    },
+    {
+      "schema": "escen",
+      "table": "application_documents",
+      "name": "object_path",
+      "type": "text",
+      "nullable": "NO",
+      "default": null,
+      "generated": "NEVER"
+    },
+    {
+      "schema": "escen",
+      "table": "application_documents",
+      "name": "sha256",
+      "type": "text",
+      "nullable": "NO",
+      "default": null,
+      "generated": "NEVER"
+    },
+    {
+      "schema": "escen",
+      "table": "application_documents",
+      "name": "created_at",
+      "type": "timestamptz",
+      "nullable": "NO",
+      "default": "now()",
+      "generated": "NEVER"
+    },
+    {
+      "schema": "escen",
+      "table": "application_documents",
+      "name": "reason",
+      "type": "text",
+      "nullable": "NO",
+      "default": "'Pièce reçue depuis le site'::text",
       "generated": "NEVER"
     },
     {
@@ -1195,6 +1519,15 @@
       "type": "timestamptz",
       "nullable": "NO",
       "default": "now()",
+      "generated": "NEVER"
+    },
+    {
+      "schema": "escen",
+      "table": "asset_movements",
+      "name": "academic_year_id",
+      "type": "uuid",
+      "nullable": "YES",
+      "default": null,
       "generated": "NEVER"
     },
     {
@@ -1670,6 +2003,15 @@
       "table": "communications",
       "name": "withdrawal_reason",
       "type": "text",
+      "nullable": "YES",
+      "default": null,
+      "generated": "NEVER"
+    },
+    {
+      "schema": "escen",
+      "table": "communications",
+      "name": "academic_year_id",
+      "type": "uuid",
       "nullable": "YES",
       "default": null,
       "generated": "NEVER"
@@ -3404,6 +3746,15 @@
     },
     {
       "schema": "escen",
+      "table": "exam_papers",
+      "name": "academic_year_id",
+      "type": "uuid",
+      "nullable": "YES",
+      "default": null,
+      "generated": "NEVER"
+    },
+    {
+      "schema": "escen",
       "table": "exam_parts",
       "name": "id",
       "type": "uuid",
@@ -4057,6 +4408,15 @@
       "type": "timestamptz",
       "nullable": "NO",
       "default": "now()",
+      "generated": "NEVER"
+    },
+    {
+      "schema": "escen",
+      "table": "generated_documents",
+      "name": "academic_year_id",
+      "type": "uuid",
+      "nullable": "YES",
+      "default": null,
       "generated": "NEVER"
     },
     {
@@ -4763,6 +5123,114 @@
     },
     {
       "schema": "escen",
+      "table": "online_applications",
+      "name": "id",
+      "type": "uuid",
+      "nullable": "NO",
+      "default": "gen_random_uuid()",
+      "generated": "NEVER"
+    },
+    {
+      "schema": "escen",
+      "table": "online_applications",
+      "name": "reference",
+      "type": "text",
+      "nullable": "NO",
+      "default": null,
+      "generated": "NEVER"
+    },
+    {
+      "schema": "escen",
+      "table": "online_applications",
+      "name": "identity",
+      "type": "jsonb",
+      "nullable": "NO",
+      "default": null,
+      "generated": "NEVER"
+    },
+    {
+      "schema": "escen",
+      "table": "online_applications",
+      "name": "diploma",
+      "type": "jsonb",
+      "nullable": "NO",
+      "default": "'{}'::jsonb",
+      "generated": "NEVER"
+    },
+    {
+      "schema": "escen",
+      "table": "online_applications",
+      "name": "guardians",
+      "type": "jsonb",
+      "nullable": "NO",
+      "default": "'[]'::jsonb",
+      "generated": "NEVER"
+    },
+    {
+      "schema": "escen",
+      "table": "online_applications",
+      "name": "intake_id",
+      "type": "uuid",
+      "nullable": "YES",
+      "default": null,
+      "generated": "NEVER"
+    },
+    {
+      "schema": "escen",
+      "table": "online_applications",
+      "name": "status",
+      "type": "text",
+      "nullable": "NO",
+      "default": "'BROUILLON'::text",
+      "generated": "NEVER"
+    },
+    {
+      "schema": "escen",
+      "table": "online_applications",
+      "name": "version",
+      "type": "int4",
+      "nullable": "NO",
+      "default": "1",
+      "generated": "NEVER"
+    },
+    {
+      "schema": "escen",
+      "table": "online_applications",
+      "name": "created_at",
+      "type": "timestamptz",
+      "nullable": "NO",
+      "default": "now()",
+      "generated": "NEVER"
+    },
+    {
+      "schema": "escen",
+      "table": "online_applications",
+      "name": "submitted_at",
+      "type": "timestamptz",
+      "nullable": "YES",
+      "default": null,
+      "generated": "NEVER"
+    },
+    {
+      "schema": "escen",
+      "table": "online_applications",
+      "name": "reason",
+      "type": "text",
+      "nullable": "NO",
+      "default": "'Dossier commencé sur le site'::text",
+      "generated": "NEVER"
+    },
+    {
+      "schema": "escen",
+      "table": "online_applications",
+      "name": "academic_year_id",
+      "type": "uuid",
+      "nullable": "YES",
+      "default": null,
+      "generated": "NEVER"
+    },
+    {
+      "schema": "escen",
       "table": "payment_allocations",
       "name": "id",
       "type": "uuid",
@@ -5443,6 +5911,15 @@
       "type": "timestamptz",
       "nullable": "NO",
       "default": "now()",
+      "generated": "NEVER"
+    },
+    {
+      "schema": "escen",
+      "table": "purchases",
+      "name": "academic_year_id",
+      "type": "uuid",
+      "nullable": "YES",
+      "default": null,
       "generated": "NEVER"
     },
     {
@@ -6518,6 +6995,15 @@
     },
     {
       "schema": "escen",
+      "table": "student_documents",
+      "name": "academic_year_id",
+      "type": "uuid",
+      "nullable": "YES",
+      "default": null,
+      "generated": "NEVER"
+    },
+    {
+      "schema": "escen",
       "table": "students",
       "name": "id",
       "type": "uuid",
@@ -6629,6 +7115,15 @@
       "table": "subjects",
       "name": "reason",
       "type": "text",
+      "nullable": "YES",
+      "default": null,
+      "generated": "NEVER"
+    },
+    {
+      "schema": "escen",
+      "table": "subjects",
+      "name": "academic_year_id",
+      "type": "uuid",
       "nullable": "YES",
       "default": null,
       "generated": "NEVER"
@@ -6901,6 +7396,15 @@
       "type": "timestamptz",
       "nullable": "NO",
       "default": "now()",
+      "generated": "NEVER"
+    },
+    {
+      "schema": "escen",
+      "table": "support_tickets",
+      "name": "academic_year_id",
+      "type": "uuid",
+      "nullable": "YES",
+      "default": null,
       "generated": "NEVER"
     },
     {
@@ -7288,6 +7792,231 @@
       "type": "text",
       "nullable": "YES",
       "default": null,
+      "generated": "NEVER"
+    },
+    {
+      "schema": "escen",
+      "table": "website_articles",
+      "name": "id",
+      "type": "uuid",
+      "nullable": "NO",
+      "default": "gen_random_uuid()",
+      "generated": "NEVER"
+    },
+    {
+      "schema": "escen",
+      "table": "website_articles",
+      "name": "title",
+      "type": "text",
+      "nullable": "NO",
+      "default": null,
+      "generated": "NEVER"
+    },
+    {
+      "schema": "escen",
+      "table": "website_articles",
+      "name": "slug",
+      "type": "text",
+      "nullable": "NO",
+      "default": null,
+      "generated": "NEVER"
+    },
+    {
+      "schema": "escen",
+      "table": "website_articles",
+      "name": "excerpt",
+      "type": "text",
+      "nullable": "NO",
+      "default": null,
+      "generated": "NEVER"
+    },
+    {
+      "schema": "escen",
+      "table": "website_articles",
+      "name": "content",
+      "type": "text",
+      "nullable": "NO",
+      "default": null,
+      "generated": "NEVER"
+    },
+    {
+      "schema": "escen",
+      "table": "website_articles",
+      "name": "image",
+      "type": "text",
+      "nullable": "NO",
+      "default": "''::text",
+      "generated": "NEVER"
+    },
+    {
+      "schema": "escen",
+      "table": "website_articles",
+      "name": "status",
+      "type": "text",
+      "nullable": "NO",
+      "default": "'BROUILLON'::text",
+      "generated": "NEVER"
+    },
+    {
+      "schema": "escen",
+      "table": "website_articles",
+      "name": "version",
+      "type": "int4",
+      "nullable": "NO",
+      "default": "1",
+      "generated": "NEVER"
+    },
+    {
+      "schema": "escen",
+      "table": "website_articles",
+      "name": "published_at",
+      "type": "timestamptz",
+      "nullable": "YES",
+      "default": null,
+      "generated": "NEVER"
+    },
+    {
+      "schema": "escen",
+      "table": "website_articles",
+      "name": "created_by",
+      "type": "uuid",
+      "nullable": "NO",
+      "default": null,
+      "generated": "NEVER"
+    },
+    {
+      "schema": "escen",
+      "table": "website_articles",
+      "name": "updated_at",
+      "type": "timestamptz",
+      "nullable": "NO",
+      "default": "now()",
+      "generated": "NEVER"
+    },
+    {
+      "schema": "escen",
+      "table": "website_articles",
+      "name": "reason",
+      "type": "text",
+      "nullable": "NO",
+      "default": null,
+      "generated": "NEVER"
+    },
+    {
+      "schema": "escen",
+      "table": "website_articles",
+      "name": "academic_year_id",
+      "type": "uuid",
+      "nullable": "YES",
+      "default": null,
+      "generated": "NEVER"
+    },
+    {
+      "schema": "escen",
+      "table": "website_intakes",
+      "name": "id",
+      "type": "uuid",
+      "nullable": "NO",
+      "default": "gen_random_uuid()",
+      "generated": "NEVER"
+    },
+    {
+      "schema": "escen",
+      "table": "website_intakes",
+      "name": "level_id",
+      "type": "uuid",
+      "nullable": "NO",
+      "default": null,
+      "generated": "NEVER"
+    },
+    {
+      "schema": "escen",
+      "table": "website_intakes",
+      "name": "program_id",
+      "type": "uuid",
+      "nullable": "NO",
+      "default": null,
+      "generated": "NEVER"
+    },
+    {
+      "schema": "escen",
+      "table": "website_intakes",
+      "name": "label",
+      "type": "text",
+      "nullable": "NO",
+      "default": null,
+      "generated": "NEVER"
+    },
+    {
+      "schema": "escen",
+      "table": "website_intakes",
+      "name": "active",
+      "type": "bool",
+      "nullable": "NO",
+      "default": "false",
+      "generated": "NEVER"
+    },
+    {
+      "schema": "escen",
+      "table": "website_intakes",
+      "name": "required_documents",
+      "type": "jsonb",
+      "nullable": "NO",
+      "default": "'[]'::jsonb",
+      "generated": "NEVER"
+    },
+    {
+      "schema": "escen",
+      "table": "website_intakes",
+      "name": "version",
+      "type": "int4",
+      "nullable": "NO",
+      "default": "1",
+      "generated": "NEVER"
+    },
+    {
+      "schema": "escen",
+      "table": "website_intakes",
+      "name": "reason",
+      "type": "text",
+      "nullable": "NO",
+      "default": null,
+      "generated": "NEVER"
+    },
+    {
+      "schema": "escen",
+      "table": "website_intakes",
+      "name": "academic_year_id",
+      "type": "uuid",
+      "nullable": "YES",
+      "default": null,
+      "generated": "NEVER"
+    },
+    {
+      "schema": "escen_private",
+      "table": "application_access",
+      "name": "id",
+      "type": "uuid",
+      "nullable": "NO",
+      "default": null,
+      "generated": "NEVER"
+    },
+    {
+      "schema": "escen_private",
+      "table": "application_access",
+      "name": "token_hash",
+      "type": "text",
+      "nullable": "NO",
+      "default": null,
+      "generated": "NEVER"
+    },
+    {
+      "schema": "escen_private",
+      "table": "application_access",
+      "name": "expires_at",
+      "type": "timestamptz",
+      "nullable": "NO",
+      "default": "(now() + '7 days'::interval)",
       "generated": "NEVER"
     },
     {
@@ -8000,6 +8729,33 @@
       "nullable": "YES",
       "default": null,
       "generated": "NEVER"
+    },
+    {
+      "schema": "escen_private",
+      "table": "website_rate_limits",
+      "name": "key",
+      "type": "text",
+      "nullable": "NO",
+      "default": null,
+      "generated": "NEVER"
+    },
+    {
+      "schema": "escen_private",
+      "table": "website_rate_limits",
+      "name": "started_at",
+      "type": "timestamptz",
+      "nullable": "NO",
+      "default": "now()",
+      "generated": "NEVER"
+    },
+    {
+      "schema": "escen_private",
+      "table": "website_rate_limits",
+      "name": "requests",
+      "type": "int4",
+      "nullable": "NO",
+      "default": "1",
+      "generated": "NEVER"
     }
   ],
   "constraints": [
@@ -8243,6 +8999,62 @@
     },
     {
       "schema": "escen",
+      "table": "academic_working_year",
+      "name": "academic_working_year_academic_year_id_fkey",
+      "type": "f",
+      "definition": "FOREIGN KEY (academic_year_id) REFERENCES escen.academic_years(id) ON DELETE RESTRICT"
+    },
+    {
+      "schema": "escen",
+      "table": "academic_working_year",
+      "name": "academic_working_year_id_not_null",
+      "type": "n",
+      "definition": "NOT NULL id"
+    },
+    {
+      "schema": "escen",
+      "table": "academic_working_year",
+      "name": "academic_working_year_pkey",
+      "type": "p",
+      "definition": "PRIMARY KEY (id)"
+    },
+    {
+      "schema": "escen",
+      "table": "academic_working_year",
+      "name": "academic_working_year_reason_not_null",
+      "type": "n",
+      "definition": "NOT NULL reason"
+    },
+    {
+      "schema": "escen",
+      "table": "academic_working_year",
+      "name": "academic_working_year_singleton_check",
+      "type": "c",
+      "definition": "CHECK (singleton)"
+    },
+    {
+      "schema": "escen",
+      "table": "academic_working_year",
+      "name": "academic_working_year_singleton_key",
+      "type": "u",
+      "definition": "UNIQUE (singleton)"
+    },
+    {
+      "schema": "escen",
+      "table": "academic_working_year",
+      "name": "academic_working_year_singleton_not_null",
+      "type": "n",
+      "definition": "NOT NULL singleton"
+    },
+    {
+      "schema": "escen",
+      "table": "academic_working_year",
+      "name": "academic_working_year_updated_at_not_null",
+      "type": "n",
+      "definition": "NOT NULL updated_at"
+    },
+    {
+      "schema": "escen",
       "table": "academic_years",
       "name": "academic_years_archive_reason",
       "type": "c",
@@ -8317,6 +9129,13 @@
       "name": "academic_years_status_not_null",
       "type": "n",
       "definition": "NOT NULL status"
+    },
+    {
+      "schema": "escen",
+      "table": "academic_years",
+      "name": "academic_years_version_not_null",
+      "type": "n",
+      "definition": "NOT NULL version"
     },
     {
       "schema": "escen",
@@ -8453,6 +9272,146 @@
     },
     {
       "schema": "escen",
+      "table": "annual_fee_schedules",
+      "name": "annual_fee_schedules_academic_year_id_category_program_id_l_key",
+      "type": "u",
+      "definition": "UNIQUE NULLS NOT DISTINCT (academic_year_id, category, program_id, level_id, archived_at)"
+    },
+    {
+      "schema": "escen",
+      "table": "annual_fee_schedules",
+      "name": "annual_fee_schedules_academic_year_id_fkey",
+      "type": "f",
+      "definition": "FOREIGN KEY (academic_year_id) REFERENCES escen.academic_years(id) ON DELETE RESTRICT"
+    },
+    {
+      "schema": "escen",
+      "table": "annual_fee_schedules",
+      "name": "annual_fee_schedules_academic_year_id_not_null",
+      "type": "n",
+      "definition": "NOT NULL academic_year_id"
+    },
+    {
+      "schema": "escen",
+      "table": "annual_fee_schedules",
+      "name": "annual_fee_schedules_amount_not_null",
+      "type": "n",
+      "definition": "NOT NULL amount"
+    },
+    {
+      "schema": "escen",
+      "table": "annual_fee_schedules",
+      "name": "annual_fee_schedules_category_check",
+      "type": "c",
+      "definition": "CHECK ((category = ANY (ARRAY['SCOLARITE'::text, 'INSCRIPTION'::text])))"
+    },
+    {
+      "schema": "escen",
+      "table": "annual_fee_schedules",
+      "name": "annual_fee_schedules_category_not_null",
+      "type": "n",
+      "definition": "NOT NULL category"
+    },
+    {
+      "schema": "escen",
+      "table": "annual_fee_schedules",
+      "name": "annual_fee_schedules_id_not_null",
+      "type": "n",
+      "definition": "NOT NULL id"
+    },
+    {
+      "schema": "escen",
+      "table": "annual_fee_schedules",
+      "name": "annual_fee_schedules_level_id_fkey",
+      "type": "f",
+      "definition": "FOREIGN KEY (level_id) REFERENCES escen.levels(id) ON DELETE RESTRICT"
+    },
+    {
+      "schema": "escen",
+      "table": "annual_fee_schedules",
+      "name": "annual_fee_schedules_pkey",
+      "type": "p",
+      "definition": "PRIMARY KEY (id)"
+    },
+    {
+      "schema": "escen",
+      "table": "annual_fee_schedules",
+      "name": "annual_fee_schedules_program_id_fkey",
+      "type": "f",
+      "definition": "FOREIGN KEY (program_id) REFERENCES escen.programs(id) ON DELETE RESTRICT"
+    },
+    {
+      "schema": "escen",
+      "table": "annual_fee_schedules",
+      "name": "annual_fee_schedules_reason_not_null",
+      "type": "n",
+      "definition": "NOT NULL reason"
+    },
+    {
+      "schema": "escen",
+      "table": "annual_payment_channels",
+      "name": "annual_payment_channels_academic_year_id_fkey",
+      "type": "f",
+      "definition": "FOREIGN KEY (academic_year_id) REFERENCES escen.academic_years(id) ON DELETE RESTRICT"
+    },
+    {
+      "schema": "escen",
+      "table": "annual_payment_channels",
+      "name": "annual_payment_channels_academic_year_id_method_name_archiv_key",
+      "type": "u",
+      "definition": "UNIQUE NULLS NOT DISTINCT (academic_year_id, method, name, archived_at)"
+    },
+    {
+      "schema": "escen",
+      "table": "annual_payment_channels",
+      "name": "annual_payment_channels_academic_year_id_not_null",
+      "type": "n",
+      "definition": "NOT NULL academic_year_id"
+    },
+    {
+      "schema": "escen",
+      "table": "annual_payment_channels",
+      "name": "annual_payment_channels_id_not_null",
+      "type": "n",
+      "definition": "NOT NULL id"
+    },
+    {
+      "schema": "escen",
+      "table": "annual_payment_channels",
+      "name": "annual_payment_channels_method_check",
+      "type": "c",
+      "definition": "CHECK ((method = ANY (ARRAY['ESPECES'::text, 'MOBILE_MONEY'::text, 'VIREMENT'::text, 'CHEQUE'::text, 'CARTE'::text])))"
+    },
+    {
+      "schema": "escen",
+      "table": "annual_payment_channels",
+      "name": "annual_payment_channels_method_not_null",
+      "type": "n",
+      "definition": "NOT NULL method"
+    },
+    {
+      "schema": "escen",
+      "table": "annual_payment_channels",
+      "name": "annual_payment_channels_name_not_null",
+      "type": "n",
+      "definition": "NOT NULL name"
+    },
+    {
+      "schema": "escen",
+      "table": "annual_payment_channels",
+      "name": "annual_payment_channels_pkey",
+      "type": "p",
+      "definition": "PRIMARY KEY (id)"
+    },
+    {
+      "schema": "escen",
+      "table": "annual_payment_channels",
+      "name": "annual_payment_channels_reason_not_null",
+      "type": "n",
+      "definition": "NOT NULL reason"
+    },
+    {
+      "schema": "escen",
       "table": "answer_corrections",
       "name": "answer_corrections_answer_id_fkey",
       "type": "f",
@@ -8523,6 +9482,132 @@
     },
     {
       "schema": "escen",
+      "table": "application_documents",
+      "name": "application_documents_application_id_fkey",
+      "type": "f",
+      "definition": "FOREIGN KEY (application_id) REFERENCES escen.online_applications(id) ON DELETE RESTRICT"
+    },
+    {
+      "schema": "escen",
+      "table": "application_documents",
+      "name": "application_documents_application_id_not_null",
+      "type": "n",
+      "definition": "NOT NULL application_id"
+    },
+    {
+      "schema": "escen",
+      "table": "application_documents",
+      "name": "application_documents_bucket_check",
+      "type": "c",
+      "definition": "CHECK ((bucket = 'escen-online-applications'::text))"
+    },
+    {
+      "schema": "escen",
+      "table": "application_documents",
+      "name": "application_documents_bucket_not_null",
+      "type": "n",
+      "definition": "NOT NULL bucket"
+    },
+    {
+      "schema": "escen",
+      "table": "application_documents",
+      "name": "application_documents_byte_size_check",
+      "type": "c",
+      "definition": "CHECK (((byte_size >= 1) AND (byte_size <= 5242880)))"
+    },
+    {
+      "schema": "escen",
+      "table": "application_documents",
+      "name": "application_documents_byte_size_not_null",
+      "type": "n",
+      "definition": "NOT NULL byte_size"
+    },
+    {
+      "schema": "escen",
+      "table": "application_documents",
+      "name": "application_documents_created_at_not_null",
+      "type": "n",
+      "definition": "NOT NULL created_at"
+    },
+    {
+      "schema": "escen",
+      "table": "application_documents",
+      "name": "application_documents_document_key_not_null",
+      "type": "n",
+      "definition": "NOT NULL document_key"
+    },
+    {
+      "schema": "escen",
+      "table": "application_documents",
+      "name": "application_documents_filename_not_null",
+      "type": "n",
+      "definition": "NOT NULL filename"
+    },
+    {
+      "schema": "escen",
+      "table": "application_documents",
+      "name": "application_documents_id_not_null",
+      "type": "n",
+      "definition": "NOT NULL id"
+    },
+    {
+      "schema": "escen",
+      "table": "application_documents",
+      "name": "application_documents_mime_type_check",
+      "type": "c",
+      "definition": "CHECK ((mime_type = ANY (ARRAY['application/pdf'::text, 'image/jpeg'::text, 'image/png'::text])))"
+    },
+    {
+      "schema": "escen",
+      "table": "application_documents",
+      "name": "application_documents_mime_type_not_null",
+      "type": "n",
+      "definition": "NOT NULL mime_type"
+    },
+    {
+      "schema": "escen",
+      "table": "application_documents",
+      "name": "application_documents_object_path_key",
+      "type": "u",
+      "definition": "UNIQUE (object_path)"
+    },
+    {
+      "schema": "escen",
+      "table": "application_documents",
+      "name": "application_documents_object_path_not_null",
+      "type": "n",
+      "definition": "NOT NULL object_path"
+    },
+    {
+      "schema": "escen",
+      "table": "application_documents",
+      "name": "application_documents_pkey",
+      "type": "p",
+      "definition": "PRIMARY KEY (id)"
+    },
+    {
+      "schema": "escen",
+      "table": "application_documents",
+      "name": "application_documents_reason_not_null",
+      "type": "n",
+      "definition": "NOT NULL reason"
+    },
+    {
+      "schema": "escen",
+      "table": "application_documents",
+      "name": "application_documents_sha256_check",
+      "type": "c",
+      "definition": "CHECK ((sha256 ~ '^[a-f0-9]{64}$'::text))"
+    },
+    {
+      "schema": "escen",
+      "table": "application_documents",
+      "name": "application_documents_sha256_not_null",
+      "type": "n",
+      "definition": "NOT NULL sha256"
+    },
+    {
+      "schema": "escen",
       "table": "assessment_weights",
       "name": "assessment_weights_component_id_curriculum_id_fkey",
       "type": "f",
@@ -8590,6 +9675,13 @@
       "name": "assessment_weights_pkey",
       "type": "p",
       "definition": "PRIMARY KEY (id)"
+    },
+    {
+      "schema": "escen",
+      "table": "asset_movements",
+      "name": "asset_movements_academic_year_id_fkey",
+      "type": "f",
+      "definition": "FOREIGN KEY (academic_year_id) REFERENCES escen.academic_years(id) ON DELETE RESTRICT"
     },
     {
       "schema": "escen",
@@ -9143,6 +10235,13 @@
       "name": "communication_reads_read_at_not_null",
       "type": "n",
       "definition": "NOT NULL read_at"
+    },
+    {
+      "schema": "escen",
+      "table": "communications",
+      "name": "communications_academic_year_id_fkey",
+      "type": "f",
+      "definition": "FOREIGN KEY (academic_year_id) REFERENCES escen.academic_years(id) ON DELETE RESTRICT"
     },
     {
       "schema": "escen",
@@ -11310,6 +12409,13 @@
     {
       "schema": "escen",
       "table": "exam_papers",
+      "name": "exam_papers_academic_year_id_fkey",
+      "type": "f",
+      "definition": "FOREIGN KEY (academic_year_id) REFERENCES escen.academic_years(id) ON DELETE RESTRICT"
+    },
+    {
+      "schema": "escen",
+      "table": "exam_papers",
       "name": "exam_papers_author_id_fkey",
       "type": "f",
       "definition": "FOREIGN KEY (author_id) REFERENCES escen.accounts(id) ON DELETE RESTRICT"
@@ -12202,6 +13308,13 @@
       "name": "financial_contracts_reference_not_null",
       "type": "n",
       "definition": "NOT NULL reference"
+    },
+    {
+      "schema": "escen",
+      "table": "generated_documents",
+      "name": "generated_documents_academic_year_id_fkey",
+      "type": "f",
+      "definition": "FOREIGN KEY (academic_year_id) REFERENCES escen.academic_years(id) ON DELETE RESTRICT"
     },
     {
       "schema": "escen",
@@ -13297,6 +14410,132 @@
     },
     {
       "schema": "escen",
+      "table": "online_applications",
+      "name": "online_applications_academic_year_id_fkey",
+      "type": "f",
+      "definition": "FOREIGN KEY (academic_year_id) REFERENCES escen.academic_years(id) ON DELETE RESTRICT"
+    },
+    {
+      "schema": "escen",
+      "table": "online_applications",
+      "name": "online_applications_check",
+      "type": "c",
+      "definition": "CHECK (((status = 'BROUILLON'::text) OR ((submitted_at IS NOT NULL) AND (intake_id IS NOT NULL))))"
+    },
+    {
+      "schema": "escen",
+      "table": "online_applications",
+      "name": "online_applications_created_at_not_null",
+      "type": "n",
+      "definition": "NOT NULL created_at"
+    },
+    {
+      "schema": "escen",
+      "table": "online_applications",
+      "name": "online_applications_diploma_check",
+      "type": "c",
+      "definition": "CHECK ((jsonb_typeof(diploma) = 'object'::text))"
+    },
+    {
+      "schema": "escen",
+      "table": "online_applications",
+      "name": "online_applications_diploma_not_null",
+      "type": "n",
+      "definition": "NOT NULL diploma"
+    },
+    {
+      "schema": "escen",
+      "table": "online_applications",
+      "name": "online_applications_guardians_check",
+      "type": "c",
+      "definition": "CHECK ((jsonb_typeof(guardians) = 'array'::text))"
+    },
+    {
+      "schema": "escen",
+      "table": "online_applications",
+      "name": "online_applications_guardians_not_null",
+      "type": "n",
+      "definition": "NOT NULL guardians"
+    },
+    {
+      "schema": "escen",
+      "table": "online_applications",
+      "name": "online_applications_id_not_null",
+      "type": "n",
+      "definition": "NOT NULL id"
+    },
+    {
+      "schema": "escen",
+      "table": "online_applications",
+      "name": "online_applications_identity_check",
+      "type": "c",
+      "definition": "CHECK (((jsonb_typeof(identity) = 'object'::text) AND (length(COALESCE((identity ->> 'nom'::text), ''::text)) > 0) AND (length(COALESCE((identity ->> 'prenom'::text), ''::text)) > 0) AND (length(COALESCE((identity ->> 'email'::text), ''::text)) > 0)))"
+    },
+    {
+      "schema": "escen",
+      "table": "online_applications",
+      "name": "online_applications_identity_not_null",
+      "type": "n",
+      "definition": "NOT NULL identity"
+    },
+    {
+      "schema": "escen",
+      "table": "online_applications",
+      "name": "online_applications_intake_id_fkey",
+      "type": "f",
+      "definition": "FOREIGN KEY (intake_id) REFERENCES escen.website_intakes(id) ON DELETE RESTRICT"
+    },
+    {
+      "schema": "escen",
+      "table": "online_applications",
+      "name": "online_applications_pkey",
+      "type": "p",
+      "definition": "PRIMARY KEY (id)"
+    },
+    {
+      "schema": "escen",
+      "table": "online_applications",
+      "name": "online_applications_reason_not_null",
+      "type": "n",
+      "definition": "NOT NULL reason"
+    },
+    {
+      "schema": "escen",
+      "table": "online_applications",
+      "name": "online_applications_reference_key",
+      "type": "u",
+      "definition": "UNIQUE (reference)"
+    },
+    {
+      "schema": "escen",
+      "table": "online_applications",
+      "name": "online_applications_reference_not_null",
+      "type": "n",
+      "definition": "NOT NULL reference"
+    },
+    {
+      "schema": "escen",
+      "table": "online_applications",
+      "name": "online_applications_status_check",
+      "type": "c",
+      "definition": "CHECK ((status = ANY (ARRAY['BROUILLON'::text, 'RECU'::text, 'EN_ANALYSE'::text, 'CLASSE'::text])))"
+    },
+    {
+      "schema": "escen",
+      "table": "online_applications",
+      "name": "online_applications_status_not_null",
+      "type": "n",
+      "definition": "NOT NULL status"
+    },
+    {
+      "schema": "escen",
+      "table": "online_applications",
+      "name": "online_applications_version_not_null",
+      "type": "n",
+      "definition": "NOT NULL version"
+    },
+    {
+      "schema": "escen",
       "table": "payment_allocations",
       "name": "payment_allocations_allocated_at_not_null",
       "type": "n",
@@ -13917,6 +15156,13 @@
       "name": "purchase_receipts_received_by_not_null",
       "type": "n",
       "definition": "NOT NULL received_by"
+    },
+    {
+      "schema": "escen",
+      "table": "purchases",
+      "name": "purchases_academic_year_id_fkey",
+      "type": "f",
+      "definition": "FOREIGN KEY (academic_year_id) REFERENCES escen.academic_years(id) ON DELETE RESTRICT"
     },
     {
       "schema": "escen",
@@ -15216,6 +16462,13 @@
     {
       "schema": "escen",
       "table": "student_documents",
+      "name": "student_documents_academic_year_id_fkey",
+      "type": "f",
+      "definition": "FOREIGN KEY (academic_year_id) REFERENCES escen.academic_years(id) ON DELETE RESTRICT"
+    },
+    {
+      "schema": "escen",
+      "table": "student_documents",
       "name": "student_documents_document_type_id_fkey",
       "type": "f",
       "definition": "FOREIGN KEY (document_type_id) REFERENCES escen.document_types(id) ON DELETE RESTRICT"
@@ -15377,6 +16630,20 @@
     {
       "schema": "escen",
       "table": "subjects",
+      "name": "subject_code_per_year",
+      "type": "u",
+      "definition": "UNIQUE NULLS NOT DISTINCT (academic_year_id, code)"
+    },
+    {
+      "schema": "escen",
+      "table": "subjects",
+      "name": "subjects_academic_year_id_fkey",
+      "type": "f",
+      "definition": "FOREIGN KEY (academic_year_id) REFERENCES escen.academic_years(id) ON DELETE RESTRICT"
+    },
+    {
+      "schema": "escen",
+      "table": "subjects",
       "name": "subjects_active_not_null",
       "type": "n",
       "definition": "NOT NULL active"
@@ -15387,13 +16654,6 @@
       "name": "subjects_archive_reason",
       "type": "c",
       "definition": "CHECK (((archived_at IS NULL) OR ((reason IS NOT NULL) AND (length(btrim(reason)) >= 3))))"
-    },
-    {
-      "schema": "escen",
-      "table": "subjects",
-      "name": "subjects_code_key",
-      "type": "u",
-      "definition": "UNIQUE (code)"
     },
     {
       "schema": "escen",
@@ -15604,6 +16864,13 @@
       "name": "support_messages_ticket_id_not_null",
       "type": "n",
       "definition": "NOT NULL ticket_id"
+    },
+    {
+      "schema": "escen",
+      "table": "support_tickets",
+      "name": "support_tickets_academic_year_id_fkey",
+      "type": "f",
+      "definition": "FOREIGN KEY (academic_year_id) REFERENCES escen.academic_years(id) ON DELETE RESTRICT"
     },
     {
       "schema": "escen",
@@ -16143,6 +17410,293 @@
       "name": "tracks_program_id_not_null",
       "type": "n",
       "definition": "NOT NULL program_id"
+    },
+    {
+      "schema": "escen",
+      "table": "website_articles",
+      "name": "website_articles_academic_year_id_fkey",
+      "type": "f",
+      "definition": "FOREIGN KEY (academic_year_id) REFERENCES escen.academic_years(id) ON DELETE RESTRICT"
+    },
+    {
+      "schema": "escen",
+      "table": "website_articles",
+      "name": "website_articles_check",
+      "type": "c",
+      "definition": "CHECK (((status <> 'PUBLIE'::text) OR (published_at IS NOT NULL)))"
+    },
+    {
+      "schema": "escen",
+      "table": "website_articles",
+      "name": "website_articles_content_not_null",
+      "type": "n",
+      "definition": "NOT NULL content"
+    },
+    {
+      "schema": "escen",
+      "table": "website_articles",
+      "name": "website_articles_created_by_fkey",
+      "type": "f",
+      "definition": "FOREIGN KEY (created_by) REFERENCES escen.accounts(id) ON DELETE RESTRICT"
+    },
+    {
+      "schema": "escen",
+      "table": "website_articles",
+      "name": "website_articles_created_by_not_null",
+      "type": "n",
+      "definition": "NOT NULL created_by"
+    },
+    {
+      "schema": "escen",
+      "table": "website_articles",
+      "name": "website_articles_excerpt_not_null",
+      "type": "n",
+      "definition": "NOT NULL excerpt"
+    },
+    {
+      "schema": "escen",
+      "table": "website_articles",
+      "name": "website_articles_id_not_null",
+      "type": "n",
+      "definition": "NOT NULL id"
+    },
+    {
+      "schema": "escen",
+      "table": "website_articles",
+      "name": "website_articles_image_not_null",
+      "type": "n",
+      "definition": "NOT NULL image"
+    },
+    {
+      "schema": "escen",
+      "table": "website_articles",
+      "name": "website_articles_pkey",
+      "type": "p",
+      "definition": "PRIMARY KEY (id)"
+    },
+    {
+      "schema": "escen",
+      "table": "website_articles",
+      "name": "website_articles_reason_not_null",
+      "type": "n",
+      "definition": "NOT NULL reason"
+    },
+    {
+      "schema": "escen",
+      "table": "website_articles",
+      "name": "website_articles_slug_check",
+      "type": "c",
+      "definition": "CHECK ((slug ~ '^[a-z0-9]+(-[a-z0-9]+)*$'::text))"
+    },
+    {
+      "schema": "escen",
+      "table": "website_articles",
+      "name": "website_articles_slug_key",
+      "type": "u",
+      "definition": "UNIQUE (slug)"
+    },
+    {
+      "schema": "escen",
+      "table": "website_articles",
+      "name": "website_articles_slug_not_null",
+      "type": "n",
+      "definition": "NOT NULL slug"
+    },
+    {
+      "schema": "escen",
+      "table": "website_articles",
+      "name": "website_articles_status_check",
+      "type": "c",
+      "definition": "CHECK ((status = ANY (ARRAY['BROUILLON'::text, 'PUBLIE'::text, 'RETIRE'::text])))"
+    },
+    {
+      "schema": "escen",
+      "table": "website_articles",
+      "name": "website_articles_status_not_null",
+      "type": "n",
+      "definition": "NOT NULL status"
+    },
+    {
+      "schema": "escen",
+      "table": "website_articles",
+      "name": "website_articles_title_check",
+      "type": "c",
+      "definition": "CHECK (((length(title) >= 3) AND (length(title) <= 180)))"
+    },
+    {
+      "schema": "escen",
+      "table": "website_articles",
+      "name": "website_articles_title_not_null",
+      "type": "n",
+      "definition": "NOT NULL title"
+    },
+    {
+      "schema": "escen",
+      "table": "website_articles",
+      "name": "website_articles_updated_at_not_null",
+      "type": "n",
+      "definition": "NOT NULL updated_at"
+    },
+    {
+      "schema": "escen",
+      "table": "website_articles",
+      "name": "website_articles_version_not_null",
+      "type": "n",
+      "definition": "NOT NULL version"
+    },
+    {
+      "schema": "escen",
+      "table": "website_intakes",
+      "name": "website_intake_per_year",
+      "type": "u",
+      "definition": "UNIQUE (academic_year_id, level_id, program_id)"
+    },
+    {
+      "schema": "escen",
+      "table": "website_intakes",
+      "name": "website_intake_year_required",
+      "type": "c",
+      "definition": "CHECK (((NOT active) OR (academic_year_id IS NOT NULL))) NOT VALID"
+    },
+    {
+      "schema": "escen",
+      "table": "website_intakes",
+      "name": "website_intakes_academic_year_id_fkey",
+      "type": "f",
+      "definition": "FOREIGN KEY (academic_year_id) REFERENCES escen.academic_years(id) ON DELETE RESTRICT"
+    },
+    {
+      "schema": "escen",
+      "table": "website_intakes",
+      "name": "website_intakes_active_not_null",
+      "type": "n",
+      "definition": "NOT NULL active"
+    },
+    {
+      "schema": "escen",
+      "table": "website_intakes",
+      "name": "website_intakes_id_not_null",
+      "type": "n",
+      "definition": "NOT NULL id"
+    },
+    {
+      "schema": "escen",
+      "table": "website_intakes",
+      "name": "website_intakes_label_not_null",
+      "type": "n",
+      "definition": "NOT NULL label"
+    },
+    {
+      "schema": "escen",
+      "table": "website_intakes",
+      "name": "website_intakes_level_id_fkey",
+      "type": "f",
+      "definition": "FOREIGN KEY (level_id) REFERENCES escen.levels(id) ON DELETE RESTRICT"
+    },
+    {
+      "schema": "escen",
+      "table": "website_intakes",
+      "name": "website_intakes_level_id_not_null",
+      "type": "n",
+      "definition": "NOT NULL level_id"
+    },
+    {
+      "schema": "escen",
+      "table": "website_intakes",
+      "name": "website_intakes_pkey",
+      "type": "p",
+      "definition": "PRIMARY KEY (id)"
+    },
+    {
+      "schema": "escen",
+      "table": "website_intakes",
+      "name": "website_intakes_program_id_fkey",
+      "type": "f",
+      "definition": "FOREIGN KEY (program_id) REFERENCES escen.programs(id) ON DELETE RESTRICT"
+    },
+    {
+      "schema": "escen",
+      "table": "website_intakes",
+      "name": "website_intakes_program_id_not_null",
+      "type": "n",
+      "definition": "NOT NULL program_id"
+    },
+    {
+      "schema": "escen",
+      "table": "website_intakes",
+      "name": "website_intakes_reason_not_null",
+      "type": "n",
+      "definition": "NOT NULL reason"
+    },
+    {
+      "schema": "escen",
+      "table": "website_intakes",
+      "name": "website_intakes_required_documents_check",
+      "type": "c",
+      "definition": "CHECK ((jsonb_typeof(required_documents) = 'array'::text))"
+    },
+    {
+      "schema": "escen",
+      "table": "website_intakes",
+      "name": "website_intakes_required_documents_not_null",
+      "type": "n",
+      "definition": "NOT NULL required_documents"
+    },
+    {
+      "schema": "escen",
+      "table": "website_intakes",
+      "name": "website_intakes_version_not_null",
+      "type": "n",
+      "definition": "NOT NULL version"
+    },
+    {
+      "schema": "escen_private",
+      "table": "application_access",
+      "name": "application_access_expires_at_not_null",
+      "type": "n",
+      "definition": "NOT NULL expires_at"
+    },
+    {
+      "schema": "escen_private",
+      "table": "application_access",
+      "name": "application_access_id_fkey",
+      "type": "f",
+      "definition": "FOREIGN KEY (id) REFERENCES escen.online_applications(id) ON DELETE RESTRICT"
+    },
+    {
+      "schema": "escen_private",
+      "table": "application_access",
+      "name": "application_access_id_not_null",
+      "type": "n",
+      "definition": "NOT NULL id"
+    },
+    {
+      "schema": "escen_private",
+      "table": "application_access",
+      "name": "application_access_pkey",
+      "type": "p",
+      "definition": "PRIMARY KEY (id)"
+    },
+    {
+      "schema": "escen_private",
+      "table": "application_access",
+      "name": "application_access_token_hash_check",
+      "type": "c",
+      "definition": "CHECK ((token_hash ~ '^[a-f0-9]{64}$'::text))"
+    },
+    {
+      "schema": "escen_private",
+      "table": "application_access",
+      "name": "application_access_token_hash_key",
+      "type": "u",
+      "definition": "UNIQUE (token_hash)"
+    },
+    {
+      "schema": "escen_private",
+      "table": "application_access",
+      "name": "application_access_token_hash_not_null",
+      "type": "n",
+      "definition": "NOT NULL token_hash"
     },
     {
       "schema": "escen_private",
@@ -16934,6 +18488,34 @@
       "name": "source_mappings_target_table_not_null",
       "type": "n",
       "definition": "NOT NULL target_table"
+    },
+    {
+      "schema": "escen_private",
+      "table": "website_rate_limits",
+      "name": "website_rate_limits_key_not_null",
+      "type": "n",
+      "definition": "NOT NULL key"
+    },
+    {
+      "schema": "escen_private",
+      "table": "website_rate_limits",
+      "name": "website_rate_limits_pkey",
+      "type": "p",
+      "definition": "PRIMARY KEY (key)"
+    },
+    {
+      "schema": "escen_private",
+      "table": "website_rate_limits",
+      "name": "website_rate_limits_requests_not_null",
+      "type": "n",
+      "definition": "NOT NULL requests"
+    },
+    {
+      "schema": "escen_private",
+      "table": "website_rate_limits",
+      "name": "website_rate_limits_started_at_not_null",
+      "type": "n",
+      "definition": "NOT NULL started_at"
     }
   ],
   "indexes": [
@@ -17029,6 +18611,24 @@
     },
     {
       "schema": "escen",
+      "table": "academic_working_year",
+      "name": "academic_working_year_fk",
+      "definition": "CREATE INDEX academic_working_year_fk ON escen.academic_working_year USING btree (academic_year_id)"
+    },
+    {
+      "schema": "escen",
+      "table": "academic_working_year",
+      "name": "academic_working_year_pkey",
+      "definition": "CREATE UNIQUE INDEX academic_working_year_pkey ON escen.academic_working_year USING btree (id)"
+    },
+    {
+      "schema": "escen",
+      "table": "academic_working_year",
+      "name": "academic_working_year_singleton_key",
+      "definition": "CREATE UNIQUE INDEX academic_working_year_singleton_key ON escen.academic_working_year USING btree (singleton)"
+    },
+    {
+      "schema": "escen",
       "table": "academic_years",
       "name": "academic_years_code_key",
       "definition": "CREATE UNIQUE INDEX academic_years_code_key ON escen.academic_years USING btree (code)"
@@ -17095,6 +18695,54 @@
     },
     {
       "schema": "escen",
+      "table": "annual_fee_schedules",
+      "name": "annual_fee_level_fk",
+      "definition": "CREATE INDEX annual_fee_level_fk ON escen.annual_fee_schedules USING btree (level_id)"
+    },
+    {
+      "schema": "escen",
+      "table": "annual_fee_schedules",
+      "name": "annual_fee_program_fk",
+      "definition": "CREATE INDEX annual_fee_program_fk ON escen.annual_fee_schedules USING btree (program_id)"
+    },
+    {
+      "schema": "escen",
+      "table": "annual_fee_schedules",
+      "name": "annual_fee_schedules_academic_year_id_category_program_id_l_key",
+      "definition": "CREATE UNIQUE INDEX annual_fee_schedules_academic_year_id_category_program_id_l_key ON escen.annual_fee_schedules USING btree (academic_year_id, category, program_id, level_id, archived_at) NULLS NOT DISTINCT"
+    },
+    {
+      "schema": "escen",
+      "table": "annual_fee_schedules",
+      "name": "annual_fee_schedules_pkey",
+      "definition": "CREATE UNIQUE INDEX annual_fee_schedules_pkey ON escen.annual_fee_schedules USING btree (id)"
+    },
+    {
+      "schema": "escen",
+      "table": "annual_fee_schedules",
+      "name": "annual_fee_year_fk",
+      "definition": "CREATE INDEX annual_fee_year_fk ON escen.annual_fee_schedules USING btree (academic_year_id)"
+    },
+    {
+      "schema": "escen",
+      "table": "annual_payment_channels",
+      "name": "annual_payment_channel_year_fk",
+      "definition": "CREATE INDEX annual_payment_channel_year_fk ON escen.annual_payment_channels USING btree (academic_year_id)"
+    },
+    {
+      "schema": "escen",
+      "table": "annual_payment_channels",
+      "name": "annual_payment_channels_academic_year_id_method_name_archiv_key",
+      "definition": "CREATE UNIQUE INDEX annual_payment_channels_academic_year_id_method_name_archiv_key ON escen.annual_payment_channels USING btree (academic_year_id, method, name, archived_at) NULLS NOT DISTINCT"
+    },
+    {
+      "schema": "escen",
+      "table": "annual_payment_channels",
+      "name": "annual_payment_channels_pkey",
+      "definition": "CREATE UNIQUE INDEX annual_payment_channels_pkey ON escen.annual_payment_channels USING btree (id)"
+    },
+    {
+      "schema": "escen",
       "table": "answer_corrections",
       "name": "answer_corrections_pkey",
       "definition": "CREATE UNIQUE INDEX answer_corrections_pkey ON escen.answer_corrections USING btree (id)"
@@ -17113,6 +18761,24 @@
     },
     {
       "schema": "escen",
+      "table": "application_documents",
+      "name": "application_documents_object_path_key",
+      "definition": "CREATE UNIQUE INDEX application_documents_object_path_key ON escen.application_documents USING btree (object_path)"
+    },
+    {
+      "schema": "escen",
+      "table": "application_documents",
+      "name": "application_documents_pkey",
+      "definition": "CREATE UNIQUE INDEX application_documents_pkey ON escen.application_documents USING btree (id)"
+    },
+    {
+      "schema": "escen",
+      "table": "application_documents",
+      "name": "website_document_application_fk",
+      "definition": "CREATE INDEX website_document_application_fk ON escen.application_documents USING btree (application_id)"
+    },
+    {
+      "schema": "escen",
       "table": "assessment_weights",
       "name": "assessment_component_fk",
       "definition": "CREATE INDEX assessment_component_fk ON escen.assessment_weights USING btree (component_id, curriculum_id)"
@@ -17128,6 +18794,12 @@
       "table": "assessment_weights",
       "name": "assessment_weights_pkey",
       "definition": "CREATE UNIQUE INDEX assessment_weights_pkey ON escen.assessment_weights USING btree (id)"
+    },
+    {
+      "schema": "escen",
+      "table": "asset_movements",
+      "name": "asset_movements_academic_year_fk",
+      "definition": "CREATE INDEX asset_movements_academic_year_fk ON escen.asset_movements USING btree (academic_year_id)"
     },
     {
       "schema": "escen",
@@ -17320,6 +18992,12 @@
       "table": "communication_reads",
       "name": "fk_18977",
       "definition": "CREATE INDEX fk_18977 ON escen.communication_reads USING btree (account_id)"
+    },
+    {
+      "schema": "escen",
+      "table": "communications",
+      "name": "communications_academic_year_fk",
+      "definition": "CREATE INDEX communications_academic_year_fk ON escen.communications USING btree (academic_year_id)"
     },
     {
       "schema": "escen",
@@ -17996,6 +19674,12 @@
     {
       "schema": "escen",
       "table": "exam_papers",
+      "name": "exam_papers_academic_year_fk",
+      "definition": "CREATE INDEX exam_papers_academic_year_fk ON escen.exam_papers USING btree (academic_year_id)"
+    },
+    {
+      "schema": "escen",
+      "table": "exam_papers",
       "name": "exam_papers_evaluation_id_version_key",
       "definition": "CREATE UNIQUE INDEX exam_papers_evaluation_id_version_key ON escen.exam_papers USING btree (evaluation_id, version)"
     },
@@ -18316,6 +20000,12 @@
       "table": "generated_documents",
       "name": "fk_18239",
       "definition": "CREATE INDEX fk_18239 ON escen.generated_documents USING btree (enrollment_id, student_id)"
+    },
+    {
+      "schema": "escen",
+      "table": "generated_documents",
+      "name": "generated_documents_academic_year_fk",
+      "definition": "CREATE INDEX generated_documents_academic_year_fk ON escen.generated_documents USING btree (academic_year_id)"
     },
     {
       "schema": "escen",
@@ -18661,6 +20351,36 @@
     },
     {
       "schema": "escen",
+      "table": "online_applications",
+      "name": "online_applications_pkey",
+      "definition": "CREATE UNIQUE INDEX online_applications_pkey ON escen.online_applications USING btree (id)"
+    },
+    {
+      "schema": "escen",
+      "table": "online_applications",
+      "name": "online_applications_reference_key",
+      "definition": "CREATE UNIQUE INDEX online_applications_reference_key ON escen.online_applications USING btree (reference)"
+    },
+    {
+      "schema": "escen",
+      "table": "online_applications",
+      "name": "website_application_intake_fk",
+      "definition": "CREATE INDEX website_application_intake_fk ON escen.online_applications USING btree (intake_id)"
+    },
+    {
+      "schema": "escen",
+      "table": "online_applications",
+      "name": "website_application_received",
+      "definition": "CREATE INDEX website_application_received ON escen.online_applications USING btree (submitted_at DESC)"
+    },
+    {
+      "schema": "escen",
+      "table": "online_applications",
+      "name": "website_application_year_fk",
+      "definition": "CREATE INDEX website_application_year_fk ON escen.online_applications USING btree (academic_year_id)"
+    },
+    {
+      "schema": "escen",
       "table": "payment_allocations",
       "name": "fk_18611",
       "definition": "CREATE INDEX fk_18611 ON escen.payment_allocations USING btree (allocated_by)"
@@ -18868,6 +20588,12 @@
       "table": "purchases",
       "name": "fk_19141",
       "definition": "CREATE INDEX fk_19141 ON escen.purchases USING btree (requested_by)"
+    },
+    {
+      "schema": "escen",
+      "table": "purchases",
+      "name": "purchases_academic_year_fk",
+      "definition": "CREATE INDEX purchases_academic_year_fk ON escen.purchases USING btree (academic_year_id)"
     },
     {
       "schema": "escen",
@@ -19322,6 +21048,12 @@
     {
       "schema": "escen",
       "table": "student_documents",
+      "name": "student_documents_academic_year_fk",
+      "definition": "CREATE INDEX student_documents_academic_year_fk ON escen.student_documents USING btree (academic_year_id)"
+    },
+    {
+      "schema": "escen",
+      "table": "student_documents",
       "name": "student_documents_pkey",
       "definition": "CREATE UNIQUE INDEX student_documents_pkey ON escen.student_documents USING btree (id)"
     },
@@ -19352,8 +21084,14 @@
     {
       "schema": "escen",
       "table": "subjects",
-      "name": "subjects_code_key",
-      "definition": "CREATE UNIQUE INDEX subjects_code_key ON escen.subjects USING btree (code)"
+      "name": "subject_code_per_year",
+      "definition": "CREATE UNIQUE INDEX subject_code_per_year ON escen.subjects USING btree (academic_year_id, code) NULLS NOT DISTINCT"
+    },
+    {
+      "schema": "escen",
+      "table": "subjects",
+      "name": "subject_year_fk",
+      "definition": "CREATE INDEX subject_year_fk ON escen.subjects USING btree (academic_year_id)"
     },
     {
       "schema": "escen",
@@ -19438,6 +21176,12 @@
       "table": "support_tickets",
       "name": "fk_19049",
       "definition": "CREATE INDEX fk_19049 ON escen.support_tickets USING btree (category_id)"
+    },
+    {
+      "schema": "escen",
+      "table": "support_tickets",
+      "name": "support_tickets_academic_year_fk",
+      "definition": "CREATE INDEX support_tickets_academic_year_fk ON escen.support_tickets USING btree (academic_year_id)"
     },
     {
       "schema": "escen",
@@ -19612,6 +21356,72 @@
       "table": "tracks",
       "name": "tracks_program_id_code_key",
       "definition": "CREATE UNIQUE INDEX tracks_program_id_code_key ON escen.tracks USING btree (program_id, code)"
+    },
+    {
+      "schema": "escen",
+      "table": "website_articles",
+      "name": "website_article_author_fk",
+      "definition": "CREATE INDEX website_article_author_fk ON escen.website_articles USING btree (created_by)"
+    },
+    {
+      "schema": "escen",
+      "table": "website_articles",
+      "name": "website_articles_academic_year_fk",
+      "definition": "CREATE INDEX website_articles_academic_year_fk ON escen.website_articles USING btree (academic_year_id)"
+    },
+    {
+      "schema": "escen",
+      "table": "website_articles",
+      "name": "website_articles_pkey",
+      "definition": "CREATE UNIQUE INDEX website_articles_pkey ON escen.website_articles USING btree (id)"
+    },
+    {
+      "schema": "escen",
+      "table": "website_articles",
+      "name": "website_articles_slug_key",
+      "definition": "CREATE UNIQUE INDEX website_articles_slug_key ON escen.website_articles USING btree (slug)"
+    },
+    {
+      "schema": "escen",
+      "table": "website_intakes",
+      "name": "website_intake_level_fk",
+      "definition": "CREATE INDEX website_intake_level_fk ON escen.website_intakes USING btree (level_id)"
+    },
+    {
+      "schema": "escen",
+      "table": "website_intakes",
+      "name": "website_intake_per_year",
+      "definition": "CREATE UNIQUE INDEX website_intake_per_year ON escen.website_intakes USING btree (academic_year_id, level_id, program_id)"
+    },
+    {
+      "schema": "escen",
+      "table": "website_intakes",
+      "name": "website_intake_program_fk",
+      "definition": "CREATE INDEX website_intake_program_fk ON escen.website_intakes USING btree (program_id)"
+    },
+    {
+      "schema": "escen",
+      "table": "website_intakes",
+      "name": "website_intake_year_fk",
+      "definition": "CREATE INDEX website_intake_year_fk ON escen.website_intakes USING btree (academic_year_id)"
+    },
+    {
+      "schema": "escen",
+      "table": "website_intakes",
+      "name": "website_intakes_pkey",
+      "definition": "CREATE UNIQUE INDEX website_intakes_pkey ON escen.website_intakes USING btree (id)"
+    },
+    {
+      "schema": "escen_private",
+      "table": "application_access",
+      "name": "application_access_pkey",
+      "definition": "CREATE UNIQUE INDEX application_access_pkey ON escen_private.application_access USING btree (id)"
+    },
+    {
+      "schema": "escen_private",
+      "table": "application_access",
+      "name": "application_access_token_hash_key",
+      "definition": "CREATE UNIQUE INDEX application_access_token_hash_key ON escen_private.application_access USING btree (token_hash)"
     },
     {
       "schema": "escen_private",
@@ -19798,6 +21608,12 @@
       "table": "source_mappings",
       "name": "source_mappings_row_id_target_table_key",
       "definition": "CREATE UNIQUE INDEX source_mappings_row_id_target_table_key ON escen_private.source_mappings USING btree (row_id, target_table)"
+    },
+    {
+      "schema": "escen_private",
+      "table": "website_rate_limits",
+      "name": "website_rate_limits_pkey",
+      "definition": "CREATE UNIQUE INDEX website_rate_limits_pkey ON escen_private.website_rate_limits USING btree (key)"
     }
   ],
   "views": [

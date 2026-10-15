@@ -5,9 +5,10 @@ import { useRouter } from 'next/navigation';
 import { usePortal } from '@/hooks/usePortal';
 import { getPortalRoute, HOME_PATH, MODULE_PATHS } from '@/constants/portalRoutes';
 import { isRouteAllowed } from '@/permissions/navigation';
+import LoadingState from '@/components/ui/LoadingState';
+import AcademicYearControl from '@/components/layout/AcademicYearControl';
 import TopBar, { type SearchDestination } from '@/components/layout/TopBar';
 import Sidebar from '@/components/layout/Sidebar';
-import RoleScopeBanner from '@/components/ui/RoleScopeBanner';
 import SchoolLogo from '@/components/ui/SchoolLogo';
 import ActionResult from '@/components/ui/ActionResult';
 
@@ -67,26 +68,21 @@ export default function PortalShell({ children }: { children: ReactNode }) {
   };
   if (!state.session || !state.authReady) return <div className="route-loading" role="status"><SchoolLogo /><p>Ouverture de la connexion…</p></div>;
   return <><a href="#main-content" className="skip-link">Aller au contenu</a><div className={`app-wrapper ${menuOpen ? 'navigation-open' : ''}`}>
-    <TopBar destinations={destinations} onDestination={openDestination} menuOpen={menuOpen} onToggleMenu={() => setMenuOpen(open => !open)} activeRole={activeRole} availableRoles={state.session.availableRoles} searchQuery={state.searchQuery} onSearchChange={state.setSearchQuery} onRoleChange={state.handleRoleChange} notifications={state.notifications} onLogout={state.logout} />
+    <TopBar userName={state.session.name} destinations={destinations} onDestination={openDestination} menuOpen={menuOpen} onToggleMenu={() => setMenuOpen(open => !open)} activeRole={activeRole} availableRoles={state.session.availableRoles} searchQuery={state.searchQuery} onSearchChange={state.setSearchQuery} onRoleChange={state.handleRoleChange} notifications={state.notifications} onLogout={state.logout} />
     <div className="app-body">{menuOpen && <button className="navigation-backdrop" aria-label="Fermer la navigation" onClick={() => setMenuOpen(false)} />}
       <Sidebar availableTabs={availableTabs} currentTab={currentTab} currentSubTab={currentSubTab} activeRole={activeRole} menuOpen={menuOpen} onNavigate={() => setMenuOpen(false)} />
       <main className="main-content" id="main-content" ref={mainRef} key={activeRole + ':' + state.demoIdentity} tabIndex={-1} inert={menuOpen}>
         <div className="workspace-location">
           <nav className="workspace-breadcrumb" aria-label="Fil d’Ariane"><Link href={HOME_PATH}>Accueil</Link>{tab && tab.id !== 'espace' && <><span>/</span><Link href={tab.href}>{tab.name}</Link></>}{route && <><span>/</span><strong aria-current="page">{route.studentId ? `Dossier ${route.studentId}` : route.title}</strong></>}</nav>
-          <RoleScopeBanner role={activeRole} />
+          <AcademicYearControl />
         </div>
-        {allowed && !!tab?.subTabs?.length && <nav className="workspace-pages" aria-label={`Pages : ${tab.name}`}>
-          <label>Aller à une page de {tab.name.toLocaleLowerCase('fr')}<select className="select-input" value={tab.subTabs.some(section => section.id === currentSubTab) ? currentSubTab : ''} onChange={event => state.navigateTo(tab.id, event.target.value)}>
-            <option value="" disabled>Choisir une page</option>{tab.subTabs.map(section => <option key={section.id} value={section.id}>{section.name}</option>)}
-          </select></label>
-        </nav>}
         {!allowed ? <section className="card route-denied"><h1>Accès refusé</h1><p>Cette page n’est pas disponible pour votre rôle.</p><Link className="btn btn-primary" href={HOME_PATH}>Revenir à mon espace</Link></section> : <>
           {state.actionFeedback && <div className="restricted-box action-feedback" role="alert"><span>{state.actionFeedback}</span><button className="btn btn-sm btn-outline" onClick={state.clearActionFeedback}>Fermer</button></div>}
-          {state.campusLoad.status === 'loading' || state.campusLoad.status === 'idle' ? <section className="card" role="status"><h1>Chargement des dossiers…</h1><p>Les données de votre compte sont en cours de chargement.</p></section>
+          {state.campusLoad.status === 'loading' || state.campusLoad.status === 'idle' ? <LoadingState label="Chargement des dossiers…" />
             : state.campusLoad.status === 'error' ? <section className="card" role="alert"><h1>Chargement impossible</h1><p>{state.campusLoad.error}</p><button className="btn btn-primary" onClick={state.reloadCampus}>Réessayer le chargement</button></section>
               : <>
                 {state.actionOutcome && <ActionResult title={state.actionOutcome.title} href={state.actionOutcome.href && isRouteAllowed(state.actionOutcome.href.split('?')[0], activeRole) ? state.actionOutcome.href : undefined} nextLabel={state.actionOutcome.nextLabel} onDismiss={state.clearActionOutcome}>{state.actionOutcome.detail}</ActionResult>}
-                {children}
+                <div key={`${state.academicYearSelection}:${state.academicYearContext?.selectedYearId || ''}`}>{state.academicYearContext && !state.academicYearContext.selectedYearId && state.academicYearSelection !== 'all' && !['acad_reference', 'acad_program', 'staff_records', 'staff_list', 'staff_permissions', 'staff_roles', 'espace_profile', 'sys_roles', 'sys_permissions', 'sys_data', 'sys_logs', 'sys_backups', 'sys_settings', 'log_assets', 'log_suppliers'].includes(currentSubTab) ? <section className="card card-full"><h1>Choisir une année scolaire</h1><p>Sélectionnez une année dans le champ Année pour consulter les activités, dossiers et résultats correspondants. Aucune donnée sans rattachement confirmé ne sera ajoutée à cette année.</p>{state.globalAccess && (perms.permissions.includes('academic.year.open') || perms.permissions.includes('academic.structure.manage')) && <Link className="btn btn-primary" href="/academique/referentiel?collection=academic_years">Configurer les années scolaires</Link>}</section> : children}</div>
                 <section className="connected-data-bar workspace-data-footer" aria-label="État des données">
                   <span><i /> {state.campusLoad.students} dossier(s) étudiant(s) chargé(s){perms.permissions.includes('user.manage') ? ` · ${state.campusLoad.users} compte(s)` : ''}</span>
                   <button className="btn btn-sm btn-outline" onClick={() => { state.reloadCampus(); state.history.retry(); }}>Actualiser les données</button>

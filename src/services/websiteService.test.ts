@@ -1,0 +1,19 @@
+import assert from 'node:assert/strict';
+import { articleSchema, identitySchema, guardianSchema, websiteAccess, escapeArticleContent, sniffDocument } from './websiteService';
+import { ROLES } from '@/types/permissions';
+import type { PersistentContext } from '@/types/persistence';
+
+assert.equal(escapeArticleContent('<script>alert(1)</script>\nTexte'), '<p>&lt;script&gt;alert(1)&lt;/script&gt;<br>Texte</p>');
+assert.equal(escapeArticleContent('Première partie\n\nSeconde'), '<p>Première partie</p><p>Seconde</p>');
+assert.equal(sniffDocument(Buffer.from('%PDF-1.7')), 'application/pdf');
+assert.equal(sniffDocument(Buffer.from('<svg onload="alert(1)">')), undefined);
+assert.equal(articleSchema.safeParse({ title: 'Titre', slug: '../danger', excerpt: 'Résumé', content: 'Texte', image: '', status: 'PUBLIE' }).success, false);
+assert.equal(articleSchema.safeParse({ title: 'Titre', slug: 'titre', excerpt: 'Résumé', content: 'Texte', image: 'javascript:alert(1)', status: 'PUBLIE' }).success, false);
+assert.equal(identitySchema.safeParse({ nom: 'Test', prenom: 'Alice', genre: 'Féminin', date_naissance: '2000-01-01', lieu_naissance: 'Lomé', nationalite: 'Togolaise', email: 'alice@example.test', tel: '+22890000000', active: true }).success, false);
+assert.equal(guardianSchema.safeParse({ nom: 'Test', prenom: 'Parent', tel: '+22890000000', responsable_des_frais: '1' }).success, true);
+const context = { role: ROLES.IT, permissions: ['student.view', 'student.lifecycle.manage', 'communication.view', 'communication.manage'], grants: [{ site_id: null, group_id: null, academic_year_id: null }] } as PersistentContext;
+assert.deepEqual(websiteAccess(context), { admissions: true, manageAdmissions: true, articles: true, manageArticles: true });
+assert.equal(websiteAccess({ ...context, grants: [{ ...context.grants[0], site_id: 'SITE' }] }).admissions, false);
+assert.equal(websiteAccess({ ...context, role: ROLES.STUD }).admissions, false);
+assert.equal(websiteAccess({ ...context, permissions: ['communication.view'] }).manageArticles, false);
+console.log('Vérification réussie : validation des dossiers publics, fichiers autorisés, échappement des articles et accès par rôle/périmètre.');

@@ -10,6 +10,7 @@ for (const width of [390, 1440]) {
     test.setTimeout(600000);
     await page.setViewportSize({ width, height: 1000 });
     await authenticateFixture(page);
+    await page.route('**/api/website-management?kind=articles', route => route.fulfill({ json: [] }));
     await page.route('**/api/campus', route => route.fulfill({ json: snapshot }));
     await page.route('**/api/catalog/*', route => route.fulfill({ json: { revision: 1, tables: Object.fromEntries(CRUD_CATALOG.map(spec => [spec.key, []])), historyLinks: [] } }));
     await page.route('**/api/staff', route => route.fulfill({ json: { revision: 1, records: [{ personId: 'P2', staffId: null, firstname: 'Jean', lastname: 'Technique', email: 'it@example.test', phone: '', employeeNumber: '', contracts: [] }] } }));
@@ -39,9 +40,10 @@ for (const width of [390, 1440]) {
     expect(errors).toEqual([]);
   });
 
-  test(`Trouver une page, filtrer et revenir au dossier à ${width}px`, async ({ page }) => {
+  test(`Naviguer entre les pages et filtrer les dossiers à ${width}px`, async ({ page }) => {
     await page.setViewportSize({ width, height: 1000 });
     await authenticateFixture(page);
+    await page.route('**/api/website-management?kind=articles', route => route.fulfill({ json: [] }));
     await page.route('**/api/campus', route => route.fulfill({ json: snapshot }));
     await page.goto('/etudiants');
     await expect(page.getByRole('heading', { name: 'Dossiers étudiants', exact: true })).toBeVisible();
@@ -52,11 +54,13 @@ for (const width of [390, 1440]) {
     await page.getByRole('button', { name: 'Effacer les filtres' }).click();
     if (width < 800) await page.getByRole('button', { name: 'Ouvrir la navigation', exact: true }).click();
     const navigation = page.getByRole(width < 800 ? 'dialog' : 'complementary', { name: 'Navigation principale' });
-    await navigation.getByLabel('Trouver une page').fill('notes');
+    await navigation.getByRole('button', { name: 'Déplier Pédagogie', exact: true }).click();
     await expect(navigation.getByRole('link', { name: 'Notes et résultats', exact: true })).toBeVisible();
     await navigation.getByRole('link', { name: 'Notes et résultats', exact: true }).click();
     await expect(page.getByRole('heading', { name: 'Notes et résultats', exact: true })).toBeVisible();
-    await page.getByRole('navigation', { name: 'Pages : Pédagogie' }).getByRole('combobox').selectOption('acad_exams');
+    await expect(page.getByText(/Aller à une page de/)).toHaveCount(0);
+    if (width < 800) await page.getByRole('button', { name: 'Ouvrir la navigation', exact: true }).click();
+    await navigation.getByRole('link', { name: 'Examens', exact: true }).click();
     await expect(page).toHaveURL(/\/academique\/examens$/);
     await expect(page.getByRole('heading', { name: 'Examens', exact: true })).toBeVisible();
     await expectWorkspaceFits(page);
@@ -71,6 +75,7 @@ for (const width of [390, 1440]) {
       await page.screenshot({ path: `.tmp/interface/${width}/review-auth-${href.slice(1)}.png`, fullPage: true });
     }
     await authenticateFixture(page);
+    await page.route('**/api/website-management?kind=articles', route => route.fulfill({ json: [] }));
     await page.goto('/mot-de-passe-modifier');
     await expect(page.getByRole('main')).toBeVisible();
     await expectWorkspaceFits(page);

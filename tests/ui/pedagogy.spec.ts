@@ -11,7 +11,7 @@ for(const width of [390,1440]){
     await page.goto('/academique/rattrapages');await expect(page.getByRole('heading',{name:'Rattrapages',exact:true})).toBeVisible();await expect(page.getByRole('row').filter({hasText:'2026-02-01'})).toBeVisible();await expect(page.getByRole('row').filter({hasText:'2026-01-01'})).toHaveCount(0);
     await page.goto('/academique/evaluations');await expect(page.getByRole('heading',{name:'Contrôles continus',exact:true})).toBeVisible();await expect(page.getByRole('row').filter({hasText:'2026-03-01'})).toBeVisible();await expect(page.getByRole('row').filter({hasText:'2026-01-01'})).toHaveCount(0);
     await page.goto('/academique/notes');await expect(page.getByRole('heading',{name:'Notes et résultats',exact:true})).toBeVisible();await expect(page.getByRole('button',{name:'Évaluations et examens',exact:false})).toHaveCount(0);
-    await page.getByRole('button',{name:'Voir',exact:true}).first().click();await expect(page.locator('.work-page')).toBeVisible();await expect(page.getByRole('dialog')).toHaveCount(0);await expect(page.locator('.data-browser')).not.toBeVisible();await page.getByRole('button',{name:'Retour à la liste',exact:false}).click();await expect(page.locator('.data-browser')).toBeVisible();
+    await page.getByRole('button',{name:'Consulter le dossier',exact:true}).click();await page.getByRole('button',{name:'Voir',exact:true}).first().click();await expect(page.getByRole('dialog')).toBeVisible();await page.keyboard.press('Escape');await expect(page.getByRole('dialog')).toHaveCount(0);await expect(page.locator('.data-browser')).toBeVisible();
     await captureWorkspace(page,'pedagogie-notes');
   });
   test(`Composition d’une épreuve, aperçu et versions à ${width}px`,async({page})=>{

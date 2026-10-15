@@ -10,7 +10,7 @@ const role = async (page: Page, value: string) => {
   const previousPath = new URL(page.url()).pathname;
   await openAccountMenu(page); await page.locator('#active-role').selectOption({ label: value });
   if (!isRouteAllowed(previousPath, value as RoleName)) await expect(page).toHaveURL('http://127.0.0.1:3105/mon-espace');
-  await expect(page.locator('.role-scope-banner strong')).toHaveText(value);
+  await expect(page.locator('#active-role')).toHaveValue(value);
 };
 const follow = async (page: Page, link: ReturnType<Page['getByRole']>) => {
   if (await page.getByRole('button', { name: 'Ouvrir la navigation', exact: true }).isVisible() && !await link.isVisible()) {

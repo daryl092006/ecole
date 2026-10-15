@@ -21,20 +21,13 @@ for (const width of [390, 1440]) {
       await route.fulfill({ status: 201, json: { revision } });
     });
     await page.goto('/academique/referentiel?collection=rooms');
-    await expect(page.getByRole('button', { name: 'Ajouter une salle', exact: true })).toBeDisabled();
-    await page.getByRole('button', { name: 'Renseigner sites', exact: true }).click();
-    await page.getByRole('button', { name: 'Ajouter un site', exact: true }).click();
-    const work = page.locator('.work-page');
-    await work.getByLabel('Code', { exact: true }).fill('LOME'); await work.getByLabel('Nom', { exact: true }).fill('Site de Lomé');
-    await work.getByRole('button', { name: 'Vérifier les informations', exact: true }).click();
-    await expect(work.getByRole('region', { name: 'Vérification avant enregistrement' })).toContainText('Site de Lomé'); expect(writes).toBe(0);
-    await work.getByRole('button', { name: 'Revenir aux informations' }).click();
-    await expect(work.getByLabel('Nom', { exact: true })).toHaveValue('Site de Lomé'); expect(writes).toBe(0);
-    await work.getByRole('button', { name: 'Vérifier les informations', exact: true }).click();
-    await work.getByRole('button', { name: 'Confirmer l’enregistrement', exact: true }).click();
-    await expect(page.getByRole('status', { name: 'Résultat de l’opération' })).toContainText('Site de Lomé'); expect(writes).toBe(1);
-    await page.getByRole('button', { name: 'Renseigner les bâtiments', exact: true }).click();
-    await expect(page.getByRole('button', { name: 'Ajouter un bâtiment', exact: true })).toBeEnabled();
+    await page.getByRole('button', { name: 'Ajouter une salle', exact: true }).click();
+    const room = page.getByRole('dialog', { name: 'Ajouter une salle', exact: true });
+    await room.getByLabel('Code', { exact: true }).fill('B101'); await room.getByLabel('Nom', { exact: true }).fill('Salle B101'); await room.getByLabel('Capacité', { exact: true }).fill('40');
+    await expect(room.getByRole('combobox')).toHaveCount(0); expect(writes).toBe(0);
+    await room.getByRole('button', { name: 'Vérifier les informations', exact: true }).click(); await room.getByRole('button', { name: 'Confirmer l’enregistrement', exact: true }).click();
+    await expect(page.getByRole('row').filter({ hasText: 'Salle B101' })).toBeVisible(); expect(writes).toBe(1);
+    await expect(page).toHaveURL(/referentiel\?collection=rooms$/);
     await expectWorkspaceFits(page);
   });
 
@@ -42,7 +35,7 @@ for (const width of [390, 1440]) {
     await page.setViewportSize({ width, height: 1000 }); await prepare(page); let requests = 0;
     await page.route('**/api/students', async route => { requests++; await route.fulfill({ status: 409, json: { error: 'Ce matricule existe déjà.' } }); });
     await page.goto('/etudiants'); await page.getByRole('button', { name: 'Ajouter un dossier étudiant' }).click();
-    const work = page.locator('.work-page'); await work.getByLabel('Matricule officiel').fill('EXISTANT'); await work.getByLabel('Prénom', { exact: true }).fill('Marie'); await work.getByLabel('Nom', { exact: true }).fill('Exemple');
+    const work = page.getByRole('dialog'); await work.getByLabel('Matricule officiel').fill('EXISTANT'); await work.getByLabel('Prénom', { exact: true }).fill('Marie'); await work.getByLabel('Nom', { exact: true }).fill('Exemple');
     await work.getByRole('button', { name: 'Vérifier les informations' }).click(); expect(requests).toBe(0);
     await work.getByRole('button', { name: 'Confirmer la création du dossier', exact: true }).click();
     await expect(work.getByRole('alert')).toContainText('Ce matricule existe déjà.'); expect(requests).toBe(1);
@@ -80,7 +73,7 @@ for (const width of [390, 1440]) {
     page.on('request', request => { if (request.url().includes('/api/') && request.method() !== 'GET') mutations.push(request.url()); });
     await page.goto('/academique/emploi-du-temps'); await expect(page.getByRole('heading', { name: '12/06/2026', exact: true })).toBeVisible();
     await page.getByRole('button', { name: 'Consulter la séance', exact: true }).click();
-    await expect(page.locator('.work-page')).toContainText('Groupe A'); await expect(page.locator('.work-page')).toContainText('ne confirme aucune présence'); await page.keyboard.press('Escape');
+    await expect(page.getByRole('dialog')).toContainText('Groupe A'); await expect(page.getByRole('dialog')).toContainText('ne confirme aucune présence'); await page.keyboard.press('Escape');
     for (const href of ['/logistique/achats', '/systeme/support', '/communication/annonces', '/academique/deliberations', '/academique/reclamations']) {
       await page.goto(href); await expect(page.locator('#main-content h1:visible')).toHaveCount(1);
       await expect(page.locator('#main-content form:visible')).toHaveCount(0);
@@ -99,7 +92,7 @@ for (const width of [390, 1440]) {
       await route.fulfill({ json: { revision: 2 } });
     });
     await page.goto('/personnel/utilisateurs'); const account = page.getByRole('row').filter({ hasText: 'sans-role@example.test' });
-    await account.getByRole('button', { name: 'Gérer', exact: true }).click(); const work = page.locator('.work-page');
+    await account.getByRole('button', { name: 'Gérer', exact: true }).click(); const work = page.getByRole('dialog');
     await work.getByRole('combobox', { name: 'Rôle principal', exact: true }).selectOption(ROLES.IT); await work.getByLabel('Motif', { exact: true }).fill('Attribution demandée par la direction');
     await work.getByRole('button', { name: 'Vérifier les changements' }).click(); await expect(work.locator('.action-review')).toContainText('42 permission(s)'); expect(writes).toBe(0);
     await work.getByRole('button', { name: 'Confirmer le rôle', exact: true }).click(); await expect(account).toContainText(ROLES.IT); expect(writes).toBe(1);
@@ -116,7 +109,7 @@ test('Les données actuelles de finance sont lues même sans accès aux archives
   await page.route('**/api/campus', route => route.fulfill({ json: campus }));
   await page.goto('/finance/versements'); const row = page.getByRole('row').filter({ hasText: 'V-001' });
   await expect(row).toContainText('Payeur officiel'); await expect(row).toContainText('Alice Exemple'); await expect(row).toContainText('FCFA');
-  await row.getByRole('button', { name: 'Ouvrir le détail' }).click(); await expect(page.locator('.work-page')).toContainText('30');
+  await row.getByRole('button', { name: 'Ouvrir le détail' }).click(); await expect(page.getByRole('dialog')).toContainText('30');
 });
 
 

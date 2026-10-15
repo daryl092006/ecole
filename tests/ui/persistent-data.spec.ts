@@ -12,10 +12,11 @@ for (const width of [390, 1440]) {
     const record = page.getByRole('row').filter({ hasText: 'ESCEN-TEST-001' });
     await expect(record).toContainText('Alice Exemple'); await expect(record).toContainText('Informatique'); await expect(record).toContainText('Groupe A');
     await expect(record).not.toContainText('0 FCFA'); await captureWorkspace(page, 'refonte-etudiants');
-    await record.getByRole('link', { name: 'Fiche & Dossier' }).click();
+    await record.getByRole('button', { name: 'Fiche & Dossier' }).click();
     await expect(page.getByRole('heading', { name: 'Alice Exemple', exact: true })).toBeVisible();
     await expect(page.locator('.record-details-grid')).toContainText('90123456'); expect(requests).toBe(1);
-    await page.reload(); await expect(page.locator('.record-details-grid')).toContainText('90123456'); expect(requests).toBe(2);
+    await page.getByRole('button',{name:'Fermer le détail'}).click();
+    await page.reload(); await record.getByRole('button',{name:'Fiche & Dossier'}).click(); await expect(page.locator('.record-details-grid')).toContainText('90123456'); expect(requests).toBe(2);
     await page.goto('/personnel/utilisateurs'); await expect(page.getByRole('heading', { name: 'Comptes du personnel', exact: true })).toBeVisible();
     await expect(page.getByRole('heading', { name: 'Annuaire (2 / 2)' })).toBeVisible();
     await expect(page.getByRole('row').filter({ hasText: 'alice@example.test' })).toHaveCount(0);
@@ -26,9 +27,10 @@ for (const width of [390, 1440]) {
     await page.goto('/finance/versements'); await expect(page.getByRole('heading', { name: 'Versements et reçus', exact: true })).toBeVisible();
     await expect(page.getByRole('row').filter({ hasText: 'Alice Exemple' })).toContainText('125'); await captureWorkspace(page, 'refonte-paiements');
     await page.goto('/academique/notes'); await expect(page.getByRole('heading', { name: 'Notes et résultats', exact: true })).toBeVisible();
-    await page.getByLabel('À vérifier (1)').check(); await expect(page.locator('.browser-result-count')).toContainText('1 enregistrement(s)'); await expect(page.getByRole('row').filter({ hasText: 'À vérifier' })).toHaveCount(1);
-    await page.getByRole('button', { name: 'Voir', exact: true }).click(); await expect(page.getByText('SOURCE_PARENT_MISSING', { exact: true })).toBeVisible();
-    await expect(page.locator('.work-page')).toBeVisible(); await page.keyboard.press('Escape'); await expect(page.locator('.work-page')).toHaveCount(0);
+    await expect(page.getByRole('heading', { name: 'Choisir un dossier étudiant' })).toBeVisible();
+    await page.getByRole('button', { name: 'Consulter le dossier', exact: true }).click();
+    await expect(page.getByRole('row').filter({ hasText: 'Algorithmique' })).toContainText('15');
+    await expect(page.getByText('SOURCE_PARENT_MISSING', { exact: true })).toHaveCount(0);
     await captureWorkspace(page, 'refonte-notes');
     await page.goto('/mon-espace'); await expect(page.getByRole('heading', { name: 'Votre espace de gestion' })).toBeVisible();
     await captureWorkspace(page, 'refonte-accueil');
@@ -92,7 +94,7 @@ for (const width of [390, 1440]) {
     expect(await page.evaluate(() => 'examUnsafe' in window)).toBe(false);
     await captureWorkspace(page, 'exam-copie-lisible');
     await page.getByRole('button', { name: 'Tous les examens', exact: false }).click();
-    const dialog = page.locator('.work-page');
+    const dialog = page.getByRole('dialog');
     await expect(page.getByRole('button', { name: 'Voir les copies' })).toBeFocused();
     const records: import('../../src/types/staff').PersonnelRecord[] = [{ personId: 'PERSON', staffId: null, firstname: 'Jean', lastname: 'Technique', email: 'it@example.test', phone: '', employeeNumber: '', active: true, contracts: [] }];
     let saved = false;

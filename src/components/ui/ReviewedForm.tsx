@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useRef, useState, type ComponentPropsWithoutRef, type FormEventHandler } from 'react';
+import LoadingState from './LoadingState';
 
 export interface ReviewField { label: string; value: string; previous?: string; }
 interface Props extends Omit<ComponentPropsWithoutRef<'form'>, 'onSubmit'> {
@@ -21,13 +22,14 @@ export default function ReviewedForm({ onConfirm, fields, consequence, confirmLa
   const review = useRef<HTMLElement>(null);
   useEffect(() => { if (reviewing) review.current?.focus(); }, [reviewing]);
   useEffect(() => { setReviewing(false); setValidationError(''); }, [completionKey]);
-  return <form {...props} onSubmit={event => {
+  return <form {...props} aria-busy={busy} onSubmit={event => {
     event.preventDefault();
     if (busy) return;
     if (!reviewing) { const issue = validate?.(); setValidationError(issue || ''); if (!issue) setReviewing(true); return; }
     onConfirm(event);
   }}>
-    <div hidden={reviewing}>{children}</div>
+    {busy && <LoadingState compact label="Enregistrement en cours…" />}
+    <fieldset disabled={busy} className="reviewed-form-fields"><div hidden={reviewing}>{children}</div></fieldset>
     {validationError && !reviewing && <p className="restricted-box" role="alert">{validationError}</p>}
     {reviewing && <section className="action-review" ref={review} tabIndex={-1} aria-label="Vérification avant enregistrement">
       <span className="page-eyebrow">VÉRIFIER AVANT DE CONFIRMER</span>

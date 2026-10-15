@@ -53,7 +53,7 @@ for (const width of [320, 640, 768, 1024, 1440]) {
       const previousPath = new URL(page.url()).pathname;
       await openAccountMenu(page); await page.locator('#active-role').selectOption({ label: role });
       if (!isRouteAllowed(previousPath, role)) await expect(page).toHaveURL('http://127.0.0.1:3105/mon-espace');
-      await expect(page.locator('.role-scope-banner strong')).toHaveText(role);
+      await expect(page.locator('#active-role')).toHaveValue(role);
       for (const tab of getAvailableTabs(role)) {
         await follow(page, tab.href);
         for (const section of tab.subTabs || []) {

@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import SchoolLogo from '@/components/ui/SchoolLogo';
-import { Search, Bell, Menu, X, ArrowUpRight, LogOut, UserRound } from 'lucide-react';
+import { Search, Bell, Menu, X, ArrowUpRight, LogOut } from 'lucide-react';
 import type { RoleName } from '@/types/permissions';
 import { ROLE_COLORS } from '@/hooks/useAppState';
 
@@ -15,6 +15,7 @@ export interface SearchDestination {
 }
 
 interface TopBarProps {
+  userName: string;
   activeRole: RoleName;
   availableRoles: RoleName[];
   searchQuery: string;
@@ -30,12 +31,14 @@ interface TopBarProps {
 
 const normalize = (value: string) => value.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
 
-export default function TopBar({ activeRole, availableRoles, searchQuery, onSearchChange, onRoleChange, notifications, destinations, onDestination, menuOpen, onToggleMenu, onLogout }: TopBarProps) {
+export default function TopBar({ userName, activeRole, availableRoles, searchQuery, onSearchChange, onRoleChange, notifications, destinations, onDestination, menuOpen, onToggleMenu, onLogout }: TopBarProps) {
   const [panel, setPanel] = useState<'search' | 'notifications' | null>(null);
   const controls = useRef<HTMLElement>(null);
   const searchInput = useRef<HTMLInputElement>(null);
   const searchResults = useRef<HTMLDivElement>(null);
   const accountControl = useRef<HTMLDetailsElement>(null);
+  const displayName = userName.trim() || 'Mon compte';
+  const initial = Array.from(userName.trim())[0]?.toLocaleUpperCase('fr') || '?';
   const query = normalize(searchQuery.trim());
   const matches = destinations.filter(item => normalize(item.label + ' ' + item.detail).includes(query)).slice(0, 8);
 
@@ -87,7 +90,7 @@ export default function TopBar({ activeRole, availableRoles, searchQuery, onSear
         <button className="notif-btn" aria-label={`Notifications : ${notifications.length}`} aria-expanded={panel === 'notifications'} onClick={() => setPanel(current => current === 'notifications' ? null : 'notifications')}><Bell size={18} />{notifications.length > 0 && <span className="notif-badge">{notifications.length}</span>}</button>
         {panel === 'notifications' && <section className="header-popover notification-panel" aria-label="Notifications"><div className="popover-heading">Notifications de la session</div>{notifications.length ? <ul>{notifications.map(item => <li key={item.id}>{item.text}</li>)}</ul> : <div className="empty-state"><strong>Vous êtes à jour</strong><span>Aucune notification pour ce rôle.</span></div>}</section>}
       </div>
-      <details className="account-control" ref={accountControl}><summary className="account-summary" aria-label="Mon compte et mon rôle"><UserRound size={19} /><span>{activeRole}</span></summary><div className="account-popover"><div className="role-switcher"><span className="role-dot" style={{ backgroundColor: ROLE_COLORS[activeRole] }} />{availableRoles.length > 1 ? <><label htmlFor="active-role">Rôle autorisé</label><select id="active-role" className="role-select" value={activeRole} onChange={event => onRoleChange(event.target.value as RoleName)}>{availableRoles.map(role => <option key={role} value={role}>{role}</option>)}</select></> : <span className="role-select">{activeRole}</span>}</div><p>Le changement de rôle adapte les pages et les données à vos attributions.</p><button className="btn btn-outline" onClick={onLogout}><LogOut size={16} /> Se déconnecter</button></div></details>
+      <details className="account-control" ref={accountControl}><summary className="account-summary" aria-label="Mon compte et mon rôle"><span className="account-avatar" aria-hidden="true">{initial}</span><span className="account-identity"><strong title={displayName}>{displayName}</strong><small title={activeRole}>{activeRole}</small></span></summary><div className="account-popover"><strong className="account-name">{displayName}</strong><div className="role-switcher"><span className="role-dot" style={{ backgroundColor: ROLE_COLORS[activeRole] }} />{availableRoles.length > 1 ? <><label htmlFor="active-role">Rôle autorisé</label><select id="active-role" className="role-select" value={activeRole} onChange={event => onRoleChange(event.target.value as RoleName)}>{availableRoles.map(role => <option key={role} value={role}>{role}</option>)}</select></> : <span className="role-select">{activeRole}</span>}</div><p>Le changement de rôle adapte les pages et les données à vos attributions.</p><button className="btn btn-outline" onClick={onLogout}><LogOut size={16} /> Se déconnecter</button></div></details>
     </div>
   </header>;
 }
