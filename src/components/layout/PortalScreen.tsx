@@ -31,19 +31,22 @@ import FinanceModule from '@/components/modules/FinanceModule';
 import PersonnelModule from '@/components/modules/PersonnelModule';
 import MarketingModule from '@/components/modules/MarketingModule';
 import SystemeModule from '@/components/modules/SystemeModule';
+import ConnectedDomainWorkspace from '@/components/modules/ConnectedDomainWorkspace';
+import { DOMAIN_WORKSPACES } from '@/data/domainWorkspaces';
 
 export default function PortalScreen({ tab, section }: { tab: string; section: string }) {
   const state = usePortal();
   const { activeRole, perms } = state;
   const currentTab = tab;
   const currentSubTab = section;
-  if (state.history.enabled && (section === 'espace_dashboard' || section === 'dashboard_kpis' || section === 'dashboard_reports')) return <WorkspaceHome />;
-  if (state.history.enabled && section === 'acad_settings') return <section className="card"><div className="page-intro"><div><span className="page-eyebrow">RÈGLEMENT ACADÉMIQUE</span><h1>Règles à valider</h1><p>Les règles de compensation, de validation et de délibération doivent être confirmées par la direction académique avant leur application aux dossiers historiques.</p></div></div></section>;
+  if (state.session && (section === 'espace_dashboard' || section === 'dashboard_kpis' || section === 'dashboard_reports')) return <WorkspaceHome mode={section === 'dashboard_kpis' ? 'overview' : section === 'dashboard_reports' ? 'reports' : 'home'} />;
+  if (state.session && section === 'acad_settings') return <section className="card"><div className="page-intro"><div><span className="page-eyebrow">RÈGLEMENT ACADÉMIQUE</span><h1>Règles académiques à confirmer</h1><p>Les règles de compensation, de validation et de délibération doivent être confirmées par la direction académique avant leur application. Aucune règle n’est appliquée automatiquement aux dossiers historiques.</p></div></div><p>Préparez la version approuvée du règlement et ses dates d’application. L’enregistrement et l’activation de cette version ne sont pas encore disponibles dans cet écran.</p></section>;
   if (state.session && section === 'staff_records') return <PersonnelDossiers />;
   if(state.session && section==='acad_subjects')return <SubjectStudio />;
   if(state.history.enabled && ['acad_exams','acad_resits','acad_assessments'].includes(section))return <HistoricalExamsWorkspace key={section} category={section==='acad_resits'?'resit':section==='acad_assessments'?'control':'exam'} />;
   if(state.session && ['acad_exams','acad_resits','acad_assessments'].includes(section))return <NativeAssessmentWorkspace category={section==='acad_resits'?'resit':section==='acad_assessments'?'control':'exam'} />;
   if (state.session && CRUD_SECTIONS[section]) return <ReferenceCrudWorkspace key={section} section={section} />;
+  if (state.session && DOMAIN_WORKSPACES[section]) return <ConnectedDomainWorkspace key={section} section={section} />;
   if (state.history.enabled && HISTORY_SECTIONS[section]) return <HistoricalWorkspace key={section} section={section} />;
   if (section === 'sys_data') return <HistoricalWorkspace section="history_all" />;
   return <>

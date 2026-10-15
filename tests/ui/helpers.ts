@@ -1,5 +1,9 @@
 import { expect, type Page } from '@playwright/test';
 
+export async function openAccountMenu(page: Page) {
+  if (await page.locator('.account-control').getAttribute('open') === null) await page.getByLabel('Mon compte et mon rôle', { exact: true }).click();
+}
+
 export async function openActionPanel(page: Page, label: string) {
   const escaped = label.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
   const summary = page.locator('details.action-panel > summary').filter({ hasText: new RegExp('^' + escaped + '$') });

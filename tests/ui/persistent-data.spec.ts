@@ -1,3 +1,4 @@
+import { openAccountMenu } from './helpers';
 import { test, expect } from '@playwright/test';
 import { ROLES } from '../../src/types/permissions';
 import { captureWorkspace } from './helpers';
@@ -13,8 +14,8 @@ for (const width of [390, 1440]) {
     await expect(record).not.toContainText('0 FCFA'); await captureWorkspace(page, 'refonte-etudiants');
     await record.getByRole('link', { name: 'Fiche & Dossier' }).click();
     await expect(page.getByRole('heading', { name: 'Alice Exemple', exact: true })).toBeVisible();
-    await expect(page.getByLabel('Téléphone (+228)', { exact: true })).toHaveValue('90123456'); expect(requests).toBe(1);
-    await page.reload(); await expect(page.getByLabel('Téléphone (+228)', { exact: true })).toHaveValue('90123456'); expect(requests).toBe(2);
+    await expect(page.locator('.record-details-grid')).toContainText('90123456'); expect(requests).toBe(1);
+    await page.reload(); await expect(page.locator('.record-details-grid')).toContainText('90123456'); expect(requests).toBe(2);
     await page.goto('/personnel/utilisateurs'); await expect(page.getByRole('heading', { name: 'Comptes du personnel', exact: true })).toBeVisible();
     await expect(page.getByRole('heading', { name: 'Annuaire (2 / 2)' })).toBeVisible();
     await expect(page.getByRole('row').filter({ hasText: 'alice@example.test' })).toHaveCount(0);
@@ -22,10 +23,10 @@ for (const width of [390, 1440]) {
     await page.goto('/etudiants/comptes'); await expect(page.getByRole('heading', { name: 'Comptes étudiants', exact: true })).toBeVisible();
     await expect(page.getByRole('row').filter({ hasText: 'alice@example.test' })).toBeVisible();
     await expect(page.getByRole('row').filter({ hasText: 'it@example.test' })).toHaveCount(0);
-    await page.goto('/finance/versements'); await expect(page.getByRole('heading', { name: 'Paiements et reçus' })).toBeVisible();
+    await page.goto('/finance/versements'); await expect(page.getByRole('heading', { name: 'Versements et reçus', exact: true })).toBeVisible();
     await expect(page.getByRole('row').filter({ hasText: 'Alice Exemple' })).toContainText('125'); await captureWorkspace(page, 'refonte-paiements');
-    await page.goto('/academique/notes'); await expect(page.getByRole('heading', { name: 'Notes', exact: true })).toBeVisible();
-    await page.getByLabel('À vérifier (1)').check(); await expect(page.locator('.browser-result-count')).toHaveText('1 enregistrement(s)'); await expect(page.getByRole('row').filter({ hasText: 'À vérifier' })).toHaveCount(1);
+    await page.goto('/academique/notes'); await expect(page.getByRole('heading', { name: 'Notes et résultats', exact: true })).toBeVisible();
+    await page.getByLabel('À vérifier (1)').check(); await expect(page.locator('.browser-result-count')).toContainText('1 enregistrement(s)'); await expect(page.getByRole('row').filter({ hasText: 'À vérifier' })).toHaveCount(1);
     await page.getByRole('button', { name: 'Voir', exact: true }).click(); await expect(page.getByText('SOURCE_PARENT_MISSING', { exact: true })).toBeVisible();
     await expect(page.locator('.work-page')).toBeVisible(); await page.keyboard.press('Escape'); await expect(page.locator('.work-page')).toHaveCount(0);
     await captureWorkspace(page, 'refonte-notes');
@@ -44,9 +45,9 @@ test('Le changement de rôle retire les données non autorisées', async ({ page
   await authenticateFixture(page); const roles: string[] = [];
   await page.route('**/api/campus', async route => { const role = route.request().headers()['x-escen-role']; roles.push(role); await route.fulfill({ json: role === ROLES.IT ? snapshot : { revision: 1, tables: { people: [snapshot.tables.people[1]] } } }); });
   await page.goto('/etudiants'); await expect(page.getByRole('row').filter({ hasText: 'ESCEN-TEST-001' })).toBeVisible();
-  await page.locator('#active-role').selectOption({ label: ROLES.MKT }); await expect(page).toHaveURL(/\/mon-espace$/); await expect(page.locator('#active-role')).toHaveValue(ROLES.MKT);
+  await openAccountMenu(page); await page.locator('#active-role').selectOption({ label: ROLES.MKT }); await expect(page).toHaveURL(/\/mon-espace$/); await expect(page.locator('#active-role')).toHaveValue(ROLES.MKT);
   await expect(page.getByRole('region', { name: 'État des données' })).toContainText('0 dossier(s)');
-  await page.locator('#active-role').selectOption({ label: ROLES.IT }); await expect(page.getByRole('region', { name: 'État des données' })).toContainText('1 dossier(s)');
+  await openAccountMenu(page); await page.locator('#active-role').selectOption({ label: ROLES.IT }); await expect(page.getByRole('region', { name: 'État des données' })).toContainText('1 dossier(s)');
   expect(roles).toEqual([ROLES.IT, ROLES.MKT, ROLES.IT]);
 });
 test('La suppression d’un compte est enregistrée puis vérifiée par rechargement', async ({ page }) => {
@@ -54,7 +55,7 @@ test('La suppression d’un compte est enregistrée puis vérifiée par recharge
   await page.route('**/api/campus', route => route.fulfill({ json: { ...current, tables: { ...current.tables, accounts: current.tables.accounts.filter(row => !row.archived_at) } } }));
   await page.route('**/api/accounts/*', async route => { expect(route.request().method()).toBe('PATCH'); const input = route.request().postDataJSON(); expect(input.action).toBe('archive'); expect(input.reason).toBe('Compte de test retiré'); const id = route.request().url().split('/').at(-1); current.tables.accounts.find(row => row.id === id)!.archived_at = '2026-10-14T12:00:00Z'; archived = true; await route.fulfill({ json: { revision: 2 } }); });
   await page.goto('/personnel/utilisateurs'); const account = page.getByRole('row').filter({ hasText: 'sans-role@example.test' }); await account.getByRole('button', { name: 'Gérer', exact: true }).click();
-  await page.getByRole('button', { name: 'Supprimer le compte', exact: true }).click(); await page.getByLabel('Motif', { exact: true }).fill('Compte de test retiré'); await page.getByRole('button', { name: 'Confirmer la modification' }).click();
+  await page.getByRole('button', { name: 'Retirer le compte', exact: true }).click(); await page.getByLabel('Motif', { exact: true }).fill('Compte de test retiré'); await page.getByRole('button', { name: 'Vérifier les changements' }).click();expect(archived).toBe(false);await page.getByRole('button', { name: 'Confirmer le retrait', exact: true }).click();
   await expect(account).toHaveCount(0); expect(archived).toBe(true); await page.reload(); await expect(page.getByRole('heading', { name: 'Annuaire (1 / 1)' })).toBeVisible();
 });
 
@@ -107,7 +108,7 @@ for (const width of [390, 1440]) {
     await page.keyboard.press('Escape'); await page.getByRole('button', { name: 'Nouveau membre' }).click();
     await dialog.getByLabel('Prénom', { exact: true }).fill('Marie'); await dialog.getByLabel('Nom', { exact: true }).fill('Exemple');
     await dialog.getByLabel('Matricule officiel du personnel').fill('P-2026-001');
-    await dialog.getByRole('button', { name: 'Créer le dossier' }).click();
+    await dialog.getByRole('button', { name: 'Vérifier les informations', exact: true }).click();expect(saved).toBe(false);await dialog.getByRole('button', { name: 'Confirmer la création du dossier', exact: true }).click();
     await expect(page.getByText('Dossier enregistré en base.', { exact: true })).toBeVisible(); expect(saved).toBe(true);
     await expect(page.getByRole('row').filter({ hasText: 'Marie Exemple' })).toBeVisible();
     await page.reload(); await expect(page.getByRole('row').filter({ hasText: 'P-2026-001' })).toBeVisible();

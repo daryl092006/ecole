@@ -1,3 +1,4 @@
+import { openAccountMenu } from './helpers';
 import { test, expect, type Page } from '@playwright/test';
 import { DEMO_ACCOUNTS, DEMO_PASSWORD } from '../../src/services/demoSessionService';
 import { ROLES } from '../../src/types/permissions';
@@ -25,16 +26,16 @@ for (const width of [320, 1440]) {
     await page.getByLabel('Date d’expiration (facultative)', { exact: true }).fill('2099-12-31');
     await page.getByRole('button', { name: "Diffuser l'annonce", exact: true }).click();
     await expect(page.getByRole('status')).toContainText('Annonce publiée');
-    await page.locator('#active-role').selectOption({ label: ROLES.ENS });
+    await openAccountMenu(page); await page.locator('#active-role').selectOption({ label: ROLES.ENS });
     await expect(page).toHaveURL('http://127.0.0.1:3105/mon-espace');
     await follow(page, '/mon-espace/annonces');
     await expect(page.getByRole('heading', { name: 'Information pour les étudiants' })).toHaveCount(0);
     for (const role of [ROLES.STUD, ROLES.DEL]) {
-      await page.locator('#active-role').selectOption({ label: role });
+      await openAccountMenu(page); await page.locator('#active-role').selectOption({ label: role });
       await follow(page, '/mon-espace/annonces');
       await expect(page.getByRole('heading', { name: 'Information pour les étudiants' })).toBeVisible();
     }
-    await page.locator('#active-role').selectOption({ label: ROLES.MKT });
+    await openAccountMenu(page); await page.locator('#active-role').selectOption({ label: ROLES.MKT });
     await follow(page, '/communication/annonces');
     await page.getByRole('button', { name: 'Retirer l’annonce « Information pour les étudiants »', exact: true }).click();
     await page.getByLabel('Motif du retrait', { exact: true }).fill('Le planning a été mis à jour.');
@@ -44,7 +45,7 @@ for (const width of [320, 1440]) {
     await expect(page.getByText('Étudiants · Retirée', { exact: false })).toBeVisible();
     await page.getByText('Historique de diffusion', { exact: true }).click();
     await expect(page.getByText('Le planning a été mis à jour.', { exact: false })).toBeVisible();
-    await page.locator('#active-role').selectOption({ label: ROLES.STUD });
+    await openAccountMenu(page); await page.locator('#active-role').selectOption({ label: ROLES.STUD });
     await expect(page).toHaveURL('http://127.0.0.1:3105/mon-espace');
     await follow(page, '/mon-espace/annonces');
     await expect(page.getByRole('heading', { name: 'Information pour les étudiants' })).toHaveCount(0);

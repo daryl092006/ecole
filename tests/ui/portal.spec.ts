@@ -1,3 +1,4 @@
+import { openAccountMenu } from './helpers';
 import { test, expect, type Page } from '@playwright/test';
 import { ROLES } from '../../src/types/permissions';
 import { DEMO_ACCOUNTS, DEMO_PASSWORD } from '../../src/services/demoSessionService';
@@ -7,7 +8,7 @@ import type { RoleName } from '../../src/types/permissions';
 
 const role = async (page: Page, value: string) => {
   const previousPath = new URL(page.url()).pathname;
-  await page.locator('#active-role').selectOption({ label: value });
+  await openAccountMenu(page); await page.locator('#active-role').selectOption({ label: value });
   if (!isRouteAllowed(previousPath, value as RoleName)) await expect(page).toHaveURL('http://127.0.0.1:3105/mon-espace');
   await expect(page.locator('.role-scope-banner strong')).toHaveText(value);
 };

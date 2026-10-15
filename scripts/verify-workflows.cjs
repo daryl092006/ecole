@@ -204,3 +204,6 @@ const nextVersion=buildSubjectChanges(sampleSubject,crudUuid,'Révision',{id:cru
 assert.equal(nextVersion.changes[0].record.version,2);assert.equal(nextVersion.changes.at(-1).operation,'update');
 assert.ok(nextVersion.changes.every(change=>!['grades','exam_answers','evaluations'].includes(change.table)));
 console.log('Vérification réussie : catégories pédagogiques distinctes, composition structurée, barème et versions sans modification des copies.');
+require('../src/services/connectedRecordDisplayService.test.ts');
+require('../src/services/processCatalog.test.ts');
+console.log('Vérification réussie : tous les écrans disposent d’un parcours connecté ; attributs réels et références entre tables contrôlés.');

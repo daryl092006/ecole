@@ -1,3 +1,4 @@
+import { openAccountMenu } from './helpers';
 import { test, expect, type Page } from '@playwright/test';
 import { ROLES } from '../../src/types/permissions';
 import { getAvailableTabs, isRouteAllowed } from '../../src/permissions/navigation';
@@ -50,7 +51,7 @@ for (const width of [320, 640, 768, 1024, 1440]) {
     }
     for (const role of Object.values(ROLES)) {
       const previousPath = new URL(page.url()).pathname;
-      await page.locator('#active-role').selectOption({ label: role });
+      await openAccountMenu(page); await page.locator('#active-role').selectOption({ label: role });
       if (!isRouteAllowed(previousPath, role)) await expect(page).toHaveURL('http://127.0.0.1:3105/mon-espace');
       await expect(page.locator('.role-scope-banner strong')).toHaveText(role);
       for (const tab of getAvailableTabs(role)) {

@@ -1,0 +1,420 @@
+{
+  "accounts": {
+    "person_id": "people"
+  },
+  "role_permissions": {
+    "role_id": "roles",
+    "permission_id": "permissions"
+  },
+  "buildings": {
+    "site_id": "sites"
+  },
+  "rooms": {
+    "site_id": "sites",
+    "building_id": "buildings"
+  },
+  "levels": {
+    "cycle_id": "cycles"
+  },
+  "tracks": {
+    "program_id": "programs"
+  },
+  "curricula": {
+    "program_id": "programs",
+    "level_id": "levels",
+    "approved_by": "accounts",
+    "track_id": "tracks"
+  },
+  "curriculum_semesters": {
+    "curriculum_id": "curricula"
+  },
+  "teaching_units": {
+    "semester_id": "curriculum_semesters",
+    "curriculum_id": "curricula"
+  },
+  "curriculum_components": {
+    "subject_id": "subjects",
+    "unit_id": "teaching_units",
+    "curriculum_id": "curricula"
+  },
+  "academic_offerings": {
+    "academic_year_id": "academic_years",
+    "site_id": "sites",
+    "curriculum_id": "curricula",
+    "level_id": "levels"
+  },
+  "offering_semesters": {
+    "offering_id": "academic_offerings",
+    "curriculum_id": "curricula",
+    "curriculum_semester_id": "curriculum_semesters"
+  },
+  "groups": {
+    "academic_year_id": "academic_years",
+    "level_id": "levels",
+    "site_id": "sites"
+  },
+  "group_offerings": {
+    "group_id": "groups",
+    "academic_year_id": "academic_years",
+    "level_id": "levels",
+    "offering_id": "academic_offerings",
+    "site_id": "sites"
+  },
+  "students": {
+    "person_id": "people"
+  },
+  "enrollments": {
+    "student_id": "students",
+    "offering_id": "academic_offerings",
+    "created_by": "accounts"
+  },
+  "enrollment_groups": {
+    "changed_by": "accounts",
+    "enrollment_id": "enrollments",
+    "offering_id": "academic_offerings",
+    "group_id": "groups"
+  },
+  "enrollment_events": {
+    "enrollment_id": "enrollments",
+    "actor_id": "accounts"
+  },
+  "student_contacts": {
+    "student_id": "students",
+    "person_id": "people"
+  },
+  "staff": {
+    "person_id": "people"
+  },
+  "staff_contracts": {
+    "staff_id": "staff",
+    "site_id": "sites"
+  },
+  "teachers": {
+    "staff_id": "staff"
+  },
+  "teaching_assignments": {
+    "teacher_id": "teachers",
+    "group_id": "groups",
+    "offering_id": "academic_offerings",
+    "curriculum_id": "curricula",
+    "component_id": "curriculum_components"
+  },
+  "role_grants": {
+    "account_id": "accounts",
+    "role_id": "roles",
+    "site_id": "sites",
+    "academic_year_id": "academic_years",
+    "group_id": "groups",
+    "granted_by": "accounts"
+  },
+  "delegate_mandates": {
+    "enrollment_group_id": "enrollment_groups",
+    "approved_by": "accounts"
+  },
+  "blocked_periods": {
+    "site_id": "sites",
+    "academic_year_id": "academic_years"
+  },
+  "schedule_series": {
+    "assignment_id": "teaching_assignments"
+  },
+  "sessions": {
+    "series_id": "schedule_series",
+    "room_id": "rooms",
+    "replacement_teacher_id": "teachers",
+    "actual_room_id": "rooms",
+    "assignment_id": "teaching_assignments",
+    "offering_id": "academic_offerings",
+    "group_id": "groups",
+    "teacher_id": "teachers"
+  },
+  "session_supervisors": {
+    "session_id": "sessions",
+    "account_id": "accounts"
+  },
+  "attendances": {
+    "recorded_by": "accounts",
+    "session_id": "sessions",
+    "offering_id": "academic_offerings",
+    "enrollment_id": "enrollments"
+  },
+  "teacher_attendances": {
+    "session_id": "sessions",
+    "teacher_id": "teachers",
+    "recorded_by": "accounts"
+  },
+  "evaluations": {
+    "created_by": "accounts",
+    "assignment_id": "teaching_assignments",
+    "offering_id": "academic_offerings",
+    "component_id": "curriculum_components",
+    "parent_evaluation_id": "evaluations"
+  },
+  "evaluation_transitions": {
+    "evaluation_id": "evaluations",
+    "actor_id": "accounts"
+  },
+  "exam_deliveries": {
+    "evaluation_id": "evaluations",
+    "session_id": "sessions"
+  },
+  "evaluation_candidates": {
+    "evaluation_id": "evaluations",
+    "offering_id": "academic_offerings",
+    "enrollment_id": "enrollments"
+  },
+  "exam_papers": {
+    "evaluation_id": "evaluations",
+    "authorized_by": "accounts"
+  },
+  "exam_parts": {
+    "paper_id": "exam_papers"
+  },
+  "exam_questions": {
+    "part_id": "exam_parts",
+    "paper_id": "exam_papers"
+  },
+  "exam_options": {
+    "question_id": "exam_questions"
+  },
+  "exam_attempts": {
+    "candidate_id": "evaluation_candidates",
+    "evaluation_id": "evaluations",
+    "paper_id": "exam_papers"
+  },
+  "exam_answers": {
+    "attempt_id": "exam_attempts",
+    "paper_id": "exam_papers",
+    "question_id": "exam_questions"
+  },
+  "answer_corrections": {
+    "answer_id": "exam_answers",
+    "corrected_by": "accounts"
+  },
+  "grades": {
+    "candidate_id": "evaluation_candidates",
+    "entered_by": "accounts",
+    "last_modified_by": "accounts"
+  },
+  "complaints": {
+    "candidate_id": "evaluation_candidates",
+    "grade_id": "grades"
+  },
+  "complaint_events": {
+    "complaint_id": "complaints",
+    "actor_id": "accounts"
+  },
+  "grade_revisions": {
+    "grade_id": "grades",
+    "complaint_id": "complaints",
+    "actor_id": "accounts"
+  },
+  "academic_rule_versions": {
+    "approved_by": "accounts"
+  },
+  "juries": {
+    "offering_semester_id": "offering_semesters",
+    "rules_id": "academic_rule_versions",
+    "chaired_by": "accounts"
+  },
+  "jury_members": {
+    "jury_id": "juries",
+    "account_id": "accounts"
+  },
+  "jury_decisions": {
+    "supersedes_id": "jury_decisions",
+    "decided_by": "accounts",
+    "jury_id": "juries",
+    "offering_semester_id": "offering_semesters",
+    "offering_id": "academic_offerings",
+    "enrollment_id": "enrollments"
+  },
+  "jury_grade_inputs": {
+    "decision_id": "jury_decisions",
+    "grade_id": "grades"
+  },
+  "credit_awards": {
+    "decision_id": "jury_decisions",
+    "component_id": "curriculum_components"
+  },
+  "generated_documents": {
+    "student_id": "students",
+    "decision_id": "jury_decisions",
+    "supersedes_id": "generated_documents",
+    "issued_by": "accounts",
+    "enrollment_id": "enrollments"
+  },
+  "fee_rates": {
+    "fee_type_id": "fee_types",
+    "offering_id": "academic_offerings",
+    "approved_by": "accounts"
+  },
+  "scholarship_awards": {
+    "scholarship_id": "scholarships",
+    "enrollment_id": "enrollments",
+    "granted_by": "accounts"
+  },
+  "financial_contracts": {
+    "enrollment_id": "enrollments"
+  },
+  "contract_versions": {
+    "contract_id": "financial_contracts",
+    "approved_by": "accounts",
+    "supersedes_id": "contract_versions"
+  },
+  "contract_lines": {
+    "fee_type_id": "fee_types",
+    "rate_id": "fee_rates",
+    "version_id": "contract_versions",
+    "contract_id": "financial_contracts"
+  },
+  "contract_discounts": {
+    "scholarship_award_id": "scholarship_awards",
+    "line_id": "contract_lines",
+    "version_id": "contract_versions"
+  },
+  "installments": {
+    "version_id": "contract_versions"
+  },
+  "payments": {
+    "enrollment_id": "enrollments",
+    "payer_person_id": "people",
+    "recorded_by": "accounts"
+  },
+  "payment_reversals": {
+    "payment_id": "payments",
+    "actor_id": "accounts"
+  },
+  "receipts": {
+    "payment_id": "payments",
+    "issued_by": "accounts"
+  },
+  "payment_allocations": {
+    "allocated_by": "accounts",
+    "payment_id": "payments",
+    "enrollment_id": "enrollments",
+    "contract_id": "financial_contracts",
+    "version_id": "contract_versions",
+    "line_id": "contract_lines",
+    "installment_id": "installments"
+  },
+  "allocation_reversals": {
+    "allocation_id": "payment_allocations",
+    "actor_id": "accounts"
+  },
+  "refunds": {
+    "payment_id": "payments",
+    "actor_id": "accounts"
+  },
+  "credit_notes": {
+    "line_id": "contract_lines",
+    "actor_id": "accounts"
+  },
+  "file_objects": {
+    "uploaded_by": "accounts"
+  },
+  "document_requirements": {
+    "curriculum_id": "curricula",
+    "document_type_id": "document_types"
+  },
+  "student_documents": {
+    "student_id": "students",
+    "document_type_id": "document_types",
+    "file_id": "file_objects",
+    "supersedes_id": "student_documents",
+    "enrollment_id": "enrollments"
+  },
+  "document_reviews": {
+    "document_id": "student_documents",
+    "actor_id": "accounts"
+  },
+  "absence_justifications": {
+    "attendance_id": "attendances",
+    "file_id": "file_objects",
+    "reviewed_by": "accounts"
+  },
+  "payment_documents": {
+    "payment_id": "payments",
+    "file_id": "file_objects"
+  },
+  "communications": {
+    "author_id": "accounts"
+  },
+  "communication_audiences": {
+    "communication_id": "communications",
+    "role_id": "roles",
+    "group_id": "groups",
+    "site_id": "sites"
+  },
+  "communication_reads": {
+    "communication_id": "communications",
+    "account_id": "accounts"
+  },
+  "communication_files": {
+    "communication_id": "communications",
+    "file_id": "file_objects"
+  },
+  "support_tickets": {
+    "author_id": "accounts",
+    "assigned_to": "accounts",
+    "category_id": "support_categories"
+  },
+  "support_messages": {
+    "ticket_id": "support_tickets",
+    "author_id": "accounts"
+  },
+  "support_files": {
+    "message_id": "support_messages",
+    "file_id": "file_objects"
+  },
+  "purchases": {
+    "site_id": "sites",
+    "supplier_id": "suppliers",
+    "requested_by": "accounts"
+  },
+  "purchase_lines": {
+    "purchase_id": "purchases"
+  },
+  "purchase_receipts": {
+    "received_by": "accounts",
+    "line_id": "purchase_lines",
+    "purchase_id": "purchases"
+  },
+  "assets": {
+    "site_id": "sites"
+  },
+  "asset_movements": {
+    "asset_id": "assets",
+    "receipt_id": "purchase_receipts",
+    "actor_id": "accounts"
+  },
+  "expenses": {
+    "site_id": "sites",
+    "academic_year_id": "academic_years",
+    "purchase_id": "purchases",
+    "recorded_by": "accounts"
+  },
+  "assessment_weights": {
+    "component_id": "curriculum_components",
+    "curriculum_id": "curricula"
+  },
+  "syllabuses": {
+    "approved_by": "accounts",
+    "component_id": "curriculum_components",
+    "curriculum_id": "curricula"
+  },
+  "exam_rooms": {
+    "room_id": "rooms",
+    "delivery_id": "exam_deliveries",
+    "evaluation_id": "evaluations"
+  },
+  "exam_room_candidates": {
+    "exam_room_id": "exam_rooms",
+    "evaluation_id": "evaluations",
+    "candidate_id": "evaluation_candidates"
+  },
+  "exam_room_supervisors": {
+    "exam_room_id": "exam_rooms",
+    "account_id": "accounts"
+  }
+}

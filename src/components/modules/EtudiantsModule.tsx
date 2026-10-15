@@ -101,7 +101,7 @@ export default function EtudiantsModule({ persistent = false, activeRole, create
                       </td>}
                       <td><span className={`pill ${['Inscrit', 'Réinscrit'].includes(s.status) ? 'pill-success' : 'pill-default'}`}>{s.status}</span></td>
                       <td>
-                        <Link className="btn btn-sm btn-outline" href={studentPath(s.matricule)}>
+                        <Link className="btn btn-sm btn-outline" href={studentPath(s.matricule)} prefetch={false}>
                           Fiche &amp; Dossier
                         </Link>
                       </td>

@@ -26,9 +26,15 @@ export function loadHistoricalExam(id: string, role: RoleName, signal?: AbortSig
 }
 
 export async function loadAllHistoricalAssessments(role:RoleName,signal?:AbortSignal):Promise<HistoryPage> {
-  const first=await loadHistoryPage('evaluations',role,{offset:0,query:'',flagged:false},signal);
-  if(first.total>20000)throw new Error('Le volume d’évaluations nécessite un chargement filtré.');
+  return loadAllHistoryRecords('evaluations', role, { query: '', flagged: false }, signal);
+}
+
+export async function loadAllHistoryRecords(table: string, role: RoleName, filters: { query: string; flagged: boolean; studentId?: string; batchId?: string }, signal?: AbortSignal): Promise<HistoryPage> {
+  const first=await loadHistoryPage(table,role,{offset:0,...filters},signal);
+  if(first.total>20000)throw new Error('Le volume dépasse 20 000 lignes. Précisez la recherche avant de continuer.');
+  if (!Number.isInteger(first.limit) || first.limit < 1) throw new Error('Pagination invalide. Aucun export n’a été produit.');
   const records=[...first.records];
-  for(let offset=first.limit;offset<first.total;offset+=first.limit){const page=await loadHistoryPage('evaluations',role,{offset,query:'',flagged:false},signal);records.push(...page.records);}
+  for(let offset=first.limit;offset<first.total;offset+=first.limit){const page=await loadHistoryPage(table,role,{offset,...filters},signal);records.push(...page.records);}
+  if(records.length !== first.total || new Set(records.map(record => record.id)).size !== records.length) throw new Error('Les résultats ont changé ou sont incomplets. Relancez la recherche avant de réessayer.');
   return {...first,records,limit:first.total || first.limit};
 }

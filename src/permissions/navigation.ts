@@ -110,6 +110,7 @@ export const ALL_TABS = [
 ];
 
 const SUBTAB_PERMISSIONS: Record<string, Permission[]> = {
+  staff_records: ['staff.view'],
   log_suppliers:['purchase.view'],
   sys_data: ['system.audit.view'],
   stud_accounts: ['user.manage'],
@@ -143,7 +144,7 @@ const SUBTAB_PERMISSIONS: Record<string, Permission[]> = {
   sys_support: ['system.support.manage'],
 };
 
-export function getAvailableTabs(role: RoleName) {
+export function getAvailableTabs(role: RoleName, permissions?: Permission[]) {
   const rolePermissions = ROLE_PERMISSIONS[role];
   const roleAccess = ROLE_ACCESS[role];
   const canLogistics = [ROLES.DG, ROLES.DGA, ROLES.RAF, ROLES.ACHATS, ROLES.SITE, ROLES.IT].includes(role as typeof ROLES.DG);
@@ -153,15 +154,18 @@ export function getAvailableTabs(role: RoleName) {
     .map(tab => ({
       ...tab,
       subTabs: tab.subTabs?.filter(subTab => {
-        if (role === ROLES.IT) return true;
+        const effectiveRequired = SUBTAB_PERMISSIONS[subTab.id];
+        if (permissions && effectiveRequired && !effectiveRequired.some(permission => permissions.includes(permission))) return false;
+        if (role === ROLES.IT && !permissions) return true;
+        if (role === ROLES.IT && permissions) { const required = SUBTAB_PERMISSIONS[subTab.id]; return !required || required.some(permission => permissions.includes(permission)); }
         if (['espace_documents', 'espace_finance'].includes(subTab.id)) return role === ROLES.STUD || role === ROLES.DEL;
         if (subTab.id === 'acad_jury') return [ROLES.DG, ROLES.DGA, ROLES.DA, ROLES.LOG].includes(role as typeof ROLES.DG);
         if (subTab.id === 'acad_settings') return role === ROLES.DA || role === ROLES.DG;
-        if (subTab.id === 'staff_records') return canStaff;
+        if (subTab.id === 'staff_records') return canStaff && (permissions || roleAccess.permissions).includes('staff.view');
         const requiredPermissions = SUBTAB_PERMISSIONS[subTab.id];
-        return !requiredPermissions || requiredPermissions.some(permission => roleAccess.permissions.includes(permission));
+        return !requiredPermissions || requiredPermissions.some(permission => (permissions || roleAccess.permissions).includes(permission));
       }),
-    })).map(tab => ({ ...tab, href: MODULE_PATHS[tab.id] || getSectionPath(tab.subTabs?.[0]?.id || 'espace_dashboard'), subTabs: tab.subTabs?.map(subTab => ({ ...subTab, href: getSectionPath(subTab.id) })) }));
+    })).filter(tab => !!tab.subTabs?.length).map(tab => ({ ...tab, href: MODULE_PATHS[tab.id] || getSectionPath(tab.id === 'personnel' && tab.subTabs?.some(section => section.id === 'staff_records') ? 'staff_records' : tab.subTabs?.[0]?.id || 'espace_dashboard'), subTabs: tab.subTabs?.map(subTab => ({ ...subTab, name: getPortalRoute(getSectionPath(subTab.id))?.title || subTab.name, href: getSectionPath(subTab.id) })) }));
 }
 
 export function isRouteAllowed(pathname: string, role: RoleName): boolean {

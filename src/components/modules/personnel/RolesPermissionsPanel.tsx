@@ -26,7 +26,8 @@ export default function RolesPermissionsPanel({ mode, users, actor }: Props) {
   return <div>
     <div className="module-header"><h1>{mode === 'roles' ? 'Rôles ESCEN' : 'Matrice des permissions'}</h1></div>
     {mode === 'roles' ? <div className="roles-overview">
-      <div className="card"><h2>Catalogue ({roles.length})</h2><label className="form-group mt-2">Rechercher un rôle<input className="input" type="search" value={query} onChange={event => setQuery(event.target.value)} placeholder="Nom du rôle ou responsabilité" /></label>
+      <label className="form-group roles-mobile-selector">Rôle à consulter<select className="select-input" value={selected} onChange={event => setSelected(event.target.value as RoleName)}>{roleOptions}</select></label>
+      <div className="card roles-catalog-card"><h2>Catalogue ({roles.length})</h2><label className="form-group mt-2">Rechercher un rôle<input className="input" type="search" value={query} onChange={event => setQuery(event.target.value)} placeholder="Nom du rôle ou responsabilité" /></label>
         <div className="role-catalog mt-2">{filteredRoles.map(role => { const count = getRolePermissionSummary(role, actor).count; return <button className={`role-catalog-item ${selected === role ? 'selected' : ''}`} key={role} aria-pressed={selected === role} onClick={() => { setSelected(role); requestAnimationFrame(() => detailHeading.current?.focus()); }}><strong>{role}</strong><span>{count} permission(s) · {users.filter(user => user.roles?.includes(role) || user.role === role).length} utilisateur(s)</span></button>; })}</div>
         {!filteredRoles.length && <p className="cell-sub mt-2">Aucun rôle ne correspond à cette recherche.</p>}
       </div><div className="card"><h2 ref={detailHeading} tabIndex={-1}>Droits du rôle : {selected}</h2><RolePermissionDetails summary={primary} /></div>

@@ -1,7 +1,8 @@
+import { fixtureCapabilities } from './persistent-fixture';
 import { test, expect } from '@playwright/test';
 import { ROLES } from '../../src/types/permissions';
 import { authenticateFixture, snapshot } from './persistent-fixture';
-import { captureWorkspace, openActionPanel } from './helpers';
+import { captureWorkspace } from './helpers';
 
 for (const width of [390, 1440]) {
   test(`Accueils des modules et accès globaux à ${width}px`, async ({ page }) => {
@@ -14,9 +15,9 @@ for (const width of [390, 1440]) {
     }
     for (const [path, name, section] of [
       ['/academique', 'Pédagogie', 'Composition des épreuves'],
-      ['/communication', 'Communication', 'Créer une Annonce'],
+      ['/communication', 'Communication', 'Annonces'],
       ['/logistique', 'Achats & Logistique', 'Fournisseurs'],
-      ['/systeme', 'Administration', 'Tickets de Support'],
+      ['/systeme', 'Administration', 'Centre de support'],
     ]) {
       await page.goto(path);
       await expect(page.locator('.module-overview').getByRole('heading', { name, exact: true })).toBeVisible();
@@ -47,29 +48,16 @@ for (const width of [390, 1440]) {
     await page.setViewportSize({ width, height: 950 });
     await authenticateFixture(page);
     await page.route('**/api/campus', route => route.fulfill({ json: snapshot }));
-    await page.route('**/api/session', route => route.fulfill({ json: { accountId: '00000000-0000-4000-8000-000000000002', name: 'Jean Technique', email: 'it@example.test', role: ROLES.MKT, availableRoles: [ROLES.MKT], studentId: null, teacherId: null, matricule: null, mustChangePassword: false } }));
+    await page.route('**/api/session', route => route.fulfill({ json: { capabilities: fixtureCapabilities, accountId: '00000000-0000-4000-8000-000000000002', name: 'Jean Technique', email: 'it@example.test', role: ROLES.MKT, availableRoles: [ROLES.MKT], studentId: null, teacherId: null, matricule: null, mustChangePassword: false } }));
     await page.goto('/mon-espace/support');
-    await openActionPanel(page, 'Nouvelle demande');
-    const work = page.locator('.work-page');
-    await expect(work).toBeVisible();
-    await expect(page.getByRole('dialog')).toHaveCount(0);
-    await work.getByLabel('Objet', { exact: true }).fill('Demande de suivi technique');
-    await work.getByLabel('Description', { exact: true }).fill('Vérification du formulaire de support.');
-    await work.getByRole('button', { name: 'Ouvrir un ticket' }).click();
-    // A real session must expose the server integration limitation, never claim a mock save.
-    await expect(work.getByRole('alert')).toBeVisible();
-    await captureWorkspace(page, 'support-page-centrale');
-    await work.getByRole('button', { name: 'Retour à la liste', exact: false }).click();
-    await expect(work).toHaveCount(0);
     await expect(page.getByRole('heading', { name: 'Support technique', exact: true })).toBeVisible();
+    await expect(page.getByRole('button', { name: 'Nouvelle demande' })).toHaveCount(0);
+    await expect(page.locator('.availability-details')).toBeVisible();
+    await captureWorkspace(page, 'support-page-centrale');
     await page.goto('/communication/annonces');
-    await page.getByRole('button', { name: 'Créer une annonce', exact: true }).click();
-    await expect(work).toBeVisible();
-    await work.getByLabel("Titre de l'annonce").fill('Information pratique');
-    await work.getByLabel('Corps du message').fill('Message de vérification.');
-    await work.getByRole('button', { name: "Diffuser l'annonce" }).click();
-    await expect(work.getByRole('alert')).toBeVisible();
-    await page.keyboard.press('Escape');
-    await expect(work).toHaveCount(0);
+    await expect(page.locator('#main-content h1')).toBeVisible();
+    await expect(page.locator('.availability-details')).toBeVisible();
+    await expect(page.locator('.work-page')).toHaveCount(0);
+
   });
 }

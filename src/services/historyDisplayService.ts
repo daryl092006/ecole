@@ -18,6 +18,12 @@ export function historyValue(key: string, value: unknown, record: HistoryRecord,
   }
   if (['active', 'published', 'is_online', 'annule', 'is_correct', 'is_obligatoire', 'is_multiple', 'is_photo', 'is_active', 'is_published', 'has_anonymat', 'est_en_abandon'].includes(key) && (value === '1' || value === '0' || value === 1 || value === 0 || typeof value === 'boolean')) return value === '1' || value === 1 || value === true ? 'Oui' : 'Non';
   if ((key.startsWith('montant') || key === 'frais_retrait_mm') && Number.isFinite(Number(value))) return `${Number(value).toLocaleString('fr-FR')} FCFA`;
+  const labels: Record<string, string> = { actif: 'Actif', active: 'Actif', inactif: 'Inactif', en_cours: 'En cours', valide: 'Validé', validee: 'Validée', annule: 'Annulé', annulee: 'Annulée', scolarite: 'Scolarité', inscription: 'Inscription', especes: 'Espèces', virement: 'Virement', cheque: 'Chèque', mobile_money: 'Mobile money', present: 'Présent', absent: 'Absent', retard: 'Retard' };
+  if (['statut', 'status', 'statut_scolaire', 'nature_paiement', 'mode_paiement'].includes(key) && labels[String(value).toLocaleLowerCase('fr')]) return labels[String(value).toLocaleLowerCase('fr')];
+  if (typeof value === 'string' && /^(?:date|debut|fin|created_at|updated_at|starts|ends)/.test(key) && /^\d{4}-\d{2}-\d{2}(?:[ T]\d{2}:\d{2}(?::\d{2})?)?$/.test(value)) {
+    const [date, time] = value.split(/[ T]/); const [year, month, day] = date.split('-');
+    return `${day}/${month}/${year}${time ? ` à ${time.slice(0, 5)}` : ''}`;
+  }
   if (typeof value === 'object') return JSON.stringify(value);
   return String(value);
 }

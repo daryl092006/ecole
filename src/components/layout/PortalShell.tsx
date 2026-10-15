@@ -9,6 +9,7 @@ import TopBar, { type SearchDestination } from '@/components/layout/TopBar';
 import Sidebar from '@/components/layout/Sidebar';
 import RoleScopeBanner from '@/components/ui/RoleScopeBanner';
 import SchoolLogo from '@/components/ui/SchoolLogo';
+import ActionResult from '@/components/ui/ActionResult';
 
 export default function PortalShell({ children }: { children: ReactNode }) {
   const state = usePortal(); const router = useRouter();
@@ -18,7 +19,7 @@ export default function PortalShell({ children }: { children: ReactNode }) {
   const tab = availableTabs.find(item => item.id === currentTab);
   const routeTitle = route?.title || tab?.name || 'Mon espace';
   const aliasAllowed = !!tab && MODULE_PATHS[tab.id] === pathname;
-  const allowed = isRouteAllowed(pathname, activeRole) || aliasAllowed;
+  const allowed = !!tab && (route ? !!tab.subTabs?.some(section => section.id === route.section) : aliasAllowed);
   useEffect(() => {
     if (state.authReady && !state.session) router.replace(state.hasLoggedOut ? '/connexion' : '/connexion?retour=' + encodeURIComponent(pathname));
   }, [state.authReady, state.session, state.hasLoggedOut, router, pathname]);
@@ -37,7 +38,7 @@ export default function PortalShell({ children }: { children: ReactNode }) {
     if (!menuOpen) return;
     const previousFocus = document.activeElement as HTMLElement | null;
     const navigation = document.getElementById('application-navigation');
-    const focusable = () => Array.from(navigation?.querySelectorAll<HTMLElement>('a[href], button:not(:disabled)') || []).filter(element => element.getClientRects().length);
+    const focusable = () => Array.from(navigation?.querySelectorAll<HTMLElement>('a[href], button:not(:disabled), input:not(:disabled)') || []).filter(element => element.getClientRects().length);
     focusable()[0]?.focus();
     const containFocus = (event: KeyboardEvent) => {
       if (event.key !== 'Tab') return;
@@ -70,19 +71,26 @@ export default function PortalShell({ children }: { children: ReactNode }) {
     <div className="app-body">{menuOpen && <button className="navigation-backdrop" aria-label="Fermer la navigation" onClick={() => setMenuOpen(false)} />}
       <Sidebar availableTabs={availableTabs} currentTab={currentTab} currentSubTab={currentSubTab} activeRole={activeRole} menuOpen={menuOpen} onNavigate={() => setMenuOpen(false)} />
       <main className="main-content" id="main-content" ref={mainRef} key={activeRole + ':' + state.demoIdentity} tabIndex={-1} inert={menuOpen}>
-        <div className="workspace-heading"><span>ESPACE DE TRAVAIL</span><span className="prototype-indicator"><i /> Espace connecté</span></div>
-        <nav className="workspace-breadcrumb" aria-label="Fil d’Ariane"><Link href={HOME_PATH}>Accueil</Link><span>/</span>{tab && <Link href={tab.href}>{tab.name}</Link>}{route && <><span>/</span><strong>{route.studentId ? `Dossier ${route.studentId}` : route.title}</strong></>}</nav>
-        <RoleScopeBanner role={activeRole} />
+        <div className="workspace-location">
+          <nav className="workspace-breadcrumb" aria-label="Fil d’Ariane"><Link href={HOME_PATH}>Accueil</Link>{tab && tab.id !== 'espace' && <><span>/</span><Link href={tab.href}>{tab.name}</Link></>}{route && <><span>/</span><strong aria-current="page">{route.studentId ? `Dossier ${route.studentId}` : route.title}</strong></>}</nav>
+          <RoleScopeBanner role={activeRole} />
+        </div>
+        {allowed && !!tab?.subTabs?.length && <nav className="workspace-pages" aria-label={`Pages : ${tab.name}`}>
+          <label>Aller à une page de {tab.name.toLocaleLowerCase('fr')}<select className="select-input" value={tab.subTabs.some(section => section.id === currentSubTab) ? currentSubTab : ''} onChange={event => state.navigateTo(tab.id, event.target.value)}>
+            <option value="" disabled>Choisir une page</option>{tab.subTabs.map(section => <option key={section.id} value={section.id}>{section.name}</option>)}
+          </select></label>
+        </nav>}
         {!allowed ? <section className="card route-denied"><h1>Accès refusé</h1><p>Cette page n’est pas disponible pour votre rôle.</p><Link className="btn btn-primary" href={HOME_PATH}>Revenir à mon espace</Link></section> : <>
           {state.actionFeedback && <div className="restricted-box action-feedback" role="alert"><span>{state.actionFeedback}</span><button className="btn btn-sm btn-outline" onClick={state.clearActionFeedback}>Fermer</button></div>}
           {state.campusLoad.status === 'loading' || state.campusLoad.status === 'idle' ? <section className="card" role="status"><h1>Chargement des dossiers…</h1><p>Les données de votre compte sont en cours de chargement.</p></section>
             : state.campusLoad.status === 'error' ? <section className="card" role="alert"><h1>Chargement impossible</h1><p>{state.campusLoad.error}</p><button className="btn btn-primary" onClick={state.reloadCampus}>Réessayer le chargement</button></section>
               : <>
-                <section className="connected-data-bar" aria-label="État des données">
+                {state.actionOutcome && <ActionResult title={state.actionOutcome.title} href={state.actionOutcome.href && isRouteAllowed(state.actionOutcome.href.split('?')[0], activeRole) ? state.actionOutcome.href : undefined} nextLabel={state.actionOutcome.nextLabel} onDismiss={state.clearActionOutcome}>{state.actionOutcome.detail}</ActionResult>}
+                {children}
+                <section className="connected-data-bar workspace-data-footer" aria-label="État des données">
                   <span><i /> {state.campusLoad.students} dossier(s) étudiant(s) chargé(s){perms.permissions.includes('user.manage') ? ` · ${state.campusLoad.users} compte(s)` : ''}</span>
                   <button className="btn btn-sm btn-outline" onClick={() => { state.reloadCampus(); state.history.retry(); }}>Actualiser les données</button>
                 </section>
-                {children}
               </>}
 
         </>}

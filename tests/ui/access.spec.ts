@@ -1,3 +1,4 @@
+import { openAccountMenu } from './helpers';
 import { openActionPanel } from './helpers';
 import { test, expect, type Page } from '@playwright/test';
 import { DEMO_ACCOUNTS, DEMO_PASSWORD } from '../../src/services/demoSessionService';
@@ -9,7 +10,7 @@ test('L’Informaticien administre aussi les rôles de direction', async ({ page
   await expect(page).toHaveURL('http://127.0.0.1:3105/personnel/utilisateurs');
   const roleSelect = page.getByRole('combobox', { name: 'Rôle', exact: true });
   await expect(roleSelect.locator('option').filter({ hasText: ROLES.DGA })).toHaveCount(1);
-  await page.locator('#active-role').selectOption({ label: ROLES.DG });
+  await openAccountMenu(page); await page.locator('#active-role').selectOption({ label: ROLES.DG });
   await openActionPanel(page, 'Nouvel utilisateur');
   await page.getByLabel('Nom', { exact: true }).fill('Direction adjointe test');
   await page.getByLabel('Email', { exact: true }).fill('adjoint@example.test');
@@ -17,7 +18,7 @@ test('L’Informaticien administre aussi les rôles de direction', async ({ page
   await page.getByRole('button', { name: 'Ajouter l’utilisateur' }).click();
   const record = page.locator('.ledger-item').filter({ hasText: 'adjoint@example.test' });
   await expect(record.getByRole('button', { name: 'Désactiver', exact: true })).toBeVisible();
-  await page.locator('#active-role').selectOption({ label: ROLES.IT });
+  await openAccountMenu(page); await page.locator('#active-role').selectOption({ label: ROLES.IT });
   await expect(record).toBeVisible();
   await expect(record.getByRole('button', { name: 'Désactiver', exact: true })).toBeVisible();
 });
@@ -61,12 +62,12 @@ test('Les routes non autorisées ne montrent aucun écran métier', async ({ pag
   await page.goto('/finance/contrats'); await expect(page).toHaveURL(/\/connexion/);
   await connect(page, 'stagiaire@escen.demo'); await expect(page).toHaveURL('http://127.0.0.1:3105/mon-espace');
   await expect(page.locator('#application-navigation').getByRole('link', { name: 'Finance', exact: true })).toHaveCount(0);
-  await page.locator('#active-role').selectOption({ label: 'Directeur Général' });
+  await openAccountMenu(page); await page.locator('#active-role').selectOption({ label: 'Directeur Général' });
   await page.locator('#application-navigation').getByRole('link', { name: 'Finance', exact: true }).click();
   await expect(page).toHaveURL('http://127.0.0.1:3105/finance');
   await page.locator('#application-navigation').getByRole('link', { name: 'Contrats, frais & Bourses', exact: true }).click();
   await expect(page).toHaveURL('http://127.0.0.1:3105/finance/contrats');
-  await page.locator('#active-role').selectOption({ label: 'Stagiaire' });
+  await openAccountMenu(page); await page.locator('#active-role').selectOption({ label: 'Stagiaire' });
   await expect(page).toHaveURL('http://127.0.0.1:3105/mon-espace');
   await page.goBack(); await expect(page).toHaveURL('http://127.0.0.1:3105/finance');
   await expect(page.getByRole('heading', { name: 'Accès refusé', exact: true })).toBeVisible();

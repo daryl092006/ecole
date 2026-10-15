@@ -23,7 +23,7 @@ import {
 } from '@/mocks/data';
 import type { Student, ClassItem, Evaluation, Reclamation, Room, Session, PaymentMethod, Announcement, BlockedPeriod } from '@/types';
 import { ROLES } from '@/types/permissions';
-import type { RoleName } from '@/types/permissions';
+import type { RoleName, Permission } from '@/types/permissions';
 import { usePathname, useRouter } from 'next/navigation';
 import { getAvailableTabs, postLoginPath, isRouteAllowed } from '@/permissions/navigation';
 import { getPortalRoute, MODULE_PATHS, HOME_PATH, studentPath } from '@/constants/portalRoutes';
@@ -37,6 +37,7 @@ import { getSupabaseBrowserClient } from '@/lib/supabase/client';
 import { loadAccountSession, loadRelationalCampus, saveStudentProfile } from '@/services/remoteCampusService';
 import { enrichHistoricalStudent } from '@/services/historyStudentService';
 import { projectRelationalCampus } from '@/services/relationalCampusAdapter';
+import type { RelationalSnapshot } from '@/types/persistence';
 
 // ─── helpers ─────────────────────────────────────────────────────────────────
 
@@ -71,6 +72,7 @@ export function useAppState() {
   const [session, setSession] = useState<{
     accountId: string; name: string; email: string; role: RoleName; availableRoles: RoleName[];
     studentId: string | null; teacherId: string | null; matricule: string | null; mustChangePassword: boolean;
+    capabilities?: Partial<Record<RoleName, { permissions: Permission[]; globalAccess: boolean }>>;
   } | null>(null);
   const [authReady, setAuthReady] = useState(false);
   const [hasLoggedOut, setHasLoggedOut] = useState(false);
@@ -143,20 +145,23 @@ export function useAppState() {
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>('VIREMENT');
   const [notifications, setNotifications] = useState<Array<{ id: number; text: string }>>([]);
   const [actionFeedback, setActionFeedback] = useState('');
+  const [actionOutcome, setActionOutcome] = useState<{ title: string; detail: string; href?: string; nextLabel?: string } | null>(null);
   const [campusRevision,setCampusRevision]=useState(0);
+  const [relationalSnapshot, setRelationalSnapshot] = useState<RelationalSnapshot>({ revision: 0, tables: {} });
   const [campusLoad, setCampusLoad] = useState<{ status: 'idle' | 'loading' | 'ready' | 'error'; error: string; students: number; users: number; enrollments: number }>({ status: 'idle', error: '', students: 0, users: 0, enrollments: 0 });
   const [reloadCampusIndex, setReloadCampusIndex] = useState(0);
   const reloadCampus = () => setReloadCampusIndex(index => index + 1);
-  const history = useHistoricalCampus(activeRole, session?.accountId, session?.mustChangePassword, reloadCampusIndex);
+  const history = useHistoricalCampus(activeRole, session?.accountId, session?.mustChangePassword || (!!session && (!session.capabilities?.[activeRole]?.globalAccess || !session.capabilities?.[activeRole]?.permissions.includes('system.audit.view'))), reloadCampusIndex);
 
-  const perms = ROLE_PERMISSIONS[activeRole];
+  const capabilities = session?.capabilities?.[activeRole];
+  const perms = session ? { ...ROLE_PERMISSIONS[activeRole], permissions: ROLE_PERMISSIONS[activeRole].permissions.filter(permission => capabilities?.permissions.includes(permission)) } : ROLE_PERMISSIONS[activeRole];
   const baseAccess = ROLE_ACCESS[activeRole];
   const identityStudent = students.find(item => item.matricule === demoIdentity);
   const access = { ...baseAccess, scope: baseAccess.scope.ownDataOnly
     ? { ...baseAccess.scope, studentId: identityStudent?.matricule ?? '__NONE__', groupIds: identityStudent ? [...new Set([identityStudent.groupId, ...campusRecords.enrollments.filter(item => item.studentId === identityStudent.matricule).map(item => item.groupId)])] : [] }
     : activeRole === ROLES.ENS ? { teacherId: demoIdentity || '__NONE__', groupIds: classes.filter(item => item.teacherId === demoIdentity).map(item => item.groupId) }
     : activeRole === ROLES.SURV ? { ...baseAccess.scope, sessionIds: campusRecords.exams.filter(item => item.supervisorId === demoIdentity).map(item => item.id) } : baseAccess.scope };
-  const availableTabs = useMemo(() => getAvailableTabs(activeRole), [activeRole]);
+  const availableTabs = useMemo(() => getAvailableTabs(activeRole, session ? session.capabilities?.[activeRole]?.permissions || [] : undefined), [activeRole, session]);
 
   const visibleClasses = !hasPermission(activeRole, 'academic.view') && !hasPermission(activeRole, 'grade.view') && !hasPermission(activeRole, 'attendance.view') && !hasPermission(activeRole, 'schedule.view') ? [] : access.scope.sessionIds
     ? classes.filter(classItem => sessions.some(session => session.classId === classItem.id && access.scope.sessionIds?.includes(session.id)))
@@ -229,6 +234,7 @@ export function useAppState() {
   useEffect(() => {
     const controller = new AbortController();
     hydrateCampus(projectRelationalCampus({ revision: 0, tables: {} }));
+    setRelationalSnapshot({ revision: 0, tables: {} });
     if (!accountId || mustChangePassword) {
       setCampusLoad({ status: 'idle', error: '', students: 0, users: 0, enrollments: 0 });
       return () => controller.abort();
@@ -237,6 +243,7 @@ export function useAppState() {
     void loadRelationalCampus(activeRole, controller.signal).then(snapshot => {
       if (controller.signal.aborted) return;
       const projection = projectRelationalCampus(snapshot);
+      setRelationalSnapshot(snapshot);
       hydrateCampus(projection);
       setCampusLoad({ status: 'ready', error: '', students: projection.data.students.length, users: projection.users.length, enrollments: projection.data.enrollments.length });
     }).catch(error => {
@@ -248,15 +255,17 @@ export function useAppState() {
 
 
   const navigateTo = useCallback((tabId: string, subTabId?: string) => {
-    const tab = getAvailableTabs(activeRole).find(item => item.id === tabId);
+    const tab = getAvailableTabs(activeRole, session ? session.capabilities?.[activeRole]?.permissions || [] : undefined).find(item => item.id === tabId);
     if (!tab) return;
+    if (!subTabId) { router.push(tab.href); return; }
     const section = tab.subTabs?.find(item => item.id === subTabId) || tab.subTabs?.[0];
     if (section) router.push(section.href);
-  }, [activeRole, router]);
+  }, [activeRole, router, session]);
   const handleTabChange = (tabId: string) => navigateTo(tabId);
   const setCurrentSubTab = (sectionId: string) => navigateTo(currentTab, sectionId);
   const handleRoleChange = (role: RoleName) => {
     if (!session?.availableRoles.includes(role)) return;
+    setActionOutcome(null);
     setActiveRole(role);
     setDemoIdentity(role === ROLES.STUD || role === ROLES.DEL ? session.matricule || '' : role === ROLES.ENS ? session.teacherId || '' : ''); setSearchQuery(''); setNotifications([]); setActionFeedback('');
     setPaymentStudent(''); setPaymentAmount(''); setPaymentMethod('VIREMENT');
@@ -279,7 +288,7 @@ export function useAppState() {
   };
   const logout = async () => {
     await getSupabaseBrowserClient().auth.signOut();
-    setSession(null); setHasLoggedOut(true); setDemoIdentity(''); setSelectedStudent(null); setSelectedClassForGrades(null);
+    setSession(null); setActionOutcome(null); setHasLoggedOut(true); setDemoIdentity(''); setSelectedStudent(null); setSelectedClassForGrades(null);
     setSearchQuery(''); setNotifications([]); setActionFeedback(''); router.replace('/connexion');
   };
   const requestAccessHelp = (email: string) => {
@@ -301,6 +310,7 @@ export function useAppState() {
     startTime: string,
     endTime: string
   ): { success: boolean; error?: string } => {
+    if (session) return { success: false, error: 'La planification connectée n’est pas activée. Aucune séance n’a été créée.' };
     if (!hasPermission(activeRole, 'schedule.create')) {
       return { success: false, error: "Votre rôle n'est pas autorisé à créer une séance." };
     }
@@ -324,12 +334,14 @@ export function useAppState() {
   };
 
   const addRoom = (room: Room) => {
+    if (session) throw new Error('Cette opération de démonstration ne peut pas modifier un dossier connecté. Utilisez les actions disponibles dans le parcours métier.');
     if (!hasPermission(activeRole, 'schedule.create')) throw new Error('Permission insuffisante.');
     if (!room.code.trim() || !room.name.trim() || !Number.isInteger(room.capacity) || room.capacity < 1) throw new Error('Code, nom et capacité entière positive obligatoires.');
     if (rooms.some(item => item.code.toLowerCase() === room.code.toLowerCase())) throw new Error('Code salle déjà utilisé.');
     setRooms(previous => [...previous, room]); logEvent('Création salle', JSON.stringify({ oldValue: null, newValue: room }));
   };
   const addBlockedPeriod = (label: string, startDate: string, endDate: string) => {
+    if (session) throw new Error('Cette opération de démonstration ne peut pas modifier un dossier connecté. Utilisez les actions disponibles dans le parcours métier.');
     if (!hasPermission(activeRole, 'schedule.create')) throw new Error('Permission insuffisante.');
     if (!label.trim() || !startDate || !endDate || startDate > endDate) throw new Error('Libellé et dates valides obligatoires.');
     if (sessions.some(item => item.status !== 'Annulé' && item.date >= startDate && item.date <= endDate)) throw new Error('Des séances existent sur cette période. Traitez-les avant de bloquer les dates.');
@@ -337,16 +349,18 @@ export function useAppState() {
     setBlockedPeriods(previous => [...previous, period]); logEvent('Blocage période', JSON.stringify({ oldValue: null, newValue: period }));
   };
   const recordAttendance = (sessionId: string, attendance: NonNullable<Session['attendance']>) => {
+    if (session) throw new Error('Cette opération de démonstration ne peut pas modifier un dossier connecté. Utilisez les actions disponibles dans le parcours métier.');
     if (!hasPermission(activeRole, 'attendance.record') || !visibleSessions.some(item => item.id === sessionId)) throw new Error('Séance non autorisée.');
-    const session = sessions.find(item => item.id === sessionId);
-    if (!session || session.status === 'Annulé') throw new Error('Séance indisponible.');
-    const members = getSessionCandidateIds(session, students);
+    const plannedSession = sessions.find(item => item.id === sessionId);
+    if (!plannedSession || plannedSession.status === 'Annulé') throw new Error('Séance indisponible.');
+    const members = getSessionCandidateIds(plannedSession, students);
     if (Object.keys(attendance).some(id => !members.includes(id)) || Object.values(attendance).some(value => !['Présent', 'Absent', 'Retard', 'Absent justifié'].includes(value))) throw new Error('Feuille de présence invalide.');
     setSessions(previous => previous.map(item => item.id === sessionId ? { ...item, attendance: { ...attendance } } : item));
-    logEvent('Enregistrement présences', JSON.stringify({ entity: sessionId, oldValue: session.attendance, newValue: attendance }));
+    logEvent('Enregistrement présences', JSON.stringify({ entity: sessionId, oldValue: plannedSession.attendance, newValue: attendance }));
   };
 
   const addEvaluation = () => {
+    if (session) throw new Error('Cette opération de démonstration ne peut pas modifier un dossier connecté. Utilisez les actions disponibles dans le parcours métier.');
     if (!hasPermission(activeRole, 'evaluation.create')) return;
     if (!newEvalName.trim() || !selectedClassForGrades || !visibleClasses.some(item => item.id === selectedClassForGrades.id)) return;
     const assignment = references.assignments.find(item => item.id === selectedClassForGrades.id);
@@ -367,6 +381,7 @@ export function useAppState() {
   };
 
   const submitGrades = (ev: Evaluation) => {
+    if (session) throw new Error('Cette opération de démonstration ne peut pas modifier un dossier connecté. Utilisez les actions disponibles dans le parcours métier.');
     if (!hasPermission(activeRole, 'grade.submit') || !visibleEvaluations.some(item => item.id === ev.id)) return;
     const current = evaluations.find(item => item.id === ev.id);
     if (!current) return;
@@ -381,6 +396,7 @@ export function useAppState() {
   };
 
   const changeGradeStatus = (ev: Evaluation, target: Evaluation['status'], comment?: string) => {
+    if (session) throw new Error('Cette opération de démonstration ne peut pas modifier un dossier connecté. Utilisez les actions disponibles dans le parcours métier.');
     const requiredPermission = target === 'A_CONTROLER' || target === 'SAISIES'
       ? 'grade.review' : target === 'VALIDEES' ? 'grade.approve' : 'grade.publish';
     if (!hasPermission(activeRole, requiredPermission) || !visibleEvaluations.some(item => item.id === ev.id)) return false;
@@ -396,6 +412,7 @@ export function useAppState() {
   };
 
   const updateGrade = (evaluationId: string, gradeIndex: number, value: number | null) => {
+    if (session) throw new Error('Cette opération de démonstration ne peut pas modifier un dossier connecté. Utilisez les actions disponibles dans le parcours métier.');
     if (!hasPermission(activeRole, 'grade.enter') || !visibleEvaluations.some(item => item.id === evaluationId)) return;
     const current = evaluations.find(item => item.id === evaluationId);
     if (!current) return;
@@ -408,6 +425,7 @@ export function useAppState() {
   };
 
   const createContract = (studentId: string, amount: number, dates: string[]) => {
+    if (session) throw new Error('Cette opération de démonstration ne peut pas modifier un dossier connecté. Utilisez les actions disponibles dans le parcours métier.');
     const student = students.find(item => item.matricule === studentId);
     if (!student) throw new Error('Étudiant introuvable.');
     const result = createFinancialContract(student, amount, dates, activeRole);
@@ -417,6 +435,7 @@ export function useAppState() {
   };
 
   const recordPayment = () => {
+    if (session) throw new Error('Cette opération de démonstration ne peut pas modifier un dossier connecté. Utilisez les actions disponibles dans le parcours métier.');
     if (!hasPermission(activeRole, 'payment.record')) throw new Error('Encaissement non autorisé.');
     const amt = parseFloat(paymentAmount);
     if (!Number.isFinite(amt) || amt <= 0) throw new Error('Montant positif obligatoire.');
@@ -438,6 +457,7 @@ export function useAppState() {
   };
 
   const cancelPayment = (paymentId: string, reason: string) => {
+    if (session) throw new Error('Cette opération de démonstration ne peut pas modifier un dossier connecté. Utilisez les actions disponibles dans le parcours métier.');
     if (!hasPermission(activeRole, 'payment.cancel')) return;
     const payment = payments.find(item => item.id === paymentId);
     const student = students.find(item => item.matricule === payment?.studentId);
@@ -450,6 +470,7 @@ export function useAppState() {
   };
 
   const createStudent = (input: StudentInput) => {
+    if (session) throw new Error('Cette opération de démonstration ne peut pas modifier un dossier connecté. Utilisez les actions disponibles dans le parcours métier.');
     const group = groups.find(item => item.id === input.groupId);
     if (!group || !references.academicYears.some(year => year.id === group.academicYearId && year.status === 'OUVERTE')) throw new Error('Choisissez un groupe d’une année ouverte.');
     const student = createRegisteredStudent(input, students, groups, activeRole);
@@ -458,6 +479,7 @@ export function useAppState() {
     logEvent('Création dossier Étudiant', JSON.stringify({ actor: activeRole, oldValue: null, newValue: student }));
   };
   const renameGroup = (groupId: string, name: string) => {
+    if (session) throw new Error('Cette opération de démonstration ne peut pas modifier un dossier connecté. Utilisez les actions disponibles dans le parcours métier.');
     if (!hasPermission(activeRole, 'academic.group.manage')) throw new Error('Modification de groupe non autorisée.');
     const group = groups.find(item => item.id === groupId); if (!group || !name.trim()) throw new Error('Nom du groupe obligatoire.');
     if (!references.academicYears.some(year => year.id === group.academicYearId && year.status === 'OUVERTE')) throw new Error('La modification nécessite une année ouverte.');
@@ -481,6 +503,7 @@ export function useAppState() {
   };
 
   const assignStudentToGroup = (studentId: string, groupId: string): { success: boolean; error?: string } => {
+    if (session) throw new Error('Cette opération de démonstration ne peut pas modifier un dossier connecté. Utilisez les actions disponibles dans le parcours métier.');
     if (!hasPermission(activeRole, 'student.group.assign')) return { success: false, error: "Seul un rôle académique autorisé peut affecter un étudiant à un groupe." };
     const student = students.find(item => item.matricule === studentId);
     const group = groups.find(item => item.id === groupId);
@@ -498,6 +521,7 @@ export function useAppState() {
 
 
   const addReclamation = useCallback((studentMatricule: string, evaluationId: string, reason: string) => {
+    if (session) throw new Error('Cette opération de démonstration ne peut pas modifier un dossier connecté. Utilisez les actions disponibles dans le parcours métier.');
     const evaluation = evaluations.find(item => item.id === evaluationId && item.status === 'PUBLIEES');
     if (!access.scope.ownDataOnly || access.scope.studentId !== studentMatricule || !evaluation?.grades.some(item => item.matricule === studentMatricule)) throw new Error('Vous ne pouvez réclamer que sur vos propres notes publiées.');
     if (!reason.trim()) throw new Error('Motif obligatoire.');
@@ -525,9 +549,10 @@ export function useAppState() {
     setReclamations(prev => [newRec, ...prev]);
     logEvent('Dépôt Réclamation', `Nouvelle réclamation ${newId} par ${studentMatricule}`);
     setNotifications(prev => [{ id: Date.now(), text: `Nouvelle réclamation soumise (${newId}).` }, ...prev]);
-  }, [reclamations, evaluations, access.scope.ownDataOnly, access.scope.studentId, activeRole, logEvent]);
+  }, [reclamations, evaluations, access.scope.ownDataOnly, access.scope.studentId, activeRole, logEvent, session]);
 
   const updateStudentStatus = useCallback((matricule: string, newStatus: string, reason?: string) => {
+    if (session) throw new Error('Cette opération de démonstration ne peut pas modifier un dossier connecté. Utilisez les actions disponibles dans le parcours métier.');
     if (!hasPermission(activeRole, 'student.lifecycle.manage')) return;
     setStudents(prev => prev.map(s => {
       if (s.matricule !== matricule) return s;
@@ -539,7 +564,7 @@ export function useAppState() {
       };
     }));
     logEvent('Mise à jour statut Étudiant', `${matricule} -> ${newStatus} (${reason ?? 'Aucun motif'})`);
-  }, [activeRole, logEvent]);
+  }, [activeRole, logEvent, session]);
 
   const addAnnouncement = useCallback((title: string, content: string, audience: string, expiresOn = '') => {
     if (session) throw new Error('La diffusion des annonces en base n’est pas encore disponible. Aucune annonce n’a été enregistrée.');
@@ -583,6 +608,7 @@ export function useAppState() {
   };
 
   const transitionReclamation = (id: string, target: Reclamation['status'], comment?: string, correctedGrade?: number) => {
+    if (session) throw new Error('Cette opération de démonstration ne peut pas modifier un dossier connecté. Utilisez les actions disponibles dans le parcours métier.');
     const reclamation = reclamations.find(item => item.id === id);
     if (!reclamation || !visibleReclamations.some(item => item.id === id)) return false;
     const teacherStep = reclamation.status === 'TRANSMISE_ENSEIGNANT' && activeRole === ROLES.ENS;
@@ -657,8 +683,10 @@ export function useAppState() {
 
   return {
     // Role
-    session, authReady, hasLoggedOut, campusLoad, campusRevision, history, reloadCampus, login, logout, pathname, navigateToStudent, requestAccessHelp,
+    session, authReady, hasLoggedOut, campusLoad, campusRevision, relationalSnapshot, history, reloadCampus, login, logout, pathname, navigateToStudent, requestAccessHelp,
+    globalAccess: !session || capabilities?.globalAccess === true,
     actionFeedback, clearActionFeedback: () => setActionFeedback(''),
+    actionOutcome, reportActionOutcome: setActionOutcome, clearActionOutcome: () => setActionOutcome(null),
     campus: { data: campusData, runWorkflow, supervisors: [ROLES.DA, ROLES.LOG, ROLES.IT].includes(activeRole as typeof ROLES.DA) ? demoUsers.users.filter(item => (item.roles?.includes(ROLES.SURV) || item.role === ROLES.SURV) && item.active).map(item => ({ id: item.id, name: item.name })) : [] },
     identitySupervisors: demoUsers.users.filter(item => (item.roles?.includes(ROLES.SURV) || item.role === ROLES.SURV) && item.active),
     users: hasPermission(activeRole, 'user.manage') ? demoUsers.users : [], addUser: demoUsers.addUser, toggleUser: demoUsers.toggleUser, changeUserRole: demoUsers.changeUserRole,

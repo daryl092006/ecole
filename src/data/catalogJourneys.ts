@@ -1,0 +1,14 @@
+export const CATALOG_JOURNEYS: Record<string, { purpose: string; result: string; next?: string; nextLabel?: string }> = {
+  programs: { purpose: 'Définissez une filière officielle, puis renseignez ses parcours.', result: 'La filière sera disponible pour le référencement des parcours. Les inscriptions existantes restent inchangées.', next: 'tracks', nextLabel: 'Renseigner les parcours' },
+  tracks: { purpose: 'Rattachez chaque parcours à sa filière officielle.', result: 'Le parcours sera enregistré dans la filière choisie. Aucun étudiant ne sera affecté automatiquement.', next: 'subjects', nextLabel: 'Consulter les matières' },
+  subjects: { purpose: 'Référencez les matières avant de préparer les enseignements et les épreuves.', result: 'La matière sera référencée. La création d’un enseignement et l’affectation d’un enseignant restent des opérations distinctes.' },
+  academic_years: { purpose: 'Renseignez les dates officielles de l’année avant de constituer les groupes.', result: 'L’année sera enregistrée avec ses dates. Aucune réinscription ni clôture d’année ne sera exécutée.', next: 'groups', nextLabel: 'Constituer les groupes' },
+  cycles: { purpose: 'Référencez les cycles avant de créer leurs niveaux.', result: 'Le cycle pourra être choisi lors de la création d’un niveau.', next: 'levels', nextLabel: 'Renseigner les niveaux' },
+  levels: { purpose: 'Choisissez un cycle et l’ordre du niveau dans ce cycle.', result: 'Le niveau pourra être choisi pour constituer un groupe. Le parcours des étudiants existants reste conservé.', next: 'groups', nextLabel: 'Constituer les groupes' },
+  sites: { purpose: 'Référencez les sites avant les bâtiments, salles et équipements.', result: 'Le site pourra être choisi pour les bâtiments, les groupes et les équipements.', next: 'buildings', nextLabel: 'Renseigner les bâtiments' },
+  buildings: { purpose: 'Rattachez le bâtiment à un site existant avant de renseigner ses salles.', result: 'Le bâtiment sera disponible pour les salles du site choisi.', next: 'rooms', nextLabel: 'Renseigner les salles' },
+  rooms: { purpose: 'Choisissez le site, le bâtiment correspondant et la capacité réelle de la salle.', result: 'La salle et sa capacité seront enregistrées. Aucune séance ne sera planifiée automatiquement.' },
+  groups: { purpose: 'Un groupe réunit des étudiants pour une année et un niveau sur un site.', result: 'Le groupe sera enregistré. Aucune inscription ni affectation étudiante ne sera créée automatiquement.' },
+  suppliers: { purpose: 'Retrouvez le fournisseur avant de créer une nouvelle fiche pour éviter les doublons.', result: 'Les coordonnées du fournisseur seront enregistrées. Aucun achat ni paiement ne sera déclenché.' },
+  assets: { purpose: 'Identifiez l’équipement, son site, sa localisation et son état.', result: 'La fiche d’équipement sera enregistrée. Aucun achat ni mouvement financier ne sera déclenché.' },
+};

@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import SchoolLogo from '@/components/ui/SchoolLogo';
-import { Search, Bell, Menu, X, ArrowUpRight, LogOut } from 'lucide-react';
+import { Search, Bell, Menu, X, ArrowUpRight, LogOut, UserRound } from 'lucide-react';
 import type { RoleName } from '@/types/permissions';
 import { ROLE_COLORS } from '@/hooks/useAppState';
 
@@ -35,15 +35,17 @@ export default function TopBar({ activeRole, availableRoles, searchQuery, onSear
   const controls = useRef<HTMLElement>(null);
   const searchInput = useRef<HTMLInputElement>(null);
   const searchResults = useRef<HTMLDivElement>(null);
+  const accountControl = useRef<HTMLDetailsElement>(null);
   const query = normalize(searchQuery.trim());
   const matches = destinations.filter(item => normalize(item.label + ' ' + item.detail).includes(query)).slice(0, 8);
 
-  useEffect(() => { setPanel(null); }, [activeRole]);
+  useEffect(() => { setPanel(null); if (accountControl.current) accountControl.current.open = false; }, [activeRole]);
   useEffect(() => {
     const outside = (event: PointerEvent) => {
-      if (!controls.current?.contains(event.target as Node)) setPanel(null);
+      if (accountControl.current && !accountControl.current.contains(event.target as Node)) accountControl.current.open = false;
+      if (!controls.current?.contains(event.target as Node)) { setPanel(null); if (accountControl.current) accountControl.current.open = false; }
     };
-    const escape = (event: KeyboardEvent) => { if (event.key === 'Escape') setPanel(null); };
+    const escape = (event: KeyboardEvent) => { if (event.key === 'Escape') { setPanel(null); if (accountControl.current?.open) { accountControl.current.open = false; accountControl.current.querySelector('summary')?.focus(); } } };
     document.addEventListener('pointerdown', outside);
     document.addEventListener('keydown', escape);
     return () => {
@@ -81,12 +83,11 @@ export default function TopBar({ activeRole, availableRoles, searchQuery, onSear
       </div>
     </div>
     <div className="topbar-right">
-      <div className="role-switcher"><span className="role-dot" style={{ backgroundColor: ROLE_COLORS[activeRole] }} />{availableRoles.length > 1 ? <><label htmlFor="active-role">Rôle autorisé</label><select id="active-role" className="role-select" value={activeRole} onChange={event => onRoleChange(event.target.value as RoleName)}>{availableRoles.map(role => <option key={role} value={role}>{role}</option>)}</select></> : <span className="role-select">{activeRole}</span>}</div>
       <div className="notification-control">
         <button className="notif-btn" aria-label={`Notifications : ${notifications.length}`} aria-expanded={panel === 'notifications'} onClick={() => setPanel(current => current === 'notifications' ? null : 'notifications')}><Bell size={18} />{notifications.length > 0 && <span className="notif-badge">{notifications.length}</span>}</button>
         {panel === 'notifications' && <section className="header-popover notification-panel" aria-label="Notifications"><div className="popover-heading">Notifications de la session</div>{notifications.length ? <ul>{notifications.map(item => <li key={item.id}>{item.text}</li>)}</ul> : <div className="empty-state"><strong>Vous êtes à jour</strong><span>Aucune notification pour ce rôle.</span></div>}</section>}
       </div>
-      <button className="notif-btn logout-button" aria-label="Se déconnecter" title="Se déconnecter" onClick={onLogout}><LogOut size={18} /></button>
+      <details className="account-control" ref={accountControl}><summary className="account-summary" aria-label="Mon compte et mon rôle"><UserRound size={19} /><span>{activeRole}</span></summary><div className="account-popover"><div className="role-switcher"><span className="role-dot" style={{ backgroundColor: ROLE_COLORS[activeRole] }} />{availableRoles.length > 1 ? <><label htmlFor="active-role">Rôle autorisé</label><select id="active-role" className="role-select" value={activeRole} onChange={event => onRoleChange(event.target.value as RoleName)}>{availableRoles.map(role => <option key={role} value={role}>{role}</option>)}</select></> : <span className="role-select">{activeRole}</span>}</div><p>Le changement de rôle adapte les pages et les données à vos attributions.</p><button className="btn btn-outline" onClick={onLogout}><LogOut size={16} /> Se déconnecter</button></div></details>
     </div>
   </header>;
 }

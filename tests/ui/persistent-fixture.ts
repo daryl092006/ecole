@@ -1,8 +1,10 @@
 import { expect, type Page } from '@playwright/test';
+import { ROLE_ACCESS } from '../../src/permissions/rolePermissions';
 import { ROLES } from '../../src/types/permissions';
 import type { RelationalSnapshot } from '../../src/types/persistence';
 import type { HistoryCatalog, HistoryRecord } from '../../src/types/history';
 import { HISTORY_TABLES } from '../../src/data/historyCatalog';
+export const fixtureCapabilities = Object.fromEntries(Object.values(ROLE_ACCESS).map(access => [access.role, { permissions: access.permissions, globalAccess: true }]));
 export const ACCOUNT_IDS = ['00000000-0000-4000-8000-000000000001', '00000000-0000-4000-8000-000000000002', '00000000-0000-4000-8000-000000000003'];
 const record = (id: string, values: Record<string, unknown>, issues: string[] = []): HistoryRecord => ({ id: `record-${id}`, sourceId: id, batchId: 'batch-fixture', status: 'PENDING', values, issues });
 const archiveRows: Record<string, HistoryRecord[]> = {
@@ -31,7 +33,7 @@ export async function authenticateFixture(page: Page) {
     localStorage.setItem('sb-zmxapemyktxhppdxenzb-auth-token', JSON.stringify({ access_token: 'fixture-auth-token', refresh_token: 'fixture-refresh', token_type: 'bearer', expires_at: Math.floor(Date.now() / 1000) + 3600, user: { id: 'auth-fixture', aud: 'authenticated', role: 'authenticated', email: 'it@example.test', app_metadata: {}, user_metadata: {}, created_at: '2026-01-01T00:00:00Z' } }));
   });
   await page.route('**/auth/v1/**', route => route.fulfill({ json: { id: 'auth-fixture', email: 'it@example.test' } }));
-  await page.route('**/api/session', route => route.fulfill({ json: { accountId: ACCOUNT_IDS[1], name: 'Jean Technique', email: 'it@example.test', role: ROLES.IT, availableRoles: [ROLES.IT, ROLES.MKT], studentId: null, teacherId: null, matricule: null, mustChangePassword: false } }));
+  await page.route('**/api/session', route => route.fulfill({ json: { capabilities: fixtureCapabilities, accountId: ACCOUNT_IDS[1], name: 'Jean Technique', email: 'it@example.test', role: ROLES.IT, availableRoles: [ROLES.IT, ROLES.MKT], studentId: null, teacherId: null, matricule: null, mustChangePassword: false } }));
   await page.route('**/api/history*', async route => {
     expect(route.request().headers().authorization).toBe('Bearer fixture-auth-token');
     const params = new URL(route.request().url()).searchParams;
