@@ -1,3 +1,4 @@
+import IconButton from '@/components/ui/IconButton';
 import ResponsiveTable from '@/components/ui/ResponsiveTable';
 import { displayLabel, displayDate } from '@/utils/display';
 import { useState } from 'react';
@@ -26,8 +27,8 @@ export default function GradeWorkflowPanel(props: Props) {
       {props.perms.permissions.includes('grade.approve') && evaluation.status === 'A_CONTROLER' && <button className="btn btn-primary" onClick={() => props.onStatusChange(evaluation, 'VALIDEES')}>Valider les notes</button>}
       {props.perms.permissions.includes('grade.publish') && evaluation.status === 'VALIDEES' && <button className="btn btn-primary" onClick={() => props.onStatusChange(evaluation, 'PUBLIEES')}>Publier les notes</button>}
       {props.perms.permissions.includes('grade.review') && ['SOUMISES', 'A_CONTROLER'].includes(evaluation.status) && <button className="btn btn-outline" onClick={() => { setReturnId(evaluation.id); setReason(''); }}>Retourner à l’enseignant</button>}
-      <button className="btn btn-outline" onClick={() => downloadCsv(`notes-${evaluation.id}.csv`, ['Matricule', 'Note /20', 'Statut'], evaluation.grades.map(grade => [grade.matricule, grade.value ?? '', evaluation.status]))}>Exporter les notes</button>
-    </div>{returnId === evaluation.id && <form className="mt-2" onSubmit={event => { event.preventDefault(); if (props.onStatusChange(evaluation, 'SAISIES', reason)) setReturnId(''); }}><label className="form-group">Motif du retour<textarea autoFocus className="input" required minLength={3} maxLength={1000} value={reason} onChange={event => setReason(event.target.value)} /></label><div className="btn-group"><button className="btn btn-primary">Confirmer le retour</button><button className="btn btn-outline" type="button" onClick={() => setReturnId('')}>Fermer</button></div></form>}
+      <IconButton className="btn btn-outline" onClick={() => downloadCsv(`notes-${evaluation.id}.csv`, ['Matricule', 'Note /20', 'Statut'], evaluation.grades.map(grade => [grade.matricule, grade.value ?? '', evaluation.status]))} label="Exporter les notes" />
+    </div>{returnId === evaluation.id && <form className="mt-2" onSubmit={event => { event.preventDefault(); if (props.onStatusChange(evaluation, 'SAISIES', reason)) setReturnId(''); }}><label className="form-group">Motif du retour<textarea autoFocus className="input" required minLength={3} maxLength={1000} value={reason} onChange={event => setReason(event.target.value)} /></label><div className="btn-group"><button className="btn btn-primary">Confirmer le retour</button><IconButton className="btn btn-outline" type="button" onClick={() => setReturnId('')} label="Fermer" /></div></form>}
     {evaluation.examCancelled && <p>Épreuve annulée : résultats conservés, workflow bloqué.</p>}
     {evaluation.status === 'PUBLIEES' && <p className="cell-sub mt-2">Toute correction d’une note publiée passe par la procédure de réclamation et conserve l’ancienne valeur.</p>}
     {evaluation.corrections?.map((entry, index) => <p className="cell-sub" key={index}>{entry.studentId} : {entry.oldValue} → {entry.newValue}/20 · {entry.actor} · {entry.reason}</p>)}

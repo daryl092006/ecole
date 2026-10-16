@@ -51,8 +51,8 @@ export async function createPersonnel(values: import('@/types/staff').PersonnelF
 export async function loadCatalog(collection: string, role: RoleName, signal?: AbortSignal, yearId?: string): Promise<import('@/types/persistence').CatalogSnapshot> {
   return readResponse(await fetch(`/api/catalog/${encodeURIComponent(collection)}`, { headers: { ...await headers(role), ...(yearId ? { 'x-escen-year': yearId } : {}) }, cache: 'no-store', signal }));
 }
-export async function mutateCatalog(collection: string, values: { revision: number; values?: Record<string,unknown>; reason: string; sourceRowId?:string }, role: RoleName, id?: string, archive = false, yearId?: string): Promise<void> {
-  await readResponse(await fetch(`/api/catalog/${encodeURIComponent(collection)}${id ? `/${encodeURIComponent(id)}` : ''}`, { method: archive ? 'DELETE' : id ? 'PATCH' : 'POST', headers: { ...await headers(role), ...(yearId ? { 'x-escen-year': yearId } : {}), 'Content-Type':'application/json' }, body: JSON.stringify(values) }));
+export async function mutateCatalog(collection: string, values: { revision: number; values?: Record<string,unknown>; reason: string; sourceRowId?:string }, role: RoleName, id?: string, archive = false, yearId?: string): Promise<{ id?: string; revision: number }> {
+  return readResponse(await fetch(`/api/catalog/${encodeURIComponent(collection)}${id ? `/${encodeURIComponent(id)}` : ''}`, { method: archive ? 'DELETE' : id ? 'PATCH' : 'POST', headers: { ...await headers(role), ...(yearId ? { 'x-escen-year': yearId } : {}), 'Content-Type':'application/json' }, body: JSON.stringify(values) }));
 }
 
 export async function updatePersonnel(personId: string, values: import('@/types/staff').PersonnelForm & {revision:number;reason:string}, role:RoleName):Promise<void> {
@@ -90,6 +90,10 @@ export async function downloadApplicationDocument(id: string, role: RoleName): P
 
 export async function changeAcademicYear(values: { action: 'current' | 'transition'; yearId: string | null; status?: string; revision: number; reason: string }, role: RoleName): Promise<void> {
   await readResponse(await fetch('/api/academic-years', {method:'POST',headers:{...await headers(role),'Content-Type':'application/json'},body:JSON.stringify(values)}));
+}
+
+export async function loadYearClosureReview(yearId: string, role: RoleName, signal?: AbortSignal): Promise<import('@/services/academicYearClosureService').YearClosureReview> {
+  return readResponse(await fetch(`/api/academic-years?yearId=${encodeURIComponent(yearId)}`, { headers: await headers(role), cache: 'no-store', signal }));
 }
 
 export async function loadReenrollmentCandidates(role: RoleName, signal?: AbortSignal): Promise<import('@/services/reenrollmentService').ReenrollmentDirectory> {

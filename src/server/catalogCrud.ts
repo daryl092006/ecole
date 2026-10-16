@@ -4,8 +4,9 @@ import { z } from 'zod';
 import { requireAccount, requirePermission, RequestError } from '@/server/auth';
 import { ROLES } from '@/types/permissions';
 import { CRUD_CATALOG } from '@/data/crudCatalog';
-import { catalogSpec, parseCatalogRecord, canManageCatalog, validateCatalogReferences } from '@/services/catalogCrudService';
+import { catalogSpec, parseCatalogRecord, canManageCatalog, validateCatalogReferences, programLevelChanges } from '@/services/catalogCrudService';
 import { buildReconductChanges } from '@/services/yearPreparationService';
+import { annualOfferingChanges } from '@/services/annualOfferingService';
 import type { RelationalSnapshot, PersistentChange } from '@/types/persistence';
 export async function catalogRequest(request: Request, key: string) {
   if (!CRUD_CATALOG.some(spec => spec.key === key)) throw new RequestError(404,'Collection inconnue.');
@@ -25,6 +26,29 @@ export async function writeCatalog(request: Request, key: string, id?: string) {
   const target = id ? snapshot.tables[key]?.find(row => row.id === z.uuid().parse(id)) : undefined;
   if (id && !target) throw new RequestError(404,'Enregistrement introuvable.');
   if (target?.archived_at) throw new RequestError(409,'Cet enregistrement est archivé.');
+  if (key === 'academic_offerings' && !id && !archive && body.values?.variants !== undefined) {
+    if (body.sourceRowId) throw new RequestError(400, 'Cette opération ne remplace pas une reprise historique.');
+    const values = z.object({ academic_year_id: z.uuid(), program_id: z.uuid(), variants: z.array(z.object({ curriculum_id: z.uuid(), delivery_mode: z.enum(['Présentiel', 'En ligne']).nullable() }).strict()).min(1).max(80) }).strict().parse(body.values);
+    const year = await resolveAcademicYear(request, client, context, snapshot);
+    if (!year.selectedYearId || year.selectedYearId !== values.academic_year_id) throw new RequestError(409, 'Choisissez l’année précise à préparer.');
+    let changes: PersistentChange[];
+    try { changes = annualOfferingChanges(snapshot, values.academic_year_id, values.program_id, values.variants, body.reason); }
+    catch (error) { throw new RequestError(400, error instanceof Error ? error.message : 'Vérifiez les niveaux sélectionnés.'); }
+    if (!changes.length) throw new RequestError(409, 'Ces niveaux et modes sont déjà proposés pour cette année.');
+    const response = await client.rpc('escen_backend_transaction', { p_actor_id: context.accountId, p_expected_revision: snapshot.revision, p_changes: changes });
+    if (response.error) throw new RequestError(409, 'Enregistrement refusé : doublon, relation incompatible ou modification concurrente.');
+    return Response.json({ revision: response.data, count: changes.length }, { status: 201, headers: { 'Cache-Control': 'no-store' } });
+  }
+  let levelIds: string[] = [];
+  if (key === 'programs' && !archive && body.values?.level_ids !== undefined) {
+    if (body.sourceRowId) throw new RequestError(400, 'Enregistrez la reprise de la filière avant d’ajouter ses niveaux.');
+    levelIds = z.array(z.uuid()).max(50).parse(body.values.level_ids);
+    if (new Set(levelIds).size !== levelIds.length) throw new RequestError(400, 'Un niveau ne peut être sélectionné qu’une fois.');
+    for (const levelId of levelIds) {
+      if (!snapshot.tables.levels?.some(row => row.id === levelId && !row.archived_at && row.active !== false)) throw new RequestError(400, 'Un niveau sélectionné est introuvable ou archivé.');
+    }
+    delete body.values.level_ids;
+  }
   let offeringIds: string[] = [];
   if (key === 'groups' && !id && !archive && !body.sourceRowId) {
     offeringIds = z.array(z.uuid()).min(1).parse(body.values?.offering_ids);
@@ -50,6 +74,7 @@ export async function writeCatalog(request: Request, key: string, id?: string) {
     try { record = parseCatalogRecord(key,body.values); validateCatalogReferences(key,record,snapshot); }
     catch (error) { throw new RequestError(400,error instanceof z.ZodError ? 'Vérifiez les champs obligatoires et leur format.' : error instanceof Error ? error.message : 'Données invalides.'); }
     record = { ...record, id: id || crypto.randomUUID(), reason: body.reason };
+    if (key === 'curricula') record.version = target?.version ?? 1;
 
   }
   if (['groups','subjects','annual_fee_schedules','annual_payment_channels','academic_offerings','group_offerings'].includes(key)) {
@@ -58,6 +83,7 @@ export async function writeCatalog(request: Request, key: string, id?: string) {
     if (year.selectedYearId && (record.academic_year_id || target?.academic_year_id) !== year.selectedYearId) throw new RequestError(409, 'La définition doit appartenir à l’année consultée.');
   }
   const changes: PersistentChange[] = [{ table: key, operation: id ? 'update' : 'insert', record }];
+  changes.push(...programLevelChanges(String(record.id), levelIds, snapshot, body.reason));
   for (const offeringId of offeringIds) changes.push({ table: 'group_offerings', operation: 'insert', record: { id: crypto.randomUUID(), group_id: record.id, offering_id: offeringId, academic_year_id: record.academic_year_id, level_id: record.level_id, reason: body.reason } });
   if (reconductYearId) {
     const reconductChanges = buildReconductChanges(snapshot, reconductYearId, record.id as string, body.reason);

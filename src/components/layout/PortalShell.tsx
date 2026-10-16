@@ -1,4 +1,5 @@
 'use client';
+import IconButton from '@/components/ui/IconButton';
 import { useEffect, useRef, useState, type ReactNode } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
@@ -8,6 +9,7 @@ import { isRouteAllowed } from '@/permissions/navigation';
 import LoadingState from '@/components/ui/LoadingState';
 import AcademicYearControl from '@/components/layout/AcademicYearControl';
 import TopBar, { type SearchDestination } from '@/components/layout/TopBar';
+import { getWorkspaceNavigation } from '@/constants/workspaceNavigation';
 import Sidebar from '@/components/layout/Sidebar';
 import SchoolLogo from '@/components/ui/SchoolLogo';
 import ActionResult from '@/components/ui/ActionResult';
@@ -18,6 +20,8 @@ export default function PortalShell({ children }: { children: ReactNode }) {
   const [menuOpen, setMenuOpen] = useState(false); const mainRef = useRef<HTMLElement>(null);
   const route = getPortalRoute(pathname);
   const tab = availableTabs.find(item => item.id === currentTab);
+  const navigationGroups = getWorkspaceNavigation(availableTabs);
+  const navigationGroup = navigationGroups.find(group => group.sections.includes(currentSubTab));
   const routeTitle = route?.title || tab?.name || 'Mon espace';
   const aliasAllowed = !!tab && MODULE_PATHS[tab.id] === pathname;
   const allowed = !!tab && (route ? !!tab.subTabs?.some(section => section.id === route.section) : aliasAllowed);
@@ -57,10 +61,9 @@ export default function PortalShell({ children }: { children: ReactNode }) {
       previousFocus?.focus();
     };
   }, [menuOpen]);
-  const destinations: SearchDestination[] = availableTabs.flatMap(item => [
-    { id: item.id, label: item.name, detail: 'Module', tab: item.id },
-    ...(item.subTabs || []).map(sub => ({ id: sub.id, label: sub.name, detail: item.name, tab: item.id, subTab: sub.id })),
-  ]);
+  const destinations: SearchDestination[] = navigationGroups.flatMap(group => group.pages.map(page => ({
+    id: page.id, label: page.name, detail: group.name, tab: page.tab, subTab: page.id,
+  })));
   if (perms.permissions.includes('student.view')) destinations.push(...state.students.map(student => ({ id: 'student:' + student.matricule, label: student.firstname + ' ' + student.lastname, detail: student.matricule + ' · ' + student.filiere, tab: 'etudiants', subTab: 'stud_list', studentId: student.matricule })));
   const openDestination = (destination: SearchDestination) => {
     if (destination.studentId) state.navigateToStudent(destination.studentId); else state.navigateTo(destination.tab, destination.subTab);
@@ -73,19 +76,19 @@ export default function PortalShell({ children }: { children: ReactNode }) {
       <Sidebar availableTabs={availableTabs} currentTab={currentTab} currentSubTab={currentSubTab} activeRole={activeRole} menuOpen={menuOpen} onNavigate={() => setMenuOpen(false)} />
       <main className="main-content" id="main-content" ref={mainRef} key={activeRole + ':' + state.demoIdentity} tabIndex={-1} inert={menuOpen}>
         <div className="workspace-location">
-          <nav className="workspace-breadcrumb" aria-label="Fil d’Ariane"><Link href={HOME_PATH}>Accueil</Link>{tab && tab.id !== 'espace' && <><span>/</span><Link href={tab.href}>{tab.name}</Link></>}{route && <><span>/</span><strong aria-current="page">{route.studentId ? `Dossier ${route.studentId}` : route.title}</strong></>}</nav>
+          <nav className="workspace-breadcrumb" aria-label="Fil d’Ariane"><Link href={HOME_PATH}>Accueil</Link>{navigationGroup && navigationGroup.id !== 'home' && <><span>/</span><span>{navigationGroup.name}</span></>}{route && <><span>/</span><strong aria-current="page">{route.studentId ? `Dossier ${route.studentId}` : route.title}</strong></>}</nav>
           <AcademicYearControl />
         </div>
         {!allowed ? <section className="card route-denied"><h1>Accès refusé</h1><p>Cette page n’est pas disponible pour votre rôle.</p><Link className="btn btn-primary" href={HOME_PATH}>Revenir à mon espace</Link></section> : <>
-          {state.actionFeedback && <div className="restricted-box action-feedback" role="alert"><span>{state.actionFeedback}</span><button className="btn btn-sm btn-outline" onClick={state.clearActionFeedback}>Fermer</button></div>}
+          {state.actionFeedback && <div className="restricted-box action-feedback" role="alert"><span>{state.actionFeedback}</span><IconButton className="btn btn-sm btn-outline" onClick={state.clearActionFeedback} label="Fermer" /></div>}
           {state.campusLoad.status === 'loading' || state.campusLoad.status === 'idle' ? <LoadingState label="Chargement des dossiers…" />
-            : state.campusLoad.status === 'error' ? <section className="card" role="alert"><h1>Chargement impossible</h1><p>{state.campusLoad.error}</p><button className="btn btn-primary" onClick={state.reloadCampus}>Réessayer le chargement</button></section>
+            : state.campusLoad.status === 'error' ? <section className="card" role="alert"><h1>Chargement impossible</h1><p>{state.campusLoad.error}</p><IconButton className="btn btn-primary" onClick={state.reloadCampus} label="Réessayer le chargement" /></section>
               : <>
                 {state.actionOutcome && <ActionResult title={state.actionOutcome.title} href={state.actionOutcome.href && isRouteAllowed(state.actionOutcome.href.split('?')[0], activeRole) ? state.actionOutcome.href : undefined} nextLabel={state.actionOutcome.nextLabel} onDismiss={state.clearActionOutcome}>{state.actionOutcome.detail}</ActionResult>}
                 <div key={`${state.academicYearSelection}:${state.academicYearContext?.selectedYearId || ''}`}>{state.academicYearContext && !state.academicYearContext.selectedYearId && state.academicYearSelection !== 'all' && !['acad_reference', 'acad_program', 'staff_records', 'staff_list', 'staff_permissions', 'staff_roles', 'espace_profile', 'sys_roles', 'sys_permissions', 'sys_data', 'sys_logs', 'sys_backups', 'sys_settings', 'log_assets', 'log_suppliers'].includes(currentSubTab) ? <section className="card card-full"><h1>Choisir une année scolaire</h1><p>Sélectionnez une année dans le champ Année pour consulter les activités, dossiers et résultats correspondants. Aucune donnée sans rattachement confirmé ne sera ajoutée à cette année.</p>{state.globalAccess && (perms.permissions.includes('academic.year.open') || perms.permissions.includes('academic.structure.manage')) && <Link className="btn btn-primary" href="/academique/referentiel?collection=academic_years">Configurer les années scolaires</Link>}</section> : children}</div>
                 <section className="connected-data-bar workspace-data-footer" aria-label="État des données">
                   <span><i /> {state.campusLoad.students} dossier(s) étudiant(s) chargé(s){perms.permissions.includes('user.manage') ? ` · ${state.campusLoad.users} compte(s)` : ''}</span>
-                  <button className="btn btn-sm btn-outline" onClick={() => { state.reloadCampus(); state.history.retry(); }}>Actualiser les données</button>
+                  <IconButton className="btn btn-sm btn-outline" onClick={() => { state.reloadCampus(); state.history.retry(); }} label="Actualiser les données" />
                 </section>
               </>}
 

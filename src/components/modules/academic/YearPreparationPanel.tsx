@@ -1,4 +1,5 @@
 'use client';
+import IconButton from '@/components/ui/IconButton';
 import { useEffect, useState } from 'react';
 import { usePortal } from '@/hooks/usePortal';
 import { loadYearPreparation } from '@/services/remoteCampusService';
@@ -117,7 +118,7 @@ export default function YearPreparationPanel({ yearId, yearName, onClose }: { ye
       {error ? (
         <section role="alert">
           <p>{error}</p>
-          <button className="btn btn-outline" onClick={() => setRetry(value => value + 1)}>Réessayer</button>
+          <IconButton className="btn btn-outline" onClick={() => setRetry(value => value + 1)} label="Réessayer" />
         </section>
       ) : !checks ? (
         <LoadingState label="Vérification de l’année…" />

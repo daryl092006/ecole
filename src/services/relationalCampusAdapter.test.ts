@@ -29,7 +29,7 @@ assert.equal(revision, 7);
 assert.equal(data.students.length, 1);
 assert.equal(data.students[0].matricule, 'ESCEN-001');
 assert.equal(data.students[0].email, 'alice@example.test');
-assert.equal(data.students[0].status, 'Inscription à reprendre');
+assert.equal(data.students[0].status, 'Sans inscription annuelle');
 assert.equal(data.students[0].academicYearId, '');
 assert.equal(data.students[0].financials.available, false);
 assert.deepEqual(data.enrollments, []);

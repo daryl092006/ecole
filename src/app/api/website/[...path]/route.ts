@@ -32,8 +32,8 @@ const publicArticle = (article: WebsiteArticle) => ({
 async function handle(request: Request, context: RouteContext) {
   try {
     const { path } = await context.params;
-    const route = path.join('/'); const client = getSupabaseServerClient();
-    const rpc = (action: string, token: string | null = null, data: unknown = {}) => websiteRpc(client, 'escen_website_public', { p_action: action, p_token_hash: token ? hashWebsiteToken(token) : null, p_data: data });
+    const route = path.join('/');
+    const rpc = (action: string, token: string | null = null, data: unknown = {}) => websiteRpc(getSupabaseServerClient(), 'escen_website_public', { p_action: action, p_token_hash: token ? hashWebsiteToken(token) : null, p_data: data });
     if (request.method === 'GET') {
       if (route === 'public/blogs' || route.startsWith('public/blogs/')) {
         const articles = (await rpc('articles') as WebsiteArticle[]).map(publicArticle);
@@ -62,6 +62,7 @@ async function handle(request: Request, context: RouteContext) {
     }
     const website = process.env.ESCEN_WEBSITE_URL;
     if (!website || request.headers.get('origin') !== new URL(website).origin) throw new RequestError(403, 'Origine du formulaire non autorisée.');
+    const client = getSupabaseServerClient();
     // Only trust a client-IP header when explicitly configured behind a trusted proxy.
     const trustedIpHeader = process.env.ESCEN_TRUSTED_IP_HEADER;
     const clientKey = trustedIpHeader ? request.headers.get(trustedIpHeader) || 'shared' : 'shared';

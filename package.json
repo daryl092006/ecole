@@ -3,9 +3,9 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "ESCEN_BUILD_DIR=${ESCEN_BUILD_DIR:-.tmp/next-development} next dev",
-    "build": "ESCEN_BUILD_DIR=${ESCEN_BUILD_DIR:-.next-verification} next build",
-    "start": "ESCEN_BUILD_DIR=${ESCEN_BUILD_DIR:-.next-verification} next start",
+    "dev": "node scripts/run-next.mjs dev",
+    "build": "node scripts/run-next.mjs build",
+    "start": "node scripts/run-next.mjs start",
     "lint": "eslint",
     "test": "node scripts/verify-workflows.cjs && npm run test:db",
     "test:db": "node scripts/verify-database.mjs",

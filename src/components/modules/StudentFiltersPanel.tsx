@@ -1,3 +1,4 @@
+import IconButton from '@/components/ui/IconButton';
 import type { RoleName, Student } from '@/types';
 import { EMPTY_STUDENT_FILTERS, type StudentFilters } from '@/services/studentQueryService';
 import { filterRegisteredStudents, studentGroupFilterKey } from '@/services/studentQueryService';
@@ -16,9 +17,9 @@ export default function StudentFiltersPanel({ students, filters, onChange, role 
     <label className="form-group">Filière<select className="select-input" value={filters.program} onChange={event => onChange({ ...filters, program: event.target.value, groupId: '' })}><option value="">Toutes les filières</option>{programs.map(item => <option key={item}>{item}</option>)}</select></label>
     <label className="form-group">Groupe<select className="select-input" value={filters.groupId} onChange={event => onChange({ ...filters, groupId: event.target.value })}><option value="">Tous les groupes</option>{[...new Map(groups.map(item => [studentGroupFilterKey(item), item.groupe])).entries()].map(([id, name]) => <option key={id} value={id}>{name}</option>)}</select></label>
   </div></details><div className="student-filter-footer"><p role="status">{results.length} résultat(s) sur {students.length} dossier(s).</p>
-    <div className="btn-group">{(filters.search || activeFilters > 0) && <button className="btn btn-outline" onClick={() => onChange(EMPTY_STUDENT_FILTERS)}>Effacer les filtres</button>}<button className="btn btn-outline" disabled={!results.length} onClick={() => {
+    <div className="btn-group">{(filters.search || activeFilters > 0) && <button className="btn btn-outline" onClick={() => onChange(EMPTY_STUDENT_FILTERS)}>Effacer les filtres</button>}<IconButton className="btn btn-outline" disabled={!results.length} onClick={() => {
       const permitted = filterRegisteredStudents(students, filters, role);
       downloadCsv('escen-etudiants.csv', ['Matricule', 'Prénom', 'Nom', 'Email', 'Filière', 'Niveau', 'Groupe', 'Statut'], permitted.map(item => [item.matricule, item.firstname, item.lastname, item.email, item.filiere, item.niveau, item.groupe, item.status]));
-    }}>Exporter les résultats CSV</button></div></div>
+    }} label="Exporter les résultats CSV" /></div></div>
   </div>;
 }

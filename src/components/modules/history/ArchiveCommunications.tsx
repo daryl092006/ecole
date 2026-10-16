@@ -1,4 +1,5 @@
 'use client';
+import IconButton from '@/components/ui/IconButton';
 import LoadingState from '@/components/ui/LoadingState';
 import { useEffect, useState } from 'react';
 import { usePortal } from '@/hooks/usePortal';
@@ -17,7 +18,7 @@ export default function ArchiveCommunications({ section }: { section: string }) 
     if (history.catalog) void Promise.all(['blogs', 'urgent_infos'].map(async table => ({ table, page: await loadAllHistoryRecords(table, activeRole, { query: '', flagged: false }, controller.signal) }))).then(pages => { if (!controller.signal.aborted) setRecords(pages.flatMap(item => item.page.records.map(record => ({ table: item.table, record })))); }).catch(cause => { if (!controller.signal.aborted) setError(cause instanceof Error ? cause.message : 'Publications indisponibles.'); });
     return () => controller.abort();
   }, [activeRole, history.catalog, retry]);
-  if (error || history.error) return <section className="card" role="alert"><p>{error || history.error}</p><button className="btn btn-primary" onClick={() => { history.retry(); setRetry(value => value + 1); }}>Réessayer les publications</button></section>;
+  if (error || history.error) return <section className="card" role="alert"><p>{error || history.error}</p><IconButton className="btn btn-primary" onClick={() => { history.retry(); setRetry(value => value + 1); }} label="Réessayer les publications" /></section>;
   if (!records || !history.catalog) return <LoadingState label="Chargement des publications…" />;
   const rows = records.filter(({ record }) => [record.values.title, record.values.content, record.values.summary, record.values.author_name].some(value => String(value || '').toLocaleLowerCase('fr').includes(query.toLocaleLowerCase('fr'))));
   return <div><nav className="record-sections" aria-label="Présentation des publications"><button className={view === 'reading' ? 'selected' : ''} aria-pressed={view === 'reading'} onClick={() => setView('reading')}>Lire les publications</button><button className={view === 'data' ? 'selected' : ''} aria-pressed={view === 'data'} onClick={() => setView('data')}>Pièces et détails</button></nav>

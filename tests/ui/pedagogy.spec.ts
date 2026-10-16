@@ -10,8 +10,11 @@ for(const width of [390,1440]){
     await page.goto('/academique/examens');await expect(page.getByRole('heading',{name:'Examens',exact:true})).toBeVisible();await expect(page.getByRole('row').filter({hasText:'2026-01-01'})).toBeVisible();await expect(page.getByRole('row').filter({hasText:'2026-02-01'})).toHaveCount(0);await expect(page.getByRole('row').filter({hasText:'2026-03-01'})).toHaveCount(0);
     await page.goto('/academique/rattrapages');await expect(page.getByRole('heading',{name:'Rattrapages',exact:true})).toBeVisible();await expect(page.getByRole('row').filter({hasText:'2026-02-01'})).toBeVisible();await expect(page.getByRole('row').filter({hasText:'2026-01-01'})).toHaveCount(0);
     await page.goto('/academique/evaluations');await expect(page.getByRole('heading',{name:'Contrôles continus',exact:true})).toBeVisible();await expect(page.getByRole('row').filter({hasText:'2026-03-01'})).toBeVisible();await expect(page.getByRole('row').filter({hasText:'2026-01-01'})).toHaveCount(0);
+    const notesCampus = structuredClone(snapshot);
+    Object.assign(notesCampus.tables, { enrollments: [{ id: 'EN1', student_id: 'S1' }], evaluations: [{ id: 'EV1', name: 'Algorithmique' }], evaluation_candidates: [{ id: 'CA1', enrollment_id: 'EN1', evaluation_id: 'EV1' }], grades: [{ id: 'GR1', candidate_id: 'CA1', value: 15 }] });
+    await page.route('**/api/campus', route => route.fulfill({ json: notesCampus }));
     await page.goto('/academique/notes');await expect(page.getByRole('heading',{name:'Notes et résultats',exact:true})).toBeVisible();await expect(page.getByRole('button',{name:'Évaluations et examens',exact:false})).toHaveCount(0);
-    await page.getByRole('button',{name:'Consulter le dossier',exact:true}).click();await page.getByRole('button',{name:'Voir',exact:true}).first().click();await expect(page.getByRole('dialog')).toBeVisible();await page.keyboard.press('Escape');await expect(page.getByRole('dialog')).toHaveCount(0);await expect(page.locator('.data-browser')).toBeVisible();
+    await page.getByRole('button',{name:'Consulter le dossier',exact:true}).click();await page.getByRole('button',{name:'Ouvrir le détail',exact:true}).first().click();await expect(page.getByRole('dialog')).toBeVisible();await page.keyboard.press('Escape');await expect(page.getByRole('dialog')).toHaveCount(0);await expect(page.locator('.domain-workspace')).toBeVisible();
     await captureWorkspace(page,'pedagogie-notes');
   });
   test(`Composition d’une épreuve, aperçu et versions à ${width}px`,async({page})=>{

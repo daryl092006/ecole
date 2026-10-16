@@ -2,7 +2,10 @@ import { spawnSync } from 'node:child_process';
 import { readFile, writeFile, chmod } from 'node:fs/promises';
 
 const reference = 'zmxapemyktxhppdxenzb';
-const result = spawnSync('npx', ['--yes','supabase','projects','api-keys','--project-ref',reference,'--output','json'], { encoding:'utf8', maxBuffer:2_000_000 });
+const windows = process.platform === 'win32';
+const result = spawnSync(windows ? 'cmd.exe' : 'npx', windows
+  ? ['/d', '/s', '/c', `supabase projects api-keys --project-ref ${reference} --output json`]
+  : ['--yes', 'supabase', 'projects', 'api-keys', '--project-ref', reference, '--output', 'json'], { encoding: 'utf8', maxBuffer: 2_000_000 });
 if (result.status !== 0) {
   console.error('Impossible de récupérer les clés du projet connecté. Aucune clé affichée.');
   process.exit(1);

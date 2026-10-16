@@ -11,11 +11,13 @@ export function connectedRecordName(table: string, row: DatabaseRow, snapshot: R
     return `${enrollment ? connectedRecordName('enrollments', enrollment, snapshot, depth + 1) : 'Inscription non retrouvée'} · ${evaluation ? connectedRecordName('evaluations', evaluation, snapshot, depth + 1) : 'Évaluation non retrouvée'}`;
   }
   if (table === 'curricula') {
+    if (row.name) return String(row.name);
     const program=snapshot.tables.programs?.find(item=>item.id===row.program_id);
     const level=snapshot.tables.levels?.find(item=>item.id===row.level_id);
-    return `${program?.name || 'Filière non retrouvée'} · ${level?.name || 'Niveau non retrouvé'} · version ${row.version}`;
+    return `${program?.name || 'Filière non retrouvée'} · ${level?.name || 'Niveau non retrouvé'}`;
   }
   if (table === 'academic_offerings' && depth < 4) {
+    if (row.name) return String(row.name);
     const curriculum=snapshot.tables.curricula?.find(item=>item.id===row.curriculum_id);
     const year=snapshot.tables.academic_years?.find(item=>item.id===row.academic_year_id);
     return `${curriculum ? connectedRecordName('curricula',curriculum,snapshot,depth+1) : String(snapshot.tables.levels?.find(level => level.id === row.level_id)?.name || 'Formation sans filière renseignée')} · ${year?.name || 'Année non retrouvée'}${row.delivery_mode ? ` · ${row.delivery_mode}` : ''}`;

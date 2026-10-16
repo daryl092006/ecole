@@ -1,10 +1,11 @@
 import {z} from 'zod';
 import {requireAccount,requirePermission,RequestError,errorResponse} from '@/server/auth';
 import {resolveAcademicYear} from '@/server/academicYearContext';
-import {assertYearPrepared} from '@/services/yearPreparationService';
+import {assertOfferingPrepared} from '@/services/yearPreparationService';
 import {previousAcademicYear} from '@/services/reenrollmentService';
 import {filterRelationalSnapshot} from '@/services/persistentPermissionsService';
 import {connectedRecordName} from '@/services/connectedRecordDisplayService';
+import {availableEnrollmentGroupLinks} from '@/services/enrollmentGroupReferenceService';
 import type {RelationalSnapshot,PersistentChange} from '@/types/persistence';
 export const dynamic='force-dynamic';
 async function directory(request:Request){
@@ -27,24 +28,25 @@ async function directory(request:Request){
   const knownOld=historicalMatricules.has(String(row.matricule)) || snapshot.tables.enrollments?.some(enrollment=>enrollment.student_id===row.id);
   return {id:row.id,matricule:row.matricule,name:[person?.firstname,person?.lastname].filter(Boolean).join(' '),kind:knownOld?'reenroll':'new',eligible:!knownOld || previousStudents.has(row.id)};
  });
- return {...auth,snapshot,year,offerings,candidates,previous,previousOfferingIds};
+ const groupLinks=availableEnrollmentGroupLinks(snapshot,offerings);
+ return {...auth,snapshot,year,offerings,candidates,previous,previousOfferingIds,groupLinks};
 }
 export async function GET(request:Request){try{
  const data=await directory(request);const tables=data.snapshot.tables;
- return Response.json({revision:data.snapshot.revision,candidates:data.candidates,offerings:data.offerings.map(row=>({id:row.id,name:connectedRecordName('academic_offerings',row,data.snapshot),levelId:row.level_id,deliveryMode:row.delivery_mode,programId:tables.curricula?.find(item=>item.id===row.curriculum_id)?.program_id})),groups:(tables.group_offerings || []).filter(link=>data.offerings.some(offering=>offering.id===link.offering_id)).map(link=>({id:link.group_id,offeringId:link.offering_id,name:tables.groups?.find(group=>group.id===link.group_id)?.name})),fees:(tables.annual_fee_schedules || []).filter(row=>row.academic_year_id===data.year.selectedYearId && !row.archived_at),previousYear:data.previous?.name || null},{headers:{'Cache-Control':'no-store'}});
+ return Response.json({revision:data.snapshot.revision,candidates:data.candidates,offerings:data.offerings.map(row=>({id:row.id,name:connectedRecordName('academic_offerings',row,data.snapshot),levelId:row.level_id,deliveryMode:row.delivery_mode,programId:tables.curricula?.find(item=>item.id===row.curriculum_id)?.program_id})),groups:data.groupLinks.map(link=>({id:link.group_id,offeringId:link.offering_id,name:tables.groups?.find(group=>group.id===link.group_id)?.name})),fees:(tables.annual_fee_schedules || []).filter(row=>row.academic_year_id===data.year.selectedYearId && !row.archived_at),previousYear:data.previous?.name || null},{headers:{'Cache-Control':'no-store'}});
 }catch(error){return errorResponse(error);}}
 const schema=z.object({kind:z.enum(['new','reenroll']),studentId:z.uuid(),offeringId:z.uuid(),groupId:z.uuid(),tuitionId:z.uuid(),registrationId:z.uuid(),revision:z.number().int().nonnegative(),enrolledOn:z.iso.date(),reason:z.string().trim().min(3).max(1000)}).strict();
 export async function POST(request:Request){try{
  const data=await directory(request);const body=schema.parse(await request.json());
  requirePermission(data.context,'payment.record');
- try{assertYearPrepared(data.snapshot,data.year.selectedYearId!);}catch(error){throw new RequestError(409,error instanceof Error?error.message:'Année non prête.');}
+ try{assertOfferingPrepared(data.snapshot,data.year.selectedYearId!,body.offeringId);}catch(error){throw new RequestError(409,error instanceof Error?error.message:'Année non prête.');}
  const target=data.year.years.find(year=>year.id===data.year.selectedYearId)!;
  if(target.status!=='OUVERTE')throw new RequestError(409,'Ouvrez l’année après sa préparation avant toute inscription.');
  const candidate=data.candidates.find(row=>row.id===body.studentId && row.kind===body.kind);
  if(!candidate || !candidate.eligible)throw new RequestError(409,'Ce dossier ne correspond pas à ce parcours. Les anciens dossiers exigent la reprise de l’inscription précédente avant réinscription.');
  const offering=data.offerings.find(row=>row.id===body.offeringId);
  const tables=data.snapshot.tables;
- if(!offering || !tables.group_offerings?.some(link=>link.group_id===body.groupId && link.offering_id===offering.id))throw new RequestError(409,'Choisissez un groupe relié à cette formation annuelle.');
+ if(!offering || !data.groupLinks.some(link=>link.group_id===body.groupId && link.offering_id===offering.id))throw new RequestError(409,'Choisissez un groupe disponible et relié à cette formation annuelle. Actualisez si le groupe ou son rattachement a été archivé.');
  if(body.enrolledOn<target.starts_on || body.enrolledOn>target.ends_on)throw new RequestError(400,'La date d’inscription doit appartenir à l’année cible.');
  if(body.kind==='reenroll'){
   const previous=tables.enrollments?.filter(row=>row.student_id===body.studentId && data.previousOfferingIds.has(String(row.offering_id))) || [];

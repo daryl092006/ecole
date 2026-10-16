@@ -24,6 +24,16 @@ for (const width of [390, 1440]) {
     await page.goto('/etudiants/comptes'); await expect(page.getByRole('heading', { name: 'Comptes étudiants', exact: true })).toBeVisible();
     await expect(page.getByRole('row').filter({ hasText: 'alice@example.test' })).toBeVisible();
     await expect(page.getByRole('row').filter({ hasText: 'it@example.test' })).toHaveCount(0);
+    const operational = structuredClone(snapshot);
+    Object.assign(operational.tables, {
+      enrollments: [{ id: 'EN1', student_id: 'S1' }],
+      evaluations: [{ id: 'EV1', name: 'Algorithmique' }],
+      evaluation_candidates: [{ id: 'CA1', enrollment_id: 'EN1', evaluation_id: 'EV1' }],
+      grades: [{ id: 'GR1', candidate_id: 'CA1', value: 15 }],
+      payments: [{ id: 'PAY1', enrollment_id: 'EN1', amount: 125000, status: 'POSTED' }],
+    });
+    await page.route('**/api/campus', route => route.fulfill({ json: operational }));
+    await page.reload();
     await page.goto('/finance/versements'); await expect(page.getByRole('heading', { name: 'Versements et reçus', exact: true })).toBeVisible();
     await expect(page.getByRole('row').filter({ hasText: 'Alice Exemple' })).toContainText('125'); await captureWorkspace(page, 'refonte-paiements');
     await page.goto('/academique/notes'); await expect(page.getByRole('heading', { name: 'Notes et résultats', exact: true })).toBeVisible();

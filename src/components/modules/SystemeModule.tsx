@@ -1,5 +1,6 @@
+import IconButton from '@/components/ui/IconButton';
 import ResponsiveTable from '@/components/ui/ResponsiveTable';
-import { Database, RefreshCw } from 'lucide-react';
+import { Database } from 'lucide-react';
 import { useState } from 'react';
 import type { SystemLog } from '@/types';
 
@@ -46,9 +47,7 @@ export default function SystemeModule({ currentSubTab, systemLogs, runBackup }: 
             <div style={{ fontSize: '0.875rem' }}>
               <div className="empty-state"><strong>Export JSON disponible</strong><span>Téléchargez le journal du prototype en JSON. Cet export ne restaure aucune donnée.</span></div>
               <div style={{ marginTop: '1rem', display: 'flex', gap: '0.75rem' }}>
-                <button className="btn btn-primary" onClick={runBackup}>
-                  <RefreshCw size={14} /> Télécharger le journal
-                </button>
+                <IconButton className="btn btn-primary" onClick={runBackup} label="Télécharger le journal" />
               </div>
             </div>
           </div>

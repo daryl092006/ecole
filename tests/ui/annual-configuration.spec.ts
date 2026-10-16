@@ -44,14 +44,14 @@ for (const width of [390, 1440]) test(`Consulter les frais ouvre la liste avant 
   await expect(list.getByRole('cell', { name: /(?:^| )50000$/ })).toHaveCount(0);
   await expect(page.getByRole('dialog', { name: /^Ajouter/ })).toHaveCount(0);
   await list.getByRole('button', { name: 'Voir', exact: true }).click();
-  await expect(page.getByRole('dialog', { name: 'Consulter un tarif annuel · 2026-2027', exact: true })).toBeVisible();
+  await expect(list.getByRole('heading', { name: 'Consulter un tarif annuel · 2026-2027', exact: true })).toBeVisible();
   await expect(page.getByLabel('Montant FCFA', { exact: true })).toHaveCount(0);
-  await page.keyboard.press('Escape');
+  await list.getByRole('button', { name: '← Retour à la liste', exact: true }).click();
   await list.getByRole('button', { name: 'Modifier', exact: true }).click();
   await expect(page.getByLabel('Montant FCFA', { exact: true })).toHaveValue('480000');
-  await page.keyboard.press('Escape');
+  await list.getByRole('button', { name: '← Retour à la liste', exact: true }).click();
   await list.getByRole('button', { name: 'Ajouter un tarif annuel', exact: true }).click();
-  await expect(page.getByRole('dialog', { name: 'Ajouter un tarif annuel · 2026-2027', exact: true })).toBeVisible();
+  await expect(list.getByRole('heading', { name: 'Ajouter un tarif annuel · 2026-2027', exact: true })).toBeVisible();
   await expect(page.getByLabel('Montant FCFA', { exact: true })).toHaveValue('');
 });
 

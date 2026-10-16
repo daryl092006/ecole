@@ -1,54 +1,11 @@
+import { prepareTestYear } from './academic-year-test-helpers.mjs';
 import assert from 'node:assert/strict';
 import { createHash, randomUUID } from 'node:crypto';
 export async function verifyAcademicYears({ db, check, insert, account, year, level, site, curriculum, component, teacher, student }) {
   const value = async (sql, args = []) => (await db.query(sql, args)).rows[0].value;
   const command = async (action, yearId, status = null, revision = undefined, role = 'IT') => value('select public.escen_academic_year_command($1,$2,$3,$4,$5,$6,$7) as value', [account.id, role, action, yearId, revision ?? await value('select revision as value from escen_private.portal_revision where singleton'), 'Commande annuelle motivée de recette', status]);
-  let fresh; let offering; let enrollment; let application;
+  let fresh = await insert('academic_years', { code: 'ARCHIVE-2040', name: 'Archive de recette', starts_on: '2040-09-01', ends_on: '2041-07-31', status: 'CLOTUREE' }); let offering; let enrollment; let application;
   const draftToken = createHash('sha256').update(randomUUID()).digest('hex');
-  await check('Années : ouverture explicite, désignation unique, concurrence et autorisations', async () => {
-    fresh = await insert('academic_years', { code: '2040-TEST', name: '2040-2041 de recette', starts_on: '2040-09-01', ends_on: '2041-07-31' });
-    await assert.rejects(command('current', fresh.id), /ouverte/i);
-    await assert.rejects(command('transition', fresh.id, 'OUVERTE', undefined, 'ENS'), /Pilotage/i);
-    await assert.rejects(db.query("update escen.academic_years set status='OUVERTE' where id=$1", [fresh.id]), /commande/i);
-    const previousRevision = await value('select revision as value from escen_private.portal_revision where singleton');
-    await command('transition', fresh.id, 'OUVERTE');
-    await assert.rejects(command('current', fresh.id, null, previousRevision), /concurrente/i);
-    await command('current', fresh.id);
-    assert.equal((await value('select public.escen_academic_year_context() as value')).currentYearId, fresh.id);
-    assert.equal(await value('select count(*)::integer as value from escen.academic_working_year'), 1);
-    await assert.rejects(command('transition', fresh.id, 'EN_CLOTURE'), /désignation/i);
-    await assert.rejects(db.query('update escen.academic_working_year set academic_year_id=$1', [year.id]), /commande/i);
-  });
-  await check('Années : rattachements figés, clôture contrôlée et dettes historiques conservées', async () => {
-    offering = await insert('academic_offerings', { curriculum_id: curriculum.id, academic_year_id: fresh.id, level_id: level.id, site_id: site.id });
-    await value("select public.escen_website_manage($1,'IT','intake-save',$2::jsonb) as value",[account.id,JSON.stringify({academic_year_id:fresh.id,level_id:level.id,program_id:curriculum.program_id,label:'Même formation, nouvelle année',active:true,required_documents:[],reason:'Campagne annuelle explicite'})]);
-    application = await value("select public.escen_website_public('create',$1,$2::jsonb) as value",[draftToken,JSON.stringify({academic_year_id:fresh.id,nom:'Campagne',prenom:'Année',email:'campagne@example.test'})]);
-    const group = await insert('groups', { academic_year_id: fresh.id, level_id: level.id, site_id: site.id, name: 'Groupe annuel de recette' });
-    await insert('group_offerings',{group_id:group.id,offering_id:offering.id,academic_year_id:fresh.id,level_id:level.id,site_id:site.id});
-    enrollment = await insert('enrollments', { student_id: student.id, offering_id: offering.id, status: 'REINSCRIT' });
-    const assignment = await insert('teaching_assignments', { teacher_id: teacher.id, group_id: group.id, offering_id: offering.id, curriculum_id: curriculum.id, component_id: component.id, valid_from: '2040-09-01', valid_until: '2041-07-31' });
-    const evaluation = await insert('evaluations', { assignment_id: assignment.id, offering_id: offering.id, component_id: component.id, name: 'À terminer avant clôture', kind: 'DEVOIR', created_by: account.id });
-    await assert.rejects(db.query('update escen.groups set academic_year_id=$1 where id=$2', [year.id, group.id]), /déplacé/i);
-    await command('current', null);
-    await command('transition', fresh.id, 'EN_CLOTURE');
-    await assert.rejects(insert('enrollments', { student_id: student.id, offering_id: offering.id, status: 'INSCRIT' }), /clôture/i);
-    await assert.rejects(command('transition', fresh.id, 'CLOTUREE'), /évaluations/i);
-    await db.query('update escen.evaluations set cancelled_at=now(),cancellation_reason=$1 where id=$2', ['Évaluation de recette annulée explicitement', evaluation.id]);
-    await command('transition', fresh.id, 'CLOTUREE');
-    await assert.rejects(insert('groups', { academic_year_id: fresh.id, level_id: level.id, site_id: site.id, name: 'Interdit après clôture' }), /année/i);
-    await assert.rejects(db.query('update escen.evaluations set name=$1 where id=$2', ['Modification interdite', evaluation.id]), /année/i);
-    await assert.rejects(db.query('update escen.academic_years set name=$1 where id=$2', ['Réécriture interdite', fresh.id]), /protégé/i);
-    await assert.rejects(command('transition', fresh.id, 'OUVERTE'), /Transition/i);
-    assert.deepEqual(await value("select public.escen_website_public('intakes') as value"),[]);
-    await command('current',year.id);
-    assert.ok((await value("select public.escen_website_public('intakes') as value")).every(intake=>intake.academic_year_id===year.id));
-    assert.equal(await value('select academic_year_id as value from escen.online_applications where id=$1',[application.id]),fresh.id);
-    await assert.rejects(db.query('update escen.online_applications set academic_year_id=$1 where id=$2',[year.id,application.id]),/année de dépôt/i);
-    await assert.rejects(value("select public.escen_website_public('submit',$1,$2::jsonb) as value",[draftToken,JSON.stringify({accept_cgu:'1',tuteurs:[{nom:'Parent'}]})]),/fermée/i);
-    const payment = await insert('payments', { enrollment_id: enrollment.id, payer_name: 'Payeur de recette', amount: 1, method: 'ESPECES', provider: 'CAISSE-RECETTE', paid_on: '2042-01-01', recorded_by: account.id, reference: 'REGLEMENT-ANCIENNE-ANNEE' });
-    assert.equal((await value('select to_jsonb(e) as value from escen.enrollments e where id=$1', [payment.enrollment_id])).offering_id, offering.id);
-    assert.ok(await value("select exists(select 1 from escen_private.audit_events where table_name='academic_years' and entity_id=$1 and actor_id=$2 and old_value->>'status'='EN_CLOTURE' and new_value->>'status'='CLOTUREE' and reason is not null) as value", [fresh.id, account.id]));
-  });
   await check('Années : archives filtrées par référence exacte, lots distincts et absences non inventées', async () => {
     const batch = randomUUID(); const otherBatch = randomUUID();
     await db.query("insert into escen_private.import_batches(id,source_name,archive_sha256,sql_sha256,source_rows) values($1,'Recette années',$2,$3,3),($4,'Autre lot mêmes identifiants',$5,$6,2)", [batch, createHash('sha256').update(randomUUID()).digest('hex'), createHash('sha256').update(randomUUID()).digest('hex'), otherBatch, createHash('sha256').update(randomUUID()).digest('hex'), createHash('sha256').update(randomUUID()).digest('hex')]);
@@ -96,9 +53,10 @@ export async function verifyAcademicYears({ db, check, insert, account, year, le
     await command('current',null);
     const restored=await value('select escen_private.restore_source_academic_years() as value');
     assert.equal(restored.created,2);
-    const restoredYear=(await db.query('select * from escen.academic_years where id=$1',[restored.restoredCurrentYearId])).rows[0];
-    assert.equal(restoredYear.code,'2060-2061');assert.equal(restoredYear.name,'2060-2061');assert.equal(new Date(restoredYear.starts_on).toISOString().slice(0,10),'2060-10-13');assert.equal(restoredYear.status,'OUVERTE');
-    assert.equal((await value('select public.escen_academic_year_context() as value')).currentYearId,restoredYear.id);
+    const restoredYear=(await db.query("select * from escen.academic_years where code='2060-2061'")).rows[0];
+    assert.equal(restored.restoredCurrentYearId, null);
+    assert.equal(restoredYear.code,'2060-2061');assert.equal(restoredYear.name,'2060-2061');assert.equal(new Date(restoredYear.starts_on).toISOString().slice(0,10),'2060-10-13');assert.equal(restoredYear.status,'BROUILLON');
+    assert.equal((await value('select public.escen_academic_year_context() as value')).currentYearId,null);
     for(const id of sourceIds.slice(0,2))assert.equal(await value("select count(*)::integer as value from escen_private.source_mappings where row_id=$1 and target_table='academic_years' and mapping_method='SOURCE_EXACT'",[id]),1);
     assert.equal(await value("select count(*)::integer as value from escen_private.source_mappings where row_id=$1 and target_table='academic_years'",[sourceIds[2]]),0);
     assert.equal(await value("select payload->>'code' as value from escen_private.legacy_rows where id=$1",[sourceIds[0]]),'as_code_duplique');
@@ -115,7 +73,7 @@ export async function verifyAcademicYears({ db, check, insert, account, year, le
     const registration=await insert('annual_fee_schedules',{academic_year_id:year.id,category:'INSCRIPTION',amount:50000,reason:'Inscription annuelle'});
     assert.notEqual(fee.id,registration.id);
     await assert.rejects(insert('annual_fee_schedules',{academic_year_id:year.id,category:'SCOLARITE',amount:500000,reason:'Doublon interdit'}),/unique|duplicate/i);
-    const newYear=await insert('academic_years',{code:'2070-2071',name:'2070-2071',starts_on:'2070-09-01',ends_on:'2071-07-31',status:'OUVERTE'});
+    const newYear=await insert('academic_years',{code:'2070-2071',name:'2070-2071',starts_on:'2070-09-01',ends_on:'2071-07-31',status:'BROUILLON'});
     await insert('annual_fee_schedules',{academic_year_id:newYear.id,category:'SCOLARITE',amount:550000,reason:'Tarif nouvelle année'});
     assert.equal(Number(await value('select amount as value from escen.annual_fee_schedules where id=$1',[fee.id])),480000);
     await assert.rejects(db.query('update escen.annual_fee_schedules set academic_year_id=$1 where id=$2',[newYear.id,fee.id]),/figée|déplacé/i);
@@ -132,10 +90,68 @@ export async function verifyAcademicYears({ db, check, insert, account, year, le
     await db.query("update escen.annual_payment_channels set name='Caisse centrale',reason='Correction de la caisse' where id=$1",[channel.id]);
     await db.query("update escen.annual_fee_schedules set amount=51000,reason='Correction du tarif' where academic_year_id=$1",[draft.id]);
     await insert('subjects',{academic_year_id:draft.id,code:'PREP',name:'Matière préparée'});
-    const offer=await insert('academic_offerings',{academic_year_id:draft.id,curriculum_id:curriculum.id,level_id:level.id,site_id:site.id});
-    await insert('groups',{academic_year_id:draft.id,level_id:level.id,site_id:site.id,name:'Groupe préparatoire'});
+    const offer=await insert('academic_offerings',{academic_year_id:draft.id,curriculum_id:curriculum.id,level_id:level.id});
+    await insert('groups',{academic_year_id:draft.id,level_id:level.id,name:'Groupe préparatoire'});
     await assert.rejects(insert('enrollments',{student_id:student.id,offering_id:offer.id,status:'INSCRIT'}),/année/i);
     assert.equal(await value('select count(*)::integer as value from escen.enrollments where offering_id=$1',[offer.id]),0);
+  });
+  await check('Années : ouverture explicite, désignation unique, concurrence et autorisations', async () => {
+    fresh = await insert('academic_years', { code: '2040-TEST', name: '2040-2041 de recette', starts_on: '2040-09-01', ends_on: '2041-07-31' });
+    await assert.rejects(command('current', fresh.id), /ouverte/i);
+    await assert.rejects(command('transition', fresh.id, 'OUVERTE', undefined, 'ENS'), /Pilotage/i);
+    await assert.rejects(db.query("update escen.academic_years set status='OUVERTE' where id=$1", [fresh.id]), /commande/i);
+    await assert.rejects(command('transition', fresh.id, 'OUVERTE'), /ouverte/i);
+    await command('current', null);
+    await command('transition', year.id, 'EN_CLOTURE');
+    await assert.rejects(command('transition', fresh.id, 'OUVERTE'), /non prête/i);
+    offering = await prepareTestYear({ db, insert, yearId: fresh.id, curriculum, level });
+    for (const table of ['group_offerings', 'annual_fee_schedules', 'annual_payment_channels']) {
+      const row = (await db.query(`select id from escen.${table} where academic_year_id=$1 limit 1`, [fresh.id])).rows[0];
+      await db.query(`update escen.${table} set archived_at=now(),reason='Retrait motive de recette' where id=$1`, [row.id]);
+      const revision = await value('select revision as value from escen_private.portal_revision where singleton');
+      await assert.rejects(command('transition', fresh.id, 'OUVERTE'), /non prête/i);
+      assert.equal(await value('select revision as value from escen_private.portal_revision where singleton'), revision);
+      assert.equal(await value('select status as value from escen.academic_years where id=$1', [fresh.id]), 'BROUILLON');
+      await db.query(`update escen.${table} set archived_at=null,reason='Reference retablie de recette' where id=$1`, [row.id]);
+    }
+    const previousRevision = await value('select revision as value from escen_private.portal_revision where singleton');
+    await command('transition', fresh.id, 'OUVERTE');
+    await assert.rejects(insert('academic_years', { code: 'SECOND-OPEN', name: 'Seconde ouverture interdite', starts_on: '2042-01-01', ends_on: '2042-12-31', status: 'OUVERTE' }), /academic_year_single_open/i);
+    assert.equal(await value("select count(*)::int as value from escen.academic_years where status='OUVERTE'"), 1);
+    await assert.rejects(command('current', fresh.id, null, previousRevision), /concurrente/i);
+    await command('current', fresh.id);
+    assert.equal((await value('select public.escen_academic_year_context() as value')).currentYearId, fresh.id);
+    assert.equal(await value('select count(*)::integer as value from escen.academic_working_year'), 1);
+    await assert.rejects(command('transition', fresh.id, 'EN_CLOTURE'), /désignation/i);
+    await assert.rejects(db.query('update escen.academic_working_year set academic_year_id=$1', [year.id]), /commande/i);
+  });
+  await check('Années : rattachements figés, clôture contrôlée et dettes historiques conservées', async () => {
+
+    await value("select public.escen_website_manage($1,'IT','intake-save',$2::jsonb) as value",[account.id,JSON.stringify({academic_year_id:fresh.id,level_id:level.id,program_id:curriculum.program_id,label:'Même formation, nouvelle année',active:true,required_documents:[],reason:'Campagne annuelle explicite'})]);
+    application = await value("select public.escen_website_public('create',$1,$2::jsonb) as value",[draftToken,JSON.stringify({academic_year_id:fresh.id,nom:'Campagne',prenom:'Année',email:'campagne@example.test'})]);
+    const group = await insert('groups', { academic_year_id: fresh.id, level_id: level.id, name: 'Groupe annuel de recette' });
+    await insert('group_offerings',{group_id:group.id,offering_id:offering.id,academic_year_id:fresh.id,level_id:level.id});
+    enrollment = await insert('enrollments', { student_id: student.id, offering_id: offering.id, status: 'REINSCRIT' });
+    const assignment = await insert('teaching_assignments', { teacher_id: teacher.id, group_id: group.id, offering_id: offering.id, curriculum_id: curriculum.id, component_id: component.id, valid_from: '2040-09-01', valid_until: '2041-07-31' });
+    const evaluation = await insert('evaluations', { assignment_id: assignment.id, offering_id: offering.id, component_id: component.id, name: 'À terminer avant clôture', kind: 'DEVOIR', created_by: account.id });
+    await assert.rejects(db.query('update escen.groups set academic_year_id=$1 where id=$2', [year.id, group.id]), /déplacé/i);
+    await command('current', null);
+    await command('transition', fresh.id, 'EN_CLOTURE');
+    await assert.rejects(insert('enrollments', { student_id: student.id, offering_id: offering.id, status: 'INSCRIT' }), /clôture/i);
+    await assert.rejects(command('transition', fresh.id, 'CLOTUREE'), /évaluations/i);
+    await db.query('update escen.evaluations set cancelled_at=now(),cancellation_reason=$1 where id=$2', ['Évaluation de recette annulée explicitement', evaluation.id]);
+    await command('transition', fresh.id, 'CLOTUREE');
+    await assert.rejects(insert('groups', { academic_year_id: fresh.id, level_id: level.id, name: 'Interdit après clôture' }), /année/i);
+    await assert.rejects(db.query('update escen.evaluations set name=$1 where id=$2', ['Modification interdite', evaluation.id]), /année/i);
+    await assert.rejects(db.query('update escen.academic_years set name=$1 where id=$2', ['Réécriture interdite', fresh.id]), /protégé/i);
+    await assert.rejects(command('transition', fresh.id, 'OUVERTE'), /Transition/i);
+    assert.deepEqual(await value("select public.escen_website_public('intakes') as value"),[]);
+    assert.equal(await value('select academic_year_id as value from escen.online_applications where id=$1',[application.id]),fresh.id);
+    await assert.rejects(db.query('update escen.online_applications set academic_year_id=$1 where id=$2',[year.id,application.id]),/année de dépôt/i);
+    await assert.rejects(value("select public.escen_website_public('submit',$1,$2::jsonb) as value",[draftToken,JSON.stringify({accept_cgu:'1',tuteurs:[{nom:'Parent'}]})]),/fermée/i);
+    const payment = await insert('payments', { enrollment_id: enrollment.id, payer_name: 'Payeur de recette', amount: 1, method: 'ESPECES', provider: 'CAISSE-RECETTE', paid_on: '2042-01-01', recorded_by: account.id, reference: 'REGLEMENT-ANCIENNE-ANNEE' });
+    assert.equal((await value('select to_jsonb(e) as value from escen.enrollments e where id=$1', [payment.enrollment_id])).offering_id, offering.id);
+    assert.ok(await value("select exists(select 1 from escen_private.audit_events where table_name='academic_years' and entity_id=$1 and actor_id=$2 and old_value->>'status'='EN_CLOTURE' and new_value->>'status'='CLOTUREE' and reason is not null) as value", [fresh.id, account.id]));
   });
 
 }

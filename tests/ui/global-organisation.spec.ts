@@ -10,7 +10,7 @@ for (const width of [390, 1440]) {
     await authenticateFixture(page);
     await page.route('**/api/campus', route => route.fulfill({ json: snapshot }));
     await page.goto('/mon-espace');
-    for (const name of ['Étudiants', 'Pédagogie', 'Finance', 'Personnel', 'Achats & Logistique', 'Communication', 'Administration']) {
+    for (const name of ['Année scolaire', 'Dossiers étudiants', 'Cours et présences', 'Examens et résultats', 'Scolarité et paiements', 'Personnel', 'Achats et matériel', 'Communication', 'Comptes et droits d’accès', 'Données et assistance']) {
       await expect(page.locator('.home-destinations').getByRole('heading', { name, exact: true })).toBeVisible();
     }
     for (const [path, name, section] of [
@@ -29,17 +29,18 @@ for (const width of [390, 1440]) {
     if (width === 390) await page.getByRole('button', { name: 'Ouvrir la navigation' }).click();
     const menu = page.locator('#application-navigation');
     await expect(page.locator('.module-navigation')).toHaveCount(0);
-    await expect(menu.getByRole('button', { name: 'Replier Pédagogie' })).toHaveAttribute('aria-expanded', 'true');
-    await menu.getByRole('button', { name: 'Replier Pédagogie' }).click();
+    await expect(menu.getByRole('button', { name: 'Replier Examens et résultats' })).toHaveAttribute('aria-expanded', 'true');
+    await menu.getByRole('button', { name: 'Replier Examens et résultats' }).click();
     await expect(menu.getByRole('link', { name: 'Rattrapages', exact: true })).toHaveCount(0);
-    await menu.getByRole('button', { name: 'Déplier Pédagogie' }).click();
+    await menu.getByRole('button', { name: 'Déplier Examens et résultats' }).click();
     await menu.getByRole('link', { name: 'Rattrapages', exact: true }).click();
     await expect(page.getByRole('heading', { name: 'Rattrapages', exact: true })).toBeVisible();
     if (width === 390) await page.getByRole('button', { name: 'Ouvrir la navigation' }).click();
     await expect(menu.getByRole('link', { name: 'Rattrapages', exact: true })).toHaveAttribute('aria-current', 'page');
     await expect(menu.locator('details')).toHaveCount(0);
-    await menu.getByRole('link', { name: 'Communication', exact: true }).click();
-    await expect(page.locator('.module-overview')).toBeVisible();
+    await menu.getByRole('button', { name: 'Déplier Communication', exact: true }).click();
+    await menu.getByRole('link', { name: 'Annonces', exact: true }).click();
+    await expect(page).toHaveURL(/\/communication\/annonces$/);
     if (width === 390) await expect(menu).not.toBeVisible();
 
   });

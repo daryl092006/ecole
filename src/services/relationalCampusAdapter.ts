@@ -69,8 +69,8 @@ export function projectRelationalCampus(snapshot: RelationalSnapshot, now = new 
     const curriculum = offering && curricula.get(text(offering, 'curriculum_id'));
     const group = enrollment && groups.get(text(membership(enrollment.id), 'group_id'));
     return [{ matricule: text(row, 'matricule'), firstname: text(person, 'firstname'), lastname: text(person, 'lastname'), email: text(person, 'email'), phone: text(person, 'phone'), gender: text(person, 'gender'), birthDate: text(person, 'birth_date'), nationality: text(person, 'nationality'), address: text(person, 'address'), city: text(person, 'city'), country: text(person, 'country'),
-      filiere: text(programs.get(text(curriculum, 'program_id')), 'name') || (enrollment ? 'Filière non renseignée' : 'À reprendre'), niveau: text(levels.get(text(offering, 'level_id')), 'name') || 'À reprendre', groupe: text(group, 'name') || 'Non affecté', groupId: group?.id || '', academicYearId: text(offering, 'academic_year_id'),
-      status: enrollment ? statuses[text(enrollment, 'status')] || 'Statut à vérifier' : 'Inscription à reprendre',
+      filiere: text(programs.get(text(curriculum, 'program_id')), 'name') || 'Filière non renseignée', niveau: text(levels.get(text(offering, 'level_id')), 'name') || 'Niveau non renseigné', groupe: text(group, 'name') || 'Non affecté', groupId: group?.id || '', academicYearId: text(offering, 'academic_year_id'),
+      status: enrollment ? statuses[text(enrollment, 'status')] || 'Statut à vérifier' : 'Sans inscription annuelle',
       financials: enrollment ? financials(enrollment.id) : { available: false, expected: 0, paid: 0, remaining: 0, installments: [] }, bourse: { active: false, type: '', percent: 0, amount: 0 }, history: [] }];
   }).sort((a, b) => a.lastname.localeCompare(b.lastname, 'fr') || a.firstname.localeCompare(b.firstname, 'fr'));
   data.enrollments = rows('enrollments').flatMap(row => {

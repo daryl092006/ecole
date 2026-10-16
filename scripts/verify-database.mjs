@@ -1,3 +1,4 @@
+import { prepareTestYear } from './academic-year-test-helpers.mjs';
 import assert from 'node:assert/strict';
 import { verifyAcademicYears } from './verify-academic-years.mjs';
 import { verifyWebsiteDatabase } from './verify-website-database.mjs';
@@ -53,7 +54,7 @@ try {
   const building = await insert('buildings', { site_id: site.id, code: 'A', name: 'Bâtiment A' });
   const room = await insert('rooms', { site_id: site.id, building_id: building.id, code: 'R1', name: 'Salle 1', capacity: 30 });
   const year = await insert('academic_years', { code: '2026-2027', name: '2026-2027', starts_on: '2026-01-01', ends_on: '2027-12-31', status: 'OUVERTE' });
-  const nextYear = await insert('academic_years', { code: '2028-2029', name: '2028-2029', starts_on: '2028-01-01', ends_on: '2029-12-31', status: 'OUVERTE' });
+  const nextYear = await insert('academic_years', { code: '2028-2029', name: '2028-2029', starts_on: '2028-01-01', ends_on: '2029-12-31', status: 'BROUILLON' });
   const cycle = await insert('cycles', { code: 'LICENCE', name: 'Licence' });
   const level = await insert('levels', { cycle_id: cycle.id, code: 'L1', name: 'Licence 1', position: 1 });
   const program = await insert('programs', { code: 'INF', name: 'Informatique' });
@@ -199,14 +200,6 @@ try {
     });
     assert.equal(Number(await scalar('select amount as value from escen.contract_lines where id = $1', [line.id])),1000);
     assert.equal(Number(await scalar('select expected as value from escen.contract_balances where contract_id = $1',[contract.id])),1200);
-  });
-  await check('Historique de groupe et de réinscription distinct des notes anciennes', async () => {
-    await db.query('update escen.enrollment_groups set valid_until = $1 where id = $2', ['2027-01-01', membership.id]);
-    await insert('enrollment_groups', { enrollment_id: enrollment.id, offering_id: offering.id, group_id: group2.id, valid_from: '2027-01-01', changed_by: account.id, reason: 'Changement de groupe' });
-    const nextOffering = await insert('academic_offerings', { curriculum_id: curriculum.id, academic_year_id: nextYear.id, level_id: level.id, site_id: site.id });
-    await insert('enrollments', { student_id: student.id, offering_id: nextOffering.id, status: 'REINSCRIT' });
-    assert.equal(await scalar('select count(*)::integer as value from escen.enrollments where student_id = $1', [student.id]), 2);
-    assert.equal(Number(await scalar('select value as value from escen.grades where id = $1', [grade.id])), 14);
   });
   await check('Jury et relevé conservent le bon étudiant, semestre et version des notes', async () => {
     const offeringSemester = (await db.query('select id from escen.offering_semesters where offering_id = $1',[offering.id])).rows[0].id;
@@ -405,9 +398,8 @@ try {
     assert.equal(await scalar('select count(*)::integer as value from escen.exam_papers where library_id=$1',[library]),2);
   });
   await verifyWebsiteDatabase({ db, check, account, level, program, year });
-  await verifyAcademicYears({ db, check, insert, account, year, level, site, curriculum, component, teacher, student });
   await check('Gestion sans site ni bâtiment : salles, formations, groupes et équipements', async () => {
-    const noLocationYear = await insert('academic_years', { code: 'NO-LOCATION', name: 'Année sans localisation', starts_on: '2031-01-01', ends_on: '2031-12-31', status: 'OUVERTE' });
+    const noLocationYear = await insert('academic_years', { code: 'NO-LOCATION', name: 'Année sans localisation', starts_on: '2031-01-01', ends_on: '2031-12-31', status: 'BROUILLON' });
     const room = await insert('rooms', { code: 'NO-LOCATION', name: 'Salle directe', capacity: 40 });
     assert.equal(room.site_id, null); assert.equal(room.building_id, null);
     await assert.rejects(insert('rooms', { code: 'NO-LOCATION', name: 'Doublon', capacity: 20 }), /unique/i);
@@ -452,7 +444,7 @@ try {
     await reject('delete from escen.academic_years where id = $1', [year.id], /Suppression/i);
   });
   await check('Groupe partagé : deux filières du même niveau, inscriptions distinctes et autre niveau refusé', async () => {
-    const sharedYear = await insert('academic_years', { code: 'SHARED-2030', name: '2030-2031', starts_on: '2030-09-01', ends_on: '2031-07-01', status: 'OUVERTE' });
+    const sharedYear = year;
     const sharedGroup = await insert('groups', { academic_year_id: sharedYear.id, level_id: level.id, name: 'Tronc commun L1' });
     for (const code of ['GESTION-SHARED', 'COMMERCE-SHARED']) {
       const p = await insert('programs', { code, name: code });
@@ -462,7 +454,7 @@ try {
       const person = await insert('people', { firstname: code, lastname: 'Test' });
       const pupil = await insert('students', { person_id: person.id, matricule: code });
       const registered = await insert('enrollments', { student_id: pupil.id, offering_id: o.id, status: 'INSCRIT' });
-      await insert('enrollment_groups', { enrollment_id: registered.id, offering_id: o.id, group_id: sharedGroup.id, valid_from: '2030-09-01', changed_by: account.id, reason: 'Groupe commun à plusieurs filières' });
+      await insert('enrollment_groups', { enrollment_id: registered.id, offering_id: o.id, group_id: sharedGroup.id, valid_from: '2026-09-01', changed_by: account.id, reason: 'Groupe commun à plusieurs filières' });
     }
     const result = await db.query('select count(distinct c.program_id)::int as n from escen.enrollment_groups eg join escen.enrollments e on e.id=eg.enrollment_id join escen.academic_offerings o on o.id=e.offering_id join escen.curricula c on c.id=o.curriculum_id where eg.group_id=$1', [sharedGroup.id]);
     assert.equal(result.rows[0].n, 2);
@@ -470,6 +462,17 @@ try {
     const otherCurriculum = await insert('curricula', { program_id: program.id, level_id: otherLevel.id, version: 1 });
     const otherOffering = await insert('academic_offerings', { academic_year_id: sharedYear.id, curriculum_id: otherCurriculum.id, level_id: otherLevel.id });
     await assert.rejects(insert('group_offerings', { group_id: sharedGroup.id, offering_id: otherOffering.id, academic_year_id: sharedYear.id, level_id: level.id }), /foreign key/i);
+  });
+  await verifyAcademicYears({ db, check, insert, account, year, level, site, curriculum, component, teacher, student });
+  await check('Historique de groupe et de réinscription distinct des notes anciennes', async () => {
+    await db.query('update escen.enrollment_groups set valid_until = $1 where id = $2', ['2027-01-01', membership.id]);
+    await insert('enrollment_groups', { enrollment_id: enrollment.id, offering_id: offering.id, group_id: group2.id, valid_from: '2027-01-01', changed_by: account.id, reason: 'Changement de groupe' });
+    const previousCount = await scalar('select count(*)::integer as value from escen.enrollments where student_id=$1', [student.id]);
+    const nextOffering = await prepareTestYear({ db, insert, yearId: nextYear.id, curriculum, level });
+    await scalar("select public.escen_academic_year_command($1,'IT','transition',$2,(select revision from escen_private.portal_revision where singleton),'Ouverture pour reinscription','OUVERTE') as value", [account.id, nextYear.id]);
+    await insert('enrollments', { student_id: student.id, offering_id: nextOffering.id, status: 'REINSCRIT' });
+    assert.equal(await scalar('select count(*)::integer as value from escen.enrollments where student_id = $1', [student.id]), previousCount + 1);
+    assert.equal(Number(await scalar('select value as value from escen.grades where id = $1', [grade.id])), 14);
   });
   console.log(`Base relationnelle : ${checks} groupes de contrôles PostgreSQL réussis.`);
 } catch (error) {

@@ -1,4 +1,5 @@
 'use client';
+import IconButton from '@/components/ui/IconButton';
 import CatalogTaskDialog from '@/components/modules/academic/CatalogTaskDialog';
 import LoadingState from '@/components/ui/LoadingState';
 import { useEffect, useState } from 'react';
@@ -38,8 +39,8 @@ export default function OnlineAdmissionsPanel({ onClose }: { onClose: () => void
   return <>{baseTask && <CatalogTaskDialog root={baseTask} onClose={() => setBaseTask(null)} onSaved={() => { setBaseTask(null); void loadWebsiteData<WebsiteManagement>('admissions', role).then(setData).catch(error => setMessage(error.message)); }} />}{!selected && !intake && <WorkPage title="Inscriptions en ligne" onClose={onClose}>
     <p>Les dossiers envoyés depuis le site arrivent ici. Leur réception ne crée pas une inscription académique ni un compte étudiant.</p>
     {message && !selected && !intake && <p role="alert" className="auth-error">{message}</p>}
-    <button className="btn btn-outline mb-2" onClick={() => setRevision(value => value + 1)}>Actualiser les dossiers</button>
-    {!data ? message ? <section className="card" role="alert"><p>Le chargement des inscriptions a échoué.</p><button className="btn btn-outline" onClick={() => setRevision(value => value + 1)}>Réessayer</button></section> : <LoadingState label="Chargement des inscriptions…" /> : <>
+    <IconButton className="btn btn-outline mb-2" onClick={() => setRevision(value => value + 1)} label="Actualiser les dossiers" />
+    {!data ? message ? <section className="card" role="alert"><p>Le chargement des inscriptions a échoué.</p><IconButton className="btn btn-outline" onClick={() => setRevision(value => value + 1)} label="Réessayer" /></section> : <LoadingState label="Chargement des inscriptions…" /> : <>
       <div className="card mb-2"><div className="card-header"><h2>Dossiers reçus du site</h2></div><label className="form-group">Rechercher un dossier<input className="input" value={filter} onChange={event => setFilter(event.target.value)} placeholder="Nom, email ou référence" /></label>
         {data.applications.length === 0 && <p>Aucun dossier reçu.</p>}
         {data.applications.filter(item => `${item.reference} ${item.identity.nom} ${item.identity.prenom} ${item.identity.email}`.toLowerCase().includes(filter.toLowerCase())).map(item => <article key={item.id} className="card mb-2"><h3>{item.identity.prenom} {item.identity.nom}</h3><p>{item.reference} · {item.intake_label} · {(data.years || []).find(year => year.id === item.academic_year_id)?.name || 'Année à rattacher'}</p><p>{item.status} · {item.identity.email}</p><button className="btn btn-outline" onClick={() => { setSelected(item); setIntake(null); setReason(''); setStatus(item.status === 'BROUILLON' ? 'RECU' : item.status); setConfirm(false); }}>Ouvrir le dossier</button></article>)}

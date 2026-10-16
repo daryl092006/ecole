@@ -39,8 +39,9 @@
     ".tmp/next-bottom-up-checked/types/**/*.ts",
     ".tmp/next-bottom-up-final/types/**/*.ts",
     ".tmp/next-bottom-up-ready/types/**/*.ts",
+    ".tmp/next-development/types/**/*.ts",
     "next-env.d.ts",
-    ".tmp/next-development/types/**/*.ts"
+    ".tmp/next-ui-development/types/**/*.ts"
   ],
   "exclude": [
     "node_modules"

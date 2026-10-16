@@ -1,7 +1,44 @@
 import assert from 'node:assert/strict';
+import { annualOfferingChanges, groupAnnualOfferings } from './annualOfferingService';
+import { assertOfferingPrepared } from './yearPreparationService';
 import {yearPreparation,assertYearPrepared,suggestNextAcademicYear,getPreviousYearConfigSummary,buildReconductChanges} from './yearPreparationService';
 const snapshot={revision:1,tables:{academic_years:[{id:'Y',name:'2025-2026',code:'2025-2026',starts_on:'2025-10-13',ends_on:'2026-06-30',status:'OUVERTE'}],academic_offerings:[{id:'O',academic_year_id:'Y',curriculum_id:'C',level_id:'L'}],curricula:[{id:'C',program_id:'P'}],programs:[{id:'P',name:'Informatique'}],levels:[{id:'L',name:'Licence 1'}],groups:[{id:'G',academic_year_id:'Y',name:'Groupe A',level_id:'L'}],group_offerings:[{id:'GO',offering_id:'O',group_id:'G',academic_year_id:'Y',level_id:'L'}],subjects:[{id:'S',academic_year_id:'Y'}],curriculum_components:[{id:'CC',curriculum_id:'C',subject_id:'S'}],annual_fee_schedules:[{id:'F1',academic_year_id:'Y',category:'SCOLARITE',amount:100},{id:'F2',academic_year_id:'Y',category:'INSCRIPTION',program_id:'P',level_id:'L',amount:50}],annual_payment_channels:[{id:'PM',academic_year_id:'Y',name:'Caisse',method:'ESPECES'}]}};
+const annualFixture = { revision: 1, tables: {
+  academic_years: [{ id: 'TARGET', status: 'BROUILLON' }, { id: 'CLOSED', status: 'CLOTUREE' }],
+  programs: [{ id: 'P', name: 'Informatique' }, { id: 'OTHER', name: 'Finance' }],
+  levels: [{ id: 'L1', name: 'Licence 1' }, { id: 'L2', name: 'Licence 2' }],
+  curricula: [{ id: 'C1', program_id: 'P', level_id: 'L1' }, { id: 'C2', program_id: 'P', level_id: 'L2' }],
+  academic_offerings: [{ id: 'SAVED', curriculum_id: 'C1', academic_year_id: 'TARGET', level_id: 'L1', delivery_mode: 'Présentiel' }],
+} };
+const selectedVariants = [{ curriculum_id: 'C1', delivery_mode: 'Présentiel' }, { curriculum_id: 'C1', delivery_mode: 'En ligne' }, { curriculum_id: 'C2', delivery_mode: 'Présentiel' }];
+const annualChanges = annualOfferingChanges(annualFixture, 'TARGET', 'P', selectedVariants, 'Choix des niveaux');
+assert.equal(annualChanges.length, 2);
+assert.deepEqual(annualChanges.map(change => [change.record.level_id, change.record.delivery_mode]), [['L1', 'En ligne'], ['L2', 'Présentiel']]);
+assert.ok(annualChanges.every(change => change.record.academic_year_id === 'TARGET' && change.record.reason === 'Choix des niveaux'));
+assert.equal(annualFixture.tables.academic_offerings.length, 1);
+assert.throws(() => annualOfferingChanges(annualFixture, 'TARGET', 'OTHER', selectedVariants, 'Test'), /niveaux enregistrés/);
+assert.throws(() => annualOfferingChanges(annualFixture, 'CLOSED', 'P', selectedVariants, 'Test'), /année en préparation/);
+assert.throws(() => annualOfferingChanges(annualFixture, 'TARGET', 'P', [selectedVariants[0], selectedVariants[0]], 'Test'), /deux fois/);
+const grouped = groupAnnualOfferings([
+  ...annualFixture.tables.academic_offerings,
+  { id: 'PENDING', curriculum_id: 'C2', level_id: 'L2', isPrefilled: true },
+  { id: 'UNKNOWN1', curriculum_id: null, level_id: 'L1' }, { id: 'UNKNOWN2', curriculum_id: null, level_id: 'L2' },
+], annualFixture);
+assert.equal(grouped.length, 3);
+assert.equal(grouped[0].name, 'Informatique');
+assert.equal(grouped[0].rows.length, 2);
+assert.equal(grouped[1].name, 'Filière à préciser');
+assert.notEqual(grouped[1].id, grouped[2].id);
 assert.ok(yearPreparation(snapshot,'Y').every(check=>check.ready));assertYearPrepared(snapshot,'Y');
+const unfinishedOtherFormation = { ...snapshot, tables: { ...snapshot.tables, academic_offerings: [...snapshot.tables.academic_offerings, { id: 'INCOMPLETE', academic_year_id: 'Y', curriculum_id: 'C', level_id: 'L' }] } };
+assert.throws(() => assertYearPrepared(unfinishedOtherFormation, 'Y'), /Année non prête/);
+assert.doesNotThrow(() => assertOfferingPrepared(unfinishedOtherFormation, 'Y', 'O'));
+assert.throws(() => assertOfferingPrepared(unfinishedOtherFormation, 'Y', 'INCOMPLETE'), /Formation non prête/);
+assert.throws(() => assertOfferingPrepared(unfinishedOtherFormation, 'OTHER', 'O'), /Formation non prête/);
+for (const table of ['group_offerings', 'curricula', 'programs', 'levels'] as const) {
+  const unavailable = { ...snapshot, tables: { ...snapshot.tables, [table]: snapshot.tables[table].map(row => ({ ...row, archived_at: '2026-01-01' })) } };
+  assert.throws(() => assertYearPrepared(unavailable, 'Y'), /Année non prête/, `${table} archivé ne prépare pas une année.`);
+}
 assert.throws(()=>assertYearPrepared(snapshot,'OTHER'),/Année non prête/);
 assert.equal(yearPreparation({...snapshot,tables:{...snapshot.tables,annual_fee_schedules:[snapshot.tables.annual_fee_schedules[0]]}},'Y').find(check=>check.key==='registration')?.ready,false);
 assert.equal(yearPreparation(snapshot,'Y').length,5);

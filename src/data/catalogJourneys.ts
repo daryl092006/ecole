@@ -1,8 +1,8 @@
 export const CATALOG_JOURNEYS: Record<string, { purpose: string; result: string; next?: string; nextLabel?: string }> = {
   academic_offerings: { purpose: 'Sélectionnez la filière et le niveau de la formation proposée cette année.', result: 'La formation sera proposée pour l’année choisie. Vous pourrez ensuite constituer ses groupes.' },
   group_offerings: { purpose: 'Ajoutez les filières accueillies dans ce groupe, une formation annuelle à la fois. Un même groupe peut réunir plusieurs filières du même niveau.', result: 'Cette filière sera ajoutée au groupe sans remplacer les autres. Chaque étudiant conserve sa propre filière dans son inscription.' },
-  curricula: { purpose: 'Définissez le programme d’une filière et d’un niveau. Les années suivantes peuvent réutiliser ce programme.', result: 'La maquette sera disponible pour les formations annuelles et l’organisation de leurs cours.' },
-  curriculum_semesters: { purpose: 'Organisez les périodes de cours du programme choisi.', result: 'Le semestre pourra accueillir les unités d’enseignement de cette maquette.' },
+  curricula: { purpose: 'Définissez le programme d’une filière et d’un niveau. Les années suivantes peuvent réutiliser ce programme.', result: 'Le programme de formation sera disponible pour les formations annuelles et l’organisation de leurs cours.' },
+  curriculum_semesters: { purpose: 'Organisez les périodes de cours du programme choisi.', result: 'Le semestre pourra accueillir les unités d’enseignement de ce programme de formation.' },
   teaching_units: { purpose: 'Regroupez les matières dans une unité du semestre choisi.', result: 'L’unité sera disponible pour le rattachement des matières et de leurs crédits.' },
   curriculum_components: { purpose: 'Choisissez une matière de l’année et son unité, puis indiquez son coefficient et ses crédits.', result: 'La matière entrera dans le programme de la formation choisie.' },
   annual_payment_channels: { purpose: 'Définissez les moyens de paiement et les caisses utilisables cette année.', result: 'Ce moyen sera proposé lors des encaissements rattachés à cette année.' },

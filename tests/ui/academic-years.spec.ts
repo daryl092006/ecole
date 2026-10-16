@@ -1,3 +1,4 @@
+import { academicYearClosureReview } from '../../src/services/academicYearClosureService';
 import { expect, test, type Page } from '@playwright/test';
 import { authenticateFixture, snapshot } from './persistent-fixture';
 import { filterSnapshotForAcademicYear } from '../../src/services/academicYearScopeService';
@@ -26,6 +27,7 @@ async function annualFixture(page: Page, configured = true) {
     return route.fulfill({ json: { ...filterSnapshotForAcademicYear({ ...source, revision }, selectedYearId), academicContext: { selection, selectedYearId, currentYearId, years } } });
   });
   await page.route('**/api/catalog/*', route => route.fulfill({ json: { revision, tables: { academic_years: years }, historyLinks: [] } }));
+  await page.route('**/api/academic-years?*', route => route.fulfill({ json: academicYearClosureReview({ ...source, revision }, new URL(route.request().url()).searchParams.get('yearId')!) }));
   await page.route('**/api/academic-years', async route => {
     const body = route.request().postDataJSON(); commands.push(body);
     if (fail) return route.fulfill({ status: 409, json: { error: 'Modification concurrente : actualisez.' } });
@@ -58,21 +60,32 @@ for (const width of [390, 1440]) {
   test(`Année institutionnelle : ouverture et désignation confirmées, erreur conservée à ${width}px`, async ({ page }) => {
     await page.setViewportSize({ width, height: 1000 }); const fixture = await annualFixture(page);
     await page.goto('/academique/referentiel?collection=academic_years');
+    await expect(page.getByRole('button', { name: 'Ouvrir l’année 2027-2028', exact: true })).toBeDisabled();
+    const confirm = async (button: string) => {
+      await page.getByRole('button', { name: button, exact: true }).click();
+      await page.getByLabel('Motif du changement', { exact: true }).fill('Fin des activités de l’ancienne année');
+      await page.getByRole('button', { name: 'Vérifier les conséquences', exact: true }).click();
+      await page.getByRole('button', { name: 'Confirmer le changement d’année', exact: true }).click();
+    };
+    await confirm('Retirer la désignation de l’année de travail');
+    await confirm('Préparer la clôture de 2026-2027');
+    await page.getByRole('button', { name: 'Bilan avant clôture de 2026-2027', exact: true }).click();
+    await confirm('Vérifier la clôture définitive');
     await page.getByRole('button', { name: 'Ouvrir l’année 2027-2028', exact: true }).click();
     await page.getByLabel('Motif du changement', { exact: true }).fill('Préparation officielle de la prochaine année');
     await page.getByRole('button', { name: 'Vérifier les conséquences', exact: true }).click();
-    expect(fixture.commands).toHaveLength(0);
+    expect(fixture.commands).toHaveLength(3);
     await page.getByRole('button', { name: 'Confirmer le changement d’année', exact: true }).click();
     await page.getByRole('button', { name: 'Utiliser 2027-2028 comme année de travail', exact: true }).click();
     await page.getByLabel('Motif du changement', { exact: true }).fill('Démarrage validé de la nouvelle année');
     await page.getByRole('button', { name: 'Vérifier les conséquences', exact: true }).click();
     await page.getByRole('button', { name: 'Confirmer le changement d’année', exact: true }).click();
     await expect(page.getByRole('combobox', { name: 'Année consultée', exact: true }).locator('option:checked')).toHaveText('Année de travail : 2027-2028');
-    expect(fixture.commands[0]).toMatchObject({ action: 'transition', status: 'OUVERTE', yearId: futureId });
-    expect(fixture.commands[1]).toMatchObject({ action: 'current', yearId: futureId });
+    expect(fixture.commands[3]).toMatchObject({ action: 'transition', status: 'OUVERTE', yearId: futureId });
+    expect(fixture.commands[4]).toMatchObject({ action: 'current', yearId: futureId });
     expect(fixture.source.tables.enrollments).toHaveLength(2);
     fixture.fail();
-    await page.getByRole('button', { name: 'Utiliser 2026-2027 comme année de travail', exact: true }).click();
+    await page.getByRole('button', { name: 'Retirer la désignation de l’année de travail', exact: true }).click();
     await page.getByLabel('Motif du changement', { exact: true }).fill('Valeur conservée si la version a changé');
     await page.getByRole('button', { name: 'Vérifier les conséquences', exact: true }).click();
     await page.getByRole('button', { name: 'Confirmer le changement d’année', exact: true }).click();

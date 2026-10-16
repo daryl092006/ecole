@@ -1,3 +1,4 @@
+import IconButton from '@/components/ui/IconButton';
 import EnrollmentDialog from './EnrollmentDialog';
 import OnlineAdmissionsPanel from './website/OnlineAdmissionsPanel';
 import ResponsiveTable from '@/components/ui/ResponsiveTable';
@@ -95,21 +96,19 @@ export default function EtudiantsModule({ persistent = false, activeRole, create
                         <div className="cell-sub">{s.niveau} · {s.groupe}</div>
                       </td>
                       {canViewFinance && <td>
-                        {s.financials.available === false ? <span className="cell-sub">Historique financier à consulter</span> : <div style={{ fontSize: '0.8rem' }}>
+                        {s.financials.available === false ? <span className="cell-sub">Situation financière non établie</span> : <div style={{ fontSize: '0.8rem' }}>
                           <span style={{ color: 'var(--success)' }}>Payé: {fmtMoney(s.financials.paid)}</span><br />
                           <span style={{ color: 'var(--warning)' }}>Reste: {fmtMoney(s.financials.remaining)}</span>
                         </div>}
                       </td>}
                       {canViewFinance && <td>
-                        {s.financials.available === false ? <span className="cell-sub">À reprendre</span> : s.bourse.active
+                        {s.financials.available === false ? <span className="cell-sub">Non établie</span> : s.bourse.active
                           ? <span className="pill pill-purple">{s.bourse.percent}% – {s.bourse.type}</span>
                           : <span className="text-muted">Aucune</span>}
                       </td>}
                       <td><span className={`pill ${['Inscrit', 'Réinscrit'].includes(s.status) ? 'pill-success' : 'pill-default'}`}>{s.status}</span></td>
                       <td>
-                        <button className="btn btn-sm btn-outline" onClick={() => setSelectedStudent(s)}>
-                          Fiche &amp; Dossier
-                        </button>
+                        <IconButton className="btn btn-sm btn-outline" onClick={() => setSelectedStudent(s)} label="Fiche & Dossier" />
                       </td>
                     </tr>
                   ))}

@@ -214,3 +214,6 @@ require('../src/services/academicYearScopeService.test.ts');
 require('../src/services/reenrollmentService.test.ts');
 require('../src/services/yearPreparationService.test.ts');
 require('../src/services/catalogDependencyService.test.ts').verifyCatalogDependencies().catch(error => { console.error(error); process.exitCode = 1; });
+
+require('../src/services/enrollmentGroupReferenceService.test.ts');
+require('../src/services/academicYearClosureService.test.ts');

@@ -1,4 +1,5 @@
 'use client';
+import IconButton from '@/components/ui/IconButton';
 import Link from 'next/link';
 import { useState } from 'react';
 import { usePortal } from '@/hooks/usePortal';
@@ -16,10 +17,10 @@ export default function HistoryRecordDetails({ table, record, onClose }: { table
   if (!catalog) return null;
   return <WorkPage title={`${spec.title} · ${student ? student.firstname + ' ' + student.lastname : 'Référence #' + record.sourceId}`} onClose={onClose}>
     {!!record.issues.length && <section className="review-notice"><div><strong>Informations à vérifier</strong><p>{record.issues.join(' · ')}</p></div></section>}
-    <dl className="record-details-grid">{Object.entries(record.values).map(([key, value]) => <div key={key}><dt>{spec.fields[key] || key.replace(/_/g, ' ')}</dt><dd>{historyValue(key, value, record, catalog)}{typeof value === 'string' && /\.(pdf|jpe?g|png)$/i.test(value) && (record.files?.[key] === false ? <span className="missing-file-label">Fichier indisponible</span> : <button className="btn btn-outline" disabled={loading} onClick={() => {
+    <dl className="record-details-grid">{Object.entries(record.values).map(([key, value]) => <div key={key}><dt>{spec.fields[key] || key.replace(/_/g, ' ')}</dt><dd>{historyValue(key, value, record, catalog)}{typeof value === 'string' && /\.(pdf|jpe?g|png)$/i.test(value) && (record.files?.[key] === false ? <span className="missing-file-label">Fichier indisponible</span> : <IconButton className="btn btn-outline" disabled={loading} onClick={() => {
       setLoading(true); setError('');
       void loadHistoryDocument(record.id, key, portal.activeRole).then(url => { const link = document.createElement('a'); link.href = url; link.target = '_blank'; link.rel = 'noopener noreferrer'; link.click(); }).catch(cause => setError(cause instanceof Error ? cause.message : 'Téléchargement impossible.')).finally(() => setLoading(false));
-    }}>Télécharger la pièce</button>)}</dd></div>)}</dl>
+    }} label="Télécharger la pièce" />)}</dd></div>)}</dl>
     {error && <p role="alert">{error}</p>}{student && <Link className="btn btn-primary" href={studentPath(student.matricule)}>Ouvrir le dossier de {student.firstname} {student.lastname}</Link>}
     
   </WorkPage>;

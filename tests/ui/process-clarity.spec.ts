@@ -49,7 +49,7 @@ test('Préparation : créer un groupe et ses deux filières ensemble', async ({ 
   await page.getByRole('button', { name: 'Préparer 2026-2027', exact: true }).click();
   await page.getByRole('button', { name: 'Configurer groupes', exact: true }).click();
   await expect(page.getByRole('dialog').getByRole('searchbox', { name: 'Rechercher', exact: true })).toHaveCount(0);
-  const form = page.getByRole('dialog', { name: 'Ajouter un groupe · 2026-2027', exact: true });
+  const form = page.getByRole('dialog').filter({ has: page.getByRole('heading', { name: 'Ajouter un groupe · 2026-2027', exact: true }) });
   await form.getByLabel('Nom', { exact: true }).fill('Groupe informatique A');
   await form.getByRole('checkbox', { name: 'Informatique L1' }).check();
   await form.getByRole('checkbox', { name: 'Gestion L1' }).check();
@@ -84,14 +84,15 @@ test('Préparation : les bases sont enregistrées avant les formations, sans cha
     { title: 'Ajouter une filière', code: 'INFO', name: 'Informatique' },
     { title: 'Ajouter un cycle', code: 'LIC', name: 'Licence' },
     { title: 'Ajouter un niveau', code: 'L1', name: 'Licence 1', position: true },
-    { title: 'Ajouter une maquette' },
-    { title: 'Ajouter une formation annuelle' },
+    { title: 'Ajouter un programme de formation' },
+    { title: 'Choisir une filière et ses niveaux', annual: true },
   ]) {
-    const form = page.getByRole('dialog', { name: `${step.title} · 2026-2027`, exact: true });
+    const form = page.getByRole('dialog').filter({ has: page.getByRole('heading', { name: `${step.title} · 2026-2027`, exact: true }) });
     await expect(form).toBeVisible();
     if (step.code) await form.getByLabel('Code', { exact: true }).fill(step.code);
     if (step.name) await form.getByLabel('Nom', { exact: true }).fill(step.name);
     if (step.position) await form.getByLabel('Ordre dans le cycle', { exact: true }).fill('1');
+    if ('annual' in step) { await form.getByRole('combobox', { name: 'Filière', exact: true }).selectOption('programs'); await form.getByRole('checkbox', { name: 'Licence 1 · Présentiel', exact: true }).check(); }
     const before = saved.length;
     await form.getByRole('button', { name: 'Vérifier les informations', exact: true }).click(); expect(saved).toHaveLength(before);
     await form.getByRole('button', { name: 'Confirmer l’enregistrement', exact: true }).click();

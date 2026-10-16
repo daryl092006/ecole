@@ -1,4 +1,5 @@
 'use client';
+import IconButton from '@/components/ui/IconButton';
 import ScheduleCalendar from '@/components/ui/ScheduleCalendar';
 import LoadingState from '@/components/ui/LoadingState';
 import Link from 'next/link';
@@ -21,7 +22,7 @@ export default function ArchiveSchedule() {
     if (catalog) void loadAllHistoryRecords('emploi_du_temps', activeRole, { query: '', flagged: false }, controller.signal).then(result => { if (!controller.signal.aborted) setRecords(result.records); }).catch(cause => { if (!controller.signal.aborted) setError(cause instanceof Error ? cause.message : 'Planning indisponible.'); });
     return () => controller.abort();
   }, [activeRole, catalog, retry]);
-  if (history.error || error) return <section className="card" role="alert"><p>{history.error || error}</p><button className="btn btn-primary" onClick={() => { history.retry(); setRetry(value => value + 1); }}>Réessayer le planning</button></section>;
+  if (history.error || error) return <section className="card" role="alert"><p>{history.error || error}</p><IconButton className="btn btn-primary" onClick={() => { history.retry(); setRetry(value => value + 1); }} label="Réessayer le planning" /></section>;
   if (!catalog || !records) return <LoadingState label="Chargement du planning…" />;
   const value = (row: HistoryRecord, key: string) => historyValue(key, row.values[key], row, catalog);
   const day = (row: HistoryRecord) => /^\d{4}-\d{2}-\d{2}/.test(String(row.values.debut)) ? String(row.values.debut).slice(0, 10) : '';

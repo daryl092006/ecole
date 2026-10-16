@@ -54,7 +54,7 @@ for (const width of [390, 1440]) {
     await page.getByRole('button', { name: 'Effacer les filtres' }).click();
     if (width < 800) await page.getByRole('button', { name: 'Ouvrir la navigation', exact: true }).click();
     const navigation = page.getByRole(width < 800 ? 'dialog' : 'complementary', { name: 'Navigation principale' });
-    await navigation.getByRole('button', { name: 'Déplier Pédagogie', exact: true }).click();
+    await navigation.getByRole('button', { name: 'Déplier Examens et résultats', exact: true }).click();
     await expect(navigation.getByRole('link', { name: 'Notes et résultats', exact: true })).toBeVisible();
     await navigation.getByRole('link', { name: 'Notes et résultats', exact: true }).click();
     await expect(page.getByRole('heading', { name: 'Notes et résultats', exact: true })).toBeVisible();

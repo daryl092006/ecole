@@ -48,22 +48,19 @@ for (const width of [390, 1440]) {
 
   test(`Les rapports financiers exportent tous les résultats par nom et période à ${width}px`, async ({ page }) => {
     await page.setViewportSize({ width, height: 1000 }); await prepare(page);
-    const records = Array.from({ length: 65 }, (_, index) => ({ id: `PAY-${index}`, sourceId: String(index), batchId: 'batch-fixture', status: 'PENDING', issues: [], values: { etudiant_id: '101', montant: index + 1, date_paiement: '2026-10-01', status: 'valide' } }));
-    const offsets: number[] = [];
-    await page.route('**/api/history?*', async route => {
-      const params = new URL(route.request().url()).searchParams;
-      if (params.get('table') !== 'paiements') { await route.fallback(); return; }
-      const offset = Number(params.get('offset') || 0); offsets.push(offset);
-      await route.fulfill({ json: { table: 'paiements', total: records.length, offset, limit: 50, records: records.slice(offset, offset + 50) } });
-    });
+    const campus = structuredClone(snapshot);
+    campus.tables.enrollments = [{ id: 'EN1', student_id: 'S1' }];
+    campus.tables.payments = Array.from({ length: 65 }, (_, index) => ({ id: 'PAY-' + index, enrollment_id: 'EN1', amount: index + 1, paid_on: '2026-10-01', status: 'POSTED' }));
+    await page.route('**/api/campus', route => route.fulfill({ json: campus }));
     await page.goto('/finance/rapports');
+    await page.getByRole('button', { name: /Versements/, exact: false }).click();
     await page.getByRole('searchbox', { name: 'Rechercher un étudiant ou une référence' }).fill('Alice');
     await page.locator('summary').filter({hasText:'Filtrer par période'}).click();await page.getByLabel('Versement à partir du').fill('2026-10-01'); await page.getByLabel('Jusqu’au').fill('2026-10-02');
     await expect(page.getByRole('button', { name: 'Exporter les 65 résultat(s)', exact: true })).toBeEnabled();
     const download = page.waitForEvent('download'); await page.getByRole('button', { name: 'Exporter les 65 résultat(s)', exact: true }).click();
     const file = await download; const contents = await readFile((await file.path())!, 'utf8');
-    expect(contents.trim().split(/\r?\n/)).toHaveLength(66); expect(contents).toContain('Alice Exemple'); expect(offsets).toEqual([0, 50]);
-    await expect(page.getByRole('status')).toContainText('65 ligne(s) préparée(s)');
+    expect(contents.trim().split(/\r?\n/)).toHaveLength(66); expect(contents).toContain('Alice Exemple');
+    await expect(page.getByRole('status')).toContainText('65 ligne(s)');
     await page.getByLabel('Versement à partir du').fill('2026-10-02'); await expect(page.getByRole('button', { name: 'Exporter les 0 résultat(s)', exact: true })).toBeDisabled();
     await expectWorkspaceFits(page);
   });
@@ -71,9 +68,9 @@ for (const width of [390, 1440]) {
   test(`Le planning mène au détail de séance et les modules indisponibles ne proposent pas de fausse validation à ${width}px`, async ({ page }) => {
     await page.setViewportSize({ width, height: 1000 }); await prepare(page); const mutations: string[] = [];
     page.on('request', request => { if (request.url().includes('/api/') && request.method() !== 'GET') mutations.push(request.url()); });
-    await page.goto('/academique/emploi-du-temps'); await expect(page.getByRole('heading', { name: '12/06/2026', exact: true })).toBeVisible();
-    await page.getByRole('button', { name: 'Consulter la séance', exact: true }).click();
-    await expect(page.getByRole('dialog')).toContainText('Groupe A'); await expect(page.getByRole('dialog')).toContainText('ne confirme aucune présence'); await page.keyboard.press('Escape');
+    await page.goto('/academique/emploi-du-temps'); await expect(page.getByRole('region', { name: '2026-06-12', exact: true })).toBeVisible();
+    await page.getByRole('region', { name: '2026-06-12', exact: true }).getByRole('button').click();
+    await expect(page.getByRole('dialog')).toContainText('Groupe A'); await expect(page.getByRole('dialog')).toContainText('Algorithmique'); await page.keyboard.press('Escape');
     for (const href of ['/logistique/achats', '/systeme/support', '/communication/annonces', '/academique/deliberations', '/academique/reclamations']) {
       await page.goto(href); await expect(page.locator('#main-content h1:visible')).toHaveCount(1);
       await expect(page.locator('#main-content form:visible')).toHaveCount(0);

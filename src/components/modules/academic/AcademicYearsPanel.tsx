@@ -1,3 +1,4 @@
+import IconButton from '@/components/ui/IconButton';
 import { focusForm } from '@/utils/formFocus';
 import { useRef, useState } from 'react';
 import type { AcademicYear, RoleName } from '@/types';
@@ -117,7 +118,7 @@ export default function AcademicYearsPanel({ academicYears, actorRole, onChange 
           <div className="cell-sub">Du {year.startDate} au {year.endDate} · {year.active ? 'Année active' : 'Non active'}</div>
         </div>
         <div className="btn-group">
-          {year.status !== 'CLOTUREE' && <button type="button" className="btn btn-sm btn-outline" onClick={() => edit(year)}>Modifier</button>}
+          {year.status !== 'CLOTUREE' && <IconButton type="button" className="btn btn-sm btn-outline" onClick={() => edit(year)} label="Modifier" />}
           {year.status === 'BROUILLON' && hasPermission(actorRole, 'academic.year.open') && <button type="button" className="btn btn-sm btn-primary" onClick={() => openYear(year)}>Ouvrir l’année</button>}
           {['OUVERTE', 'EN_CLOTURE'].includes(year.status) && hasPermission(actorRole, 'academic.year.open') && <button type="button" className="btn btn-sm btn-outline" onClick={() => { setClosingId(year.id); setClosingReason(''); }}>{year.status === 'OUVERTE' ? 'Préparer la clôture' : 'Clôturer l’année'}</button>}
         </div>
@@ -141,6 +142,6 @@ export default function AcademicYearsPanel({ academicYears, actorRole, onChange 
         const updated = transitionAcademicYear(year, target, { actor: actorRole, role: actorRole, reason: closingReason });
         onChange(academicYears.map(item => item.id === updated.id ? updated : item)); portal.logEvent('Clôture année', JSON.stringify({ entity: year.id, oldValue: year.status, newValue: target, reason: closingReason })); setClosingId(''); setMessage('Statut de l’année mis à jour.');
       } catch (error) { setErrors({ form: error instanceof Error ? error.message : 'Clôture impossible.' }); }
-    }}><label className="form-group">Motif de clôture<textarea autoFocus required minLength={3} className="input" value={closingReason} onChange={event => setClosingReason(event.target.value)} /></label><div className="btn-group"><button className="btn btn-primary">Confirmer le changement de statut</button><button type="button" className="btn btn-outline" onClick={() => setClosingId('')}>Fermer</button></div></form>}
+    }}><label className="form-group">Motif de clôture<textarea autoFocus required minLength={3} className="input" value={closingReason} onChange={event => setClosingReason(event.target.value)} /></label><div className="btn-group"><button className="btn btn-primary">Confirmer le changement de statut</button><IconButton type="button" className="btn btn-outline" onClick={() => setClosingId('')} label="Fermer" /></div></form>}
   </>;
 }

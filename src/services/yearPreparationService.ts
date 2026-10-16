@@ -99,7 +99,7 @@ export function getPreviousYearConfigSummary(snapshot: RelationalSnapshot, previ
     const curr = curricula.get(String(o.curriculum_id));
     const prog = curr ? programs.get(String(curr.program_id)) : null;
     const lvl = levels.get(String(o.level_id));
-    const parts = [prog?.name || 'Formation', lvl?.name, o.delivery_mode].filter(Boolean);
+    const parts = [prog?.name || 'Filière à préciser', lvl?.name, o.delivery_mode || 'Mode non renseigné'].filter(Boolean);
     return parts.join(' · ');
   });
 
@@ -139,8 +139,9 @@ export function getPreviousYearConfigSummary(snapshot: RelationalSnapshot, previ
     const lvl = levels.get(String(o.level_id));
     return {
       ...o,
-      _programName: prog?.name || 'Formation',
-      _curriculumName: prog?.name || curr?.name || 'Maquette',
+      _programId: prog?.id || null,
+      _programName: prog?.name || 'Filière à préciser',
+      _curriculumName: prog?.name || curr?.name || 'Filière à préciser',
       _levelName: lvl?.name || 'Niveau',
     };
   });
@@ -383,7 +384,7 @@ export function buildReconductChanges(
 }
 
 export function yearPreparation(snapshot:RelationalSnapshot,yearId:string):YearPreparationCheck[]{
-  const rows=(table:string)=>snapshot.tables[table] || [];
+  const rows=(table:string)=>(snapshot.tables[table] || []).filter(row=>!row.archived_at && row.active!==false);
   const annual=(table:string)=>rows(table).filter(row=>row.academic_year_id===yearId && !row.archived_at);
   const offerings=annual('academic_offerings');
   const groups=annual('groups');const fees=annual('annual_fee_schedules');
@@ -392,8 +393,8 @@ export function yearPreparation(snapshot:RelationalSnapshot,yearId:string):YearP
     return fees.some(fee=>fee.category===category && (!fee.program_id || fee.program_id===curriculum?.program_id) && (!fee.level_id || fee.level_id===offering.level_id) && (!fee.delivery_mode || fee.delivery_mode===offering.delivery_mode));
   });
   return [
-    {key:'offerings',label:'Filières et niveaux proposés cette année',ready:offerings.length>0,detail:offerings.length ? `${offerings.length} formation(s) proposée(s).` : 'Ajoutez au moins une formation pour cette année ; réutilisez les filières et niveaux existants.',href:'/academique/referentiel?collection=academic_offerings'},
-    {key:'groups',label:'Groupes reliés aux formations annuelles',detail:'Chaque formation proposée doit disposer d’un groupe rattaché pour cette année.',ready:offerings.length>0 && offerings.every(offering=>rows('group_offerings').some(link=>link.offering_id===offering.id && groups.some(group=>group.id===link.group_id))),href:'/academique/referentiel?collection=group_offerings'},
+    {key:'offerings',label:'Filières et niveaux proposés cette année',ready:offerings.length>0 && offerings.every(offering=>rows('curricula').some(curriculum=>curriculum.id===offering.curriculum_id && rows('programs').some(program=>program.id===curriculum.program_id)) && rows('levels').some(level=>level.id===offering.level_id)),detail:offerings.length ? `${offerings.length} formation(s) proposée(s). Vérifiez que leurs filières, niveaux et programmes sont disponibles.` : 'Ajoutez au moins une formation pour cette année ; réutilisez les filières et niveaux existants.',href:'/academique/referentiel?collection=academic_offerings'},
+    {key:'groups',label:'Groupes reliés aux formations annuelles',detail:'Chaque formation proposée doit disposer d’un groupe rattaché pour cette année.',ready:offerings.length>0 && offerings.every(offering=>rows('group_offerings').some(link=>link.offering_id===offering.id && link.academic_year_id===yearId && link.level_id===offering.level_id && groups.some(group=>group.id===link.group_id && group.level_id===offering.level_id))),href:'/academique/referentiel?collection=group_offerings'},
     {key:'tuition',label:'Frais de scolarité pour chaque formation',detail:'Un tarif commun suffit s’il s’applique à toutes les formations ; sinon, précisez filière et niveau.',ready:covered('SCOLARITE'),href:'/finance/contrats'},
     {key:'registration',label:'Frais d’inscription pour chaque formation',detail:'Un tarif commun ou des tarifs par filière et niveau doivent couvrir les formations proposées.',ready:covered('INSCRIPTION'),href:'/finance/contrats'},
     {key:'payments',label:'Modes et caisses de paiement',detail:'Renseignez uniquement les moyens de paiement qui seront effectivement utilisés cette année.',ready:annual('annual_payment_channels').length>0,href:'/finance/contrats?collection=annual_payment_channels'},
@@ -402,4 +403,10 @@ export function yearPreparation(snapshot:RelationalSnapshot,yearId:string):YearP
 export function assertYearPrepared(snapshot:RelationalSnapshot,yearId:string){
   const missing=yearPreparation(snapshot,yearId).filter(check=>!check.ready);
   if(missing.length)throw new Error(`Année non prête : ${missing.map(check=>check.label).join(' ; ')}.`);
+}
+
+export function assertOfferingPrepared(snapshot: RelationalSnapshot, yearId: string, offeringId: string) {
+  const scoped = { ...snapshot, tables: { ...snapshot.tables, academic_offerings: (snapshot.tables.academic_offerings || []).filter(row => row.id === offeringId && row.academic_year_id === yearId) } };
+  const missing = yearPreparation(scoped, yearId).filter(check => !check.ready);
+  if (missing.length) throw new Error(`Formation non prête : ${missing.map(check => check.label).join(' ; ')}.`);
 }
