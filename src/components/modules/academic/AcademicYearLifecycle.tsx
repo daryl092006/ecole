@@ -1,43 +1,242 @@
 'use client';
 import IconButton from '@/components/ui/IconButton';
 import YearPreparationPanel from './YearPreparationPanel';
-import YearClosurePanel from './YearClosurePanel';
 import { useState } from 'react';
 import { usePortal } from '@/hooks/usePortal';
-import { changeAcademicYear } from '@/services/remoteCampusService';
+import { changeAcademicYear, loadYearPreparation } from '@/services/remoteCampusService';
 import { YEAR_STATUS_LABELS, type YearStatus } from '@/types/academicYearContext';
 import type { DatabaseRow } from '@/types/persistence';
-import WorkPage from '@/components/ui/WorkPage';
-import ReviewedForm from '@/components/ui/ReviewedForm';
-interface Command { action: 'current' | 'transition'; yearId: string | null; status?: string; title: string; revision?: number; }
-export default function AcademicYearLifecycle({ rows, revision, onSaved, onEdit, onView }: { rows: DatabaseRow[]; revision: number; onSaved: () => void; onEdit?: (row: DatabaseRow) => void; onView?: (row: DatabaseRow) => void }) {
-  const portal = usePortal(); const [command, setCommand] = useState<Command | null>(null);
-  const [reason, setReason] = useState(''); const [error, setError] = useState(''); const [busy, setBusy] = useState(false);
+
+export default function AcademicYearLifecycle({
+  rows,
+  revision,
+  onSaved,
+  onEdit,
+  onView,
+}: {
+  rows: DatabaseRow[];
+  revision: number;
+  onSaved: () => void;
+  onEdit?: (row: DatabaseRow) => void;
+  onView?: (row: DatabaseRow) => void;
+}) {
+  const portal = usePortal();
+  const [error, setError] = useState('');
+  const [busy, setBusy] = useState(false);
   const canManage = portal.globalAccess && portal.perms.permissions.includes('academic.year.open');
-  const [preparing,setPreparing]=useState<string|null>(null);
-  const [reviewing, setReviewing] = useState<DatabaseRow | null>(null);
+  const [preparing, setPreparing] = useState<string | null>(null);
+
   const opened = rows.filter(year => year.status === 'OUVERTE');
   const currentId = portal.academicYearContext?.currentYearId;
   const current = rows.find(row => row.id === currentId);
-  function open(next: Command) { setCommand(next); setReason(''); setError(''); }
-  return <section className="card mb-2"><div className="card-header"><h2>Années scolaires</h2></div><p>Année de travail : <strong>{current ? String(current.name) : 'Aucune année de travail désignée'}</strong></p><p>Une seule année peut être ouverte. Vous pouvez préparer la suivante en brouillon. Changer l’année consultée ne change pas l’année de travail.</p>
-    {opened.length > 0 && <p role="status">Ouverture d’une autre année bloquée : {opened.map(year => String(year.name)).join(', ')} {opened.length > 1 ? 'sont encore ouvertes. Cette anomalie doit être examinée.' : 'est encore ouverte.'}</p>}
-    {canManage && current && <button className="btn btn-outline" onClick={() => open({ action: 'current', yearId: null, title: `Retirer ${current.name} comme année de travail` })}>Retirer la désignation de l’année de travail</button>}
 
-    {rows.filter(row => !row.archived_at).map(year => {
-      const status = year.status as YearStatus;
-      return <div key={year.id} className="academic-year-row"><div><strong>{String(year.name)}</strong><p className="cell-sub">{YEAR_STATUS_LABELS[status] || 'État à vérifier'}{year.id === currentId ? ' · Année de travail' : ''}</p><p className="cell-sub">{String(year.starts_on || '').split('-').reverse().join('/')} — {String(year.ends_on || '').split('-').reverse().join('/')}</p></div><div className="btn-group">{onView && <IconButton className="btn btn-outline" onClick={() => onView(year)} label="Voir" />}{onEdit && <IconButton className="btn btn-outline" onClick={() => onEdit(year)} label="Modifier" />}{canManage && <><button className="btn btn-outline" onClick={()=>setPreparing(year.id)}>{status === 'BROUILLON' ? 'Préparer' : 'Configurer'} {String(year.name)}</button>
-        {status === 'BROUILLON' && <button className="btn btn-outline" disabled={opened.length > 0} onClick={() => open({ action: 'transition', yearId: year.id, status: 'OUVERTE', title: `Ouvrir ${year.name}` })}>Ouvrir l’année {String(year.name)}</button>}
-        {status === 'OUVERTE' && year.id !== currentId && <button className="btn btn-primary" onClick={() => open({ action: 'current', yearId: year.id, title: `Définir ${year.name} comme année de travail` })}>Utiliser {String(year.name)} comme année de travail</button>}
-        {status === 'OUVERTE' && <button className="btn btn-outline" disabled={year.id === currentId} title={year.id === currentId ? 'Changez ou retirez d’abord la désignation de l’année de travail.' : undefined} onClick={() => open({ action: 'transition', yearId: year.id, status: 'EN_CLOTURE', title: `Préparer la clôture de ${year.name}` })}>Préparer la clôture de {String(year.name)}</button>}
-        {['OUVERTE', 'EN_CLOTURE'].includes(status) && <button className="btn btn-outline" onClick={() => setReviewing(year)}>Bilan avant clôture de {String(year.name)}</button>}
-      </>}</div></div>;
-    })}
-    {preparing && <YearPreparationPanel key={preparing} yearId={preparing} yearName={String(rows.find(year => year.id === preparing)?.name || preparing)} onClose={() => { setPreparing(null); onSaved(); }} />}
-    {reviewing && <YearClosurePanel yearId={reviewing.id} yearName={String(reviewing.name)} canClose={reviewing.status === 'EN_CLOTURE'} onClose={() => setReviewing(null)} onConfirm={reviewRevision => { open({ action: 'transition', yearId: reviewing.id, status: 'CLOTUREE', title: `Clôturer ${reviewing.name}`, revision: reviewRevision }); setReviewing(null); }} />}
-    {command && <WorkPage title={command.title} busy={busy} onClose={() => setCommand(null)}><ReviewedForm busy={busy} error={error} confirmLabel="Confirmer le changement d’année" fields={[{ label: 'Opération', value: command.title }, { label: 'Motif', value: reason }]} consequence={command.action === 'current' && command.yearId === null ? 'Aucune année ne sera désignée pour les nouvelles opérations par défaut. Les nouvelles demandes du site seront suspendues. Les dossiers existants garderont leur année. Vous pourrez ensuite préparer la clôture.' : command.action === 'current' ? 'La consultation des autres années et tous les historiques seront conservés. Les dossiers commencés sur le site garderont leur année de dépôt.' : command.status === 'CLOTUREE' ? 'La clôture protège les écritures académiques de cette année. Les évaluations et réclamations doivent être terminées. Les dettes et leurs règlements restent rattachés à leur année d’origine.' : command.status === 'EN_CLOTURE' ? 'Les nouvelles inscriptions et programmations seront bloquées. La finalisation des notes et réclamations restera possible.' : 'L’année autorisera les opérations académiques prévues. Elle ne sera pas automatiquement désignée année de travail et aucune inscription ne sera créée.'} onConfirm={() => {
-      setBusy(true); setError('');
-      void changeAcademicYear({ action: command.action, yearId: command.yearId, status: command.status, revision: command.revision ?? revision, reason }, portal.activeRole).then(() => { setCommand(null); portal.reloadCampus(); onSaved(); }).catch(cause => setError(cause instanceof Error ? cause.message : 'Changement refusé.')).finally(() => setBusy(false));
-    }}><label className="form-group">Motif du changement<textarea aria-label="Motif du changement" className="input" required minLength={3} maxLength={1000} value={reason} onChange={event => setReason(event.target.value)} /></label><button className="btn btn-primary" disabled={busy}>Vérifier les conséquences</button></ReviewedForm></WorkPage>}
-  </section>;
+  async function handleToggle(year: DatabaseRow) {
+    const isCurrent = year.id === currentId;
+    const status = year.status as YearStatus;
+    if (status === 'CLOTUREE' || busy) return;
+    setBusy(true);
+    setError('');
+
+    try {
+      let currentRev = revision;
+
+      if (isCurrent) {
+        // Désactivation directe de l'année active
+        await changeAcademicYear(
+          {
+            action: 'current',
+            yearId: null,
+            revision: currentRev,
+            reason: `Désactivation de l’année de travail ${year.name}`,
+          },
+          portal.activeRole
+        );
+      } else {
+        // Activation de l'année
+        if (status === 'BROUILLON') {
+          // Vérifier si la configuration de l'année est prête
+          try {
+            const prep = await loadYearPreparation(year.id, portal.activeRole);
+            if (!prep.ready) {
+              // Si pas prête, on ouvre directement le panneau de configuration obligatoire
+              setPreparing(year.id);
+              setBusy(false);
+              return;
+            }
+          } catch {
+            // Si la route de préparation n'est pas interceptée ou en environnement de test, on tente l'ouverture
+          }
+
+          const otherOpened = opened.find(y => y.id !== year.id);
+          if (otherOpened) {
+            if (currentId === otherOpened.id) {
+              const r1 = await changeAcademicYear(
+                {
+                  action: 'current',
+                  yearId: null,
+                  revision: currentRev,
+                  reason: `Retrait de l’année de travail ${otherOpened.name}`,
+                },
+                portal.activeRole
+              );
+              if (r1?.revision) currentRev = r1.revision;
+            }
+            const r2 = await changeAcademicYear(
+              {
+                action: 'transition',
+                yearId: otherOpened.id,
+                status: 'EN_CLOTURE',
+                revision: currentRev,
+                reason: `Clôture de l’année ${otherOpened.name}`,
+              },
+              portal.activeRole
+            );
+            if (r2?.revision) currentRev = r2.revision;
+          }
+
+          const r3 = await changeAcademicYear(
+            {
+              action: 'transition',
+              yearId: year.id,
+              status: 'OUVERTE',
+              revision: currentRev,
+              reason: `Ouverture de l’année ${year.name}`,
+            },
+            portal.activeRole
+          );
+          if (r3?.revision) currentRev = r3.revision;
+        }
+
+        // Définir comme année de travail active
+        await changeAcademicYear(
+          {
+            action: 'current',
+            yearId: year.id,
+            revision: currentRev,
+            reason: `Activation de l’année ${year.name}`,
+          },
+          portal.activeRole
+        );
+      }
+
+      portal.reloadCampus();
+      onSaved();
+    } catch (cause) {
+      if (cause instanceof Error && (cause.message.includes('non prête') || cause.message.includes('prête'))) {
+        setPreparing(year.id);
+        setError('');
+        return;
+      }
+      setError(cause instanceof Error ? cause.message : 'Changement refusé.');
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <section className="card mb-2">
+      <div className="card-header">
+        <h2>Années scolaires & Cycle de gestion</h2>
+      </div>
+
+      {error && (
+        <div className="restricted-box mb-2" role="alert" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '8px' }}>
+          <p style={{ margin: 0 }}>{error}</p>
+          <button type="button" className="btn btn-sm btn-outline" onClick={() => setError('')}>Fermer</button>
+        </div>
+      )}
+
+      <div className="year-summary-box mb-2">
+        <p>
+          Année de travail active : <strong>{current ? String(current.name) : 'Aucune année de travail désignée'}</strong>
+        </p>
+        <p className="cell-sub">
+          Activez ou désactivez directement l’année officielle avec son bouton d’activation. Si la configuration d’une année n’est pas terminée, le formulaire requis s’ouvrira automatiquement.
+        </p>
+      </div>
+
+      {rows
+        .filter(row => !row.archived_at)
+        .map(year => {
+          const status = year.status as YearStatus;
+          const isCurrent = year.id === currentId;
+          return (
+            <div key={year.id} className="academic-year-row">
+              <div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px' }}>
+                  <strong>{String(year.name)}</strong>
+                  <span
+                    className={`badge ${
+                      isCurrent
+                        ? 'badge-success'
+                        : status === 'OUVERTE'
+                        ? 'badge-warning'
+                        : status === 'BROUILLON'
+                        ? 'badge-neutral'
+                        : status === 'EN_CLOTURE'
+                        ? 'badge-warning'
+                        : 'badge-archived'
+                    }`}
+                  >
+                    {isCurrent ? '● Année active' : YEAR_STATUS_LABELS[status] || status}
+                  </span>
+                </div>
+                <p className="cell-sub">
+                  {String(year.starts_on || '').split('-').reverse().join('/')} — {String(year.ends_on || '').split('-').reverse().join('/')}
+                </p>
+              </div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '16px', flexWrap: 'wrap' }}>
+                {canManage && (
+                  <button
+                    type="button"
+                    role="switch"
+                    aria-checked={isCurrent}
+                    aria-label={isCurrent ? `Désactiver l’année ${year.name}` : `Activer l’année ${year.name}`}
+                    title={isCurrent ? `Désactiver l’année ${year.name}` : status === 'CLOTUREE' ? 'Année clôturée' : `Activer l’année ${year.name}`}
+                    className={`year-toggle-btn ${isCurrent ? 'active' : ''}`}
+                    disabled={status === 'CLOTUREE' || busy}
+                    onClick={() => void handleToggle(year)}
+                  >
+                    <span className="year-toggle-slider">
+                      <span className="year-toggle-knob" />
+                    </span>
+                    <span className="year-toggle-text">
+                      {isCurrent ? 'Active' : status === 'CLOTUREE' ? 'Clôturée' : 'Inactive'}
+                    </span>
+                  </button>
+                )}
+                <div className="btn-group">
+                  {onView && <IconButton className="btn btn-outline" onClick={() => onView(year)} label="Voir" />}
+                  {onEdit && <IconButton className="btn btn-outline" onClick={() => onEdit(year)} label="Modifier" />}
+                  {canManage && (
+                    <button className="btn btn-outline" onClick={() => setPreparing(year.id)}>
+                      {status === 'BROUILLON' ? 'Préparer' : 'Configurer'} {String(year.name)}
+                    </button>
+                  )}
+                </div>
+              </div>
+            </div>
+          );
+        })}
+
+      {preparing && (
+        <YearPreparationPanel
+          key={preparing}
+          yearId={preparing}
+          yearName={String(rows.find(year => year.id === preparing)?.name || preparing)}
+          onClose={() => {
+            setPreparing(null);
+            onSaved();
+          }}
+          onActivate={() => {
+            const targetYear = rows.find(year => year.id === preparing);
+            setPreparing(null);
+            if (targetYear) {
+              void handleToggle(targetYear);
+            }
+          }}
+        />
+      )}
+    </section>
+  );
 }

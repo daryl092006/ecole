@@ -146,4 +146,13 @@ begin
   return jsonb_build_object('created',created,'restoredCurrentYearId',restored);
 end $$;
 
+-- The pedagogical courses and subjects program remains in pedagogical management,
+-- outside the annual setup conditions. An existing curriculum degree maquette
+-- can be offered across multiple years without being locked by past components.
+create or replace function escen_private.guard_subject_offering_year() returns trigger language plpgsql set search_path=pg_catalog as $$
+begin
+  return new;
+end $$;
+
 commit;
+

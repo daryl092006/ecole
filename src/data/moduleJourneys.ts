@@ -20,8 +20,9 @@ export const MODULE_JOURNEYS: Record<string, JourneyStage[]> = {
     { title: 'Gérer les accès', description: 'Vérifier les permissions du rôle avant de l’attribuer à un compte.', sections: ['staff_roles', 'staff_permissions', 'staff_list'] },
   ],
   marketing: [
-    { title: 'Consulter la communication', description: 'Retrouver les publications, les informations urgentes et les pièces associées.', sections: ['comm_news', 'comm_announcements'] },
+    { title: 'Consulter la communication', description: 'Retrouver les publications, les informations urgentes et les pièces associées.', sections: ['comm_announcements'] },
   ],
+  website: [{ title: 'Gérer le site web', description: 'Configurer les pièces et suivre les demandes, articles et brochures.', sections: ['web_applications', 'web_documents', 'web_brochures', 'comm_news'] }],
   logistique: [
     { title: 'Référencer les fournisseurs', description: 'Renseigner les coordonnées pour identifier les interlocuteurs de l’établissement.', sections: ['log_suppliers'] },
     { title: 'Suivre les achats', description: 'Distinguer la demande, la décision et la réception ; consulter la disponibilité du traitement.', sections: ['log_purchases'] },

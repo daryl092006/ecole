@@ -40,8 +40,9 @@
     ".tmp/next-bottom-up-final/types/**/*.ts",
     ".tmp/next-bottom-up-ready/types/**/*.ts",
     ".tmp/next-development/types/**/*.ts",
+    ".tmp/next-ui-development/types/**/*.ts",
     "next-env.d.ts",
-    ".tmp/next-ui-development/types/**/*.ts"
+    ".tmp/next-annual-site/types/**/*.ts"
   ],
   "exclude": [
     "node_modules"

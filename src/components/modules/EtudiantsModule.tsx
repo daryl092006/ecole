@@ -1,6 +1,5 @@
 import IconButton from '@/components/ui/IconButton';
 import EnrollmentDialog from './EnrollmentDialog';
-import OnlineAdmissionsPanel from './website/OnlineAdmissionsPanel';
 import ResponsiveTable from '@/components/ui/ResponsiveTable';
 import ActionPanel from '@/components/ui/ActionPanel';
 import StudentRecordDialog from './StudentRecordDialog';
@@ -30,7 +29,6 @@ interface EtudiantsModuleProps {
 
 export default function EtudiantsModule({ persistent = false, activeRole, createStudent, perms, currentSubTab, students, groups, selectedStudent, setSelectedStudent, assignStudentToGroup }: EtudiantsModuleProps) {
   const [newEnrollment,setNewEnrollment]=useState(false);
-  const [online, setOnline] = useState(false);
   const [filters, setFilters] = useState(EMPTY_STUDENT_FILTERS);
   const filteredStudents = filterRegisteredStudents(students, filters, activeRole);
   const [studentToAssign, setStudentToAssign] = useState('');
@@ -43,7 +41,6 @@ export default function EtudiantsModule({ persistent = false, activeRole, create
     setAssignmentMessage(result.success ? 'Affectation enregistrée et journalisée.' : result.error ?? 'Affectation impossible.');
     if (result.success) { setStudentToAssign(''); setTargetGroup(''); }
   };
-  if (online) return <OnlineAdmissionsPanel onClose={() => setOnline(false)} />;
   return (
     <div>
       {newEnrollment && <EnrollmentDialog kind="new" onClose={()=>setNewEnrollment(false)} />}
@@ -51,7 +48,7 @@ export default function EtudiantsModule({ persistent = false, activeRole, create
       {currentSubTab === 'stud_list' && (
         <div>
           <div className="module-header">
-            <h1>Dossiers étudiants</h1>{persistent && <div className="btn-group"><button className="btn btn-outline" onClick={() => setOnline(true)}>Inscriptions en ligne</button><StudentCrudActions />{perms.permissions.includes('student.lifecycle.manage') && perms.permissions.includes('payment.record') && <button className="btn btn-primary" onClick={()=>setNewEnrollment(true)}>Nouvelle inscription</button>}</div>}
+            <h1>Dossiers étudiants</h1>{persistent && <div className="btn-group"><StudentCrudActions />{perms.permissions.includes('student.lifecycle.manage') && perms.permissions.includes('payment.record') && <button className="btn btn-primary" onClick={()=>setNewEnrollment(true)}>Nouvelle inscription</button>}</div>}
           </div>
 
           {!persistent && perms.permissions.includes('student.group.assign') && <StudentRegistrationForm groups={groups} onCreate={createStudent} />}

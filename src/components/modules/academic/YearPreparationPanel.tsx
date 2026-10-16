@@ -20,7 +20,17 @@ const steps: Record<string, { title: string; collections: string[]; description:
   payments: { title: 'Encaissement', collections: ['annual_payment_channels'], description: 'Choisissez les moyens de paiement qui seront utilisés pour les inscriptions et la scolarité.' },
 };
 
-export default function YearPreparationPanel({ yearId, yearName, onClose }: { yearId: string; yearName: string; onClose: () => void }) {
+export default function YearPreparationPanel({
+  yearId,
+  yearName,
+  onClose,
+  onActivate,
+}: {
+  yearId: string;
+  yearName: string;
+  onClose: () => void;
+  onActivate?: () => void;
+}) {
   const portal = usePortal();
   const [checks, setChecks] = useState<YearPreparationCheck[] | null>(null);
   const [previousYear, setPreviousYear] = useState<{ id: string; name: string } | null>(null);
@@ -125,14 +135,40 @@ export default function YearPreparationPanel({ yearId, yearName, onClose }: { ye
       ) : (
         <>
           {message && <p className="info-box" role="status">{message}</p>}
-          <p>Configurez les formations, les groupes, les tarifs et les moyens d’encaissement pour démarrer cette année.</p>
+          <div className="card mb-3 p-3" style={{ background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '8px', marginBottom: '16px' }}>
+            <strong style={{ color: '#1e293b', display: 'block', marginBottom: '4px' }}>
+              Configuration obligatoire avant ouverture
+            </strong>
+            <p className="cell-sub" style={{ color: '#475569', marginBottom: '8px' }}>
+              Pour être ouverte, l’année scolaire exige la configuration complète de ses formations, groupes rattachés, frais de scolarité, frais d’inscription et moyens d’encaissement.
+            </p>
+            <p style={{ margin: 0 }}>
+              <strong>{checks.filter(check => check.ready).length} sur {checks.length}</strong> étapes terminées
+            </p>
+          </div>
 
-          <p><strong>{checks.filter(check => check.ready).length} sur {checks.length}</strong> étapes terminées</p>
-
-          {next && (
+          {next ? (
             <button className="btn btn-primary" onClick={() => handleConfigureClick(next.key)}>
               Continuer : {steps[next.key]?.title || next.label}
             </button>
+          ) : (
+            <div className="card mb-3 p-3" style={{ background: 'var(--success-light, #ecfdf5)', border: '1px solid #10b981', borderRadius: '8px', marginBottom: '16px' }}>
+              <strong style={{ color: '#047857', display: 'block', marginBottom: '4px' }}>
+                ✓ Configuration complète : l’année est prête pour l’ouverture
+              </strong>
+              <p className="cell-sub" style={{ color: '#065f46', marginBottom: '12px' }}>
+                Toutes les conditions requises sont remplies. Vous pouvez désormais valider et ouvrir cette année scolaire.
+              </p>
+              {onActivate && (
+                <button
+                  type="button"
+                  className="btn btn-primary"
+                  onClick={onActivate}
+                >
+                  Valider et ouvrir l’année {yearName}
+                </button>
+              )}
+            </div>
           )}
 
           <ol className="preparation-steps">

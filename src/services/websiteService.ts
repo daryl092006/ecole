@@ -55,3 +55,15 @@ export function sniffDocument(bytes: Uint8Array): string | undefined {
   if (bytes[0] === 0xff && bytes[1] === 0xd8 && bytes[2] === 0xff) return 'image/jpeg';
   if (Buffer.from(bytes.subarray(0, 8)).equals(Buffer.from([137, 80, 78, 71, 13, 10, 26, 10]))) return 'image/png';
 }
+export const brochureSchema = z.object({
+  id: z.uuid().optional(), version: z.number().int().positive().optional(),
+  title: z.string().trim().min(3).max(180),
+  slug: z.string().regex(/^[a-z0-9]+(?:-[a-z0-9]+)*$/).max(180),
+  description: z.string().trim().max(500),
+  status: z.enum(['BROUILLON', 'PUBLIE', 'RETIRE']),
+  reason: z.string().trim().min(3).max(1000),
+  program_id: z.uuid().nullable().default(null),
+  cycle: z.enum(['LICENCE', 'MASTER', 'EXECUTIVE']).nullable().default(null),
+}).strict().refine(value => !value.id || !!value.version, 'Version requise.')
+  .refine(value => (value.program_id === null) === (value.cycle === null), 'Choisissez la filière et le cycle ensemble.');
+export const BROCHURE_CYCLES = { LICENCE: 'Licence professionnelle', MASTER: 'Master professionnel', EXECUTIVE: 'Executive Master' } as const;

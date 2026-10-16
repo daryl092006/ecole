@@ -9,3 +9,27 @@ export function assessmentCategory(record:HistoryRecord):AssessmentCategory {
   return 'unknown';
 }
 export const ASSESSMENT_LABELS={control:'Contrôles continus',exam:'Examens',resit:'Rattrapages',unknown:'À classer'};
+
+/** Correction progress is separate from the institutional grade workflow. */
+export function assessmentProgress(values: Record<string, unknown>, now = new Date()): string {
+  if (values.cancelled_at || values.archived_at || values.deleted_at) return 'Retirée';
+  if (values.status === 'PUBLIEES' || [true, 1, '1'].includes(values.published as boolean | number | string)) return 'Résultats publiés';
+  if (values.status === 'VALIDEES') return 'Notes validées';
+  if (values.status === 'A_CONTROLER') return 'À contrôler';
+  if (values.status === 'SOUMISES') return 'Correction soumise';
+  if (values.correction_submission_date) return 'Correction soumise';
+  if (values.status === 'SAISIES') return 'Notes saisies';
+  const date = String(values.held_on || values.date || '');
+  if (/^\d{4}-\d{2}-\d{2}$/.test(date) && Number.isFinite(Date.parse(date))) {
+    const today = now.toISOString().slice(0, 10);
+    if (date > today) return 'Programmée';
+    if (date < today) return 'En attente de correction';
+    return 'Prévue aujourd’hui';
+  }
+  return values.status === 'BROUILLON' ? 'Brouillon' : 'État non renseigné';
+}
+
+export function combinedAssessmentProgress(rows: Record<string, unknown>[]): string {
+  const states = [...new Set(rows.map(row => assessmentProgress(row)))];
+  return states.length === 1 ? states[0] : 'États différents';
+}

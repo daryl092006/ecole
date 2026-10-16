@@ -35,7 +35,7 @@ async function manageFixture(page: Page) {
 for (const width of [390, 1440]) {
   test(`Articles : aperçu, confirmation, publication, retrait et rechargement à ${width}px`, async ({ page }) => {
     await page.setViewportSize({ width, height: 950 }); const fixture = await manageFixture(page);
-    await page.goto('/communication/actualites');
+    await page.goto('/site-web/articles');
     await page.getByRole('button', { name: 'Rédiger un article', exact: true }).click();
     await page.getByLabel('Titre', { exact: true }).fill('Actualité publiée depuis la plateforme');
     await page.getByLabel('Adresse de l’article', { exact: true }).fill('actualite-plateforme');
@@ -61,8 +61,7 @@ for (const width of [390, 1440]) {
   });
   test(`Dossiers du site : lecture, pièces, suivi confirmé et erreurs à ${width}px`, async ({ page }) => {
     await page.setViewportSize({ width, height: 950 }); const fixture = await manageFixture(page);
-    await page.goto('/etudiants');
-    await page.getByRole('button', { name: 'Inscriptions en ligne', exact: true }).click();
+    await page.goto('/site-web/demandes');
     await expect(page.getByText('WEB-RECETTE', { exact: false })).toBeVisible();
     await page.getByRole('button', { name: 'Ouvrir le dossier', exact: true }).click();
     await expect(page.getByRole('button', { name: 'Télécharger diplome.pdf', exact: true })).toBeVisible();

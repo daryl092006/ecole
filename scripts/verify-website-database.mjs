@@ -7,11 +7,47 @@ export async function verifyWebsiteDatabase({ db, check, account, level, program
   const token = createHash('sha256').update(randomUUID()).digest('hex');
   const pub = (action, data = {}, hash = token) => value('select public.escen_website_public($1,$2,$3::jsonb) as value', [action, hash, JSON.stringify(data)]);
   await value("select public.escen_academic_year_command($1,'IT','current',$2,(select revision from escen_private.portal_revision where singleton),'Année de recette explicite') as value", [account.id,year.id]);
+  await check('Brochures : brouillon privé, publication annuelle, retrait, concurrence et audit', async () => {
+    const brochure = (action, data = {}, role = 'IT') => value('select public.escen_brochures_manage($1,$2,$3,$4::jsonb) as value', [account.id, role, action, JSON.stringify(data)]);
+    const published = () => value('select public.escen_brochures_public() as value');
+    const input = { academic_year_id: year.id, title: 'Brochure de recette', slug: 'brochure-recette', description: 'Présentation', status: 'BROUILLON', object_path: 'local/test.pdf', filename: 'test.pdf', byte_size: 100, sha256: 'c'.repeat(64), reason: 'Préparer la brochure' };
+    const created = await brochure('save', input);
+    assert.equal((await published()).length, 0);
+    assert.equal(created.object_path, undefined);
+    await assert.rejects(brochure('save', { ...input, id: created.id, version: 1 }, 'STUD'), /refusé/i);
+    const live = await brochure('save', { ...input, id: created.id, version: 1, status: 'PUBLIE' });
+    assert.equal((await published())[0].id, live.id);
+    assert.equal((await published())[0].object_path, undefined);
+    assert.equal((await value('select public.escen_brochures_public($1) as value', [input.slug]))[0].object_path, input.object_path);
+    await assert.rejects(brochure('save', { ...input, id: live.id, version: 1 }), /concurrente/i);
+    await assert.rejects(brochure('save', { ...input, id: live.id }), /concurrente/i);
+    await brochure('save', { ...input, id: live.id, version: 2, status: 'RETIRE', reason: 'Retirer la brochure' });
+    assert.equal((await published()).length, 0);
+    assert.equal((await value('select public.escen_backend_snapshot() as value')).tables.website_brochures, undefined);
+    const audit = (await db.query("select * from escen_private.audit_events where table_name='website_brochures' and entity_id=$1 and old_value is not null order by happened_at desc limit 1", [live.id])).rows[0];
+    assert.equal(audit.actor_id, account.id);
+    assert.equal(audit.new_value.status, 'RETIRE');
+    await assert.rejects(db.query('delete from escen.website_brochures where id=$1', [live.id]));
+  });
   let intake; let draft;
+  await check('Site : synchronisation idempotente et fermeture explicite conservée', async () => {
+    const before = await manage('admissions');
+    const item = before.intakes.find(row => row.academic_year_id === year.id && row.level_id === level.id && row.program_id === program.id);
+    assert.ok(item);
+    await manage('intake-save', { ...item, active: false, required_documents: ['diplome_file'], reason: 'Fermeture explicite de recette' });
+    await db.query('select escen_private.sync_website_offerings()');
+    assert.equal((await pub('intakes')).some(row => row.id === item.id), false);
+    const after = (await manage('admissions')).intakes.find(row => row.id === item.id);
+    assert.equal(after.active, false);
+    assert.deepEqual(after.required_documents, ['diplome_file']);
+    assert.equal((await manage('admissions')).intakes.length, before.intakes.length);
+  });
   const initialStudents = await value('select count(*)::integer as value from escen.students');
   const initialAccounts = await value('select count(*)::integer as value from escen.accounts');
   await check('Site : formations explicites, pièces privées et aucun dossier dans le snapshot général', async () => {
-    intake = await manage('intake-save', { academic_year_id: year.id, level_id: level.id, program_id: program.id, label: 'Formation de recette locale', active: true, required_documents: ['diplome_file'], reason: 'Ouverture locale contrôlée' });
+    const synced = (await manage('admissions')).intakes.find(item => item.academic_year_id === year.id && item.level_id === level.id && item.program_id === program.id);
+    assert.ok(synced, 'Formation annuelle automatiquement proposée');
+    intake = await manage('intake-save', { id: synced.id, version: synced.version, academic_year_id: year.id, level_id: level.id, program_id: program.id, label: 'Formation de recette locale', active: true, required_documents: ['diplome_file'], reason: 'Ouverture locale contrôlée' });
     assert.ok((await pub('intakes')).some(item => item.id === intake.id));
     draft = await pub('create', { academic_year_id:year.id, nom: 'Test', prenom: 'Inscription', email: 'candidate@example.test' });
     assert.equal((await pub('draft')).candidat.nom, 'Test');

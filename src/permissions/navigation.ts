@@ -83,7 +83,16 @@ export const ALL_TABS = [
     icon: 'Megaphone',
     subTabs: [
       { id: 'comm_announcements', name: 'Créer une Annonce' },
-      { id: 'comm_news', name: 'Actualités ESCEN' },
+
+    ],
+  },
+  {
+    id: 'website', name: 'Site web', icon: 'Globe',
+    subTabs: [
+      { id: 'web_applications', name: 'Demandes en ligne' },
+      { id: 'web_documents', name: 'Formations et pièces' },
+      { id: 'web_brochures', name: 'Brochures' },
+      { id: 'comm_news', name: 'Articles' },
     ],
   },
   {
@@ -110,6 +119,9 @@ export const ALL_TABS = [
 ];
 
 const SUBTAB_PERMISSIONS: Record<string, Permission[]> = {
+  web_applications: ['student.view'],
+  web_documents: ['student.view'],
+  web_brochures: ['communication.view'],
   staff_records: ['staff.view'],
   log_suppliers:['purchase.view'],
   sys_data: ['system.audit.view'],
@@ -144,16 +156,22 @@ const SUBTAB_PERMISSIONS: Record<string, Permission[]> = {
   sys_support: ['system.support.manage'],
 };
 
-export function getAvailableTabs(role: RoleName, permissions?: Permission[]) {
+export function getAvailableTabs(role: RoleName, permissions?: Permission[], globalAccess = true) {
   const rolePermissions = ROLE_PERMISSIONS[role];
   const roleAccess = ROLE_ACCESS[role];
   const canLogistics = [ROLES.DG, ROLES.DGA, ROLES.RAF, ROLES.ACHATS, ROLES.SITE, ROLES.IT].includes(role as typeof ROLES.DG);
   const canStaff = [ROLES.DG, ROLES.DGA, ROLES.RAF, ROLES.IT].includes(role as typeof ROLES.DG);
   return ALL_TABS
-    .filter(tab => rolePermissions.allowedTabs.includes(tab.id) || (tab.id === 'logistique' && canLogistics) || (tab.id === 'personnel' && canStaff))
+    .filter(tab => (tab.id === 'website' && globalAccess) || rolePermissions.allowedTabs.includes(tab.id) || (tab.id === 'logistique' && canLogistics) || (tab.id === 'personnel' && canStaff))
     .map(tab => ({
       ...tab,
       subTabs: tab.subTabs?.filter(subTab => {
+        if (tab.id === 'website') {
+          if (!globalAccess) return false;
+          const effective = permissions || roleAccess.permissions;
+          if (['web_applications', 'web_documents'].includes(subTab.id)) return [ROLES.DG, ROLES.DGA, ROLES.DA, ROLES.LOG, ROLES.RAF, ROLES.IT].includes(role as typeof ROLES.DG) && effective.includes('student.view');
+          return effective.includes('communication.view') && ![ROLES.STUD, ROLES.DEL, ROLES.ENS].includes(role as typeof ROLES.STUD);
+        }
         const effectiveRequired = SUBTAB_PERMISSIONS[subTab.id];
         if (permissions && effectiveRequired && !effectiveRequired.some(permission => permissions.includes(permission))) return false;
         if (role === ROLES.IT && !permissions) return true;

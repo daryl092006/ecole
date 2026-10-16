@@ -168,7 +168,7 @@ export function useAppState() {
     ? { ...baseAccess.scope, studentId: identityStudent?.matricule ?? '__NONE__', groupIds: identityStudent ? [...new Set([identityStudent.groupId, ...campusRecords.enrollments.filter(item => item.studentId === identityStudent.matricule).map(item => item.groupId)])] : [] }
     : activeRole === ROLES.ENS ? { teacherId: demoIdentity || '__NONE__', groupIds: classes.filter(item => item.teacherId === demoIdentity).map(item => item.groupId) }
     : activeRole === ROLES.SURV ? { ...baseAccess.scope, sessionIds: campusRecords.exams.filter(item => item.supervisorId === demoIdentity).map(item => item.id) } : baseAccess.scope };
-  const availableTabs = useMemo(() => getAvailableTabs(activeRole, session ? session.capabilities?.[activeRole]?.permissions || [] : undefined), [activeRole, session]);
+  const availableTabs = useMemo(() => getAvailableTabs(activeRole, session ? session.capabilities?.[activeRole]?.permissions || [] : undefined, session ? !!session.capabilities?.[activeRole]?.globalAccess : true), [activeRole, session]);
 
   const visibleClasses = !hasPermission(activeRole, 'academic.view') && !hasPermission(activeRole, 'grade.view') && !hasPermission(activeRole, 'attendance.view') && !hasPermission(activeRole, 'schedule.view') ? [] : access.scope.sessionIds
     ? classes.filter(classItem => sessions.some(session => session.classId === classItem.id && access.scope.sessionIds?.includes(session.id)))
@@ -266,7 +266,7 @@ export function useAppState() {
 
 
   const navigateTo = useCallback((tabId: string, subTabId?: string) => {
-    const tab = getAvailableTabs(activeRole, session ? session.capabilities?.[activeRole]?.permissions || [] : undefined).find(item => item.id === tabId);
+    const tab = getAvailableTabs(activeRole, session ? session.capabilities?.[activeRole]?.permissions || [] : undefined, session ? !!session.capabilities?.[activeRole]?.globalAccess : true).find(item => item.id === tabId);
     if (!tab) return;
     if (!subTabId) { router.push(tab.href); return; }
     const section = tab.subTabs?.find(item => item.id === subTabId) || tab.subTabs?.[0];

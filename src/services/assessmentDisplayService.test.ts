@@ -1,0 +1,14 @@
+import assert from 'node:assert/strict';
+import { assessmentProgress, combinedAssessmentProgress } from './assessmentDisplayService';
+const now = new Date('2026-10-16T12:00:00Z');
+assert.equal(assessmentProgress({ date: '2026-10-17' }, now), 'Programmée');
+assert.equal(assessmentProgress({ date: '2026-10-16' }, now), 'Prévue aujourd’hui');
+assert.equal(assessmentProgress({ date: '2026-10-15' }, now), 'En attente de correction');
+assert.equal(assessmentProgress({ correction_end_date: '2026-10-15' }, now), 'État non renseigné');
+assert.equal(assessmentProgress({ correction_submission_date: '2026-10-15' }, now), 'Correction soumise');
+assert.equal(assessmentProgress({ status: 'SAISIES' }, now), 'Notes saisies');
+assert.equal(assessmentProgress({ published: '0' }, now), 'État non renseigné');
+assert.equal(assessmentProgress({ published: '1' }, now), 'Résultats publiés');
+assert.equal(assessmentProgress({ status: 'VALIDEES' }, now), 'Notes validées');
+assert.equal(combinedAssessmentProgress([{ status: 'PUBLIEES' }, { status: 'BROUILLON' }]), 'États différents');
+assert.equal(assessmentProgress({ status: 'PUBLIEES', archived_at: '2026-01-01' }, now), 'Retirée');

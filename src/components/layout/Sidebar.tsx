@@ -2,6 +2,7 @@ import { getWorkspaceNavigation } from '@/constants/workspaceNavigation';
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
 import {
+  Globe,
   CalendarDays,
   ClipboardCheck,
   BarChart2,
@@ -21,6 +22,7 @@ import {
 import { type RoleName } from '@/types/permissions';
 
 const ICONS: Record<string, LucideIcon> = {
+  Globe,
   CalendarDays,
   ClipboardCheck,
   BarChart2,
@@ -64,7 +66,7 @@ export default function Sidebar({
   onNavigate,
   menuOpen,
 }: SidebarProps) {
-  const groups = getWorkspaceNavigation(availableTabs);
+  const groups = getWorkspaceNavigation(availableTabs, { hideStudentPersonalPages: true });
   const activeGroup = groups.find(group => group.sections.includes(currentSubTab))?.id || '';
   const [expanded, setExpanded] = useState(activeGroup);
 
@@ -98,6 +100,20 @@ export default function Sidebar({
               const Icon = ICONS[group.icon] || HelpCircle;
               const isExpanded = expanded === group.id;
               const isActive = activeGroup === group.id;
+              const isSingleDirect = group.pages.length === 1 && group.pages[0].name === group.name;
+              if (isSingleDirect) {
+                const page = group.pages[0];
+                return <div className="nav-group" key={group.id}>
+                  <div className="nav-group-heading">
+                    <Link href={page.href}
+                      className={`nav-item ${currentSubTab === page.id ? 'active' : ''}`}
+                      aria-current={currentSubTab === page.id ? 'page' : undefined}
+                      onClick={onNavigate}>
+                      <Icon size={18} /><span>{group.name}</span>
+                    </Link>
+                  </div>
+                </div>;
+              }
               return <div className="nav-group" key={group.id}>
                 <div className="nav-group-heading">
                   <button type="button" className={`nav-item ${isActive ? 'active' : ''}`}

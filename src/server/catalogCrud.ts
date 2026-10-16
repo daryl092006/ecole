@@ -50,7 +50,7 @@ export async function writeCatalog(request: Request, key: string, id?: string) {
     delete body.values.level_ids;
   }
   let offeringIds: string[] = [];
-  if (key === 'groups' && !id && !archive && !body.sourceRowId) {
+  if (key === 'groups' && !archive && !body.sourceRowId && (!id || body.values?.offering_ids !== undefined)) {
     offeringIds = z.array(z.uuid()).min(1).parse(body.values?.offering_ids);
     if (new Set(offeringIds).size !== offeringIds.length) throw new RequestError(400, 'Sélection de filières dupliquée.');
     const { offering_ids: _ids, ...values } = body.values!;
@@ -84,7 +84,22 @@ export async function writeCatalog(request: Request, key: string, id?: string) {
   }
   const changes: PersistentChange[] = [{ table: key, operation: id ? 'update' : 'insert', record }];
   changes.push(...programLevelChanges(String(record.id), levelIds, snapshot, body.reason));
-  for (const offeringId of offeringIds) changes.push({ table: 'group_offerings', operation: 'insert', record: { id: crypto.randomUUID(), group_id: record.id, offering_id: offeringId, academic_year_id: record.academic_year_id, level_id: record.level_id, reason: body.reason } });
+  if (offeringIds.length > 0) {
+    const existingGroupOfferings = (snapshot.tables.group_offerings || []).filter(row => row.group_id === record.id);
+    for (const link of existingGroupOfferings) {
+      const wanted = offeringIds.includes(String(link.offering_id));
+      if (!wanted && !link.archived_at) {
+        changes.push({ table: 'group_offerings', operation: 'update', record: { id: link.id, archived_at: new Date().toISOString(), reason: body.reason } });
+      } else if (wanted && link.archived_at) {
+        changes.push({ table: 'group_offerings', operation: 'update', record: { id: link.id, archived_at: null, reason: body.reason } });
+      }
+    }
+    for (const offeringId of offeringIds) {
+      if (!existingGroupOfferings.some(link => link.offering_id === offeringId)) {
+        changes.push({ table: 'group_offerings', operation: 'insert', record: { id: crypto.randomUUID(), group_id: record.id, offering_id: offeringId, academic_year_id: record.academic_year_id, level_id: record.level_id, reason: body.reason } });
+      }
+    }
+  }
   if (reconductYearId) {
     const reconductChanges = buildReconductChanges(snapshot, reconductYearId, record.id as string, body.reason);
     changes.push(...reconductChanges);

@@ -25,17 +25,29 @@ export async function GET(request:Request,{params}:Params){try{
   const ids=new Set(enrollments.map(row=>row.id));
   const payments=context.permissions.includes('finance.view')?(scoped.tables.payments || []).filter(row=>ids.has(String(row.enrollment_id))):[];
   const reversals=new Set((scoped.tables.payment_reversals || []).map(row=>row.payment_id));
-  return Response.json({revision:snapshot.revision,channels:context.permissions.includes('finance.view')?(snapshot.tables.annual_payment_channels || []).filter(row=>row.academic_year_id=== (enrollments[0] ? snapshot.tables.academic_offerings.find(offering=>offering.id===enrollments[0].offering_id)?.academic_year_id : null) && !row.archived_at).map(row=>({name:row.name,method:row.method})):[],enrollments:enrollments.map(row=>({id:row.id,status:row.status})),payments:payments.map(row=>({id:row.id,reference:row.reference,amount:row.amount,paidOn:row.paid_on,cancelled:reversals.has(row.id),pending:row.status==='PENDING'})),paid:payments.reduce((sum,row)=>sum+(reversals.has(row.id)||row.status==='PENDING'?0:Number(row.amount)),0)},{headers:{'Cache-Control':'no-store'}});
+  const contracts=context.permissions.includes('finance.view')?enrollments.flatMap(enrollment=>{
+    const contract=(scoped.tables.financial_contracts || []).find(row=>row.enrollment_id===enrollment.id);
+    if(!contract)return [];
+    const versions=(scoped.tables.contract_versions || []).filter(row=>row.contract_id===contract.id);
+    const activeVersion=versions.find(row=>['APPROVED','EN_COURS'].includes(String(row.status))) || versions.find(row=>row.status==='DRAFT');
+    if(!activeVersion)return [];
+    const lines=(scoped.tables.contract_lines || []).filter(row=>row.version_id===activeVersion.id);
+    const discounts=(scoped.tables.contract_discounts || []).filter(row=>row.version_id===activeVersion.id);
+    const amount=lines.reduce((sum,row)=>sum+Number(row.amount || 0),0)-discounts.reduce((sum,row)=>sum+Number(row.amount || 0),0);
+    return [{id:contract.id,versionId:activeVersion.id,enrollmentId:enrollment.id,reference:String(contract.reference || contract.id),status:String(activeVersion.status),amount}];
+  }):[];
+  return Response.json({revision:snapshot.revision,channels:context.permissions.includes('finance.view')?(snapshot.tables.annual_payment_channels || []).filter(row=>row.academic_year_id=== (enrollments[0] ? snapshot.tables.academic_offerings.find(offering=>offering.id===enrollments[0].offering_id)?.academic_year_id : null) && !row.archived_at).map(row=>({name:row.name,method:row.method})):[],enrollments:enrollments.map(row=>({id:row.id,status:row.status,enrolledOn:row.enrolled_on})),contracts,payments:payments.map(row=>({id:row.id,reference:row.reference,amount:row.amount,paidOn:row.paid_on,cancelled:reversals.has(row.id),pending:row.status==='PENDING'})),paid:payments.reduce((sum,row)=>sum+(reversals.has(row.id)||row.status==='PENDING'?0:Number(row.amount)),0)},{headers:{'Cache-Control':'no-store'}});
 }catch(error){return errorResponse(error);}}
 const common={revision:z.number().int().nonnegative(),enrollmentId:z.uuid(),reason:z.string().trim().min(3).max(1000)};
 const schema=z.discriminatedUnion('action',[
   z.object({...common,action:z.literal('payment'),amount:z.number().int().positive().max(2147483647),payer:z.string().trim().min(2).max(160),reference:z.string().trim().min(2).max(160),provider:z.string().trim().min(2).max(160),method:z.enum(['ESPECES','MOBILE_MONEY','VIREMENT','CHEQUE','CARTE']),paidOn:z.iso.date()}).strict(),
   z.object({...common,action:z.literal('status'),status:z.enum(['SUSPENDU','ABANDON','INSCRIT'])}).strict(),
+  z.object({...common,action:z.literal('approve_contract'),dueOn:z.iso.date().optional()}).strict(),
 ]);
 export async function POST(request:Request,{params}:Params){try{
   const data=await scope(request,(await params).matricule);
   const body=schema.parse(await request.json());
-  requirePermission(data.context,body.action==='payment'?'payment.record':'student.lifecycle.manage');
+  requirePermission(data.context,body.action==='status'?'student.lifecycle.manage':'payment.record');
   const enrollment=data.enrollments.find(row=>row.id===body.enrollmentId);
   if(!enrollment)throw new RequestError(409,'L’inscription officielle doit être enregistrée dans cette année avant cette opération.');
   const changes:PersistentChange[]=[];
@@ -45,6 +57,24 @@ export async function POST(request:Request,{params}:Params){try{
     const id=crypto.randomUUID();
     changes.push({table:'payments',operation:'insert',record:{id,enrollment_id:enrollment.id,payer_name:body.payer,amount:body.amount,method:body.method,provider:body.provider,reference:body.reference,paid_on:body.paidOn,recorded_by:data.context.accountId,comment:body.reason}});
     changes.push({table:'receipts',operation:'insert',record:{id:crypto.randomUUID(),payment_id:id,reference:`REC-${id}`,snapshot:{matricule:data.student.matricule,academicYearId:data.year.selectedYearId,amount:body.amount,reference:body.reference,payer:body.payer,method:body.method,paidOn:body.paidOn},issued_by:data.context.accountId}});
+  }else if(body.action==='approve_contract'){
+    const contract=(data.snapshot.tables.financial_contracts || []).find(row=>row.enrollment_id===enrollment.id);
+    const version=contract && (data.snapshot.tables.contract_versions || []).find(row=>row.contract_id===contract.id && row.status==='DRAFT');
+    if(!contract || !version)throw new RequestError(409,'Aucun contrat en brouillon à approuver pour cette inscription.');
+    const lines=(data.snapshot.tables.contract_lines || []).filter(row=>row.version_id===version.id);
+    const discounts=(data.snapshot.tables.contract_discounts || []).filter(row=>row.version_id===version.id);
+    const netTotal=lines.reduce((sum,row)=>sum+Number(row.amount || 0),0)-discounts.reduce((sum,row)=>sum+Number(row.amount || 0),0);
+    if(!lines.length || netTotal<0)throw new RequestError(409,'Le contrat en brouillon ne comporte aucune ligne de frais valide.');
+    const existingInstallments=(data.snapshot.tables.installments || []).filter(row=>row.version_id===version.id);
+    const existingDue=existingInstallments.reduce((sum,row)=>sum+Number(row.amount || 0),0);
+    if(existingDue!==netTotal){
+      if(existingInstallments.length>0)throw new RequestError(409,'L’échéancier existant ne correspond pas au montant net du contrat.');
+      if(netTotal>0){
+        const dueDate=body.dueOn || String(enrollment.enrolled_on || new Date().toISOString().slice(0,10));
+        changes.push({table:'installments',operation:'insert',record:{id:crypto.randomUUID(),version_id:version.id,position:1,due_on:dueDate,amount:netTotal,description:`Échéance contractuelle · ${contract.reference || contract.id}`}});
+      }
+    }
+    changes.push({table:'contract_versions',operation:'update',record:{id:version.id,status:'APPROVED',approved_by:data.context.accountId,approved_at:new Date().toISOString(),reason:body.reason}});
   }else{
     if(['DIPLOME','ABANDON'].includes(String(enrollment.status)) || body.status===enrollment.status)throw new RequestError(409,'Ce changement de statut nécessite une décision académique distincte.');
     changes.push({table:'enrollments',operation:'update',record:{id:enrollment.id,status:body.status}});

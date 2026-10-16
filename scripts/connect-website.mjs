@@ -1,10 +1,13 @@
-import { readFile, writeFile, realpath } from 'node:fs/promises';
+import { readFile, writeFile, realpath, access } from 'node:fs/promises';
 import path from 'node:path';
 import { adaptWebsite } from './website-adapter.mjs';
 
 // Run only against the private working copy, never the source in Downloads.
-const root = await realpath('.tmp/escen-website');
-const expected = path.resolve('.tmp/escen-website');
+const projectRoot = await realpath('.');
+const sibling = path.resolve(projectRoot, '../escen-website');
+const hasSibling = await access(sibling).then(() => true).catch(() => false);
+const expected = hasSibling ? sibling : path.join(projectRoot, '.tmp/escen-website');
+const root = await realpath(expected);
 if (root !== expected) throw new Error('La copie doit être un dossier local, sans lien symbolique.');
 const portal = new URL(process.env.ESCEN_PORTAL_URL || 'http://127.0.0.1:3000');
 if (!['http:', 'https:'].includes(portal.protocol) || portal.username || portal.password || portal.search || portal.hash || portal.pathname !== '/') {
@@ -18,6 +21,9 @@ for (const file of ['app/components/Header.vue', 'app/components/Footer.vue']) {
   source = source.replaceAll('/candidat/login', '/connexion');
   if (file.endsWith('Header.vue') && !source.includes('aria-label="Ouvrir le menu"')) {
     source = source.replace('<button @click="isMobileMenuOpen = !isMobileMenuOpen"', '<button aria-label="Ouvrir le menu" :aria-expanded="isMobileMenuOpen" @click="isMobileMenuOpen = !isMobileMenuOpen"');
+  }
+  if (file.endsWith('Footer.vue') && !source.includes('to="/brochures"')) {
+    source = source.replace('</footer>', '<NuxtLink to="/brochures" class="block px-6 py-4 underline">Brochures ESCEN</NuxtLink></footer>');
   }
   await writeFile(target, source);
 }

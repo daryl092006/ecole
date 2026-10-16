@@ -13,10 +13,14 @@ import { getWorkspaceNavigation } from '@/constants/workspaceNavigation';
 import Sidebar from '@/components/layout/Sidebar';
 import SchoolLogo from '@/components/ui/SchoolLogo';
 import ActionResult from '@/components/ui/ActionResult';
+import { YEAR_STATUS_LABELS } from '@/types/academicYearContext';
 
 export default function PortalShell({ children }: { children: ReactNode }) {
   const state = usePortal(); const router = useRouter();
   const { activeRole, perms, availableTabs, currentTab, currentSubTab, pathname } = state;
+  const context = state.academicYearContext;
+  const currentYear = context?.years.find(y => y.id === context.currentYearId);
+  const selectedYear = context?.years.find(y => y.id === context.selectedYearId);
   const [menuOpen, setMenuOpen] = useState(false); const mainRef = useRef<HTMLElement>(null);
   const route = getPortalRoute(pathname);
   const tab = availableTabs.find(item => item.id === currentTab);
@@ -79,6 +83,14 @@ export default function PortalShell({ children }: { children: ReactNode }) {
           <nav className="workspace-breadcrumb" aria-label="Fil d’Ariane"><Link href={HOME_PATH}>Accueil</Link>{navigationGroup && navigationGroup.id !== 'home' && <><span>/</span><span>{navigationGroup.name}</span></>}{route && <><span>/</span><strong aria-current="page">{route.studentId ? `Dossier ${route.studentId}` : route.title}</strong></>}</nav>
           <AcademicYearControl />
         </div>
+        {selectedYear && currentYear && selectedYear.id !== currentYear.id && (
+          <aside className="academic-context-banner" aria-label="Contexte de consultation annuelle">
+            <span>Vous consultez l’historique de l’année scolaire <strong>{selectedYear.name}</strong> ({YEAR_STATUS_LABELS[selectedYear.status] || selectedYear.status}).</span>
+            <button className="btn btn-sm btn-outline" onClick={() => state.changeAcademicYearSelection('current')}>
+              Revenir à l’année en cours ({currentYear.name})
+            </button>
+          </aside>
+        )}
         {!allowed ? <section className="card route-denied"><h1>Accès refusé</h1><p>Cette page n’est pas disponible pour votre rôle.</p><Link className="btn btn-primary" href={HOME_PATH}>Revenir à mon espace</Link></section> : <>
           {state.actionFeedback && <div className="restricted-box action-feedback" role="alert"><span>{state.actionFeedback}</span><IconButton className="btn btn-sm btn-outline" onClick={state.clearActionFeedback} label="Fermer" /></div>}
           {state.campusLoad.status === 'loading' || state.campusLoad.status === 'idle' ? <LoadingState label="Chargement des dossiers…" />
@@ -87,8 +99,7 @@ export default function PortalShell({ children }: { children: ReactNode }) {
                 {state.actionOutcome && <ActionResult title={state.actionOutcome.title} href={state.actionOutcome.href && isRouteAllowed(state.actionOutcome.href.split('?')[0], activeRole) ? state.actionOutcome.href : undefined} nextLabel={state.actionOutcome.nextLabel} onDismiss={state.clearActionOutcome}>{state.actionOutcome.detail}</ActionResult>}
                 <div key={`${state.academicYearSelection}:${state.academicYearContext?.selectedYearId || ''}`}>{state.academicYearContext && !state.academicYearContext.selectedYearId && state.academicYearSelection !== 'all' && !['acad_reference', 'acad_program', 'staff_records', 'staff_list', 'staff_permissions', 'staff_roles', 'espace_profile', 'sys_roles', 'sys_permissions', 'sys_data', 'sys_logs', 'sys_backups', 'sys_settings', 'log_assets', 'log_suppliers'].includes(currentSubTab) ? <section className="card card-full"><h1>Choisir une année scolaire</h1><p>Sélectionnez une année dans le champ Année pour consulter les activités, dossiers et résultats correspondants. Aucune donnée sans rattachement confirmé ne sera ajoutée à cette année.</p>{state.globalAccess && (perms.permissions.includes('academic.year.open') || perms.permissions.includes('academic.structure.manage')) && <Link className="btn btn-primary" href="/academique/referentiel?collection=academic_years">Configurer les années scolaires</Link>}</section> : children}</div>
                 <section className="connected-data-bar workspace-data-footer" aria-label="État des données">
-                  <span><i /> {state.campusLoad.students} dossier(s) étudiant(s) chargé(s){perms.permissions.includes('user.manage') ? ` · ${state.campusLoad.users} compte(s)` : ''}</span>
-                  <IconButton className="btn btn-sm btn-outline" onClick={() => { state.reloadCampus(); state.history.retry(); }} label="Actualiser les données" />
+                  <span>{state.campusLoad.students} dossier(s)</span>
                 </section>
               </>}
 

@@ -65,4 +65,17 @@ const multipleScopes = filterRelationalSnapshot(snapshot,context(ROLES.LOG,{ gra
 assert.deepEqual(multipleScopes.groups.map(row => row.id),['g1']);
 assert.deepEqual(multipleScopes.teaching_assignments.map(row => row.id),['a1']);
 assert.deepEqual(multipleScopes.students.map(row => row.id),['s1']);
+const recoveredSnapshot: RelationalSnapshot = {
+  revision: 6,
+  tables: {
+    ...snapshot.tables,
+    evaluations: [...snapshot.tables.evaluations, { id:'e_rec', assignment_id:null, offering_id:'o1', group_id:'g1', status:'PUBLIEES' }],
+    evaluation_candidates: [...snapshot.tables.evaluation_candidates, { id:'ec_rec', evaluation_id:'e_rec', enrollment_id:'n1', offering_id:'o1' }],
+    grades: [...snapshot.tables.grades, { id:'mark_rec', candidate_id:'ec_rec', value:16 }],
+  },
+};
+assert.ok(filterRelationalSnapshot(recoveredSnapshot,context(ROLES.IT)).tables.grades.some(row => row.id === 'mark_rec'));
+assert.ok(filterRelationalSnapshot(recoveredSnapshot,context(ROLES.STUD,{ personId:'p1',studentId:'s1' })).tables.grades.some(row => row.id === 'mark_rec'));
+assert.ok(!filterRelationalSnapshot(recoveredSnapshot,context(ROLES.STUD,{ personId:'p2',studentId:'s2' })).tables.grades.some(row => row.id === 'mark_rec'));
+assert.ok(!filterRelationalSnapshot(recoveredSnapshot,context(ROLES.ENS,{ personId:'pt',teacherId:'t1' })).tables.grades.some(row => row.id === 'mark_rec'));
 console.log('Vérification réussie : lectures persistantes, rôles, groupes, confidentialité et notes publiées.');

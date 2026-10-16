@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { articleSchema, identitySchema, guardianSchema, websiteAccess, escapeArticleContent, sniffDocument } from './websiteService';
+import { brochureSchema, articleSchema, identitySchema, guardianSchema, websiteAccess, escapeArticleContent, sniffDocument } from './websiteService';
 import { ROLES } from '@/types/permissions';
 import type { PersistentContext } from '@/types/persistence';
 
@@ -17,3 +17,9 @@ assert.equal(websiteAccess({ ...context, grants: [{ ...context.grants[0], site_i
 assert.equal(websiteAccess({ ...context, role: ROLES.STUD }).admissions, false);
 assert.equal(websiteAccess({ ...context, permissions: ['communication.view'] }).manageArticles, false);
 console.log('Vérification réussie : validation des dossiers publics, fichiers autorisés, échappement des articles et accès par rôle/périmètre.');
+
+const brochure = { title: 'Brochure ESCEN', slug: 'brochure-escen', description: '', status: 'BROUILLON', reason: 'Préparation' };
+assert.equal(brochureSchema.safeParse(brochure).success, true);
+assert.equal(brochureSchema.safeParse({ ...brochure, slug: '../secret' }).success, false);
+assert.equal(brochureSchema.safeParse({ ...brochure, id: '11111111-1111-4111-8111-111111111111' }).success, false);
+assert.equal(brochureSchema.safeParse({ ...brochure, object_path: 'private/secret.pdf' }).success, false);

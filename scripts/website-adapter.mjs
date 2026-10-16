@@ -3,6 +3,12 @@ import path from 'node:path';
 import os from 'node:os';
 
 export async function adaptWebsite(root, portal) {
+  for (const [template, destination] of [
+    ['BrochureModal.vue', 'app/components/BrochureModal.vue'],
+    ['brochures.vue', 'app/pages/brochures.vue'],
+  ]) {
+    await writeFile(path.join(root, destination), await readFile(new URL(`./website-templates/${template}`, import.meta.url), 'utf8'));
+  }
   // Always derive from the untouched source so that rerunning is deterministic.
   const sourceRoot = process.env.ESCEN_WEBSITE_SOURCE || path.join(os.homedir(), 'Downloads/escen-website');
   let registration = await readFile(path.join(sourceRoot, 'app/pages/inscription/index.vue'), 'utf8');
@@ -33,6 +39,33 @@ export async function adaptWebsite(root, portal) {
           <button type="button" class="btn-ghost" @click="restartRegistration">Commencer un nouveau dossier</button>
         </div>
         <div class="step-track">`);
+  registration = registration.replace('const niveaux = ref([])', "const niveaux = ref([])\nconst catalogLoading = ref(true)\nconst catalogError = ref('')");
+  registration = registration.replace("console.error('Erreur chargement configuration candidature', e)", "throw e");
+  registration = registration.replace('  niveaux.value = await niveauStore.fetchNiveaux()\n  fetchCandidatureConfig()', '  await loadRegistrationCatalog()');
+  registration = registration.replace('onMounted(async () => {', `const loadRegistrationCatalog = async () => {
+  catalogLoading.value = true
+  catalogError.value = ''
+  niveaux.value = []
+  try {
+    await fetchCandidatureConfig()
+    niveaux.value = await niveauStore.fetchNiveaux()
+  } catch (error) {
+    catalogError.value = 'Impossible de charger les niveaux. Réessayez.'
+  } finally {
+    catalogLoading.value = false
+  }
+}
+
+onMounted(async () => {`);
+  registration = registration.replace('<select v-model="prepNiveauId"', '<select aria-label="Pour quel niveau postulez-vous ?" :disabled="catalogLoading || !!catalogError || !niveaux.length" v-model="prepNiveauId"');
+  registration = registration.replace('<option value="">Veuillez sélectionner un niveau...</option>', '<option value="">{{ catalogLoading ? "Chargement des niveaux…" : "Veuillez sélectionner un niveau..." }}</option>');
+  registration = registration.replace('<div v-if="prepLoading"', `<p v-if="registrationYearName" class="text-sm font-semibold mt-3">Année scolaire : {{ registrationYearName }}</p>
+          <p v-if="catalogLoading" role="status" class="mt-3">Chargement des niveaux…</p>
+          <div v-else-if="catalogError" role="alert" class="mt-3"><p>{{ catalogError }}</p><button type="button" class="underline" @click="loadRegistrationCatalog">Réessayer</button></div>
+          <p v-else-if="!niveaux.length" role="status" class="mt-3">{{ registrationYearId ? "Aucun niveau proposé pour cette année." : "Les inscriptions ne sont pas ouvertes actuellement." }}</p>
+          <div v-if="prepLoading"`);
+  registration = registration.replaceAll(':disabled="!prepNiveauId"', ':disabled="!prepNiveauId || catalogLoading || !!catalogError"');
+  registration = registration.replaceAll('isSubmitting || !registrationYearId || campaignChanged', 'isSubmitting || catalogLoading || !!catalogError || !niveaux.length || !registrationYearId || campaignChanged');
   await writeFile(path.join(root, 'app/pages/inscription/index.vue'), registration);
   let store = await readFile(path.join(sourceRoot, 'app/stores/candidature.ts'), 'utf8');
   store = store.replace('return response.data?.candidat || null', 'return response.data || null');

@@ -32,6 +32,8 @@ import AcademiqueModule from '@/components/modules/AcademiqueModule';
 import EtudiantsModule from '@/components/modules/EtudiantsModule';
 import FinanceModule from '@/components/modules/FinanceModule';
 import PersonnelModule from '@/components/modules/PersonnelModule';
+import OnlineAdmissionsPanel from '@/components/modules/website/OnlineAdmissionsPanel';
+import WebsiteBrochuresPanel from '@/components/modules/website/WebsiteBrochuresPanel';
 import WebsiteArticlesPanel from '@/components/modules/website/WebsiteArticlesPanel';
 import MarketingModule from '@/components/modules/MarketingModule';
 import SystemeModule from '@/components/modules/SystemeModule';
@@ -46,6 +48,9 @@ export default function PortalScreen({ tab, section }: { tab: string; section: s
   if (state.session && section === 'stud_status') return <ReenrollmentWorkspace />;
   if (state.session && section === 'fin_contracts') return <AnnualFeesWorkspace />;
   if (state.session && section === 'fin_kpis') return <FinanceOverview />;
+  if (state.session && section === 'web_applications') return <OnlineAdmissionsPanel mode="applications" />;
+  if (state.session && section === 'web_documents') return <OnlineAdmissionsPanel mode="configuration" />;
+  if (state.session && section === 'web_brochures') return <WebsiteBrochuresPanel />;
   if (state.session && section === 'comm_news') return <WebsiteArticlesPanel />;
   if (state.session && (section === 'espace_dashboard' || section === 'dashboard_kpis' || section === 'dashboard_reports')) return <WorkspaceHome mode={section === 'dashboard_kpis' ? 'overview' : section === 'dashboard_reports' ? 'reports' : 'home'} />;
   if (state.session && section === 'acad_settings') return <section className="card"><div className="page-intro"><div><span className="page-eyebrow">RÈGLEMENT ACADÉMIQUE</span><h1>Règles académiques à confirmer</h1><p>Les règles de compensation, de validation et de délibération doivent être confirmées par la direction académique avant leur application. Aucune règle n’est appliquée automatiquement aux dossiers historiques.</p></div></div><p>Préparez la version approuvée du règlement et ses dates d’application. L’enregistrement et l’activation de cette version ne sont pas encore disponibles dans cet écran.</p></section>;

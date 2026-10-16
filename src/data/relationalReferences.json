@@ -432,5 +432,9 @@
   },
   "academic_working_year": {
     "academic_year_id": "academic_years"
+  },
+  "website_brochures": {
+    "academic_year_id": "academic_years",
+    "created_by": "accounts"
   }
 }

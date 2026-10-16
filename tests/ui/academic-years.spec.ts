@@ -60,38 +60,25 @@ for (const width of [390, 1440]) {
   test(`Année institutionnelle : ouverture et désignation confirmées, erreur conservée à ${width}px`, async ({ page }) => {
     await page.setViewportSize({ width, height: 1000 }); const fixture = await annualFixture(page);
     await page.goto('/academique/referentiel?collection=academic_years');
-    await expect(page.getByRole('button', { name: 'Ouvrir l’année 2027-2028', exact: true })).toBeDisabled();
-    const confirm = async (button: string) => {
-      await page.getByRole('button', { name: button, exact: true }).click();
-      await page.getByLabel('Motif du changement', { exact: true }).fill('Fin des activités de l’ancienne année');
-      await page.getByRole('button', { name: 'Vérifier les conséquences', exact: true }).click();
-      await page.getByRole('button', { name: 'Confirmer le changement d’année', exact: true }).click();
-    };
-    await confirm('Retirer la désignation de l’année de travail');
-    await confirm('Préparer la clôture de 2026-2027');
-    await page.getByRole('button', { name: 'Bilan avant clôture de 2026-2027', exact: true }).click();
-    await confirm('Vérifier la clôture définitive');
-    await page.getByRole('button', { name: 'Ouvrir l’année 2027-2028', exact: true }).click();
-    await page.getByLabel('Motif du changement', { exact: true }).fill('Préparation officielle de la prochaine année');
-    await page.getByRole('button', { name: 'Vérifier les conséquences', exact: true }).click();
-    expect(fixture.commands).toHaveLength(3);
-    await page.getByRole('button', { name: 'Confirmer le changement d’année', exact: true }).click();
-    await page.getByRole('button', { name: 'Utiliser 2027-2028 comme année de travail', exact: true }).click();
-    await page.getByLabel('Motif du changement', { exact: true }).fill('Démarrage validé de la nouvelle année');
-    await page.getByRole('button', { name: 'Vérifier les conséquences', exact: true }).click();
-    await page.getByRole('button', { name: 'Confirmer le changement d’année', exact: true }).click();
+    await expect(page.getByRole('switch', { name: 'Désactiver l’année 2026-2027' })).toBeChecked();
+    await expect(page.getByRole('switch', { name: 'Activer l’année 2025-2026' })).toBeDisabled();
+    await expect(page.getByRole('switch', { name: 'Activer l’année 2027-2028' })).not.toBeChecked();
+
+    await page.getByRole('switch', { name: 'Désactiver l’année 2026-2027' }).click();
+    await expect(page.getByRole('switch', { name: 'Activer l’année 2026-2027' })).toBeVisible();
+    expect(fixture.commands).toHaveLength(1);
+    expect(fixture.commands[0]).toMatchObject({ action: 'current', yearId: null });
+
+    await page.getByRole('switch', { name: 'Activer l’année 2027-2028' }).click();
     await expect(page.getByRole('combobox', { name: 'Année consultée', exact: true }).locator('option:checked')).toHaveText('Année de travail : 2027-2028');
-    expect(fixture.commands[3]).toMatchObject({ action: 'transition', status: 'OUVERTE', yearId: futureId });
-    expect(fixture.commands[4]).toMatchObject({ action: 'current', yearId: futureId });
+    expect(fixture.commands[1]).toMatchObject({ action: 'transition', status: 'EN_CLOTURE', yearId: currentId });
+    expect(fixture.commands[2]).toMatchObject({ action: 'transition', status: 'OUVERTE', yearId: futureId });
+    expect(fixture.commands[3]).toMatchObject({ action: 'current', yearId: futureId });
     expect(fixture.source.tables.enrollments).toHaveLength(2);
+
     fixture.fail();
-    await page.getByRole('button', { name: 'Retirer la désignation de l’année de travail', exact: true }).click();
-    await page.getByLabel('Motif du changement', { exact: true }).fill('Valeur conservée si la version a changé');
-    await page.getByRole('button', { name: 'Vérifier les conséquences', exact: true }).click();
-    await page.getByRole('button', { name: 'Confirmer le changement d’année', exact: true }).click();
+    await page.getByRole('switch', { name: 'Désactiver l’année 2027-2028' }).click();
     await expect(page.getByRole('alert').filter({ hasText: 'Modification concurrente' })).toBeVisible();
-    await page.getByRole('button', { name: 'Revenir aux informations', exact: true }).click();
-    await expect(page.getByLabel('Motif du changement', { exact: true })).toHaveValue('Valeur conservée si la version a changé');
   });
 }
 test('Commande annuelle refusée sans session', async ({ request }) => {

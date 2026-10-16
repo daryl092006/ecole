@@ -127,7 +127,9 @@ export async function verifyAcademicYears({ db, check, insert, account, year, le
   });
   await check('Années : rattachements figés, clôture contrôlée et dettes historiques conservées', async () => {
 
-    await value("select public.escen_website_manage($1,'IT','intake-save',$2::jsonb) as value",[account.id,JSON.stringify({academic_year_id:fresh.id,level_id:level.id,program_id:curriculum.program_id,label:'Même formation, nouvelle année',active:true,required_documents:[],reason:'Campagne annuelle explicite'})]);
+    const syncedIntake = (await value("select public.escen_website_manage($1,'IT','admissions','{}') as value", [account.id])).intakes.find(item => item.academic_year_id === fresh.id && item.level_id === level.id && item.program_id === curriculum.program_id);
+    assert.ok(syncedIntake);
+    await value("select public.escen_website_manage($1,'IT','intake-save',$2::jsonb) as value",[account.id,JSON.stringify({id:syncedIntake.id,version:syncedIntake.version,academic_year_id:fresh.id,level_id:level.id,program_id:curriculum.program_id,label:'Même formation, nouvelle année',active:true,required_documents:[],reason:'Campagne annuelle explicite'})]);
     application = await value("select public.escen_website_public('create',$1,$2::jsonb) as value",[draftToken,JSON.stringify({academic_year_id:fresh.id,nom:'Campagne',prenom:'Année',email:'campagne@example.test'})]);
     const group = await insert('groups', { academic_year_id: fresh.id, level_id: level.id, name: 'Groupe annuel de recette' });
     await insert('group_offerings',{group_id:group.id,offering_id:offering.id,academic_year_id:fresh.id,level_id:level.id});

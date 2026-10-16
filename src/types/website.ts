@@ -24,3 +24,10 @@ export interface WebsiteManagement {
   years?: { id: string; name: string; status: string }[]; currentYearId?: string | null;
   levels: { id: string; name: string }[]; programs: { id: string; name: string }[];
 }
+export interface WebsiteBrochure {
+  id: string; academic_year_id: string; title: string; slug: string; description: string;
+  status: 'BROUILLON' | 'PUBLIE' | 'RETIRE'; filename: string; byte_size: number;
+  version: number; updated_at: string;
+  program_id: string | null; cycle: BrochureCycle | null; program_name?: string | null; program_code?: string | null;
+}
+export type BrochureCycle = 'LICENCE' | 'MASTER' | 'EXECUTIVE';

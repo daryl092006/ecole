@@ -19,3 +19,22 @@ test('Sans inscription officielle, aucun encaissement proposé',async({page})=>{
  await authenticateFixture(page);await page.route('**/api/campus',route=>route.fulfill({json:snapshot}));await page.route('**/api/students/*/operations',route=>route.fulfill({json:{revision:1,enrollments:[],payments:[],paid:0}}));
  await page.goto('/etudiants/ESCEN-TEST-001');await expect(page.getByText('Aucune inscription officielle pour cette année. Une inscription est nécessaire avant un encaissement.')).toBeVisible();await expect(page.getByRole('button',{name:'Enregistrer un paiement',exact:true})).toHaveCount(0);
 });
+test('Contrat en brouillon : approbation et continuité dans Frais et versements',async({page})=>{
+ await authenticateFixture(page);await page.route('**/api/campus',route=>route.fulfill({json:snapshot}));
+ const operations:Record<string,unknown>[]=[];let contractStatus='DRAFT';
+ await page.route('**/api/students/*/operations',route=>{
+  if(route.request().method()==='POST'){const body=route.request().postDataJSON();operations.push(body);contractStatus='APPROVED';return route.fulfill({status:201,json:{revision:2}});}
+  return route.fulfill({json:{revision:1,enrollments:[{id:'00000000-0000-4000-8000-000000000101',status:'INSCRIT',enrolledOn:'2026-10-15'}],contracts:[{id:'C1',versionId:'V1',enrollmentId:'00000000-0000-4000-8000-000000000101',reference:'CON-001',status:contractStatus,amount:530000}],payments:[],paid:0}});
+ });
+ await page.goto('/etudiants/ESCEN-TEST-001');
+ await page.getByRole('navigation',{name:'Sections du dossier étudiant'}).getByRole('button',{name:'Frais et versements',exact:true}).click();
+ await expect(page.getByRole('heading',{name:'Gérer la scolarité'})).toBeVisible();
+ await expect(page.locator('.availability-details')).toHaveCount(0);
+ await page.getByRole('button',{name:'Approuver le contrat',exact:true}).click();
+ await page.getByLabel('Motif',{exact:true}).fill('Contrat vérifié et validé');
+ await page.getByRole('button',{name:'Vérifier l’opération'}).click();expect(operations).toHaveLength(0);
+ await page.getByRole('button',{name:'Confirmer l’approbation du contrat',exact:true}).click();
+ await expect(page.getByText('Contrat approuvé et situation financière établie.',{exact:true})).toBeVisible();
+ expect(operations).toHaveLength(1);
+ expect(operations[0]).toMatchObject({action:'approve_contract',enrollmentId:'00000000-0000-4000-8000-000000000101',dueOn:'2026-10-15'});
+});

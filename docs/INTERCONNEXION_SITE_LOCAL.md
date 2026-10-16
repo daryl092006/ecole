@@ -77,3 +77,53 @@ La dernière recette confirme aussi la lecture HTTP réelle des articles depuis 
 La migration 23 exige une année universitaire ouverte pour chaque nouvelle campagne. Le site affiche uniquement les formations de l’année de travail officielle. Le brouillon conserve son année lors de sa création ; un changement de campagne ne le transfère pas. Les campagnes historiques sans année restent conservées, sans attribution inventée. La désignation initiale reste une action institutionnelle explicite. Voir [Année de travail](ANNEE_DE_TRAVAIL.md).
 
 La migration 24 rattache également les articles à leur année. Le serveur filtre la gestion selon l’année consultée, exige une année précise pour les écritures et expose sur le site les articles publiés de l’année de travail officielle. Les anciens articles sans année restent conservés pour reprise explicite.
+
+## Extension du 16 octobre 2026 : brochures PDF
+
+La copie existante `.tmp/escen-website` est réutilisée ; aucun fichier de l’original dans Downloads n’est modifié. Les adaptations versionnées restent dans `scripts/website-adapter.mjs` et `scripts/website-templates/` et sont réappliquées par `node scripts/connect-website.mjs`.
+
+**Communication → Actualités institutionnelles → Brochures du site** permet d’ajouter un PDF (10 Mo maximum), son titre, son adresse et sa description. Après relecture, la brochure peut rester en brouillon, être publiée ou retirée. La modification conserve les anciennes valeurs dans l’audit ; remplacer un PDF ne supprime pas l’ancien fichier. Une version concurrente est refusée et les informations du formulaire restent disponibles.
+
+La migration additive `202610160031_website_brochures.sql` crée `escen.website_brochures` et le bucket privé `escen-website-brochures`. Les RPC ne sont exécutables que par le serveur. Les droits de communication et l’attribution globale réelle sont vérifiés côté serveur et en SQL. La liste générale du campus exclut les brochures. La gestion suit l’année consultée ; le site expose uniquement les brochures publiées de l’année de travail officielle, comme les articles. Aucun PDF d’exemple n’est publié automatiquement.
+
+Sur la copie, `/brochures` et les fenêtres de téléchargement des formations chargent le catalogue publié. Aucun rapprochement implicite par nom de formation n’est effectué : l’utilisateur choisit le document dans le catalogue. La fenêtre ne collecte plus de coordonnées et n’appelle plus l’ancien endpoint de prospects. Le téléchargement passe par `/api/website/public/brochures/<adresse>/download`, qui revérifie la publication avant de servir le PDF en pièce jointe. Les chemins Storage et URLs signées ne sont pas exposés. Un retrait empêche les nouveaux téléchargements ; les fichiers déjà téléchargés restent évidemment chez leurs destinataires.
+
+Les demandes d’inscription en ligne restent dans `online_applications`, distinctes des dossiers étudiants, inscriptions académiques, comptes et contrats. Leur suivi ne crée aucune de ces entités. La recette SQL vérifie cette séparation.
+
+Déploiement ciblé, sans rejouer les autres migrations du dépôt :
+
+```sh
+node scripts/apply-website-brochures.mjs
+node scripts/apply-website-brochures.mjs --apply
+```
+
+Le script refuse un état distant inattendu et enregistre la migration dans la même transaction. La première commande vérifie uniquement les prérequis ; la seconde crée le schéma, sans publier de contenu.
+
+Recette, avec le portail sur 127.0.0.1:3000 et la copie sur localhost:3200 :
+
+```sh
+npm run test
+npm run lint
+npm run build
+ESCEN_TEST_WEBSITE_URL=http://localhost:3200 npm run test:ui -- tests/ui/website-brochures.spec.ts tests/ui/website-exchange.spec.ts tests/ui/website-connection.spec.ts
+```
+
+Les écritures de recette navigateur utilisent des API isolées. Le dernier contrôle des articles est une lecture réelle et exige `ESCEN_WEBSITE_URL=http://localhost:3200` sur le portail. Les tests de brochures couvrent confirmation, transfert PDF, publication, retrait, erreur concurrente et téléchargement aux deux largeurs.
+
+La migration 31 a été appliquée au projet lié le 16 octobre 2026. Vérification distante : catalogue HTTP accessible avec l’origine locale autorisée, bucket privé et appels RPC anonymes refusés. Aucun article, brochure ou dossier de recette n’a été créé à distance.
+
+La page `/brochures` affiche directement le catalogue, sans fenêtre intermédiaire. Les boutons des pages de formation réutilisent ce catalogue dans leur fenêtre de téléchargement.
+
+## Emplacement commun
+
+Les projets sont désormais regroupés dans `/Users/gdenis/escen-projet/` : `ecole/` pour le portail et `escen-website/` pour la copie du site. L’original Downloads reste intact. Les anciens chemins sont conservés comme liens de compatibilité. `scripts/connect-website.mjs` privilégie désormais la copie sœur réelle et refuse toujours une cible remplacée par un lien symbolique.
+
+Double-cliquer sur `../LANCER.command` ou exécuter `node scripts/start-local-project.mjs` depuis le portail pour démarrer les serveurs manquants. Le site utilise son build `dist` ; après modification de ses sources, exécuter `npm run build` depuis `../escen-website`. Ouvrir le nouveau dossier `ecole` dans l’outil de développement pour utiliser son emplacement réel.
+
+## Niveaux et filières de l’année active (migration 32)
+
+La liste publique provient désormais des formations exactes (`academic_offerings → curricula → programs`, avec `level_id`) de l’année de travail ouverte. Les campagnes manquantes sont créées automatiquement à l’activation d’une année ou lors de la modification de ses formations/références. Les campagnes déjà configurées conservent leur ouverture/fermeture et leurs pièces obligatoires ; aucune exigence documentaire n’est inventée pour les nouvelles campagnes. Les formations archivées sont exclues à la lecture et refusées lors de l’envoi des pièces ou de la finalisation. Les demandes existantes conservent leur année d’origine.
+
+La migration `202610160032_website_annual_offerings.sql` est appliquée. La vérification distante du 16 octobre retourne six niveaux pour l’année active 2025-2026. Les formations de 2026-2027, encore en brouillon, ne sont pas affichées.
+
+Le formulaire attend la configuration annuelle avant les niveaux et la reprise du brouillon. La fenêtre préparatoire indique l’année, le chargement, l’absence de niveaux ou une erreur avec reprise. Recette : `ESCEN_TEST_WEBSITE_URL=http://localhost:3200 npm run test:ui -- tests/ui/website-levels.spec.ts tests/ui/website-exchange.spec.ts`.

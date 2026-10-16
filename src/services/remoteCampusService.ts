@@ -88,8 +88,8 @@ export async function downloadApplicationDocument(id: string, role: RoleName): P
   return result.url;
 }
 
-export async function changeAcademicYear(values: { action: 'current' | 'transition'; yearId: string | null; status?: string; revision: number; reason: string }, role: RoleName): Promise<void> {
-  await readResponse(await fetch('/api/academic-years', {method:'POST',headers:{...await headers(role),'Content-Type':'application/json'},body:JSON.stringify(values)}));
+export async function changeAcademicYear(values: { action: 'current' | 'transition'; yearId: string | null; status?: string; revision: number; reason: string }, role: RoleName): Promise<{ revision: number }> {
+  return await readResponse(await fetch('/api/academic-years', {method:'POST',headers:{...await headers(role),'Content-Type':'application/json'},body:JSON.stringify(values)}));
 }
 
 export async function loadYearClosureReview(yearId: string, role: RoleName, signal?: AbortSignal): Promise<import('@/services/academicYearClosureService').YearClosureReview> {
@@ -116,3 +116,13 @@ export async function enrollmentOperation(role:RoleName,body?:Record<string,unkn
  return readResponse(await fetch('/api/enrollments',{method:body?'POST':'GET',headers:{...await headers(role),...(body?{'Content-Type':'application/json'}:{})},...(body?{body:JSON.stringify(body)}:{}),signal,cache:'no-store'}));
 }
 
+
+export async function loadWebsiteBrochures(role: RoleName, signal?: AbortSignal): Promise<import('@/types/website').WebsiteBrochure[]> {
+  return readResponse(await fetch('/api/website-brochures', { headers: await headers(role), cache: 'no-store', signal }));
+}
+export async function saveWebsiteBrochure(metadata: Record<string, unknown>, file: File | null, role: RoleName): Promise<void> {
+  const body = new FormData();
+  body.set('metadata', JSON.stringify(metadata));
+  if (file) body.set('file', file);
+  await readResponse(await fetch('/api/website-brochures', { method: 'POST', headers: await headers(role), body }));
+}

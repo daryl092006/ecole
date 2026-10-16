@@ -2,20 +2,20 @@
 
 Généré avec `npm run db:describe` en exécutant les migrations dans PostgreSQL local (PGlite). Aucun accès à Supabase ou aux données de la sauvegarde.
 
-111 tables métier, 13 tables privées, 903 colonnes, 249 clés étrangères, 182 CHECK de tables et 4 exclusions. Les domaines ajoutent les bornes des notes, des montants FCFA et des textes obligatoires.
+112 tables métier, 13 tables privées, 939 colonnes, 262 clés étrangères, 200 CHECK de tables et 4 exclusions. Les domaines ajoutent les bornes des notes, des montants FCFA et des textes obligatoires.
 
 Toutes les tables ont RLS activée, sans accès applicatif permis à ce stade. Les noms techniques ne sont pas des libellés à afficher dans l’interface.
 
 | Schéma | Table | Colonnes | FK | RLS |
 |---|---|---:|---:|---|
 | escen | absence_justifications | 8 | 3 | Oui |
-| escen | academic_offerings | 5 | 3 | Oui |
+| escen | academic_offerings | 9 | 5 | Oui |
 | escen | academic_rule_versions | 6 | 1 | Oui |
 | escen | academic_working_year | 5 | 1 | Oui |
 | escen | academic_years | 9 | 0 | Oui |
 | escen | accounts | 8 | 2 | Oui |
 | escen | allocation_reversals | 5 | 2 | Oui |
-| escen | annual_fee_schedules | 8 | 3 | Oui |
+| escen | annual_fee_schedules | 9 | 3 | Oui |
 | escen | annual_payment_channels | 6 | 1 | Oui |
 | escen | answer_corrections | 6 | 2 | Oui |
 | escen | application_documents | 11 | 1 | Oui |
@@ -33,11 +33,11 @@ Toutes les tables ont RLS activée, sans accès applicatif permis à ce stade. L
 | escen | complaints | 7 | 2 | Oui |
 | escen | contract_discounts | 6 | 2 | Oui |
 | escen | contract_lines | 7 | 3 | Oui |
-| escen | contract_versions | 8 | 3 | Oui |
+| escen | contract_versions | 9 | 4 | Oui |
 | escen | credit_awards | 5 | 2 | Oui |
 | escen | credit_notes | 6 | 2 | Oui |
-| escen | curricula | 9 | 4 | Oui |
-| escen | curriculum_components | 11 | 2 | Oui |
+| escen | curricula | 10 | 4 | Oui |
+| escen | curriculum_components | 13 | 3 | Oui |
 | escen | curriculum_semesters | 5 | 1 | Oui |
 | escen | cycles | 5 | 0 | Oui |
 | escen | delegate_mandates | 6 | 2 | Oui |
@@ -45,11 +45,11 @@ Toutes les tables ont RLS activée, sans accès applicatif permis à ce stade. L
 | escen | document_reviews | 6 | 2 | Oui |
 | escen | document_types | 6 | 0 | Oui |
 | escen | enrollment_events | 7 | 2 | Oui |
-| escen | enrollment_groups | 8 | 3 | Oui |
+| escen | enrollment_groups | 9 | 4 | Oui |
 | escen | enrollments | 7 | 3 | Oui |
 | escen | evaluation_candidates | 7 | 2 | Oui |
 | escen | evaluation_transitions | 7 | 2 | Oui |
-| escen | evaluations | 12 | 3 | Oui |
+| escen | evaluations | 17 | 6 | Oui |
 | escen | exam_answers | 6 | 2 | Oui |
 | escen | exam_attempts | 9 | 2 | Oui |
 | escen | exam_deliveries | 6 | 2 | Oui |
@@ -67,21 +67,21 @@ Toutes les tables ont RLS activée, sans accès applicatif permis à ce stade. L
 | escen | financial_contracts | 5 | 1 | Oui |
 | escen | generated_documents | 12 | 6 | Oui |
 | escen | grade_revisions | 9 | 3 | Oui |
-| escen | grades | 8 | 3 | Oui |
-| escen | group_offerings | 6 | 4 | Oui |
+| escen | grades | 9 | 4 | Oui |
+| escen | group_offerings | 8 | 4 | Oui |
 | escen | groups | 7 | 3 | Oui |
-| escen | installments | 6 | 1 | Oui |
+| escen | installments | 7 | 1 | Oui |
 | escen | juries | 6 | 3 | Oui |
 | escen | jury_decisions | 13 | 5 | Oui |
 | escen | jury_grade_inputs | 5 | 2 | Oui |
 | escen | jury_members | 4 | 2 | Oui |
-| escen | levels | 7 | 1 | Oui |
+| escen | levels | 8 | 2 | Oui |
 | escen | offering_semesters | 6 | 2 | Oui |
 | escen | online_applications | 12 | 2 | Oui |
 | escen | payment_allocations | 10 | 6 | Oui |
 | escen | payment_documents | 3 | 2 | Oui |
 | escen | payment_reversals | 5 | 2 | Oui |
-| escen | payments | 13 | 3 | Oui |
+| escen | payments | 15 | 4 | Oui |
 | escen | people | 15 | 0 | Oui |
 | escen | permissions | 3 | 0 | Oui |
 | escen | programs | 7 | 0 | Oui |
@@ -118,6 +118,7 @@ Toutes les tables ont RLS activée, sans accès applicatif permis à ce stade. L
 | escen | teaching_units | 6 | 1 | Oui |
 | escen | tracks | 7 | 1 | Oui |
 | escen | website_articles | 13 | 2 | Oui |
+| escen | website_brochures | 14 | 2 | Oui |
 | escen | website_intakes | 9 | 3 | Oui |
 | escen_private | application_access | 3 | 1 | Oui |
 | escen_private | archive_objects | 11 | 1 | Oui |
@@ -176,10 +177,14 @@ CREATE INDEX fk_18883 ON escen.absence_justifications USING btree (reviewed_by)
 | Attribut | Type | Nullable | Défaut | Généré |
 |---|---|---|---|---|
 | id | uuid | NO | gen_random_uuid() | NEVER |
-| curriculum_id | uuid | NO | — | NEVER |
+| curriculum_id | uuid | YES | — | NEVER |
 | academic_year_id | uuid | NO | — | NEVER |
 | level_id | uuid | NO | — | NEVER |
-| site_id | uuid | NO | — | NEVER |
+| site_id | uuid | YES | — | NEVER |
+| legacy_source_row_id | uuid | YES | — | NEVER |
+| delivery_mode | text | YES | — | NEVER |
+| archived_at | timestamptz | YES | — | NEVER |
+| reason | text | YES | — | NEVER |
 
 Contraintes :
 
@@ -188,15 +193,17 @@ academic_offerings_academic_year_id_fkey: FOREIGN KEY (academic_year_id) REFEREN
 academic_offerings_academic_year_id_not_null: NOT NULL academic_year_id
 academic_offerings_curriculum_id_academic_year_id_site_id_key: UNIQUE (curriculum_id, academic_year_id, site_id)
 academic_offerings_curriculum_id_level_id_fkey: FOREIGN KEY (curriculum_id, level_id) REFERENCES escen.curricula(id, level_id) ON DELETE RESTRICT
-academic_offerings_curriculum_id_not_null: NOT NULL curriculum_id
 academic_offerings_id_academic_year_id_level_id_key: UNIQUE (id, academic_year_id, level_id)
 academic_offerings_id_curriculum_id_key: UNIQUE (id, curriculum_id)
 academic_offerings_id_not_null: NOT NULL id
 academic_offerings_id_site_id_key: UNIQUE (id, site_id)
+academic_offerings_legacy_source_row_id_fkey: FOREIGN KEY (legacy_source_row_id) REFERENCES escen_private.legacy_rows(id) ON DELETE RESTRICT
 academic_offerings_level_id_not_null: NOT NULL level_id
 academic_offerings_pkey: PRIMARY KEY (id)
 academic_offerings_site_id_fkey: FOREIGN KEY (site_id) REFERENCES escen.sites(id) ON DELETE RESTRICT
-academic_offerings_site_id_not_null: NOT NULL site_id
+offering_archive_reason: CHECK (((archived_at IS NULL) OR (length(btrim(COALESCE(reason, ''::text))) >= 3)))
+offering_curriculum_evidence: CHECK (((curriculum_id IS NOT NULL) OR (legacy_source_row_id IS NOT NULL)))
+offering_level_reference: FOREIGN KEY (level_id) REFERENCES escen.levels(id) ON DELETE RESTRICT
 ```
 
 Index :
@@ -210,6 +217,7 @@ CREATE UNIQUE INDEX academic_offerings_pkey ON escen.academic_offerings USING bt
 CREATE INDEX fk_16952 ON escen.academic_offerings USING btree (academic_year_id)
 CREATE INDEX fk_16957 ON escen.academic_offerings USING btree (site_id)
 CREATE INDEX fk_16962 ON escen.academic_offerings USING btree (curriculum_id, level_id)
+CREATE UNIQUE INDEX offering_without_location ON escen.academic_offerings USING btree (COALESCE(curriculum_id, '00000000-0000-0000-0000-000000000000'::uuid), academic_year_id, level_id, COALESCE(delivery_mode, ''::text)) WHERE (site_id IS NULL)
 ```
 
 ## escen.academic_rule_versions
@@ -311,6 +319,7 @@ academic_years_version_not_null: NOT NULL version
 Index :
 
 ```sql
+CREATE UNIQUE INDEX academic_year_single_open ON escen.academic_years USING btree ((true)) WHERE (status = 'OUVERTE'::text)
 CREATE UNIQUE INDEX academic_years_code_key ON escen.academic_years USING btree (code)
 CREATE UNIQUE INDEX academic_years_pkey ON escen.academic_years USING btree (id)
 ```
@@ -398,11 +407,11 @@ CREATE INDEX fk_18662 ON escen.allocation_reversals USING btree (actor_id)
 | amount | escen.xof_amount | NO | — | NEVER |
 | reason | escen.nonempty_text | NO | — | NEVER |
 | archived_at | timestamptz | YES | — | NEVER |
+| delivery_mode | text | YES | — | NEVER |
 
 Contraintes :
 
 ```sql
-annual_fee_schedules_academic_year_id_category_program_id_l_key: UNIQUE NULLS NOT DISTINCT (academic_year_id, category, program_id, level_id, archived_at)
 annual_fee_schedules_academic_year_id_fkey: FOREIGN KEY (academic_year_id) REFERENCES escen.academic_years(id) ON DELETE RESTRICT
 annual_fee_schedules_academic_year_id_not_null: NOT NULL academic_year_id
 annual_fee_schedules_amount_not_null: NOT NULL amount
@@ -413,6 +422,7 @@ annual_fee_schedules_level_id_fkey: FOREIGN KEY (level_id) REFERENCES escen.leve
 annual_fee_schedules_pkey: PRIMARY KEY (id)
 annual_fee_schedules_program_id_fkey: FOREIGN KEY (program_id) REFERENCES escen.programs(id) ON DELETE RESTRICT
 annual_fee_schedules_reason_not_null: NOT NULL reason
+annual_fee_variant: UNIQUE NULLS NOT DISTINCT (academic_year_id, category, program_id, level_id, delivery_mode, archived_at)
 ```
 
 Index :
@@ -420,8 +430,8 @@ Index :
 ```sql
 CREATE INDEX annual_fee_level_fk ON escen.annual_fee_schedules USING btree (level_id)
 CREATE INDEX annual_fee_program_fk ON escen.annual_fee_schedules USING btree (program_id)
-CREATE UNIQUE INDEX annual_fee_schedules_academic_year_id_category_program_id_l_key ON escen.annual_fee_schedules USING btree (academic_year_id, category, program_id, level_id, archived_at) NULLS NOT DISTINCT
 CREATE UNIQUE INDEX annual_fee_schedules_pkey ON escen.annual_fee_schedules USING btree (id)
+CREATE UNIQUE INDEX annual_fee_variant ON escen.annual_fee_schedules USING btree (academic_year_id, category, program_id, level_id, delivery_mode, archived_at) NULLS NOT DISTINCT
 CREATE INDEX annual_fee_year_fk ON escen.annual_fee_schedules USING btree (academic_year_id)
 ```
 
@@ -617,7 +627,7 @@ CREATE INDEX fk_19241 ON escen.asset_movements USING btree (actor_id)
 | Attribut | Type | Nullable | Défaut | Généré |
 |---|---|---|---|---|
 | id | uuid | NO | gen_random_uuid() | NEVER |
-| site_id | uuid | NO | — | NEVER |
+| site_id | uuid | YES | — | NEVER |
 | code | escen.nonempty_text | NO | — | NEVER |
 | name | escen.nonempty_text | NO | — | NEVER |
 | location | text | YES | — | NEVER |
@@ -635,7 +645,6 @@ assets_id_not_null: NOT NULL id
 assets_name_not_null: NOT NULL name
 assets_pkey: PRIMARY KEY (id)
 assets_site_id_fkey: FOREIGN KEY (site_id) REFERENCES escen.sites(id) ON DELETE RESTRICT
-assets_site_id_not_null: NOT NULL site_id
 assets_status_check: CHECK ((status = ANY (ARRAY['DISPONIBLE'::text, 'MAINTENANCE'::text, 'HORS_SERVICE'::text])))
 assets_status_not_null: NOT NULL status
 ```
@@ -1067,25 +1076,27 @@ CREATE INDEX fk_18441 ON escen.contract_lines USING btree (version_id, contract_
 | approved_by | uuid | YES | — | NEVER |
 | approved_at | timestamptz | YES | — | NEVER |
 | reason | escen.nonempty_text | NO | — | NEVER |
+| legacy_source_row_id | uuid | YES | — | NEVER |
 
 Contraintes :
 
 ```sql
+contract_version_state: CHECK (((status = ANY (ARRAY['DRAFT'::text, 'APPROVED'::text, 'SUPERSEDED'::text])) OR ((status = 'EN_COURS'::text) AND (legacy_source_row_id IS NOT NULL))))
 contract_versions_approved_by_fkey: FOREIGN KEY (approved_by) REFERENCES escen.accounts(id) ON DELETE RESTRICT
 contract_versions_check: CHECK (((supersedes_id IS NULL) OR (supersedes_id <> id)))
-contract_versions_check1: CHECK (((status = 'DRAFT'::text) OR ((approved_by IS NOT NULL) AND (approved_at IS NOT NULL))))
 contract_versions_contract_id_fkey: FOREIGN KEY (contract_id) REFERENCES escen.financial_contracts(id) ON DELETE RESTRICT
 contract_versions_contract_id_not_null: NOT NULL contract_id
 contract_versions_contract_id_version_key: UNIQUE (contract_id, version)
 contract_versions_id_contract_id_key: UNIQUE (id, contract_id)
 contract_versions_id_not_null: NOT NULL id
+contract_versions_legacy_source_row_id_fkey: FOREIGN KEY (legacy_source_row_id) REFERENCES escen_private.legacy_rows(id) ON DELETE RESTRICT
 contract_versions_pkey: PRIMARY KEY (id)
 contract_versions_reason_not_null: NOT NULL reason
-contract_versions_status_check: CHECK ((status = ANY (ARRAY['DRAFT'::text, 'APPROVED'::text, 'SUPERSEDED'::text])))
 contract_versions_status_not_null: NOT NULL status
 contract_versions_supersedes_id_contract_id_fkey: FOREIGN KEY (supersedes_id, contract_id) REFERENCES escen.contract_versions(id, contract_id) ON DELETE RESTRICT
 contract_versions_version_check: CHECK ((version > 0))
 contract_versions_version_not_null: NOT NULL version
+version_approval_evidence: CHECK (((status = ANY (ARRAY['DRAFT'::text, 'EN_COURS'::text])) OR ((approved_by IS NOT NULL) AND (approved_at IS NOT NULL))))
 ```
 
 Index :
@@ -1097,6 +1108,7 @@ CREATE UNIQUE INDEX contract_versions_pkey ON escen.contract_versions USING btre
 CREATE INDEX fk_18397 ON escen.contract_versions USING btree (contract_id)
 CREATE INDEX fk_18402 ON escen.contract_versions USING btree (approved_by)
 CREATE INDEX fk_18407 ON escen.contract_versions USING btree (supersedes_id, contract_id)
+CREATE UNIQUE INDEX one_active_contract_version ON escen.contract_versions USING btree (contract_id) WHERE (status = ANY (ARRAY['APPROVED'::text, 'EN_COURS'::text]))
 CREATE UNIQUE INDEX one_approved_contract_version ON escen.contract_versions USING btree (contract_id) WHERE (status = 'APPROVED'::text)
 ```
 
@@ -1182,11 +1194,13 @@ CREATE INDEX fk_18717 ON escen.credit_notes USING btree (actor_id)
 | approved_by | uuid | YES | — | NEVER |
 | approved_at | timestamptz | YES | — | NEVER |
 | reason | text | YES | — | NEVER |
+| archived_at | timestamptz | YES | — | NEVER |
 
 Contraintes :
 
 ```sql
 curricula_approved_by_fkey: FOREIGN KEY (approved_by) REFERENCES escen.accounts(id) ON DELETE RESTRICT
+curricula_archive_reason: CHECK (((archived_at IS NULL) OR (length(btrim(COALESCE(reason, ''::text))) >= 3)))
 curricula_check: CHECK (((status = 'DRAFT'::text) OR ((approved_by IS NOT NULL) AND (approved_at IS NOT NULL))))
 curricula_id_level_id_key: UNIQUE (id, level_id)
 curricula_id_not_null: NOT NULL id
@@ -1221,41 +1235,38 @@ CREATE INDEX fk_16837 ON escen.curricula USING btree (track_id, program_id)
 |---|---|---|---|---|
 | id | uuid | NO | gen_random_uuid() | NEVER |
 | subject_id | uuid | NO | — | NEVER |
-| unit_id | uuid | NO | — | NEVER |
-| curriculum_id | uuid | NO | — | NEVER |
+| unit_id | uuid | YES | — | NEVER |
+| curriculum_id | uuid | YES | — | NEVER |
 | code | escen.nonempty_text | NO | — | NEVER |
-| coefficient | numeric | NO | — | NEVER |
-| credits | numeric | NO | — | NEVER |
-| cm_hours | numeric | NO | 0 | NEVER |
-| td_hours | numeric | NO | 0 | NEVER |
-| tp_hours | numeric | NO | 0 | NEVER |
-| other_hours | numeric | NO | 0 | NEVER |
+| coefficient | numeric | YES | — | NEVER |
+| credits | numeric | YES | — | NEVER |
+| cm_hours | numeric | YES | 0 | NEVER |
+| td_hours | numeric | YES | 0 | NEVER |
+| tp_hours | numeric | YES | 0 | NEVER |
+| other_hours | numeric | YES | 0 | NEVER |
+| legacy_source_row_id | uuid | YES | — | NEVER |
+| total_hours | numeric | YES | — | NEVER |
 
 Contraintes :
 
 ```sql
+component_coefficient_evidence: CHECK ((((coefficient IS NOT NULL) AND (coefficient > (0)::numeric)) OR ((legacy_source_row_id IS NOT NULL) AND ((coefficient IS NULL) OR (coefficient >= (0)::numeric)))))
+component_definition_evidence: CHECK ((((curriculum_id IS NOT NULL) AND (unit_id IS NOT NULL) AND (credits IS NOT NULL)) OR (legacy_source_row_id IS NOT NULL)))
+component_hours_evidence: CHECK (((legacy_source_row_id IS NOT NULL) OR ((cm_hours IS NOT NULL) AND (td_hours IS NOT NULL) AND (tp_hours IS NOT NULL) AND (other_hours IS NOT NULL))))
 curriculum_components_cm_hours_check: CHECK ((cm_hours >= (0)::numeric))
-curriculum_components_cm_hours_not_null: NOT NULL cm_hours
 curriculum_components_code_not_null: NOT NULL code
-curriculum_components_coefficient_check: CHECK ((coefficient > (0)::numeric))
-curriculum_components_coefficient_not_null: NOT NULL coefficient
 curriculum_components_credits_check: CHECK ((credits >= (0)::numeric))
-curriculum_components_credits_not_null: NOT NULL credits
-curriculum_components_curriculum_id_not_null: NOT NULL curriculum_id
 curriculum_components_id_curriculum_id_key: UNIQUE (id, curriculum_id)
 curriculum_components_id_not_null: NOT NULL id
+curriculum_components_legacy_source_row_id_fkey: FOREIGN KEY (legacy_source_row_id) REFERENCES escen_private.legacy_rows(id) ON DELETE RESTRICT
 curriculum_components_other_hours_check: CHECK ((other_hours >= (0)::numeric))
-curriculum_components_other_hours_not_null: NOT NULL other_hours
 curriculum_components_pkey: PRIMARY KEY (id)
 curriculum_components_subject_id_fkey: FOREIGN KEY (subject_id) REFERENCES escen.subjects(id) ON DELETE RESTRICT
 curriculum_components_subject_id_not_null: NOT NULL subject_id
 curriculum_components_td_hours_check: CHECK ((td_hours >= (0)::numeric))
-curriculum_components_td_hours_not_null: NOT NULL td_hours
 curriculum_components_tp_hours_check: CHECK ((tp_hours >= (0)::numeric))
-curriculum_components_tp_hours_not_null: NOT NULL tp_hours
 curriculum_components_unit_id_code_key: UNIQUE (unit_id, code)
 curriculum_components_unit_id_curriculum_id_fkey: FOREIGN KEY (unit_id, curriculum_id) REFERENCES escen.teaching_units(id, curriculum_id) ON DELETE RESTRICT
-curriculum_components_unit_id_not_null: NOT NULL unit_id
 ```
 
 Index :
@@ -1508,10 +1519,11 @@ CREATE INDEX fk_17174 ON escen.enrollment_events USING btree (actor_id)
 | enrollment_id | uuid | NO | — | NEVER |
 | offering_id | uuid | NO | — | NEVER |
 | group_id | uuid | NO | — | NEVER |
-| valid_from | date | NO | — | NEVER |
+| valid_from | date | YES | — | NEVER |
 | valid_until | date | YES | — | NEVER |
 | changed_by | uuid | NO | — | NEVER |
 | reason | escen.nonempty_text | NO | — | NEVER |
+| legacy_source_row_id | uuid | YES | — | NEVER |
 
 Contraintes :
 
@@ -1526,10 +1538,11 @@ enrollment_groups_enrollment_id_offering_id_fkey: FOREIGN KEY (enrollment_id, of
 enrollment_groups_group_id_not_null: NOT NULL group_id
 enrollment_groups_group_id_offering_id_fkey: FOREIGN KEY (group_id, offering_id) REFERENCES escen.group_offerings(group_id, offering_id) ON DELETE RESTRICT
 enrollment_groups_id_not_null: NOT NULL id
+enrollment_groups_legacy_source_row_id_fkey: FOREIGN KEY (legacy_source_row_id) REFERENCES escen_private.legacy_rows(id) ON DELETE RESTRICT
 enrollment_groups_offering_id_not_null: NOT NULL offering_id
 enrollment_groups_pkey: PRIMARY KEY (id)
 enrollment_groups_reason_not_null: NOT NULL reason
-enrollment_groups_valid_from_not_null: NOT NULL valid_from
+membership_date_evidence: CHECK (((valid_from IS NOT NULL) OR (legacy_source_row_id IS NOT NULL)))
 ```
 
 Index :
@@ -1666,7 +1679,7 @@ CREATE INDEX fk_17638 ON escen.evaluation_transitions USING btree (actor_id)
 | Attribut | Type | Nullable | Défaut | Généré |
 |---|---|---|---|---|
 | id | uuid | NO | gen_random_uuid() | NEVER |
-| assignment_id | uuid | NO | — | NEVER |
+| assignment_id | uuid | YES | — | NEVER |
 | offering_id | uuid | NO | — | NEVER |
 | component_id | uuid | NO | — | NEVER |
 | name | escen.nonempty_text | NO | — | NEVER |
@@ -1677,11 +1690,16 @@ CREATE INDEX fk_17638 ON escen.evaluation_transitions USING btree (actor_id)
 | cancellation_reason | text | YES | — | NEVER |
 | created_by | uuid | NO | — | NEVER |
 | created_at | timestamptz | NO | now() | NEVER |
+| legacy_source_row_id | uuid | YES | — | NEVER |
+| archived_at | timestamptz | YES | — | NEVER |
+| session_type | text | YES | — | NEVER |
+| group_id | uuid | YES | — | NEVER |
+| held_on | date | YES | — | NEVER |
 
 Contraintes :
 
 ```sql
-evaluations_assignment_id_not_null: NOT NULL assignment_id
+evaluation_assignment_evidence: CHECK (((assignment_id IS NOT NULL) OR (legacy_source_row_id IS NOT NULL)))
 evaluations_assignment_id_offering_id_component_id_fkey: FOREIGN KEY (assignment_id, offering_id, component_id) REFERENCES escen.teaching_assignments(id, offering_id, component_id) ON DELETE RESTRICT
 evaluations_check: CHECK (((parent_evaluation_id IS NULL) OR (parent_evaluation_id <> id)))
 evaluations_check1: CHECK (((kind <> 'RATTRAPAGE'::text) OR (parent_evaluation_id IS NOT NULL)))
@@ -1690,17 +1708,21 @@ evaluations_component_id_not_null: NOT NULL component_id
 evaluations_created_at_not_null: NOT NULL created_at
 evaluations_created_by_fkey: FOREIGN KEY (created_by) REFERENCES escen.accounts(id) ON DELETE RESTRICT
 evaluations_created_by_not_null: NOT NULL created_by
+evaluations_group_id_fkey: FOREIGN KEY (group_id) REFERENCES escen.groups(id) ON DELETE RESTRICT
 evaluations_id_not_null: NOT NULL id
 evaluations_id_offering_id_component_id_key: UNIQUE (id, offering_id, component_id)
 evaluations_id_offering_id_key: UNIQUE (id, offering_id)
 evaluations_kind_check: CHECK ((kind = ANY (ARRAY['DEVOIR'::text, 'EXAMEN'::text, 'INTERROGATION'::text, 'TP'::text, 'EXPOSE'::text, 'PROJET'::text, 'RATTRAPAGE'::text])))
 evaluations_kind_not_null: NOT NULL kind
+evaluations_legacy_source_row_id_fkey: FOREIGN KEY (legacy_source_row_id) REFERENCES escen_private.legacy_rows(id) ON DELETE RESTRICT
 evaluations_name_not_null: NOT NULL name
 evaluations_offering_id_not_null: NOT NULL offering_id
 evaluations_parent_evaluation_id_offering_id_component_id_fkey: FOREIGN KEY (parent_evaluation_id, offering_id, component_id) REFERENCES escen.evaluations(id, offering_id, component_id) ON DELETE RESTRICT
 evaluations_pkey: PRIMARY KEY (id)
+evaluations_session_type_check: CHECK ((session_type = ANY (ARRAY['NORMALE'::text, 'RATTRAPAGE'::text])))
 evaluations_status_check: CHECK ((status = ANY (ARRAY['BROUILLON'::text, 'SAISIES'::text, 'SOUMISES'::text, 'A_CONTROLER'::text, 'VALIDEES'::text, 'PUBLIEES'::text])))
 evaluations_status_not_null: NOT NULL status
+recovered_component_reference: FOREIGN KEY (component_id) REFERENCES escen.curriculum_components(id) ON DELETE RESTRICT
 ```
 
 Index :
@@ -2106,7 +2128,7 @@ CREATE UNIQUE INDEX exam_rooms_pkey ON escen.exam_rooms USING btree (id)
 | Attribut | Type | Nullable | Défaut | Généré |
 |---|---|---|---|---|
 | id | uuid | NO | gen_random_uuid() | NEVER |
-| site_id | uuid | NO | — | NEVER |
+| site_id | uuid | YES | — | NEVER |
 | academic_year_id | uuid | YES | — | NEVER |
 | purchase_id | uuid | YES | — | NEVER |
 | amount | escen.xof_amount | NO | — | NEVER |
@@ -2131,7 +2153,6 @@ expenses_recorded_by_not_null: NOT NULL recorded_by
 expenses_reference_key: UNIQUE (reference)
 expenses_reference_not_null: NOT NULL reference
 expenses_site_id_fkey: FOREIGN KEY (site_id) REFERENCES escen.sites(id) ON DELETE RESTRICT
-expenses_site_id_not_null: NOT NULL site_id
 ```
 
 Index :
@@ -2397,6 +2418,7 @@ CREATE UNIQUE INDEX grade_revisions_pkey ON escen.grade_revisions USING btree (i
 | entered_by | uuid | NO | — | NEVER |
 | last_modified_by | uuid | NO | — | NEVER |
 | entered_at | timestamptz | NO | now() | NEVER |
+| legacy_source_row_id | uuid | YES | — | NEVER |
 
 Contraintes :
 
@@ -2412,6 +2434,7 @@ grades_entered_by_not_null: NOT NULL entered_by
 grades_id_not_null: NOT NULL id
 grades_last_modified_by_fkey: FOREIGN KEY (last_modified_by) REFERENCES escen.accounts(id) ON DELETE RESTRICT
 grades_last_modified_by_not_null: NOT NULL last_modified_by
+grades_legacy_source_row_id_fkey: FOREIGN KEY (legacy_source_row_id) REFERENCES escen_private.legacy_rows(id) ON DELETE RESTRICT
 grades_pkey: PRIMARY KEY (id)
 grades_revision_check: CHECK ((revision > 0))
 grades_revision_not_null: NOT NULL revision
@@ -2436,11 +2459,14 @@ CREATE UNIQUE INDEX grades_pkey ON escen.grades USING btree (id)
 | offering_id | uuid | NO | — | NEVER |
 | academic_year_id | uuid | NO | — | NEVER |
 | level_id | uuid | NO | — | NEVER |
-| site_id | uuid | NO | — | NEVER |
+| site_id | uuid | YES | — | NEVER |
+| archived_at | timestamptz | YES | — | NEVER |
+| reason | text | YES | — | NEVER |
 
 Contraintes :
 
 ```sql
+group_offering_archive_reason: CHECK (((archived_at IS NULL) OR (length(btrim(COALESCE(reason, ''::text))) >= 3)))
 group_offerings_academic_year_id_not_null: NOT NULL academic_year_id
 group_offerings_group_id_academic_year_id_level_id_fkey: FOREIGN KEY (group_id, academic_year_id, level_id) REFERENCES escen.groups(id, academic_year_id, level_id) ON DELETE RESTRICT
 group_offerings_group_id_not_null: NOT NULL group_id
@@ -2452,7 +2478,6 @@ group_offerings_offering_id_academic_year_id_level_id_fkey: FOREIGN KEY (offerin
 group_offerings_offering_id_not_null: NOT NULL offering_id
 group_offerings_offering_id_site_id_fkey: FOREIGN KEY (offering_id, site_id) REFERENCES escen.academic_offerings(id, site_id) ON DELETE RESTRICT
 group_offerings_pkey: PRIMARY KEY (id)
-group_offerings_site_id_not_null: NOT NULL site_id
 ```
 
 Index :
@@ -2473,7 +2498,7 @@ CREATE UNIQUE INDEX group_offerings_pkey ON escen.group_offerings USING btree (i
 | id | uuid | NO | gen_random_uuid() | NEVER |
 | academic_year_id | uuid | NO | — | NEVER |
 | level_id | uuid | NO | — | NEVER |
-| site_id | uuid | NO | — | NEVER |
+| site_id | uuid | YES | — | NEVER |
 | name | escen.nonempty_text | NO | — | NEVER |
 | archived_at | timestamptz | YES | — | NEVER |
 | reason | text | YES | — | NEVER |
@@ -2493,7 +2518,6 @@ groups_level_id_not_null: NOT NULL level_id
 groups_name_not_null: NOT NULL name
 groups_pkey: PRIMARY KEY (id)
 groups_site_id_fkey: FOREIGN KEY (site_id) REFERENCES escen.sites(id) ON DELETE RESTRICT
-groups_site_id_not_null: NOT NULL site_id
 ```
 
 Index :
@@ -2502,6 +2526,7 @@ Index :
 CREATE INDEX fk_17013 ON escen.groups USING btree (academic_year_id)
 CREATE INDEX fk_17018 ON escen.groups USING btree (level_id)
 CREATE INDEX fk_17023 ON escen.groups USING btree (site_id)
+CREATE UNIQUE INDEX group_without_location ON escen.groups USING btree (academic_year_id, level_id, name) WHERE (site_id IS NULL)
 CREATE UNIQUE INDEX groups_academic_year_id_site_id_level_id_name_key ON escen.groups USING btree (academic_year_id, site_id, level_id, name)
 CREATE UNIQUE INDEX groups_id_academic_year_id_level_id_key ON escen.groups USING btree (id, academic_year_id, level_id)
 CREATE UNIQUE INDEX groups_id_site_id_key ON escen.groups USING btree (id, site_id)
@@ -2518,6 +2543,7 @@ CREATE UNIQUE INDEX groups_pkey ON escen.groups USING btree (id)
 | due_on | date | NO | — | NEVER |
 | amount | escen.xof_amount | NO | — | NEVER |
 | description | escen.nonempty_text | NO | — | NEVER |
+| settled_amount | escen.xof_amount | YES | — | NEVER |
 
 Contraintes :
 
@@ -2709,12 +2735,13 @@ CREATE UNIQUE INDEX jury_members_pkey ON escen.jury_members USING btree (id)
 | Attribut | Type | Nullable | Défaut | Généré |
 |---|---|---|---|---|
 | id | uuid | NO | gen_random_uuid() | NEVER |
-| cycle_id | uuid | NO | — | NEVER |
+| cycle_id | uuid | YES | — | NEVER |
 | code | escen.nonempty_text | NO | — | NEVER |
 | name | escen.nonempty_text | NO | — | NEVER |
 | position | int2 | NO | — | NEVER |
 | archived_at | timestamptz | YES | — | NEVER |
 | reason | text | YES | — | NEVER |
+| legacy_source_row_id | uuid | YES | — | NEVER |
 
 Contraintes :
 
@@ -2723,13 +2750,13 @@ levels_archive_reason: CHECK (((archived_at IS NULL) OR ((reason IS NOT NULL) AN
 levels_code_key: UNIQUE (code)
 levels_code_not_null: NOT NULL code
 levels_cycle_id_fkey: FOREIGN KEY (cycle_id) REFERENCES escen.cycles(id) ON DELETE RESTRICT
-levels_cycle_id_not_null: NOT NULL cycle_id
 levels_cycle_id_position_key: UNIQUE (cycle_id, "position")
 levels_id_not_null: NOT NULL id
+levels_legacy_source_row_id_fkey: FOREIGN KEY (legacy_source_row_id) REFERENCES escen_private.legacy_rows(id) ON DELETE RESTRICT
 levels_name_not_null: NOT NULL name
 levels_pkey: PRIMARY KEY (id)
-levels_position_check: CHECK (("position" > 0))
 levels_position_not_null: NOT NULL "position"
+recovered_level_required: CHECK ((((cycle_id IS NOT NULL) AND ("position" > 0)) OR ((legacy_source_row_id IS NOT NULL) AND ("position" >= 0))))
 ```
 
 Index :
@@ -2947,7 +2974,7 @@ CREATE UNIQUE INDEX payment_reversals_pkey ON escen.payment_reversals USING btre
 | id | uuid | NO | gen_random_uuid() | NEVER |
 | enrollment_id | uuid | NO | — | NEVER |
 | payer_person_id | uuid | YES | — | NEVER |
-| payer_name | escen.nonempty_text | NO | — | NEVER |
+| payer_name | escen.nonempty_text | YES | — | NEVER |
 | amount | escen.xof_amount | NO | — | NEVER |
 | method | text | NO | — | NEVER |
 | provider | escen.nonempty_text | NO | — | NEVER |
@@ -2957,20 +2984,23 @@ CREATE UNIQUE INDEX payment_reversals_pkey ON escen.payment_reversals USING btre
 | recorded_at | timestamptz | NO | now() | NEVER |
 | withdrawal_fee | escen.xof_amount | NO | 0 | NEVER |
 | comment | text | YES | — | NEVER |
+| legacy_source_row_id | uuid | YES | — | NEVER |
+| status | text | NO | 'POSTED'::text | NEVER |
 
 Contraintes :
 
 ```sql
+payment_source_evidence: CHECK ((((payer_name IS NOT NULL) AND (status = 'POSTED'::text)) OR (legacy_source_row_id IS NOT NULL)))
 payments_amount_check: CHECK (((amount)::numeric > (0)::numeric))
 payments_amount_not_null: NOT NULL amount
 payments_enrollment_id_fkey: FOREIGN KEY (enrollment_id) REFERENCES escen.enrollments(id) ON DELETE RESTRICT
 payments_enrollment_id_not_null: NOT NULL enrollment_id
 payments_id_enrollment_id_key: UNIQUE (id, enrollment_id)
 payments_id_not_null: NOT NULL id
+payments_legacy_source_row_id_fkey: FOREIGN KEY (legacy_source_row_id) REFERENCES escen_private.legacy_rows(id) ON DELETE RESTRICT
 payments_method_check: CHECK ((method = ANY (ARRAY['ESPECES'::text, 'VIREMENT'::text, 'CARTE'::text, 'MOBILE_MONEY'::text, 'CHEQUE'::text])))
 payments_method_not_null: NOT NULL method
 payments_paid_on_not_null: NOT NULL paid_on
-payments_payer_name_not_null: NOT NULL payer_name
 payments_payer_person_id_fkey: FOREIGN KEY (payer_person_id) REFERENCES escen.people(id) ON DELETE RESTRICT
 payments_pkey: PRIMARY KEY (id)
 payments_provider_not_null: NOT NULL provider
@@ -2979,6 +3009,8 @@ payments_recorded_at_not_null: NOT NULL recorded_at
 payments_recorded_by_fkey: FOREIGN KEY (recorded_by) REFERENCES escen.accounts(id) ON DELETE RESTRICT
 payments_recorded_by_not_null: NOT NULL recorded_by
 payments_reference_not_null: NOT NULL reference
+payments_status_check: CHECK ((status = ANY (ARRAY['POSTED'::text, 'PENDING'::text])))
+payments_status_not_null: NOT NULL status
 payments_withdrawal_fee_not_null: NOT NULL withdrawal_fee
 ```
 
@@ -3158,7 +3190,7 @@ CREATE UNIQUE INDEX purchase_receipts_pkey ON escen.purchase_receipts USING btre
 | Attribut | Type | Nullable | Défaut | Généré |
 |---|---|---|---|---|
 | id | uuid | NO | gen_random_uuid() | NEVER |
-| site_id | uuid | NO | — | NEVER |
+| site_id | uuid | YES | — | NEVER |
 | supplier_id | uuid | YES | — | NEVER |
 | reference | escen.nonempty_text | NO | — | NEVER |
 | requested_by | uuid | NO | — | NEVER |
@@ -3180,7 +3212,6 @@ purchases_reference_not_null: NOT NULL reference
 purchases_requested_by_fkey: FOREIGN KEY (requested_by) REFERENCES escen.accounts(id) ON DELETE RESTRICT
 purchases_requested_by_not_null: NOT NULL requested_by
 purchases_site_id_fkey: FOREIGN KEY (site_id) REFERENCES escen.sites(id) ON DELETE RESTRICT
-purchases_site_id_not_null: NOT NULL site_id
 purchases_status_check: CHECK ((status = ANY (ARRAY['DEMANDE'::text, 'APPROUVE'::text, 'REFUSE'::text, 'RECEPTION_PARTIELLE'::text, 'RECU'::text])))
 purchases_status_not_null: NOT NULL status
 purchases_supplier_id_fkey: FOREIGN KEY (supplier_id) REFERENCES escen.suppliers(id) ON DELETE RESTRICT
@@ -3385,8 +3416,8 @@ CREATE UNIQUE INDEX roles_pkey ON escen.roles USING btree (id)
 | Attribut | Type | Nullable | Défaut | Généré |
 |---|---|---|---|---|
 | id | uuid | NO | gen_random_uuid() | NEVER |
-| building_id | uuid | NO | — | NEVER |
-| site_id | uuid | NO | — | NEVER |
+| building_id | uuid | YES | — | NEVER |
+| site_id | uuid | YES | — | NEVER |
 | code | escen.nonempty_text | NO | — | NEVER |
 | name | escen.nonempty_text | NO | — | NEVER |
 | capacity | int4 | NO | — | NEVER |
@@ -3398,7 +3429,6 @@ Contraintes :
 
 ```sql
 rooms_archive_reason: CHECK (((archived_at IS NULL) OR ((reason IS NOT NULL) AND (length(btrim(reason)) >= 3))))
-rooms_building_id_not_null: NOT NULL building_id
 rooms_building_id_site_id_fkey: FOREIGN KEY (building_id, site_id) REFERENCES escen.buildings(id, site_id) ON DELETE RESTRICT
 rooms_capacity_check: CHECK ((capacity > 0))
 rooms_capacity_not_null: NOT NULL capacity
@@ -3409,7 +3439,6 @@ rooms_name_not_null: NOT NULL name
 rooms_pkey: PRIMARY KEY (id)
 rooms_site_id_code_key: UNIQUE (site_id, code)
 rooms_site_id_fkey: FOREIGN KEY (site_id) REFERENCES escen.sites(id) ON DELETE RESTRICT
-rooms_site_id_not_null: NOT NULL site_id
 rooms_status_check: CHECK ((status = ANY (ARRAY['AVAILABLE'::text, 'MAINTENANCE'::text, 'UNAVAILABLE'::text])))
 rooms_status_not_null: NOT NULL status
 ```
@@ -3419,6 +3448,7 @@ Index :
 ```sql
 CREATE INDEX fk_16683 ON escen.rooms USING btree (site_id)
 CREATE INDEX fk_16688 ON escen.rooms USING btree (building_id, site_id)
+CREATE UNIQUE INDEX room_without_location_code ON escen.rooms USING btree (code) WHERE (site_id IS NULL)
 CREATE UNIQUE INDEX rooms_id_site_id_key ON escen.rooms USING btree (id, site_id)
 CREATE UNIQUE INDEX rooms_pkey ON escen.rooms USING btree (id)
 CREATE UNIQUE INDEX rooms_site_id_code_key ON escen.rooms USING btree (site_id, code)
@@ -3704,7 +3734,7 @@ CREATE UNIQUE INDEX staff_pkey ON escen.staff USING btree (id)
 |---|---|---|---|---|
 | id | uuid | NO | gen_random_uuid() | NEVER |
 | staff_id | uuid | NO | — | NEVER |
-| site_id | uuid | NO | — | NEVER |
+| site_id | uuid | YES | — | NEVER |
 | contract_type | text | NO | — | NEVER |
 | position | escen.nonempty_text | NO | — | NEVER |
 | starts_on | date | NO | — | NEVER |
@@ -3720,7 +3750,6 @@ staff_contracts_id_not_null: NOT NULL id
 staff_contracts_pkey: PRIMARY KEY (id)
 staff_contracts_position_not_null: NOT NULL "position"
 staff_contracts_site_id_fkey: FOREIGN KEY (site_id) REFERENCES escen.sites(id) ON DELETE RESTRICT
-staff_contracts_site_id_not_null: NOT NULL site_id
 staff_contracts_staff_id_fkey: FOREIGN KEY (staff_id) REFERENCES escen.staff(id) ON DELETE RESTRICT
 staff_contracts_staff_id_not_null: NOT NULL staff_id
 staff_contracts_starts_on_not_null: NOT NULL starts_on
@@ -4324,6 +4353,66 @@ CREATE UNIQUE INDEX website_articles_pkey ON escen.website_articles USING btree 
 CREATE UNIQUE INDEX website_articles_slug_key ON escen.website_articles USING btree (slug)
 ```
 
+## escen.website_brochures
+
+| Attribut | Type | Nullable | Défaut | Généré |
+|---|---|---|---|---|
+| id | uuid | NO | gen_random_uuid() | NEVER |
+| academic_year_id | uuid | NO | — | NEVER |
+| title | text | NO | — | NEVER |
+| slug | text | NO | — | NEVER |
+| description | text | NO | ''::text | NEVER |
+| status | text | NO | 'BROUILLON'::text | NEVER |
+| object_path | text | NO | — | NEVER |
+| filename | text | NO | — | NEVER |
+| byte_size | int4 | NO | — | NEVER |
+| sha256 | text | NO | — | NEVER |
+| version | int4 | NO | 1 | NEVER |
+| created_by | uuid | NO | — | NEVER |
+| updated_at | timestamptz | NO | now() | NEVER |
+| reason | text | NO | — | NEVER |
+
+Contraintes :
+
+```sql
+website_brochures_academic_year_id_fkey: FOREIGN KEY (academic_year_id) REFERENCES escen.academic_years(id) ON DELETE RESTRICT
+website_brochures_academic_year_id_not_null: NOT NULL academic_year_id
+website_brochures_byte_size_check: CHECK (((byte_size >= 1) AND (byte_size <= 10485760)))
+website_brochures_byte_size_not_null: NOT NULL byte_size
+website_brochures_created_by_fkey: FOREIGN KEY (created_by) REFERENCES escen.accounts(id) ON DELETE RESTRICT
+website_brochures_created_by_not_null: NOT NULL created_by
+website_brochures_description_check: CHECK ((length(description) <= 500))
+website_brochures_description_not_null: NOT NULL description
+website_brochures_filename_not_null: NOT NULL filename
+website_brochures_id_not_null: NOT NULL id
+website_brochures_object_path_key: UNIQUE (object_path)
+website_brochures_object_path_not_null: NOT NULL object_path
+website_brochures_pkey: PRIMARY KEY (id)
+website_brochures_reason_check: CHECK ((length(btrim(reason)) >= 3))
+website_brochures_reason_not_null: NOT NULL reason
+website_brochures_sha256_check: CHECK ((sha256 ~ '^[a-f0-9]{64}$'::text))
+website_brochures_sha256_not_null: NOT NULL sha256
+website_brochures_slug_check: CHECK (((slug ~ '^[a-z0-9]+(-[a-z0-9]+)*$'::text) AND (length(slug) <= 180)))
+website_brochures_slug_key: UNIQUE (slug)
+website_brochures_slug_not_null: NOT NULL slug
+website_brochures_status_check: CHECK ((status = ANY (ARRAY['BROUILLON'::text, 'PUBLIE'::text, 'RETIRE'::text])))
+website_brochures_status_not_null: NOT NULL status
+website_brochures_title_check: CHECK (((length(btrim(title)) >= 3) AND (length(btrim(title)) <= 180)))
+website_brochures_title_not_null: NOT NULL title
+website_brochures_updated_at_not_null: NOT NULL updated_at
+website_brochures_version_not_null: NOT NULL version
+```
+
+Index :
+
+```sql
+CREATE INDEX website_brochure_author ON escen.website_brochures USING btree (created_by)
+CREATE INDEX website_brochure_year ON escen.website_brochures USING btree (academic_year_id)
+CREATE UNIQUE INDEX website_brochures_object_path_key ON escen.website_brochures USING btree (object_path)
+CREATE UNIQUE INDEX website_brochures_pkey ON escen.website_brochures USING btree (id)
+CREATE UNIQUE INDEX website_brochures_slug_key ON escen.website_brochures USING btree (slug)
+```
+
 ## escen.website_intakes
 
 | Attribut | Type | Nullable | Défaut | Généré |
@@ -4759,6 +4848,7 @@ Contraintes :
 
 ```sql
 source_mapping_actor_check: CHECK ((((mapping_method = 'HUMAN_REVIEW'::text) AND (mapped_by IS NOT NULL) AND (import_run_id IS NULL)) OR ((mapping_method = 'SOURCE_EXACT'::text) AND (mapped_by IS NULL) AND (import_run_id IS NOT NULL))))
+source_mapping_target: UNIQUE (row_id, target_table, target_id)
 source_mappings_id_not_null: NOT NULL id
 source_mappings_import_run_id_fkey: FOREIGN KEY (import_run_id) REFERENCES escen_private.import_runs(id) ON DELETE RESTRICT
 source_mappings_mapped_at_not_null: NOT NULL mapped_at
@@ -4769,7 +4859,6 @@ source_mappings_pkey: PRIMARY KEY (id)
 source_mappings_reason_not_null: NOT NULL reason
 source_mappings_row_id_fkey: FOREIGN KEY (row_id) REFERENCES escen_private.legacy_rows(id) ON DELETE RESTRICT
 source_mappings_row_id_not_null: NOT NULL row_id
-source_mappings_row_id_target_table_key: UNIQUE (row_id, target_table)
 source_mappings_target_id_not_null: NOT NULL target_id
 source_mappings_target_table_not_null: NOT NULL target_table
 ```
@@ -4779,8 +4868,8 @@ Index :
 ```sql
 CREATE INDEX fk_20186 ON escen_private.source_mappings USING btree (row_id)
 CREATE INDEX fk_20191 ON escen_private.source_mappings USING btree (mapped_by)
+CREATE UNIQUE INDEX source_mapping_target ON escen_private.source_mappings USING btree (row_id, target_table, target_id)
 CREATE UNIQUE INDEX source_mappings_pkey ON escen_private.source_mappings USING btree (id)
-CREATE UNIQUE INDEX source_mappings_row_id_target_table_key ON escen_private.source_mappings USING btree (row_id, target_table)
 ```
 
 ## escen_private.website_rate_limits

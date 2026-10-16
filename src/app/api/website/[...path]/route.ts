@@ -42,6 +42,17 @@ async function handle(request: Request, context: RouteContext) {
         if (!article) throw new RequestError(404, 'Article introuvable.');
         return cors(request, Response.json(article));
       }
+      if (route === 'public/brochures' || /^public\/brochures\/[a-z0-9-]+\/download$/.test(route)) {
+        const client = getSupabaseServerClient();
+        const slug = path.length === 4 ? path[2] : null;
+        const brochures = await websiteRpc(client, 'escen_brochures_public', { p_slug: slug });
+        if (!slug) return cors(request, Response.json(brochures));
+        const brochure = brochures[0];
+        if (!brochure) throw new RequestError(404, 'Brochure indisponible.');
+        const file = await client.storage.from('escen-website-brochures').download(brochure.object_path);
+        if (file.error || !file.data) throw new RequestError(503, 'Téléchargement indisponible.');
+        return cors(request, new Response(file.data, { headers: { 'Content-Type': 'application/pdf', 'Content-Disposition': `attachment; filename="${slug}.pdf"` } }));
+      }
       if (route === 'public/configurations') return cors(request, Response.json([]));
       if (route === 'public/candidature-config') return cors(request, Response.json({ academic_year: await rpc('year'), types_diplome: [], champs: [{ champ_key: 'tuteur_tel', label: 'Téléphone du tuteur', obligatoire: true }, { champ_key: 'tuteur_email', label: 'Email du tuteur', obligatoire: false }], moyens_connaissance: [], sigle: 'ESCEN' }));
       if (route === 'public/niveau/liste' || route === 'public/filieres/liste' || /^public\/niveau\/[^/]+\/document-requirements$/.test(route)) {

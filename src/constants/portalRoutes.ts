@@ -33,7 +33,10 @@ export const PORTAL_ROUTES: PortalRoute[] = [
   { tab: 'personnel', section: 'staff_teachers', href: '/personnel/enseignants', title: 'Enseignants et affectations' },
   { tab: 'personnel', section: 'staff_records', href: '/personnel', title: 'Dossiers du personnel' },
   { tab: 'marketing', section: 'comm_announcements', href: '/communication/annonces', title: 'Annonces' },
-  { tab: 'marketing', section: 'comm_news', href: '/communication/actualites', title: 'Actualités institutionnelles' },
+  { tab: 'website', section: 'comm_news', href: '/site-web/articles', title: 'Articles' },
+  { tab: 'website', section: 'web_applications', href: '/site-web/demandes', title: 'Demandes en ligne' },
+  { tab: 'website', section: 'web_documents', href: '/site-web/documents', title: 'Formations et pièces' },
+  { tab: 'website', section: 'web_brochures', href: '/site-web/brochures', title: 'Brochures' },
   { tab: 'logistique', section: 'log_purchases', href: '/logistique/achats', title: 'Demandes d’achat' },
   { tab:'logistique',section:'log_suppliers',href:'/logistique/fournisseurs',title:'Fournisseurs' },
   { tab: 'logistique', section: 'log_assets', href: '/logistique/inventaire', title: 'Inventaire du site' },
@@ -48,6 +51,7 @@ export function getPortalRoute(pathname: string): PortalRoute | undefined {
   const path = pathname.length > 1 ? pathname.replace(/\/$/, '') : pathname;
   const exact = PORTAL_ROUTES.find(route => route.href === path);
   if (exact) return exact;
+  if (path === '/communication/actualites') return PORTAL_ROUTES.find(r => r.section === 'comm_news');
   if (/^\/etudiants\/[^/]+$/.test(path)) {
     try { return { tab: 'etudiants', section: 'stud_list', href: path, title: 'Dossier étudiant', studentId: decodeURIComponent(path.split('/')[2]) }; } catch { return undefined; }
   }

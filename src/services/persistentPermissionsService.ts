@@ -58,7 +58,7 @@ export function filterRelationalSnapshot(snapshot: RelationalSnapshot, context: 
   if (can('student.view') && unscoped && !self && !teacher && !supervisor) rows('students').forEach(row => studentIds.add(row.id));
   const curriculumIds = new Set(rows('academic_offerings').filter(row => offeringIds.has(row.id)).map(row => field(row,'curriculum_id')));
   const semesterIds = new Set(rows('curriculum_semesters').filter(row => curriculumIds.has(field(row,'curriculum_id'))).map(row => row.id));
-  const evaluationIds = new Set(rows('evaluations').filter(row => assignmentIds.has(field(row,'assignment_id'))
+  const evaluationIds = new Set(rows('evaluations').filter(row => (row.assignment_id ? assignmentIds.has(field(row,'assignment_id')) : !teacher && !supervisor && (row.offering_id ? offeringIds.has(field(row,'offering_id')) : unscoped && !self) && (!row.group_id || groupIds.has(field(row,'group_id'))))
     && (!self || rows('evaluation_candidates').some(candidate => candidate.evaluation_id === row.id && enrollmentIds.has(field(candidate,'enrollment_id'))))).map(row => row.id));
   const candidates = rows('evaluation_candidates').filter(row => evaluationIds.has(field(row,'evaluation_id')) && (!self || enrollmentIds.has(field(row,'enrollment_id'))));
   const candidateIds = new Set(candidates.map(row => row.id));
