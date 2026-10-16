@@ -472,7 +472,7 @@ try {
     await scalar("select public.escen_academic_year_command($1,'IT','transition',$2,(select revision from escen_private.portal_revision where singleton),'Ouverture pour reinscription','OUVERTE') as value", [account.id, nextYear.id]);
     await insert('enrollments', { student_id: student.id, offering_id: nextOffering.id, status: 'REINSCRIT' });
     assert.equal(await scalar('select count(*)::integer as value from escen.enrollments where student_id = $1', [student.id]), previousCount + 1);
-    assert.equal(Number(await scalar('select value as value from escen.grades where id = $1', [grade.id])), 14);
+    assert.equal(Number(await scalar('select value as value from escen.grades where id = $1', [grade.id])), 16);
   });
   console.log(`Base relationnelle : ${checks} groupes de contrôles PostgreSQL réussis.`);
 } catch (error) {
