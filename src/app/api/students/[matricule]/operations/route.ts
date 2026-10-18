@@ -3,6 +3,7 @@ import { requireAccount, requirePermission, RequestError, errorResponse } from '
 import { resolveAcademicYear } from '@/server/academicYearContext';
 import { filterRelationalSnapshot } from '@/services/persistentPermissionsService';
 import { PaymentAllocationError, paymentAllocationDirectory, planPaymentAllocations } from '@/services/paymentAllocationService';
+import { PaymentAdjustmentError, assertPaymentAdjustment, paymentAdjustmentDirectory } from '@/services/paymentAdjustmentService';
 import type { PersistentChange, RelationalSnapshot } from '@/types/persistence';
 export const dynamic='force-dynamic';
 async function scope(request: Request, matricule: string) {
@@ -37,21 +38,33 @@ export async function GET(request:Request,{params}:Params){try{
     const amount=lines.reduce((sum,row)=>sum+Number(row.amount || 0),0)-discounts.reduce((sum,row)=>sum+Number(row.amount || 0),0);
     return [{id:contract.id,versionId:activeVersion.id,enrollmentId:enrollment.id,reference:String(contract.reference || contract.id),status:String(activeVersion.status),amount}];
   }):[];
-  return Response.json({revision:snapshot.revision,allocationDirectory:context.permissions.includes('finance.view')?paymentAllocationDirectory(scoped,ids):{payments:[],installments:[]},channels:context.permissions.includes('finance.view')?(snapshot.tables.annual_payment_channels || []).filter(row=>row.academic_year_id=== (enrollments[0] ? snapshot.tables.academic_offerings.find(offering=>offering.id===enrollments[0].offering_id)?.academic_year_id : null) && !row.archived_at).map(row=>({name:row.name,method:row.method})):[],enrollments:enrollments.map(row=>({id:row.id,status:row.status,enrolledOn:row.enrolled_on})),contracts,payments:payments.map(row=>({id:row.id,reference:row.reference,amount:row.amount,paidOn:row.paid_on,cancelled:reversals.has(row.id),pending:row.status==='PENDING'})),paid:payments.reduce((sum,row)=>sum+(reversals.has(row.id)||row.status==='PENDING'?0:Number(row.amount)),0)},{headers:{'Cache-Control':'no-store'}});
+  return Response.json({revision:snapshot.revision,adjustmentDirectory:context.permissions.includes('finance.view')?paymentAdjustmentDirectory(scoped,ids):{payments:[],lines:[]},allocationDirectory:context.permissions.includes('finance.view')?paymentAllocationDirectory(scoped,ids):{payments:[],installments:[]},channels:context.permissions.includes('finance.view')?(snapshot.tables.annual_payment_channels || []).filter(row=>row.academic_year_id=== (enrollments[0] ? snapshot.tables.academic_offerings.find(offering=>offering.id===enrollments[0].offering_id)?.academic_year_id : null) && !row.archived_at).map(row=>({name:row.name,method:row.method})):[],enrollments:enrollments.map(row=>({id:row.id,status:row.status,enrolledOn:row.enrolled_on})),contracts,payments:payments.map(row=>({id:row.id,reference:row.reference,amount:row.amount,paidOn:row.paid_on,cancelled:reversals.has(row.id),pending:row.status==='PENDING'})),paid:payments.reduce((sum,row)=>sum+(reversals.has(row.id)||row.status==='PENDING'?0:Number(row.amount)),0)},{headers:{'Cache-Control':'no-store'}});
 }catch(error){return errorResponse(error);}}
 const common={revision:z.number().int().nonnegative(),enrollmentId:z.uuid(),reason:z.string().trim().min(3).max(1000)};
 const schema=z.discriminatedUnion('action',[
   z.object({...common,action:z.literal('payment'),amount:z.number().int().positive().max(2147483647),payer:z.string().trim().min(2).max(160),reference:z.string().trim().min(2).max(160),provider:z.string().trim().min(2).max(160),method:z.enum(['ESPECES','MOBILE_MONEY','VIREMENT','CHEQUE','CARTE']),paidOn:z.iso.date()}).strict(),
   z.object({...common,action:z.literal('reallocate_payment'),paymentId:z.uuid(),targets:z.array(z.object({installmentId:z.uuid(),amount:z.number().int().positive().max(2147483647)}).strict()).min(1)}).strict(),
+  z.object({...common,action:z.literal('cancel_payment'),paymentId:z.uuid()}).strict(),
+  z.object({...common,action:z.literal('refund_payment'),paymentId:z.uuid(),amount:z.number().int().positive().max(Number.MAX_SAFE_INTEGER),reference:z.string().trim().min(2).max(160)}).strict(),
+  z.object({...common,action:z.literal('credit_note'),lineId:z.uuid(),amount:z.number().int().positive().max(Number.MAX_SAFE_INTEGER)}).strict(),
   z.object({...common,action:z.literal('status'),status:z.enum(['SUSPENDU','ABANDON','INSCRIT'])}).strict(),
   z.object({...common,action:z.literal('approve_contract'),dueOn:z.iso.date().optional()}).strict(),
 ]);
 export async function POST(request:Request,{params}:Params){try{
   const data=await scope(request,(await params).matricule);
   const body=schema.parse(await request.json());
-  requirePermission(data.context,body.action==='status'?'student.lifecycle.manage':'payment.record');
+  requirePermission(data.context,body.action==='status'?'student.lifecycle.manage':body.action==='cancel_payment'?'payment.cancel':'payment.record');
   const enrollment=data.enrollments.find(row=>row.id===body.enrollmentId);
   if(!enrollment)throw new RequestError(409,'L’inscription officielle doit être enregistrée dans cette année avant cette opération.');
+  if(body.action==='cancel_payment' || body.action==='refund_payment' || body.action==='credit_note'){
+    requirePermission(data.context,'finance.view');
+    const allowed=body.action==='cancel_payment'?['DG','IT']:['RAF','IT'];
+    if(!allowed.includes(data.context.roleCode))throw new RequestError(403,'Autorisation financière insuffisante.');
+    const target=assertPaymentAdjustment(data.scoped,enrollment.id,body);
+    const saved=await data.client.rpc('escen_payment_adjustment',{p_actor_id:data.context.accountId,p_expected_revision:body.revision,p_action:target.action,p_entity_id:target.entityId,p_amount:body.action==='cancel_payment'?null:body.amount,p_reference:body.action==='refund_payment'?body.reference:null,p_reason:body.reason});
+    if(saved.error)throw new RequestError(409,'Opération financière refusée : actualisez le dossier et vérifiez les montants et références. Aucune opération partielle n’a été enregistrée.');
+    return Response.json({revision:saved.data},{status:201});
+  }
   const changes:PersistentChange[]=[];
   let paymentId:string|undefined;
   let allocationResult:{allocated:number;unallocated:number}|undefined;
@@ -100,4 +113,4 @@ export async function POST(request:Request,{params}:Params){try{
   const saved=await data.client.rpc(paymentId?'escen_payment_transaction':'escen_backend_transaction',{p_actor_id:data.context.accountId,p_expected_revision:body.revision,p_changes:changes,...(paymentId?{p_action:body.action==='payment'?'record':'reallocate',p_payment_id:paymentId}:{})});
   if(saved.error)throw new RequestError(409,'Enregistrement refusé : actualisez le dossier et vérifiez les références. Aucune opération partielle n’a été enregistrée.');
   return Response.json({revision:saved.data,...allocationResult},{status:201});
-}catch(error){return errorResponse(error instanceof PaymentAllocationError?new RequestError(409,error.message):error);}}
+}catch(error){return errorResponse(error instanceof PaymentAllocationError || error instanceof PaymentAdjustmentError?new RequestError(409,error.message):error);}}

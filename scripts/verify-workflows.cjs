@@ -162,6 +162,7 @@ require('../src/services/persistentPermissionsService.test.ts');
 
 require('../src/services/relationalCampusAdapter.test.ts');
 require('../src/services/paymentAllocationService.test.ts');
+require('../src/services/paymentAdjustmentService.test.ts');
 require('../src/services/financialReportService.test.ts');
 
 require('../src/services/historyDisplayService.test.ts');

@@ -7,6 +7,7 @@ import { usePortal } from '@/hooks/usePortal';
 import { DOMAIN_WORKSPACES } from '@/data/domainWorkspaces';
 import { PORTAL_ROUTES } from '@/constants/portalRoutes';
 import { connectedFieldLabel, connectedRecordName, connectedRecordValue } from '@/services/connectedRecordDisplayService';
+import { receiptStatus } from '@/services/paymentAdjustmentService';
 import type { DatabaseRow } from '@/types/persistence';
 import HistoricalWorkspace, { HISTORY_SECTIONS } from './history/HistoricalWorkspace';
 import ResponsiveTable from '@/components/ui/ResponsiveTable';
@@ -58,11 +59,12 @@ export default function ConnectedDomainWorkspace({ section, studentMatricule }: 
     return false;
   };
   const collections = contextual ? definition.collections.filter(item => !['document_types', 'document_requirements'].includes(item.table)) : definition.collections;
-  const config = definition.collections.find(item => item.table === collection);
+  const originalConfig = definition.collections.find(item => item.table === collection);
+  const config = originalConfig && collection === 'receipts' ? { ...originalConfig, columns: [...originalConfig.columns, 'status'] } : originalConfig;
   const dateKey = ({ payments: 'paid_on', installments: 'due_on', financial_contracts: 'created_at', receipts: 'issued_at', payment_reversals: 'reversed_at' } as Record<string, string>)[collection];
   const title = PORTAL_ROUTES.find(route => route.section === section)?.title || 'Consultation';
   const nextPages = definition.next.flatMap(id => portal.availableTabs.flatMap(tab => tab.subTabs || []).filter(page => page.id === id));
-  const rows = (snapshot.tables[collection] || []).filter(row => (!contextual || inDossier(row))
+  const rows = (snapshot.tables[collection] || []).map(row => collection === 'receipts' ? { ...row, status: receiptStatus(snapshot, row.payment_id) } : row).filter(row => (!contextual || inDossier(row))
     && (!dateKey || ((!start || String(row[dateKey] || '').slice(0, 10) >= start) && (!end || (!!row[dateKey] && String(row[dateKey]).slice(0, 10) <= end))))
     && Object.entries(row).some(([key, value]) => connectedRecordValue(collection, key, value, snapshot).toLocaleLowerCase('fr').includes(query.toLocaleLowerCase('fr'))));
   const page = rows.slice(offset, offset + 25);

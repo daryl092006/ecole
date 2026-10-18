@@ -2,6 +2,7 @@ import { verifyEvaluationWorkflow } from './verify-evaluation-workflow.mjs';
 import { verifyTeacherManagement } from './verify-teacher-management.mjs';
 import { verifyAttendanceManagement } from './verify-attendance-management.mjs';
 import { verifyPaymentAllocations } from './verify-payment-allocations.mjs';
+import { verifyPaymentAdjustments } from './verify-payment-adjustments.mjs';
 import { verifyScheduleManagement } from './verify-schedule-management.mjs';
 import { verifyBlockedPeriodReasons } from './verify-blocked-period-reasons.mjs';
 import { verifyCurriculumCatalog } from './verify-curriculum-catalog.mjs';
@@ -284,6 +285,7 @@ try {
   await verifyEvaluationWorkflow(db, check, { year, offering, assignment, level, site });
   await verifyAttendanceManagement(db, check, { year, offering, assignment, group, enrollment, session, teacher });
   await verifyPaymentAllocations(db, check, { year, offering });
+  await verifyPaymentAdjustments(db, check, { year, offering });
 
   await check('Gestion persistante des comptes, profils séparés et retrait historisé', async () => {
     const itRole = await scalar("select id as value from escen.roles where code='IT'");
