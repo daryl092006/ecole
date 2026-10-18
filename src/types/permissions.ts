@@ -28,6 +28,7 @@ export type Permission =
   | 'schedule.update'
   | 'attendance.view'
   | 'attendance.record'
+  | 'attendance.review'
   | 'evaluation.create'
   | 'grade.view'
   | 'grade.enter'

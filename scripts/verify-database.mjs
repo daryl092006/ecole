@@ -1,5 +1,6 @@
 import { verifyEvaluationWorkflow } from './verify-evaluation-workflow.mjs';
 import { verifyTeacherManagement } from './verify-teacher-management.mjs';
+import { verifyAttendanceManagement } from './verify-attendance-management.mjs';
 import { verifyScheduleManagement } from './verify-schedule-management.mjs';
 import { verifyBlockedPeriodReasons } from './verify-blocked-period-reasons.mjs';
 import { verifyCurriculumCatalog } from './verify-curriculum-catalog.mjs';
@@ -47,8 +48,8 @@ try {
   });
   await check('Informaticien avec tous les droits, Stagiaire sans droit et aucune attribution automatique', async () => {
     assert.equal(await scalar('select count(*)::integer as value from escen.roles'), 14);
-    assert.equal(await scalar('select count(*)::integer as value from escen.permissions'), 42);
-    assert.equal(await scalar("select count(*)::integer as value from escen.role_permissions rp join escen.roles r on r.id = rp.role_id where r.code = 'IT'"), 42);
+    assert.equal(await scalar('select count(*)::integer as value from escen.permissions'), 43);
+    assert.equal(await scalar("select count(*)::integer as value from escen.role_permissions rp join escen.roles r on r.id = rp.role_id where r.code = 'IT'"), 43);
     assert.equal(await scalar("select count(*)::integer as value from escen.role_permissions rp join escen.roles r on r.id = rp.role_id where r.code = 'STG'"), 0);
     assert.equal(await scalar('select count(*)::integer as value from escen.role_grants'), 0);
   });
@@ -280,6 +281,7 @@ try {
   await verifyTeacherManagement(db, check, { year, site, level });
   await verifyScheduleManagement(db, check, { year, site, level });
   await verifyEvaluationWorkflow(db, check, { year, offering, assignment, level, site });
+  await verifyAttendanceManagement(db, check, { year, offering, assignment, group, enrollment, session, teacher });
 
   await check('Gestion persistante des comptes, profils séparés et retrait historisé', async () => {
     const itRole = await scalar("select id as value from escen.roles where code='IT'");

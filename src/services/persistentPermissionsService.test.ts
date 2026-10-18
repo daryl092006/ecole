@@ -37,6 +37,24 @@ assert.deepEqual(student.exam_options,[{ id:'option1' }]);
 assert.deepEqual(student.exam_questions,[{ id:'q1' }]);
 assert.equal(student.people.some(row => row.id === 'p2'),false);
 const teacher = filterRelationalSnapshot(snapshot,context(ROLES.ENS,{ personId:'pt',teacherId:'t1' })).tables;
+const attendanceSnapshot: RelationalSnapshot = { ...snapshot, tables: { ...snapshot.tables,
+  sessions: [
+    { id: 'own-session', offering_id: 'o1', group_id: 'g1', assignment_id: 'a1', teacher_id: 't1' },
+    { id: 'colleague-session', offering_id: 'o1', group_id: 'g1', assignment_id: 'a2', teacher_id: 't2' },
+  ],
+  attendances: [{ id: 'own-presence', session_id: 'own-session', enrollment_id: 'n1' }, { id: 'other-presence', session_id: 'colleague-session', enrollment_id: 'n1' }],
+  teacher_attendances: [{ id: 'own-teacher-presence', session_id: 'own-session', teacher_id: 't1' }, { id: 'other-teacher-presence', session_id: 'colleague-session', teacher_id: 't2' }],
+  absence_justifications: [{ id: 'own-proof', attendance_id: 'own-presence' }, { id: 'other-proof', attendance_id: 'other-presence' }],
+} };
+const attendanceTeacher = filterRelationalSnapshot(attendanceSnapshot, context(ROLES.ENS, { personId: 'pt', teacherId: 't1' })).tables;
+assert.deepEqual(attendanceTeacher.attendances.map(row => row.id), ['own-presence']);
+assert.deepEqual(attendanceTeacher.teacher_attendances.map(row => row.id), ['own-teacher-presence']);
+assert.deepEqual(attendanceTeacher.absence_justifications.map(row => row.id), ['own-proof']);
+const attendanceSupervisor = filterRelationalSnapshot({ ...attendanceSnapshot, tables: { ...attendanceSnapshot.tables,
+  session_supervisors: [{ id: 'supervision', account_id: 'account1', session_id: 'colleague-session' }],
+} }, context(ROLES.SURV)).tables;
+assert.deepEqual(attendanceSupervisor.attendances.map(row => row.id), ['other-presence']);
+assert.deepEqual(attendanceSupervisor.absence_justifications.map(row => row.id), ['other-proof']);
 assert.deepEqual(teacher.teaching_assignments.map(row => row.id),['a1']);
 assert.deepEqual(teacher.grades.map(row => row.id),['mark1','mark2']);
 assert.equal(teacher.people.some(row => row.id === 'p2'),false);

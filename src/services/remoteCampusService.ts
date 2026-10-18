@@ -135,6 +135,18 @@ export async function loadTeachers(role: RoleName, signal?: AbortSignal): Promis
   return readResponse(await fetch('/api/teachers', { headers: await headers(role), cache: 'no-store', signal }));
 }
 
+export async function loadAttendances(role: RoleName, signal?: AbortSignal): Promise<import('@/types/attendanceManagement').AttendanceDirectory> {
+  return readResponse(await fetch('/api/attendances', { headers: await headers(role), cache: 'no-store', signal }));
+}
+
+export async function manageAttendance(role: RoleName, command: import('@/types/attendanceManagement').AttendanceCommand): Promise<{ revision: number }> {
+  return readResponse(await fetch('/api/attendances', { method: 'POST', headers: { ...await headers(role), 'Content-Type': 'application/json' }, body: JSON.stringify(command) }));
+}
+
+export async function loadAttendanceJustification(role: RoleName, id: string): Promise<{ url: string }> {
+  return readResponse(await fetch(`/api/attendances?justificationId=${encodeURIComponent(id)}`, { headers: await headers(role), cache: 'no-store' }));
+}
+
 export async function manageTeacher(role: RoleName, command: import('@/types/teachers').TeacherCommand): Promise<{ id: string; revision: number }> {
   return readResponse(await fetch('/api/teachers', { method: 'POST', headers: { ...await headers(role), 'Content-Type': 'application/json' }, body: JSON.stringify(command) }));
 }

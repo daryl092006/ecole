@@ -1,5 +1,6 @@
 import type { DatabaseRow, PersistentContext, RelationalSnapshot } from '@/types/persistence';
 import { ROLES, type Permission } from '@/types/permissions';
+import { attendanceSessions } from './attendanceManagementService';
 
 const field = (row: DatabaseRow, name: string) => typeof row[name] === 'string' ? row[name] as string : '';
 const ownRole = (context: PersistentContext) => context.role === ROLES.STUD || context.role === ROLES.DEL;
@@ -26,6 +27,8 @@ export function filterRelationalSnapshot(snapshot: RelationalSnapshot, context: 
   const rows = (name: string) => tables[name] ?? [];
   const can = (permission: Permission) => context.permissions.includes(permission);
   const self = ownRole(context);
+  const attendanceSessionIds = new Set(attendanceSessions(snapshot, context, null).map(row => row.id));
+  const attendanceIds = new Set(rows('attendances').filter(row => attendanceSessionIds.has(field(row, 'session_id'))).map(row => row.id));
   const teacher = context.role === ROLES.ENS;
   const supervisor = context.role === ROLES.SURV;
   const unscoped = context.grants.some(grant => !grant.site_id && !grant.academic_year_id && !grant.group_id);
@@ -92,6 +95,8 @@ export function filterRelationalSnapshot(snapshot: RelationalSnapshot, context: 
       || self && (financial.has(name) || academic.has(name) || ['students','enrollments','enrollment_groups','student_documents','document_types','document_reviews','generated_documents','communications','communication_audiences','communication_reads'].includes(name));
     if (!permitted || (teacher || supervisor || self) && ['academic_rule_versions','juries','jury_members','jury_decisions','jury_grade_inputs','credit_awards'].includes(name)) continue;
     source[name] = collection.filter(row => {
+      if (name === 'attendances' || name === 'teacher_attendances') return attendanceSessionIds.has(field(row, 'session_id'));
+      if (name === 'absence_justifications') return attendanceIds.has(field(row, 'attendance_id'));
       if (name === 'people') return peopleIds.has(row.id);
       if (name === 'staff' || name === 'staff_contracts') return unscoped || (name === 'staff' ? row.person_id === context.personId : rows('staff').some(staff => staff.id === row.staff_id && staff.person_id === context.personId));
       if (name.startsWith('communication')) return false; // Publication et audiences traitées par un futur service dédié.

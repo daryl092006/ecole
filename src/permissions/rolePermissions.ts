@@ -4,6 +4,7 @@ import { PERMISSION_LABELS } from '@/permissions/permissionLabels';
 
 const academicOversight: Permission[] = [
   'academic.view', 'schedule.view', 'attendance.view', 'grade.view',
+  'attendance.review',
   'grade.review', 'grade.approve', 'grade.publish', 'complaint.view', 'complaint.review',
   'student.view',
 ];

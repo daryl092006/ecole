@@ -30,6 +30,11 @@ assert.equal(projection.data.academicYears.find(year => year.id === 'DRAFT')!.ac
 assert.equal(projection.data.academicYears.find(year => year.id === 'Y1')!.active, false);
 assert.equal(projection.data.academicYears.find(year => year.id === 'Y2')!.active, true);
 const context = { role: ROLES.IT, permissions: ['academic.view'], grants: [{ site_id: null, group_id: null, academic_year_id: null }] } as PersistentContext;
+const replacementSnapshot = { ...snapshot, tables: { ...snapshot.tables,
+  sessions: [{ id: 'REPLACEMENT', offering_id: 'O2', teacher_id: 'T2', replacement_teacher_id: 'REPLACEMENT_TEACHER' }],
+} };
+assert.deepEqual(accessibleAcademicYears(replacementSnapshot, { ...context, role: ROLES.ENS, teacherId: 'REPLACEMENT_TEACHER' }).map(year => year.id), ['Y2']);
+assert.deepEqual(accessibleAcademicYears(replacementSnapshot, { ...context, role: ROLES.ENS, teacherId: 'REPLACEMENT_TEACHER', grants: [{ ...context.grants[0], academic_year_id: 'Y1' }] }), []);
 assert.equal(accessibleAcademicYears(snapshot, context).length, 3);
 assert.deepEqual(accessibleAcademicYears(snapshot, { ...context, grants: [{ ...context.grants[0], academic_year_id: 'Y1' }] }).map(year => year.id), ['Y1']);
 assert.deepEqual(accessibleAcademicYears(snapshot, { ...context, role: ROLES.ENS, teacherId: 'T1' }).map(year => year.id), ['Y1']);

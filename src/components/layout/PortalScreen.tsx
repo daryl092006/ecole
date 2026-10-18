@@ -7,6 +7,7 @@ import HistoricalWorkspace, { HISTORY_SECTIONS } from '@/components/modules/hist
 import PersonnelDossiers from '@/components/modules/personnel/PersonnelDossiers';
 import TeachersWorkspace from '@/components/modules/personnel/TeachersWorkspace';
 import ScheduleWorkspace from '@/components/modules/academic/ScheduleWorkspace';
+import AttendanceWorkspace from '@/components/modules/academic/AttendanceWorkspace';
 import HistoricalExamsWorkspace from '@/components/modules/history/HistoricalExamsWorkspace';
 import ReferenceCrudWorkspace from '@/components/modules/academic/ReferenceCrudWorkspace';
 import { CRUD_SECTIONS } from '@/data/crudCatalog';
@@ -66,6 +67,7 @@ export default function PortalScreen({ tab: _tab, section }: { tab: string; sect
   if (state.session && section === 'staff_records') return <PersonnelDossiers />;
   if (state.session && section === 'staff_teachers') return <TeachersWorkspace />;
   if (state.session && section === 'acad_schedule') return <ScheduleWorkspace />;
+  if (state.session && section === 'acad_attendance') return <AttendanceWorkspace />;
   if (state.session && section === 'acad_subjects') return <SubjectStudio />;
   if (state.history.enabled && !state.relationalSnapshot.tables.evaluations?.length && ['acad_exams', 'acad_resits', 'acad_assessments'].includes(section)) {
     return <HistoricalExamsWorkspace key={section} category={section === 'acad_resits' ? 'resit' : section === 'acad_assessments' ? 'control' : 'exam'} />;

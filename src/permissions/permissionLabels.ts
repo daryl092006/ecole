@@ -5,6 +5,7 @@ export const PERMISSION_LABELS: Record<Permission, string> = {
   'academic.assignment.manage': 'Affecter les enseignants', 'schedule.view': 'Consulter le planning',
   'schedule.create': 'Planifier les séances', 'schedule.update': 'Déplacer et annuler les séances',
   'attendance.view': 'Consulter les présences', 'attendance.record': 'Enregistrer les présences',
+  'attendance.review': 'Accepter ou refuser les justificatifs',
   'evaluation.create': 'Créer les évaluations', 'grade.view': 'Consulter les notes',
   'grade.enter': 'Saisir les notes', 'grade.submit': 'Soumettre les notes',
   'grade.review': 'Contrôler les notes', 'grade.approve': 'Valider les notes', 'grade.publish': 'Publier les notes',
