@@ -4,6 +4,7 @@ import { resolveAcademicYear } from '@/server/academicYearContext';
 import { filterRelationalSnapshot } from '@/services/persistentPermissionsService';
 import { PaymentAllocationError, paymentAllocationDirectory, planPaymentAllocations } from '@/services/paymentAllocationService';
 import { PaymentAdjustmentError, assertPaymentAdjustment, paymentAdjustmentDirectory } from '@/services/paymentAdjustmentService';
+import { paymentReceiptDocument } from '@/services/paymentReceiptService';
 import type { PersistentChange, RelationalSnapshot } from '@/types/persistence';
 export const dynamic='force-dynamic';
 async function scope(request: Request, matricule: string) {
@@ -23,8 +24,16 @@ async function scope(request: Request, matricule: string) {
 }
 type Params={params:Promise<{matricule:string}>};
 export async function GET(request:Request,{params}:Params){try{
-  const {snapshot,scoped,enrollments,context}=await scope(request,(await params).matricule);
+  const {snapshot,scoped,enrollments,context,year}=await scope(request,(await params).matricule);
   const ids=new Set(enrollments.map(row=>row.id));
+  if(new URL(request.url).searchParams.has('receiptId')){
+    requirePermission(context,'finance.view');
+    const receiptId=z.uuid().parse(new URL(request.url).searchParams.get('receiptId'));
+    const receipt=paymentReceiptDocument(scoped,ids,receiptId);
+    if(!receipt)throw new RequestError(404,'Reçu introuvable dans ce dossier et cette année.');
+    receipt.academicYear=year.years.find(item=>item.id===year.selectedYearId)?.name || receipt.academicYear;
+    return Response.json({receipt},{headers:{'Cache-Control':'no-store'}});
+  }
   const payments=context.permissions.includes('finance.view')?(scoped.tables.payments || []).filter(row=>ids.has(String(row.enrollment_id))):[];
   const reversals=new Set((scoped.tables.payment_reversals || []).map(row=>row.payment_id));
   const contracts=context.permissions.includes('finance.view')?enrollments.flatMap(enrollment=>{

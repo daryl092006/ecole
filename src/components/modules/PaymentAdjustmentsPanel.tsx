@@ -3,7 +3,9 @@ import { useState } from 'react';
 import { usePortal } from '@/hooks/usePortal';
 import { ROLES } from '@/types/permissions';
 import type { AdjustmentPayment, CreditableLine, PaymentAdjustmentDirectory } from '@/types/paymentAdjustments';
-import { studentOperations } from '@/services/remoteCampusService';
+import { loadStudentReceipt, studentOperations } from '@/services/remoteCampusService';
+import { paymentReceiptMarkup } from '@/services/paymentReceiptService';
+import { printDocument } from '@/utils/printDocument';
 import WorkPage from '@/components/ui/WorkPage';
 import ReviewedForm from '@/components/ui/ReviewedForm';
 import DrawerActions from '@/components/ui/DrawerActions';
@@ -18,6 +20,7 @@ export default function PaymentAdjustmentsPanel({ matricule, revision, directory
   const [selection, setSelection] = useState<Selection | null>(null);
   const [amount, setAmount] = useState(''), [reference, setReference] = useState(''), [reason, setReason] = useState('');
   const [busy, setBusy] = useState(false), [error, setError] = useState('');
+  const [printing, setPrinting] = useState<string | null>(null), [printError, setPrintError] = useState('');
   const canCancel = portal.perms.permissions.includes('payment.cancel') && (portal.activeRole === ROLES.DG || portal.activeRole === ROLES.IT);
   const canAdjust = portal.perms.permissions.includes('payment.record') && (portal.activeRole === ROLES.RAF || portal.activeRole === ROLES.IT);
   function open(value: Selection) { setSelection(value); setAmount(''); setReference(''); setReason(''); setError(''); }
@@ -28,6 +31,14 @@ export default function PaymentAdjustmentsPanel({ matricule, revision, directory
   const label = selection ? selection.action === 'credit_note' ? selection.line.description : selection.payment.reference : '';
   const maximum = target?.available || 0;
   const after = maximum - Number(amount || 0);
+  async function printReceipt(receiptId: string) {
+    setPrinting(receiptId); setPrintError('');
+    try {
+      const { receipt } = await loadStudentReceipt(matricule, receiptId, portal.activeRole);
+      printDocument(`Recu-${receipt.reference}`, paymentReceiptMarkup(receipt));
+    } catch (cause) { setPrintError(cause instanceof Error ? cause.message : 'Reçu indisponible pour l’impression.'); }
+    finally { setPrinting(null); }
+  }
   async function save() {
     if (!selection || !target) return;
     setBusy(true); setError('');
@@ -40,12 +51,14 @@ export default function PaymentAdjustmentsPanel({ matricule, revision, directory
     finally { setBusy(false); }
   }
   return <details><summary>Annulations, remboursements et avoirs</summary>
+    {printError && <p role="alert">{printError}</p>}
     {directory.payments.map(payment => <div className="card" key={payment.id}>
       <p><strong>{payment.reference}</strong> · {money(payment.amount)} · Remboursé : {money(payment.refunded)}{payment.cancelled ? ' · Annulé' : payment.pending ? ' · En attente' : ''}</p>
       {payment.receipt && <p>Reçu {payment.receipt.reference} · <strong>{payment.receipt.status === 'ANNULE' ? 'Annulé' : 'Valide'}</strong></p>}
       {payment.cancellation && <p>Motif d’annulation : {payment.cancellation.reason} · {payment.cancellation.reversedAt}</p>}
       {payment.refunds.map(refund => <p className="cell-sub" key={refund.id}>Remboursement {refund.reference} · {money(refund.amount)} · {refund.reason} · {refund.refundedAt}</p>)}
       <div className="btn-group">
+        {payment.receipt && <button className="btn btn-outline" disabled={printing !== null} onClick={() => printReceipt(payment.receipt!.id)}>{printing === payment.receipt.id ? 'Préparation du reçu…' : `Imprimer ${payment.receipt.reference}`}</button>}
         {canCancel && !payment.cancelled && payment.refunded === 0 && <button className="btn btn-outline" onClick={() => open({ action: 'cancel_payment', payment })}>Annuler {payment.reference}</button>}
         {canAdjust && !payment.cancelled && !payment.pending && payment.available > 0 && <button className="btn btn-outline" onClick={() => open({ action: 'refund_payment', payment })}>Rembourser {payment.reference}</button>}
       </div>

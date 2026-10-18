@@ -29,9 +29,10 @@ export function adjustmentFixture(context: PersistentContext = securityContext()
   const api = loadSecurityApi('app/api/students/[matricule]/operations/route.ts', client, context) as { GET: Handler; POST: Handler };
   const params = { params: Promise.resolve({ matricule: 'ESCEN-FIN-001' }) };
   const get = (year = id.year) => api.GET(new Request('http://local.test/api/students/ESCEN-FIN-001/operations', { headers: { 'x-escen-year': year } }), params);
+  const getReceipt = (receiptId: string, year = id.year) => api.GET(new Request(`http://local.test/api/students/ESCEN-FIN-001/operations?receiptId=${encodeURIComponent(receiptId)}`, { headers: { 'x-escen-year': year } }), params);
   const post = (body: Record<string, unknown>, year = id.year) => api.POST(new Request('http://local.test/api/students/ESCEN-FIN-001/operations', { method: 'POST', headers: { 'x-escen-year': year }, body: JSON.stringify({ revision: snapshot.revision, enrollmentId: f.enrollment, reason: 'Décision financière vérifiée', ...body }) }), params);
   const cancel = () => ({ action: 'cancel_payment', paymentId: f.payment });
   const refund = (amount = 100) => ({ action: 'refund_payment', paymentId: f.payment, amount, reference: 'REF-TEST' });
   const credit = (amount = 100) => ({ action: 'credit_note', lineId: f.line, amount });
-  return { snapshot, transactions, state, get, post, cancel, refund, credit };
+  return { snapshot, transactions, state, get, getReceipt, post, cancel, refund, credit };
 }

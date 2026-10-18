@@ -106,6 +106,9 @@ export async function loadStudentRecord(matricule: string, role: RoleName, signa
 export async function studentOperations(matricule:string,role:RoleName,body?:Record<string,unknown>,signal?:AbortSignal) {
   return readResponse(await fetch(`/api/students/${encodeURIComponent(matricule)}/operations`,{method:body?'POST':'GET',headers:{...await headers(role),...(body?{'Content-Type':'application/json'}:{})},...(body?{body:JSON.stringify(body)}:{}),cache:'no-store',signal}));
 }
+export async function loadStudentReceipt(matricule:string,receiptId:string,role:RoleName):Promise<{receipt:import('@/types/paymentReceipt').PaymentReceiptDocument}> {
+  return readResponse(await fetch(`/api/students/${encodeURIComponent(matricule)}/operations?receiptId=${encodeURIComponent(receiptId)}`,{headers:await headers(role),cache:'no-store'}));
+}
 export async function loadYearPreparation(yearId:string,role:RoleName,signal?:AbortSignal):Promise<{checks:import('@/services/yearPreparationService').YearPreparationCheck[];ready:boolean;previousYear?:{id:string;name:string}|null;previousSummary?:import('@/services/yearPreparationService').ReconductConfigSummary|null}>{
  return readResponse(await fetch('/api/year-preparation',{headers:{...await headers(role),'x-escen-year':yearId},cache:'no-store',signal}));
 }
