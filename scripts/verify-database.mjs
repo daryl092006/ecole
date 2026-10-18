@@ -1,3 +1,4 @@
+import { verifyEvaluationWorkflow } from './verify-evaluation-workflow.mjs';
 import { verifyCurriculumCatalog } from './verify-curriculum-catalog.mjs';
 import { prepareTestYear } from './academic-year-test-helpers.mjs';
 import assert from 'node:assert/strict';
@@ -114,10 +115,10 @@ try {
   const evaluation = await insert('evaluations', { assignment_id: assignment.id, offering_id: offering.id, component_id: component.id, name: 'Examen', kind: 'EXAMEN', created_by: account.id });
   const candidate = await insert('evaluation_candidates', { evaluation_id: evaluation.id, enrollment_id: enrollment.id, offering_id: offering.id, eligibility: 'ELIGIBLE' });
   const grade = await insert('grades', { candidate_id: candidate.id, value: 12, entered_by: account.id });
-  await check('Une absence reste distincte de zéro et bloque une soumission incomplète', async () => {
+  await check('Une note vide sans statut reste distincte de zéro et bloque une soumission incomplète', async () => {
     const absentEvaluation = await insert('evaluations', { assignment_id: assignment.id, offering_id: offering.id, component_id: component.id, name: 'Absence', kind: 'DEVOIR', created_by: account.id });
     const absentCandidate = await insert('evaluation_candidates', { evaluation_id: absentEvaluation.id, enrollment_id: enrollment.id, offering_id: offering.id, eligibility: 'ELIGIBLE' });
-    const absentGrade = await insert('grades', { candidate_id: absentCandidate.id, value: null, absence_status: 'NON_TRAITE', entered_by: account.id });
+    const absentGrade = await insert('grades', { candidate_id: absentCandidate.id, value: null, absence_status: null, entered_by: account.id });
     await insert('evaluation_transitions', { evaluation_id: absentEvaluation.id, from_status: 'BROUILLON', to_status: 'SAISIES', actor_id: account.id });
     await assert.rejects(insert('evaluation_transitions', { evaluation_id: absentEvaluation.id, from_status: 'SAISIES', to_status: 'SOUMISES', actor_id: account.id }), /incomplets/i);
     assert.equal(await scalar('select value as value from escen.grades where id = $1',[absentGrade.id]),null);
@@ -273,6 +274,8 @@ try {
     await reject('select public.escen_backend_transaction($1,1,$2::jsonb)',[account.id,JSON.stringify([{ table:'people',operation:'update',record:{ id:randomUUID(),firstname:'Absent' } }])],/absente/);
     await reject('select public.escen_backend_transaction($1,1,$2::jsonb)',[account.id,JSON.stringify([{ table:'people; drop table people',operation:'insert',record:{ firstname:'Injection' } }])],/interdite/);
   });
+  await verifyEvaluationWorkflow(db, check, { year, offering, assignment, level, site });
+
   await check('Gestion persistante des comptes, profils séparés et retrait historisé', async () => {
     const itRole = await scalar("select id as value from escen.roles where code='IT'");
     const siteRole = await scalar("select id as value from escen.roles where code='SITE'");

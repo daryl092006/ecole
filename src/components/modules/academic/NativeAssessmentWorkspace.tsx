@@ -11,6 +11,9 @@ import IconButton from '@/components/ui/IconButton';
 import WorkPage from '@/components/ui/WorkPage';
 import ExamCopies from '../history/ExamCopies';
 import { downloadCsv } from '@/utils/csv';
+import EvaluationGradeDialog from './EvaluationGradeDialog';
+import EvaluationCreateDialog from './EvaluationCreateDialog';
+import { evaluationGradeValue } from '@/services/evaluationGradePolicy';
 
 export default function NativeAssessmentWorkspace({ category }: { category: AssessmentCategory }) {
   const { relationalSnapshot: data, perms, history } = usePortal();
@@ -23,6 +26,9 @@ export default function NativeAssessmentWorkspace({ category }: { category: Asse
   const [selectedId, setSelectedId] = useState(() => params.get('epreuve') || '');
   const [copies, setCopies] = useState(false);
   const [exported, setExported] = useState(false);
+  const [creatingEval, setCreatingEval] = useState(false);
+  const [managingEvalId, setManagingEvalId] = useState('');
+
   const groupName = (row: DatabaseRow) => {
     const assignment = data.tables.teaching_assignments?.find(item => item.id === row.assignment_id);
     return connectedRecordValue('teaching_assignments', 'group_id', assignment?.group_id ?? row.group_id, data);
@@ -71,7 +77,7 @@ export default function NativeAssessmentWorkspace({ category }: { category: Asse
   const allGroupedItems = [...groupedMap.values()].map(members => {
     const memberIds = new Set(members.map(m => String(m.id)));
     const cands = allCandidates.filter(c => memberIds.has(String(c.evaluation_id)));
-    const vals = cands.map(c => gradeByCand.get(String(c.id))).filter((g): g is DatabaseRow => !!g && g.value != null && Number.isFinite(Number(g.value))).map(g => Number(g.value));
+    const vals = cands.map(c => evaluationGradeValue(gradeByCand.get(String(c.id)))).filter((value): value is number => value !== null);
     const avg = vals.length ? vals.reduce((a, b) => a + b, 0) / vals.length : null;
     return {
       key: groupKey(members[0]),
@@ -98,7 +104,25 @@ export default function NativeAssessmentWorkspace({ category }: { category: Asse
   const candidates = allCandidates.filter(row => selectedMemberIds.has(String(row.evaluation_id)));
   if (copies && source) return <ExamCopies exam={source} onBack={() => setCopies(false)} backLabel="Revenir à l’épreuve" />;
   return <div>
-    <div className="page-intro"><div><span className="page-eyebrow">PÉDAGOGIE</span><h1>{ASSESSMENT_LABELS[category]}</h1><p>Épreuves et résultats de l’année consultée, classés par groupe et par matière.</p></div>{perms.permissions.includes('evaluation.create') && <Link className="btn btn-primary" href={`/academique/sujets?nouveau=1&nature=${category}`}>Composer une épreuve</Link>}</div>
+    <div className="page-intro">
+      <div>
+        <span className="page-eyebrow">PÉDAGOGIE</span>
+        <h1>{ASSESSMENT_LABELS[category]}</h1>
+        <p>Épreuves et résultats de l’année consultée, classés par groupe et par matière.</p>
+      </div>
+      <div className="btn-group">
+        {perms.permissions.includes('evaluation.create') && (
+          <button className="btn btn-primary" onClick={() => setCreatingEval(true)}>
+            Nouvelle évaluation
+          </button>
+        )}
+        {perms.permissions.includes('evaluation.create') && (
+          <Link className="btn btn-outline" href={`/academique/sujets?nouveau=1&nature=${category}`}>
+            Composer une épreuve
+          </Link>
+        )}
+      </div>
+    </div>
     <section className="card card-full">
       {linkedKeys.size > 1 && <p role="status">Ce lien concerne plusieurs formations. Choisissez l’épreuve de la formation à consulter.</p>}
       <div className="browser-toolbar">
@@ -110,8 +134,10 @@ export default function NativeAssessmentWorkspace({ category }: { category: Asse
       </div>
       <label className="checkbox-field"><input type="checkbox" checked={withdrawn} onChange={event => { setWithdrawn(event.target.checked); setStatusFilter(''); setExported(false); }} /> Épreuves retirées</label>
       {exported && <p role="status">{rows.length} épreuve(s) exportée(s).</p>}
-      <ResponsiveTable className="data-table"><thead><tr><th>Épreuve</th><th>Matière</th><th>Groupe</th><th>Formation</th><th>Notes et moyenne</th><th>État de l’épreuve</th><th>Actions</th></tr></thead><tbody>{rows.map(item => <tr key={item.primary.id}><td>{String(item.primary.name)}</td><td>{item.subjectLabel}</td><td>{item.groupLabel}</td><td>{item.formationLabel}</td><td>{item.statsLabel}</td><td>{item.statusLabel}</td><td><IconButton className="btn btn-outline" label="Ouvrir le détail" onClick={() => { setSelectedId(item.primary.id); setCopies(false); }} /></td></tr>)}{!rows.length && <tr><td colSpan={7}>Aucune épreuve pour cette catégorie et ces filtres.</td></tr>}</tbody></ResponsiveTable>
+      <ResponsiveTable className="data-table"><thead><tr><th>Épreuve</th><th>Matière</th><th>Groupe</th><th>Formation</th><th>Notes et moyenne</th><th>État de l’épreuve</th><th>Actions</th></tr></thead><tbody>{rows.map(item => <tr key={item.primary.id}><td>{String(item.primary.name)}</td><td>{item.subjectLabel}</td><td>{item.groupLabel}</td><td>{item.formationLabel}</td><td>{item.statsLabel}</td><td>{item.statusLabel}</td><td><div className="btn-group"><IconButton className="btn btn-outline" label="Ouvrir le détail" onClick={() => { setSelectedId(item.primary.id); setCopies(false); }} />{(perms.permissions.includes('grade.enter') || perms.permissions.includes('grade.review') || perms.permissions.includes('grade.approve') || perms.permissions.includes('grade.publish')) && <IconButton className="btn btn-primary" label="Saisir / Gérer" onClick={() => setManagingEvalId(item.primary.id)} />}</div></td></tr>)}{!rows.length && <tr><td colSpan={7}>Aucune épreuve pour cette catégorie et ces filtres.</td></tr>}</tbody></ResponsiveTable>
     </section>
-    {selected && selectedMembers && <WorkPage title={String(selected.name)} onClose={() => setSelectedId('')}><dl className="record-details-grid"><div><dt>Matière</dt><dd>{subjectName(selected)}</dd></div><div><dt>Groupe</dt><dd>{groupName(selected)}</dd></div><div><dt>Formation</dt><dd>{formatOfferings(selectedMembers.map(m => m.offering_id))}</dd></div><div><dt>État des notes</dt><dd>{connectedRecordValue('evaluations', 'status', selected.status, data)}</dd></div></dl><h3>Résultats ({candidates.length})</h3><ResponsiveTable className="data-table"><thead><tr><th>Étudiant</th><th>Note</th><th>Présence</th></tr></thead><tbody>{candidates.map(candidate => { const grade = data.tables.grades?.find(row => row.candidate_id === candidate.id); return <tr key={candidate.id}><td>{connectedRecordName('enrollments', data.tables.enrollments?.find(row => row.id === candidate.enrollment_id) || { id: String(candidate.enrollment_id) }, data)}</td><td>{grade ? connectedRecordValue('grades', 'value', grade.value, data) : 'Non saisie'}</td><td>{grade ? connectedRecordValue('grades', 'absence_status', grade.absence_status, data) : 'Non renseignée'}</td></tr>; })}{!candidates.length && <tr><td colSpan={3}>Aucun candidat rattaché à cette épreuve.</td></tr>}</tbody></ResponsiveTable>{source && <button className="btn btn-outline" onClick={() => setCopies(true)}>Consulter les copies et le sujet</button>}</WorkPage>}
+    {selected && selectedMembers && <WorkPage title={String(selected.name)} onClose={() => setSelectedId('')}><dl className="record-details-grid"><div><dt>Matière</dt><dd>{subjectName(selected)}</dd></div><div><dt>Groupe</dt><dd>{groupName(selected)}</dd></div><div><dt>Formation</dt><dd>{formatOfferings(selectedMembers.map(m => m.offering_id))}</dd></div><div><dt>État des notes</dt><dd>{connectedRecordValue('evaluations', 'status', selected.status, data)}</dd></div></dl><div className="btn-group mb-2">{(perms.permissions.includes('grade.enter') || perms.permissions.includes('grade.review') || perms.permissions.includes('grade.approve') || perms.permissions.includes('grade.publish')) && <button className="btn btn-primary" onClick={() => setManagingEvalId(selected.id)}>Saisir / Gérer les notes</button>}{source && <button className="btn btn-outline" onClick={() => setCopies(true)}>Consulter les copies et le sujet</button>}</div><h3>Résultats ({candidates.length})</h3><ResponsiveTable className="data-table"><thead><tr><th>Étudiant</th><th>Note</th><th>Présence</th></tr></thead><tbody>{candidates.map(candidate => { const grade = data.tables.grades?.find(row => row.candidate_id === candidate.id); return <tr key={candidate.id}><td>{connectedRecordName('enrollments', data.tables.enrollments?.find(row => row.id === candidate.enrollment_id) || { id: String(candidate.enrollment_id) }, data)}</td><td>{grade ? connectedRecordValue('grades', 'value', evaluationGradeValue(grade), data) : 'Non saisie'}</td><td>{grade ? connectedRecordValue('grades', 'absence_status', grade.absence_status, data) : 'Non renseignée'}</td></tr>; })}{!candidates.length && <tr><td colSpan={3}>Aucun candidat rattaché à cette épreuve.</td></tr>}</tbody></ResponsiveTable></WorkPage>}
+    {creatingEval && <EvaluationCreateDialog onClose={() => setCreatingEval(false)} onCreated={id => { setCreatingEval(false); setManagingEvalId(id); }} />}
+    {managingEvalId && <EvaluationGradeDialog evaluationId={managingEvalId} onClose={() => setManagingEvalId('')} />}
   </div>;
 }

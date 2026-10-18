@@ -219,3 +219,5 @@ require('../src/services/catalogDependencyService.test.ts').verifyCatalogDepende
 require('../src/services/enrollmentGroupReferenceService.test.ts');
 require('../src/services/academicYearClosureService.test.ts');
 require('../src/services/assessmentDisplayService.test.ts');
+require('../src/services/evaluationCandidateService.test.ts');
+require('../src/services/evaluationGradePolicy.test.ts');

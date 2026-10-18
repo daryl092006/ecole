@@ -4,6 +4,10 @@ import Link from 'next/link';
 import { studentPath } from '@/constants/portalRoutes';
 import ResponsiveTable from '@/components/ui/ResponsiveTable';
 import type { DatabaseRow, RelationalSnapshot } from '@/types/persistence';
+import { usePortal } from '@/hooks/usePortal';
+import EvaluationGradeDialog from './EvaluationGradeDialog';
+import EvaluationCreateDialog from './EvaluationCreateDialog';
+import { evaluationGradeValue } from '@/services/evaluationGradePolicy';
 
 interface Props {
   snapshot: RelationalSnapshot;
@@ -12,6 +16,9 @@ interface Props {
 }
 
 export default function GroupSubjectGradesPanel({ snapshot, canViewStudents, onSelectStudent }: Props) {
+  const portal = usePortal();
+  const [managingEvalId, setManagingEvalId] = useState('');
+  const [creatingEval, setCreatingEval] = useState(false);
   const groups = (snapshot.tables.groups || []).filter(row => !row.archived_at);
   const evaluations = (snapshot.tables.evaluations || []).filter(row => !row.cancelled_at && !row.archived_at);
   const candidates = snapshot.tables.evaluation_candidates || [];
@@ -31,6 +38,7 @@ export default function GroupSubjectGradesPanel({ snapshot, canViewStudents, onS
   const [selectedGroupId, setSelectedGroupId] = useState<string>('');
   const [selectedSubjectId, setSelectedSubjectId] = useState<string>('');
   const [search, setSearch] = useState('');
+
 
   if (!evaluations.length || !groups.length) return null;
 
@@ -60,9 +68,8 @@ export default function GroupSubjectGradesPanel({ snapshot, canViewStudents, onS
     const groupEvalIds = new Set(groupEvals.map(ev => String(ev.id)));
     const groupCands = candidates.filter(c => groupEvalIds.has(String(c.evaluation_id)));
     const numericGrades = groupCands
-      .map(c => gradeByCandidate.get(String(c.id)))
-      .filter((g): g is DatabaseRow => !!g && g.value != null && Number.isFinite(Number(g.value)))
-      .map(g => Number(g.value));
+      .map(c => evaluationGradeValue(gradeByCandidate.get(String(c.id))))
+      .filter((value): value is number => value !== null);
     const subjectMap = new Map<string, { id: string; code: string; name: string; evals: DatabaseRow[] }>();
     for (const ev of groupEvals) {
       const subj = evalSubject(ev);
@@ -99,9 +106,8 @@ export default function GroupSubjectGradesPanel({ snapshot, canViewStudents, onS
     const evalIds = new Set(subj.evals.map(e => String(e.id)));
     const subjCands = candidates.filter(c => evalIds.has(String(c.evaluation_id)));
     const vals = subjCands
-      .map(c => gradeByCandidate.get(String(c.id)))
-      .filter((g): g is DatabaseRow => !!g && g.value != null && Number.isFinite(Number(g.value)))
-      .map(g => Number(g.value));
+      .map(c => evaluationGradeValue(gradeByCandidate.get(String(c.id))))
+      .filter((value): value is number => value !== null);
     const avg = vals.length ? vals.reduce((a, b) => a + b, 0) / vals.length : null;
     const min = vals.length ? Math.min(...vals) : null;
     const max = vals.length ? Math.max(...vals) : null;
@@ -144,8 +150,8 @@ export default function GroupSubjectGradesPanel({ snapshot, canViewStudents, onS
     for (const c of studCands) {
       const ev = activeSubject?.evals.find(e => String(e.id) === String(c.evaluation_id));
       const g = gradeByCandidate.get(String(c.id));
-      if (!ev || !g || g.value == null || !Number.isFinite(Number(g.value))) continue;
-      const val = Number(g.value);
+      const val = evaluationGradeValue(g);
+      if (!ev || val === null) continue;
       if (ev.session_type === 'RATTRAPAGE' || ev.kind === 'RATTRAPAGE') resitGrade = val;
       else if (ev.kind === 'DEVOIR' || ev.kind === 'INTERROGATION' || ev.kind === 'TP' || ev.kind === 'PROJET') controlGrade = val;
       else examGrade = val;
@@ -179,6 +185,11 @@ export default function GroupSubjectGradesPanel({ snapshot, canViewStudents, onS
         <div>
           <h2>Par groupe et matière</h2>
         </div>
+        {portal.perms.permissions.includes('evaluation.create') && (
+          <button className="btn btn-sm btn-primary" onClick={() => setCreatingEval(true)}>
+            Nouvelle évaluation
+          </button>
+        )}
       </div>
 
       <div className="form-grid mb-2">
@@ -278,10 +289,34 @@ export default function GroupSubjectGradesPanel({ snapshot, canViewStudents, onS
 
       {activeSubjectSummary && (
         <div>
+          {activeSubjectSummary.evals.length > 0 && (
+            <div className="mb-2">
+              <div className="card-header">
+                <h4>Évaluations de la matière ({activeSubjectSummary.evals.length})</h4>
+              </div>
+              <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap' }}>
+                {activeSubjectSummary.evals.map(ev => (
+                  <div key={ev.id} className="card p-2" style={{ display: 'flex', alignItems: 'center', gap: '1rem', border: '1px solid var(--border)' }}>
+                    <div>
+                      <strong>{String(ev.name)}</strong>
+                      <div className="cell-sub">{String(ev.kind)} · État : <span className="pill pill-default">{String(ev.status)}</span></div>
+                    </div>
+                    {(portal.perms.permissions.includes('grade.enter') || portal.perms.permissions.includes('grade.review') || portal.perms.permissions.includes('grade.approve') || portal.perms.permissions.includes('grade.publish')) && (
+                      <button className="btn btn-sm btn-primary" onClick={() => setManagingEvalId(String(ev.id))}>
+                        Saisir / Gérer
+                      </button>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
           <h3>
             Notes de {activeSubjectSummary.name} — {activeGroup.name} ({studentRows.filter(r => r.hasAnyGrade).length} noté(s) sur {studentRows.length})
           </h3>
-          <ResponsiveTable className="data-table">
+          <div className="table-wrap">
+            <ResponsiveTable className="data-table">
             <thead>
               <tr>
                 <th>Étudiant</th>
@@ -345,9 +380,12 @@ export default function GroupSubjectGradesPanel({ snapshot, canViewStudents, onS
                 </tr>
               )}
             </tbody>
-          </ResponsiveTable>
+            </ResponsiveTable>
+          </div>
         </div>
       )}
+      {creatingEval && <EvaluationCreateDialog onClose={() => setCreatingEval(false)} onCreated={id => { setCreatingEval(false); setManagingEvalId(id); }} />}
+      {managingEvalId && <EvaluationGradeDialog evaluationId={managingEvalId} onClose={() => setManagingEvalId('')} />}
     </section>
   );
 }

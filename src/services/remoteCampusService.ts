@@ -126,3 +126,7 @@ export async function saveWebsiteBrochure(metadata: Record<string, unknown>, fil
   if (file) body.set('file', file);
   await readResponse(await fetch('/api/website-brochures', { method: 'POST', headers: await headers(role), body }));
 }
+
+export async function manageEvaluation(role: RoleName, body: Record<string, unknown>): Promise<{ id?: string; revision: number }> {
+  return readResponse(await fetch('/api/evaluations', { method: 'POST', headers: { ...await headers(role), 'Content-Type': 'application/json' }, body: JSON.stringify(body) }));
+}

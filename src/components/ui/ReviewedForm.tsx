@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState, type ComponentPropsWithoutRef, type FormEventHandler } from 'react';
 import LoadingState from './LoadingState';
+import DrawerActions from './DrawerActions';
 
 export interface ReviewField { label: string; value: string; previous?: string; }
 interface Props extends Omit<ComponentPropsWithoutRef<'form'>, 'onSubmit'> {
@@ -14,14 +15,16 @@ interface Props extends Omit<ComponentPropsWithoutRef<'form'>, 'onSubmit'> {
   danger?: boolean;
   completionKey?: string;
   validate?: () => string | null;
+  reviewInitially?: boolean;
+  onCancelReview?: () => void;
 }
 
-export default function ReviewedForm({ onConfirm, fields, consequence, confirmLabel, busy = false, error, danger = false, completionKey, validate, children, ...props }: Props) {
-  const [reviewing, setReviewing] = useState(false);
+export default function ReviewedForm({ onConfirm, fields, consequence, confirmLabel, busy = false, error, danger = false, completionKey, validate, reviewInitially = false, onCancelReview, children, ...props }: Props) {
+  const [reviewing, setReviewing] = useState(reviewInitially);
   const [validationError, setValidationError] = useState('');
   const review = useRef<HTMLElement>(null);
   useEffect(() => { if (reviewing) review.current?.focus(); }, [reviewing]);
-  useEffect(() => { setReviewing(false); setValidationError(''); }, [completionKey]);
+  useEffect(() => { setReviewing(reviewInitially); setValidationError(''); }, [completionKey, reviewInitially]);
   return <form {...props} aria-busy={busy} onSubmit={event => {
     event.preventDefault();
     if (busy) return;
@@ -37,7 +40,7 @@ export default function ReviewedForm({ onConfirm, fields, consequence, confirmLa
       <dl className="review-values">{fields.map(field => <div key={field.label}><dt>{field.label}</dt><dd>{field.previous !== undefined && field.previous !== field.value && <span className="review-previous">Avant : {field.previous || 'Non renseigné'}<br /></span>}{field.value || 'Non renseigné'}</dd></div>)}</dl>
       <p className="action-consequence">{consequence}</p>
       {error && <p className="restricted-box" role="alert">{error}</p>}
-      <div className="btn-group"><button type="submit" className={`btn ${danger ? 'btn-danger' : 'btn-primary'}`} disabled={busy}>{busy ? 'Enregistrement…' : confirmLabel}</button><button type="button" className="btn btn-outline" disabled={busy} onClick={() => setReviewing(false)}>Revenir aux informations</button></div>
+      <DrawerActions><button type="submit" className={`btn ${danger ? 'btn-danger' : 'btn-primary'}`} disabled={busy}>{busy ? 'Enregistrement…' : confirmLabel}</button><button type="button" className="btn btn-outline" disabled={busy} onClick={() => onCancelReview ? onCancelReview() : setReviewing(false)}>Revenir aux informations</button></DrawerActions>
     </section>}
   </form>;
 }

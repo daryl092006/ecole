@@ -220,7 +220,7 @@ export function useAppState() {
   const demoUsers = useDemoUsers(activeRole, logEvent, session?.email || activeRole);
   const { setAcademicYears, setPrograms, setTracks, setLevels, setSemesters, setUnits, setSubjects, setTeachers, setAssignments, setGroups } = references;
   const { setUsers } = demoUsers;
-  const hydrateCampus = useCallback((projection: ReturnType<typeof projectRelationalCampus>) => {
+  const hydrateCampus = useCallback((projection: ReturnType<typeof projectRelationalCampus>, preserveSelection = false) => {
     const { data, users } = projection;
     setCampusRevision(projection.revision);
     setAcademicYears(data.academicYears); setPrograms(data.programs); setTracks(data.tracks); setLevels(data.levels);
@@ -233,7 +233,7 @@ export function useAppState() {
     setCampusRecords({ settings: data.settings, enrollments: data.enrollments, juryDecisions: data.juryDecisions,
       exams: data.exams, examPapers: data.examPapers, examAttempts: data.examAttempts, staff: data.staff,
       purchases: data.purchases, assets: data.assets, documents: data.documents });
-    setSelectedStudent(null); setSelectedClassForGrades(null);
+    if (!preserveSelection) { setSelectedStudent(null); setSelectedClassForGrades(null); }
   }, [setAcademicYears, setPrograms, setTracks, setLevels, setSemesters, setUnits, setSubjects, setTeachers, setAssignments, setGroups, setUsers, setCampusRecords]);
 
   const accountId = session?.accountId;
@@ -255,11 +255,13 @@ export function useAppState() {
       setResolvedAcademicYearRequest(snapshot.academicContext?.selectedYearId || null);
       const projection = projectRelationalCampus(snapshot);
       setRelationalSnapshot(snapshot);
-      hydrateCampus(projection);
+      hydrateCampus(projection, preserve);
       setCampusLoad({ status: 'ready', error: '', students: projection.data.students.length, users: projection.users.length, enrollments: projection.data.enrollments.length });
     }).catch(error => {
       if (controller.signal.aborted) return;
-      setCampusLoad({ status: 'error', error: error instanceof Error ? error.message : 'Chargement des dossiers impossible.', students: 0, users: 0, enrollments: 0 });
+      const message = error instanceof Error ? error.message : 'Chargement des dossiers impossible.';
+      if (preserve) setActionFeedback(message);
+      else setCampusLoad({ status: 'error', error: message, students: 0, users: 0, enrollments: 0 });
     });
     return () => controller.abort();
   }, [accountId, mustChangePassword, activeRole, reloadCampusIndex, academicYearSelection, hydrateCampus]);
