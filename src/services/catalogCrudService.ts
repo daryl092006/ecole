@@ -16,7 +16,10 @@ export function parseCatalogRecord(key: string, input: unknown): Record<string, 
     if (field.type === 'reference') fields[field.key] = field.required === false ? z.union([z.uuid(),z.literal(''),z.null()]).transform(value=>value || null) : z.uuid();
     else if (field.type === 'select') fields[field.key] = field.required === false ? z.union([z.enum(field.options!.map(option=>option.value)),z.literal(''),z.null()]).transform(value=>value || null) : z.enum(field.options!.map(option=>option.value));
     else if (field.type === 'email') fields[field.key] = z.union([z.email(),z.literal('')]);
-    else if (field.type === 'number') fields[field.key] = z.number().int().min(field.min || 0).max(field.key==='position'?32767:2147483647);
+    else if (field.type === 'number') {
+      const numeric = z.number().min(field.min ?? 0).max(field.max ?? (field.key === 'position' ? 32767 : 2147483647));
+      fields[field.key] = field.step === undefined ? numeric.int() : numeric.multipleOf(field.step);
+    }
     else if (field.type === 'date') fields[field.key] = z.iso.date();
     else fields[field.key] = field.required ? z.string().trim().min(1).max(160) : z.string().trim().max(4000);
   }

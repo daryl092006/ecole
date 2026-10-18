@@ -8,6 +8,11 @@ import { catalogSpec, parseCatalogRecord, canManageCatalog, validateCatalogRefer
 import { buildReconductChanges } from '@/services/yearPreparationService';
 import { annualOfferingChanges } from '@/services/annualOfferingService';
 import type { RelationalSnapshot, PersistentChange } from '@/types/persistence';
+const curriculumArchiveErrors = new Set([
+  'Archivage interdit : la maquette est approuvée ou archivée. Le gel de la maquette prime.',
+  'Archivage du semestre interdit : des unités d’enseignement actives y sont encore rattachées.',
+  'Archivage de l’unité d’enseignement interdit : des matières actives y sont encore rattachées.',
+]);
 export async function catalogRequest(request: Request, key: string) {
   if (!CRUD_CATALOG.some(spec => spec.key === key)) throw new RequestError(404,'Collection inconnue.');
   const account = await requireAccount(request); const spec = catalogSpec(key);
@@ -115,7 +120,11 @@ export async function writeCatalog(request: Request, key: string, id?: string) {
     for (let i = 0; i < changes.length; i += 100) {
       const chunk = changes.slice(i, i + 100);
       const response = await client.rpc('escen_backend_transaction', { p_actor_id: context.accountId, p_expected_revision: currentRevision, p_changes: chunk });
-      if (response.error) throw new RequestError(409, 'Enregistrement refusé : doublon, relation incompatible ou modification concurrente.');
+      if (response.error) {
+        const knownArchiveError = archive && ['curriculum_semesters', 'teaching_units', 'curriculum_components'].includes(key)
+          && response.error.code === '23514' && curriculumArchiveErrors.has(response.error.message);
+        throw new RequestError(409, knownArchiveError ? response.error.message : 'Enregistrement refusé : doublon, relation incompatible ou modification concurrente.');
+      }
       currentRevision = response.data;
     }
   }

@@ -1,0 +1,213 @@
+import assert from 'node:assert/strict';
+import { randomUUID } from 'node:crypto';
+import { readFileSync } from 'node:fs';
+import { createRequire } from 'node:module';
+import { fileURLToPath } from 'node:url';
+import { runInThisContext } from 'node:vm';
+import ts from 'typescript';
+
+// Run writeCatalog against real local PostgreSQL RPCs with fixture authentication.
+// No Supabase connection is created by this isolated TypeScript loader.
+function loadCatalogWriter(client, context) {
+  const overrides = new Map([
+    ['server-only', {}],
+    ['@/lib/supabase/server', { getSupabaseServerClient() { throw new Error('Connexion distante interdite dans ces tests.'); } }],
+  ]);
+  const cache = new Map();
+  const root = new URL('../src/', import.meta.url);
+  function load(url) {
+    const filename = fileURLToPath(url);
+    if (cache.has(filename)) return cache.get(filename).exports;
+    const loaded = { exports: {} };
+    cache.set(filename, loaded);
+    const localRequire = createRequire(url);
+    const requireModule = name => {
+      if (overrides.has(name)) return overrides.get(name);
+      if (name.startsWith('@/') || name.startsWith('.')) {
+        const target = new URL(name.startsWith('@/') ? name.slice(2) : name, name.startsWith('@/') ? root : url);
+        if (target.pathname.endsWith('.json')) return localRequire(fileURLToPath(target));
+        return load(new URL(target.href.endsWith('.ts') ? target.href : `${target.href}.ts`));
+      }
+      return localRequire(name);
+    };
+    const compiled = ts.transpileModule(readFileSync(url, 'utf8'), {
+      compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2020, esModuleInterop: true },
+    }).outputText;
+    runInThisContext(`(function(require,module,exports){${compiled}\n})`, { filename })(requireModule, loaded, loaded.exports);
+    return loaded.exports;
+  }
+  const auth = load(new URL('server/auth.ts', root));
+  overrides.set('@/server/auth', { ...auth, requireAccount: async () => ({ client, context }) });
+  return load(new URL('server/catalogCrud.ts', root)).writeCatalog;
+}
+
+export async function verifyCurriculumCatalog(db, check) {
+  const value = async (sql, params = []) => (await db.query(sql, params)).rows[0].value;
+  const insert = async (table, record) => {
+    assert.match(table, /^[a-z_]+$/);
+    const keys = Object.keys(record);
+    keys.forEach(key => assert.match(key, /^[a-z_]+$/));
+    return (await db.query(`insert into escen.${table} (${keys.join(',')}) values (${keys.map((_, i) => `$${i + 1}`).join(',')}) returning *`, Object.values(record))).rows[0];
+  };
+  const token = randomUUID();
+  await db.query('insert into auth.users(id) values ($1)', [token]);
+  const person = await insert('people', { firstname: 'Catalogue', lastname: 'Recette' });
+  const actor = await insert('accounts', { person_id: person.id, auth_user_id: token, active: true });
+  const role = await value("select id as value from escen.roles where code='IT'");
+  await insert('role_grants', { account_id: actor.id, role_id: role, granted_by: actor.id, valid_from: new Date().toISOString(), reason: 'Recette locale du catalogue' });
+  const context = {
+    accountId: actor.id, personId: person.id, authUserId: token, roleCode: 'IT', role: 'Informaticien',
+    permissions: ['academic.view', 'academic.structure.manage'], studentId: null, teacherId: null,
+    grants: [{ site_id: null, group_id: null, academic_year_id: null }],
+  };
+  const client = {
+    async rpc(name, args) {
+      try {
+        const data = name === 'escen_backend_snapshot'
+          ? await value('select public.escen_backend_snapshot() as value')
+          : name === 'escen_backend_transaction'
+            ? await value('select public.escen_backend_transaction($1,$2,$3::jsonb) as value', [args.p_actor_id, args.p_expected_revision, JSON.stringify(args.p_changes)])
+            : assert.fail(`RPC inattendue : ${name}`);
+        return { data, error: null };
+      } catch (error) { return { data: null, error: { code: error.code, message: error.message } }; }
+    },
+  };
+  const writeCatalog = loadCatalogWriter(client, context);
+  const revision = () => value('select revision as value from escen_private.portal_revision where singleton');
+  const save = async (collection, values, { id, archive = false, reason = 'Modification de recette locale' } = {}) => {
+    const body = { revision: await revision(), reason, ...(values ? { values } : {}) };
+    const response = await writeCatalog(new Request(`http://local.test/api/catalog/${collection}${id ? `/${id}` : ''}`, {
+      method: archive ? 'DELETE' : id ? 'PATCH' : 'POST',
+      headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body),
+    }), collection, id);
+    assert.equal(response.status, id ? 200 : 201);
+    return response.json();
+  };
+  const row = async (table, id) => (await db.query(`select * from escen.${table} where id=$1`, [id])).rows[0];
+  const audit = async (table, id) => (await db.query('select * from escen_private.audit_events where table_name=$1 and entity_id=$2 order by happened_at', [table, id])).rows;
+  const assertRejection = async (collection, id, pattern) => {
+    const before = await revision();
+    const count = (await audit(collection, id)).length;
+    await assert.rejects(save(collection, null, { id, archive: true }), error => error.status === 409 && pattern.test(error.message));
+    assert.equal(await revision(), before);
+    assert.equal((await row(collection, id)).archived_at, null);
+    assert.equal((await audit(collection, id)).length, count);
+  };
+
+  const suffix = randomUUID().slice(0, 8);
+  const cycle = await insert('cycles', { code: `CAT-${suffix}`, name: 'Cycle de recette' });
+  const level = await insert('levels', { cycle_id: cycle.id, code: `CAT-${suffix}`, name: 'Niveau de recette', position: 1 });
+  const program = await insert('programs', { code: `CAT-${suffix}`, name: 'Filière de recette' });
+  const subject = await insert('subjects', { code: `CAT-${suffix}`, name: 'Matière de recette' });
+  let version = 0;
+  const draft = () => insert('curricula', { program_id: program.id, level_id: level.id, version: ++version });
+  const curriculum = await draft();
+  let semester; let unit; let component;
+  await check('Catalogue / curriculum_semesters : création persistée avec crédits décimaux', async () => {
+    const saved = await save('curriculum_semesters', { curriculum_id: curriculum.id, position: 1, name: 'Semestre de recette', target_credits: 3.5 }, { reason: 'Création du semestre' });
+    semester = await row('curriculum_semesters', saved.id);
+    assert.equal(Number(semester.target_credits), 3.5);
+    assert.equal(semester.reason, 'Création du semestre');
+  });
+  await check('Catalogue / teaching_units : création persistée avec crédits décimaux', async () => {
+    const saved = await save('teaching_units', { curriculum_id: curriculum.id, semester_id: semester.id, code: 'UE1', name: 'Unité de recette', credits: 3.5 }, { reason: 'Création de l’unité' });
+    unit = await row('teaching_units', saved.id);
+    assert.equal(Number(unit.credits), 3.5);
+    assert.equal(unit.reason, 'Création de l’unité');
+  });
+  await check('Catalogue / curriculum_components : création persistée avec coefficient décimal', async () => {
+    const saved = await save('curriculum_components', { curriculum_id: curriculum.id, unit_id: unit.id, subject_id: subject.id, code: 'EC1', credits: 3.5, coefficient: 0.5 }, { reason: 'Création de la matière' });
+    component = await row('curriculum_components', saved.id);
+    assert.equal(Number(component.coefficient), 0.5);
+    assert.equal(Number(component.credits), 3.5);
+    assert.equal(component.reason, 'Création de la matière');
+  });
+  const changes = [
+    ['curriculum_semesters', () => semester, { curriculum_id: curriculum.id, position: 1, name: 'Semestre modifié', target_credits: 3.75 }],
+    ['teaching_units', () => unit, { curriculum_id: curriculum.id, semester_id: semester.id, code: 'UE1', name: 'Unité modifiée', credits: 3.75 }],
+    ['curriculum_components', () => component, { curriculum_id: curriculum.id, unit_id: unit.id, subject_id: subject.id, code: 'EC1', credits: 3.75, coefficient: 0.625 }],
+  ];
+  for (const [table, entity, values] of changes) {
+    await check(`Catalogue / ${table} : modification décimale, auteur et avant/après conservés`, async () => {
+      await save(table, values, { id: entity().id, reason: 'Révision des crédits' });
+      const saved = await row(table, entity().id);
+      const credits = table === 'curriculum_semesters' ? 'target_credits' : 'credits';
+      assert.equal(Number(saved[credits]), 3.75);
+      if (table === 'curriculum_components') assert.equal(Number(saved.coefficient), 0.625);
+      const events = await audit(table, saved.id);
+      assert.equal(events.length, 2);
+      assert.equal(events[0].action, 'INSERT');
+      assert.equal(events[1].action, 'UPDATE');
+      assert.equal(Number(events[1].old_value[credits]), 3.5);
+      assert.equal(Number(events[1].new_value[credits]), 3.75);
+      assert.equal(events[1].reason, 'Révision des crédits');
+      assert.equal(events[1].actor_id, actor.id);
+      assert.ok(events[1].role_codes.includes('IT'));
+    });
+  }
+  await check('Catalogue : semestre avec UE actives refusé sans mutation, message API clair', () => assertRejection('curriculum_semesters', semester.id, /semestre interdit.*unités.*actives/i));
+  await check('Catalogue : UE avec matières actives refusée sans mutation, message API clair', () => assertRejection('teaching_units', unit.id, /unité.*interdit.*matières actives/i));
+  for (const [table, entity] of [...changes].reverse()) {
+    await check(`Catalogue / ${table} : archivage logique motivé et audité, ligne conservée`, async () => {
+      await save(table, null, { id: entity().id, archive: true, reason: 'Retrait explicite de recette' });
+      const saved = await row(table, entity().id);
+      assert.ok(saved.archived_at);
+      assert.equal(saved.reason, 'Retrait explicite de recette');
+      const events = await audit(table, saved.id);
+      assert.equal(events.length, 3);
+      assert.equal(events[2].old_value.archived_at, null);
+      assert.ok(events[2].new_value.archived_at);
+      assert.equal(events[2].actor_id, actor.id);
+      assert.equal(events[2].reason, saved.reason);
+      await assert.rejects(db.query(`delete from escen.${table} where id=$1`, [saved.id]), /Suppression interdite/i);
+    });
+  }
+  await check('Catalogue : motif obligatoire et aucun enfant actif sous un parent archivé', async () => {
+    const other = await draft();
+    const empty = await insert('curriculum_semesters', { curriculum_id: other.id, position: 1, name: 'Vide', target_credits: 1 });
+    await assert.rejects(db.query('update escen.curriculum_semesters set archived_at=now(),reason=$1 where id=$2', [' ', empty.id]), /semester_archive_reason/);
+    await assert.rejects(save('teaching_units', { curriculum_id: curriculum.id, semester_id: semester.id, code: 'REFUSE', name: 'Refusée', credits: 1 }), /introuvable ou archivé/i);
+    await assert.rejects(insert('teaching_units', { curriculum_id: curriculum.id, semester_id: semester.id, code: 'REFUSE', name: 'Refusée', credits: 1 }), /semestre archivé/i);
+    await assert.rejects(insert('curriculum_components', { curriculum_id: curriculum.id, unit_id: unit.id, subject_id: subject.id, code: 'REFUSE', credits: 1, coefficient: 1 }), /unité.*archivée/i);
+    for (const table of ['teaching_units', 'curriculum_components']) {
+      await assert.rejects(db.query(`update escen.${table} set reason=$1 where id=$2`, [' ', table === 'teaching_units' ? unit.id : component.id]), /archive_reason/);
+    }
+  });
+
+  const budgets = await draft();
+  const activeSemester = await insert('curriculum_semesters', { curriculum_id: budgets.id, position: 1, name: 'Actif', target_credits: 6.25 });
+  const activeUnit = await insert('teaching_units', { curriculum_id: budgets.id, semester_id: activeSemester.id, code: 'ACTIF', name: 'Active', credits: 6.25 });
+  const activeComponent = await insert('curriculum_components', { curriculum_id: budgets.id, unit_id: activeUnit.id, subject_id: subject.id, code: 'ACTIF', credits: 6.25, coefficient: 0.625 });
+  const archived = { archived_at: new Date().toISOString(), reason: 'Archive ignorée dans les budgets' };
+  await insert('curriculum_semesters', { curriculum_id: budgets.id, position: 2, name: 'Archivé sans UE', target_credits: 99.99, ...archived });
+  const archivedUnit = await insert('teaching_units', { curriculum_id: budgets.id, semester_id: activeSemester.id, code: 'ARCHIVE', name: 'Archivée sans matière', credits: 99.99, ...archived });
+  const archivedComponent = await insert('curriculum_components', { curriculum_id: budgets.id, unit_id: activeUnit.id, subject_id: subject.id, code: 'ARCHIVE', credits: 99.99, coefficient: 1, ...archived });
+  await insert('assessment_weights', { curriculum_id: budgets.id, component_id: archivedComponent.id, evaluation_kind: 'DEVOIR', percent: 10 });
+  await insert('assessment_weights', { curriculum_id: budgets.id, component_id: activeComponent.id, evaluation_kind: 'DEVOIR', percent: 60 });
+  const approve = id => db.query("update escen.curricula set status='APPROVED',approved_by=$1,approved_at=now() where id=$2", [actor.id, id]);
+  await check('Maquette : les pondérations actives doivent toujours totaliser 100', async () => {
+    await assert.rejects(approve(budgets.id), /Pondérations/i);
+    await insert('assessment_weights', { curriculum_id: budgets.id, component_id: activeComponent.id, evaluation_kind: 'EXAMEN', percent: 40 });
+  });
+  await check('Maquette : les crédits actifs incohérents restent refusés', async () => {
+    await db.query('update escen.teaching_units set credits=6.20 where id=$1', [activeUnit.id]);
+    await assert.rejects(approve(budgets.id), /crédits/i);
+    await db.query('update escen.teaching_units set credits=6.25 where id=$1', [activeUnit.id]);
+  });
+  await check('Maquette : crédits et pondérations ignorent les trois types de lignes archivées', async () => {
+    await approve(budgets.id);
+    assert.equal((await row('curricula', budgets.id)).status, 'APPROVED');
+    assert.ok((await row('teaching_units', archivedUnit.id)).archived_at);
+  });
+  for (const [table, entity] of [['curriculum_semesters', activeSemester], ['teaching_units', activeUnit], ['curriculum_components', activeComponent]]) {
+    await check(`Maquette approuvée / ${table} : le gel prime sur l’archivage et les dépendances`, async () => {
+      await assertRejection(table, entity.id, /Archivage interdit.*maquette.*approuvée.*gel/i);
+      await assert.rejects(db.query(`update escen.${table} set reason=$1 where id=$2`, ['Modification interdite', entity.id]), /Maquette approuvée immuable/i);
+    });
+  }
+  await check('Maquette : aucun semestre actif signifie approbation refusée', async () => {
+    const empty = await draft();
+    await insert('curriculum_semesters', { curriculum_id: empty.id, position: 1, name: 'Seul semestre archivé', target_credits: 1, ...archived });
+    await assert.rejects(approve(empty.id), /crédits/i);
+  });
+}

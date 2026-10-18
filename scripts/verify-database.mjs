@@ -1,3 +1,4 @@
+import { verifyCurriculumCatalog } from './verify-curriculum-catalog.mjs';
 import { prepareTestYear } from './academic-year-test-helpers.mjs';
 import assert from 'node:assert/strict';
 import { verifyAcademicYears } from './verify-academic-years.mjs';
@@ -474,6 +475,7 @@ try {
     assert.equal(await scalar('select count(*)::integer as value from escen.enrollments where student_id = $1', [student.id]), previousCount + 1);
     assert.equal(Number(await scalar('select value as value from escen.grades where id = $1', [grade.id])), 16);
   });
+  await verifyCurriculumCatalog(db, check);
   console.log(`Base relationnelle : ${checks} groupes de contrôles PostgreSQL réussis.`);
 } catch (error) {
   console.error('Échec PostgreSQL :', error.message);
