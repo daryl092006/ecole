@@ -1,6 +1,6 @@
 import { readFileSync } from 'node:fs';
 import { createRequire } from 'node:module';
-import { resolve } from 'node:path';
+import { dirname, resolve } from 'node:path';
 import { runInThisContext } from 'node:vm';
 import ts from 'typescript';
 import { ROLE_ACCESS } from '../../src/permissions/rolePermissions';
@@ -29,7 +29,10 @@ export function loadSecurityApi(path: string, client: unknown, context: Persiste
     const localRequire = createRequire(filename);
     const requireModule = (name: string): unknown => {
       if (overrides.has(name)) return overrides.get(name);
-      if (name.startsWith('@/')) return name.endsWith('.json') ? localRequire(resolve('src', name.slice(2))) : load(resolve('src', `${name.slice(2)}.ts`));
+      if (name.startsWith('@/') || name.startsWith('.')) {
+        const target = name.startsWith('@/') ? resolve('src', name.slice(2)) : resolve(dirname(filename), name);
+        return name.endsWith('.json') ? localRequire(target) : load(`${target}.ts`);
+      }
       return localRequire(name);
     };
     const compiled = ts.transpileModule(readFileSync(filename, 'utf8'), {

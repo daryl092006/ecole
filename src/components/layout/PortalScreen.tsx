@@ -5,6 +5,7 @@ import FinanceOverview from '@/components/modules/FinanceOverview';
 
 import HistoricalWorkspace, { HISTORY_SECTIONS } from '@/components/modules/history/HistoricalWorkspace';
 import PersonnelDossiers from '@/components/modules/personnel/PersonnelDossiers';
+import TeachersWorkspace from '@/components/modules/personnel/TeachersWorkspace';
 import HistoricalExamsWorkspace from '@/components/modules/history/HistoricalExamsWorkspace';
 import ReferenceCrudWorkspace from '@/components/modules/academic/ReferenceCrudWorkspace';
 import { CRUD_SECTIONS } from '@/data/crudCatalog';
@@ -55,6 +56,7 @@ export default function PortalScreen({ tab, section }: { tab: string; section: s
   if (state.session && (section === 'espace_dashboard' || section === 'dashboard_kpis' || section === 'dashboard_reports')) return <WorkspaceHome mode={section === 'dashboard_kpis' ? 'overview' : section === 'dashboard_reports' ? 'reports' : 'home'} />;
   if (state.session && section === 'acad_settings') return <section className="card"><div className="page-intro"><div><span className="page-eyebrow">RÈGLEMENT ACADÉMIQUE</span><h1>Règles académiques à confirmer</h1><p>Les règles de compensation, de validation et de délibération doivent être confirmées par la direction académique avant leur application. Aucune règle n’est appliquée automatiquement aux dossiers historiques.</p></div></div><p>Préparez la version approuvée du règlement et ses dates d’application. L’enregistrement et l’activation de cette version ne sont pas encore disponibles dans cet écran.</p></section>;
   if (state.session && section === 'staff_records') return <PersonnelDossiers />;
+  if (state.session && section === 'staff_teachers') return <TeachersWorkspace />;
   if(state.session && section==='acad_subjects')return <SubjectStudio />;
   if(state.history.enabled && !state.relationalSnapshot.tables.evaluations?.length && ['acad_exams','acad_resits','acad_assessments'].includes(section))return <HistoricalExamsWorkspace key={section} category={section==='acad_resits'?'resit':section==='acad_assessments'?'control':'exam'} />;
   if(state.session && ['acad_exams','acad_resits','acad_assessments'].includes(section))return <NativeAssessmentWorkspace key={`${section}:${state.academicYearSelection}`} category={section==='acad_resits'?'resit':section==='acad_assessments'?'control':'exam'} />;

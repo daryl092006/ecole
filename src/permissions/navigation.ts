@@ -148,7 +148,7 @@ const SUBTAB_PERMISSIONS: Record<string, Permission[]> = {
   staff_list: ['user.manage'],
   staff_roles: ['user.manage'],
   staff_permissions: ['user.manage'],
-  staff_teachers: ['academic.assignment.manage'],
+  staff_teachers: ['academic.assignment.manage', 'staff.manage'],
   comm_announcements: ['communication.manage'],
   comm_news: ['communication.view'],
   sys_logs: ['system.audit.view'],

@@ -4,7 +4,7 @@ import { filterRelationalSnapshot } from '@/services/persistentPermissionsServic
 import type { RelationalSnapshot, PersistentChange } from '@/types/persistence';
 import type { PersonnelRecord } from '@/types/staff';
 export const dynamic = 'force-dynamic';
-const schema = z.object({ personId: z.uuid().optional(), firstname: z.string().trim().min(1).max(160), lastname: z.string().trim().min(1).max(160), email: z.union([z.email(), z.literal('')]), phone: z.string().trim().max(80), employeeNumber: z.string().trim().min(1).max(160) }).strict();
+const schema = z.object({ personId: z.uuid().optional(), firstname: z.string().trim().min(1).max(160), lastname: z.string().trim().min(1).max(160), email: z.union([z.email(), z.literal('')]), phone: z.string().trim().max(80), employeeNumber: z.string().trim().min(1).max(160), isTeacher: z.boolean().optional().default(false), teacherSpecialty: z.string().trim().max(160).optional().default('') }).strict();
 export async function GET(request: Request) {
   try {
     const { client, context } = await requireAccount(request); requirePermission(context, 'staff.view');
@@ -33,6 +33,7 @@ export async function POST(request: Request) {
     if (!existing && form.email && snapshot.tables.people?.some(row => String(row.email || '').toLowerCase() === form.email.toLowerCase())) throw new RequestError(409, 'Cette adresse correspond déjà à une personne. Sélectionnez son profil existant pour compléter son dossier.');
     const personId = existing?.id || crypto.randomUUID(); const staffId = crypto.randomUUID();
     const changes: PersistentChange[] = [{ table: 'people', operation: existing ? 'update' : 'insert', record: { id: personId, firstname: form.firstname, lastname: form.lastname, email: form.email || null, phone: form.phone || null } }, { table: 'staff', operation: 'insert', record: { id: staffId, person_id: personId, employee_number: form.employeeNumber } }];
+    if (form.isTeacher) changes.push({ table: 'teachers', operation: 'insert', record: { id: crypto.randomUUID(), staff_id: staffId, specialty: form.teacherSpecialty || null, active: true } });
     const saved = await client.rpc('escen_backend_transaction', { p_actor_id: context.accountId, p_expected_revision: snapshot.revision, p_changes: changes });
     if (saved.error) throw new RequestError(409, 'Enregistrement refusé : vérifiez le matricule unique ou actualisez le dossier.');
     return Response.json({ id: staffId, revision: saved.data }, { status: 201, headers: { 'Cache-Control': 'no-store' } });

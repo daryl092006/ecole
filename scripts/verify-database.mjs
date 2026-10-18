@@ -1,4 +1,5 @@
 import { verifyEvaluationWorkflow } from './verify-evaluation-workflow.mjs';
+import { verifyTeacherManagement } from './verify-teacher-management.mjs';
 import { verifyCurriculumCatalog } from './verify-curriculum-catalog.mjs';
 import { prepareTestYear } from './academic-year-test-helpers.mjs';
 import assert from 'node:assert/strict';
@@ -274,6 +275,7 @@ try {
     await reject('select public.escen_backend_transaction($1,1,$2::jsonb)',[account.id,JSON.stringify([{ table:'people',operation:'update',record:{ id:randomUUID(),firstname:'Absent' } }])],/absente/);
     await reject('select public.escen_backend_transaction($1,1,$2::jsonb)',[account.id,JSON.stringify([{ table:'people; drop table people',operation:'insert',record:{ firstname:'Injection' } }])],/interdite/);
   });
+  await verifyTeacherManagement(db, check, { year, site, level });
   await verifyEvaluationWorkflow(db, check, { year, offering, assignment, level, site });
 
   await check('Gestion persistante des comptes, profils séparés et retrait historisé', async () => {
