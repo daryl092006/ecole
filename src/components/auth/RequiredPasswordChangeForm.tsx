@@ -23,11 +23,13 @@ export default function RequiredPasswordChangeForm() {
       void (async () => {
         if (password !== confirmation) throw new Error('Les deux mots de passe ne correspondent pas.');
         const supabase = getSupabaseBrowserClient();
-        const changed = await supabase.auth.updateUser({ password });
-        if (changed.error) throw changed.error;
         const { data } = await supabase.auth.getSession();
         if (!data.session) throw new Error('Reconnectez-vous puis réessayez.');
-        const response = await fetch('/api/session/password', { method: 'POST', headers: { Authorization: `Bearer ${data.session.access_token}` } });
+        const response = await fetch('/api/session/password', {
+          method: 'POST',
+          headers: { Authorization: `Bearer ${data.session.access_token}`, 'Content-Type': 'application/json' },
+          body: JSON.stringify({ password }),
+        });
         if (!response.ok) throw new Error('Le changement n’a pas été confirmé par le service des accès. Réessayez.');
         await supabase.auth.signOut();
         router.replace('/connexion?mot-de-passe-modifie=1');

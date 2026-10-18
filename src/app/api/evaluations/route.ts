@@ -67,7 +67,20 @@ async function loadContext(request: Request) {
   const snapshot = result.data as RelationalSnapshot;
   const year = await resolveAcademicYear(request, auth.client, auth.context, snapshot);
   if (!year.selectedYearId) throw new RequestError(409, 'Choisissez une année scolaire précise.');
-  const scoped = filterRelationalSnapshot(snapshot, auth.context);
+  // Teachers need enrollment ancestry for their candidates, without gaining directory access.
+  const readContext = auth.context.role === ROLES.ENS
+    ? { ...auth.context, permissions: [...auth.context.permissions, 'student.view' as const] }
+    : auth.context;
+  const roleScoped = filterRelationalSnapshot(snapshot, readContext);
+  // An assignment must match one complete grant, including for a teacher with scoped access.
+  const assignments = (roleScoped.tables.teaching_assignments || []).filter(assignment =>
+    (roleScoped.tables.academic_offerings || []).some(offering => offering.id === assignment.offering_id
+      && auth.context.grants.some(grant => (!grant.site_id || grant.site_id === offering.site_id)
+        && (!grant.academic_year_id || grant.academic_year_id === offering.academic_year_id)
+        && (!grant.group_id || grant.group_id === assignment.group_id))));
+  const scoped = filterSnapshotForAcademicYear({
+    ...roleScoped, tables: { ...roleScoped.tables, teaching_assignments: assignments },
+  }, year.selectedYearId);
   return { ...auth, snapshot, scoped, year };
 }
 
@@ -79,7 +92,7 @@ export async function POST(request: Request) {
 
     if (body.action === 'create') {
       requirePermission(data.context, 'evaluation.create');
-      const assignment = (data.snapshot.tables.teaching_assignments || []).find(row => row.id === body.assignmentId);
+      const assignment = (data.scoped.tables.teaching_assignments || []).find(row => row.id === body.assignmentId);
       if (!assignment) throw new RequestError(404, 'Affectation pédagogique introuvable.');
 
       if (data.context.role === ROLES.ENS) {
@@ -93,9 +106,9 @@ export async function POST(request: Request) {
       }
 
       // Candidats : étudiants inscrits dans le groupe de l'affectation
-      const groupLinks = (data.snapshot.tables.enrollment_groups || []).filter(eg => eg.group_id === assignment.group_id && (!eg.valid_until || new Date(String(eg.valid_until)).getTime() >= Date.now()));
+      const groupLinks = (data.scoped.tables.enrollment_groups || []).filter(eg => eg.group_id === assignment.group_id && (!eg.valid_until || new Date(String(eg.valid_until)).getTime() >= Date.now()));
       const groupEnrollmentIds = new Set(groupLinks.map(eg => eg.enrollment_id));
-      const eligibleEnrollments = (data.snapshot.tables.enrollments || []).filter(e => groupEnrollmentIds.has(e.id) && e.offering_id === assignment.offering_id && isEvaluationEnrollmentStatus(e.status));
+      const eligibleEnrollments = (data.scoped.tables.enrollments || []).filter(e => groupEnrollmentIds.has(e.id) && e.offering_id === assignment.offering_id && isEvaluationEnrollmentStatus(e.status));
 
       if (!eligibleEnrollments.length) {
         throw new RequestError(409, 'Aucun étudiant inscrit n’est rattaché à ce groupe pour cette formation.');
@@ -146,21 +159,21 @@ export async function POST(request: Request) {
 
     if (body.action === 'enter_grades') {
       requirePermission(data.context, 'grade.enter');
-      const evaluation = (data.snapshot.tables.evaluations || []).find(e => e.id === body.evaluationId);
+      const evaluation = (data.scoped.tables.evaluations || []).find(e => e.id === body.evaluationId);
       if (!evaluation) throw new RequestError(404, 'Évaluation introuvable.');
       if (evaluation.cancelled_at) throw new RequestError(409, 'Épreuve annulée.');
       if (!['BROUILLON', 'SAISIES'].includes(String(evaluation.status))) {
         throw new RequestError(409, 'Les notes ne sont modifiables qu’en statut brouillon ou en cours de saisie.');
       }
 
-      const assignment = (data.snapshot.tables.teaching_assignments || []).find(a => a.id === evaluation.assignment_id);
+      const assignment = (data.scoped.tables.teaching_assignments || []).find(a => a.id === evaluation.assignment_id);
       if (data.context.role === ROLES.ENS) {
         if (!data.context.teacherId || assignment?.teacher_id !== data.context.teacherId) {
           throw new RequestError(403, 'Enseignement non affecté à votre profil.');
         }
       }
 
-      const candidates = (data.snapshot.tables.evaluation_candidates || []).filter(c => c.evaluation_id === evaluation.id);
+      const candidates = (data.scoped.tables.evaluation_candidates || []).filter(c => c.evaluation_id === evaluation.id);
       const candidateIds = new Set(candidates.map(c => c.id));
 
       for (const item of body.grades) {
@@ -175,7 +188,7 @@ export async function POST(request: Request) {
         }
         const value = item.absenceStatus === 'NON_TRAITE' ? 0 : item.value;
 
-        const existingGrade = (data.snapshot.tables.grades || []).find(g => g.candidate_id === item.candidateId);
+        const existingGrade = (data.scoped.tables.grades || []).find(g => g.candidate_id === item.candidateId);
         if (existingGrade) {
           changes.push({
             table: 'grades',
@@ -239,18 +252,18 @@ export async function POST(request: Request) {
       }
 
       if (body.toStatus === 'SOUMISES') {
-        if ((data.snapshot.tables.exam_attempts || []).some(attempt => attempt.evaluation_id === evaluation.id && attempt.status === 'EN_COURS')) {
+        if ((data.scoped.tables.exam_attempts || []).some(attempt => attempt.evaluation_id === evaluation.id && attempt.status === 'EN_COURS')) {
           throw new RequestError(409, 'Des copies sont encore en cours : attendez leur remise avant de soumettre les notes.');
         }
         requirePermission(data.context, 'grade.submit');
         if (data.context.role === ROLES.ENS) {
-          const assignment = (data.snapshot.tables.teaching_assignments || []).find(a => a.id === evaluation.assignment_id);
+          const assignment = (data.scoped.tables.teaching_assignments || []).find(a => a.id === evaluation.assignment_id);
           if (!data.context.teacherId || assignment?.teacher_id !== data.context.teacherId) {
             throw new RequestError(403, 'Enseignement non affecté à votre profil.');
           }
         }
-        const candidates = (data.snapshot.tables.evaluation_candidates || []).filter(c => c.evaluation_id === evaluation.id);
-        const gradesMap = new Map((data.snapshot.tables.grades || []).map(g => [g.candidate_id, g]));
+        const candidates = (data.scoped.tables.evaluation_candidates || []).filter(c => c.evaluation_id === evaluation.id);
+        const gradesMap = new Map((data.scoped.tables.grades || []).map(g => [g.candidate_id, g]));
         if (candidates.some(candidate => gradesMap.get(candidate.id)?.absence_status === 'NON_TRAITE')) {
           throw new RequestError(409, 'Traitez toutes les copies NON_TRAITE avant de soumettre les notes.');
         }
@@ -298,11 +311,11 @@ export async function POST(request: Request) {
 
     if (body.action === 'correct_grade') {
       requirePermission(data.context, 'grade.approve');
-      const grade = (data.snapshot.tables.grades || []).find(g => g.id === body.gradeId);
+      const grade = (data.scoped.tables.grades || []).find(g => g.id === body.gradeId);
       if (!grade) throw new RequestError(404, 'Note introuvable.');
 
-      const candidate = (data.snapshot.tables.evaluation_candidates || []).find(c => c.id === grade.candidate_id);
-      const evaluation = candidate ? (data.snapshot.tables.evaluations || []).find(e => e.id === candidate.evaluation_id) : null;
+      const candidate = (data.scoped.tables.evaluation_candidates || []).find(c => c.id === grade.candidate_id);
+      const evaluation = candidate ? (data.scoped.tables.evaluations || []).find(e => e.id === candidate.evaluation_id) : null;
       if (!evaluation || evaluation.status !== 'PUBLIEES') {
         throw new RequestError(409, 'Une note ne peut être corrigée que lorsqu’elle est publiée.');
       }
