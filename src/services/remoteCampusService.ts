@@ -138,3 +138,11 @@ export async function loadTeachers(role: RoleName, signal?: AbortSignal): Promis
 export async function manageTeacher(role: RoleName, command: import('@/types/teachers').TeacherCommand): Promise<{ id: string; revision: number }> {
   return readResponse(await fetch('/api/teachers', { method: 'POST', headers: { ...await headers(role), 'Content-Type': 'application/json' }, body: JSON.stringify(command) }));
 }
+
+export async function loadSchedule(role: RoleName, signal?: AbortSignal): Promise<import('@/types/scheduleManagement').ScheduleDirectory> {
+  return readResponse(await fetch('/api/schedule', { headers: await headers(role), cache: 'no-store', signal }));
+}
+
+export async function manageSchedule(role: RoleName, command: import('@/types/scheduleManagement').ScheduleCommand): Promise<{ id: string; revision: number }> {
+  return readResponse(await fetch('/api/schedule', { method: 'POST', headers: { ...await headers(role), 'Content-Type': 'application/json' }, body: JSON.stringify(command) }));
+}
