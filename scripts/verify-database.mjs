@@ -1,5 +1,6 @@
 import { verifyEvaluationWorkflow } from './verify-evaluation-workflow.mjs';
 import { verifyTeacherManagement } from './verify-teacher-management.mjs';
+import { verifyBlockedPeriodReasons } from './verify-blocked-period-reasons.mjs';
 import { verifyCurriculumCatalog } from './verify-curriculum-catalog.mjs';
 import { prepareTestYear } from './academic-year-test-helpers.mjs';
 import assert from 'node:assert/strict';
@@ -481,6 +482,7 @@ try {
     assert.equal(Number(await scalar('select value as value from escen.grades where id = $1', [grade.id])), 16);
   });
   await verifyCurriculumCatalog(db, check);
+  await verifyBlockedPeriodReasons(db, check);
   console.log(`Base relationnelle : ${checks} groupes de contrôles PostgreSQL réussis.`);
 } catch (error) {
   console.error('Échec PostgreSQL :', error.message);
