@@ -37,8 +37,8 @@ export function projectRelationalCampus(snapshot: RelationalSnapshot, now = new 
     const lines = rows('contract_lines').filter(row => row.version_id === version.id);
     const expected = lines.reduce((sum, row) => sum + numeric(row, 'amount'), 0) - rows('contract_discounts').filter(row => row.version_id === version.id).reduce((sum, row) => sum + numeric(row, 'amount'), 0);
     return { available: true, expected, paid, remaining: expected - paid, installments: rows('installments').filter(row => row.version_id === version.id).sort((a,b) => numeric(a, 'position') - numeric(b, 'position')).map(row => {
-      const settled = row.settled_amount == null ? rows('payment_allocations').filter(allocation => allocation.installment_id === row.id && !rows('allocation_reversals').some(reversal => reversal.allocation_id === allocation.id)).reduce((sum, allocation) => sum + numeric(allocation, 'amount'), 0) : numeric(row, 'settled_amount');
-      return { dueDate: text(row, 'due_on'), amount: numeric(row, 'amount'), status: settled >= numeric(row, 'amount') ? 'Payée' : settled > 0 ? 'Partiellement payée' : text(row, 'due_on') < today ? 'En retard' : 'A venir' };
+      const settled = row.settled_amount == null ? rows('payment_allocations').filter(allocation => allocation.installment_id === row.id && payments.some(payment => payment.id === allocation.payment_id) && !rows('allocation_reversals').some(reversal => reversal.allocation_id === allocation.id)).reduce((sum, allocation) => sum + numeric(allocation, 'amount'), 0) : numeric(row, 'settled_amount');
+      return { dueDate: text(row, 'due_on'), amount: numeric(row, 'amount'), settledAmount: settled, status: settled >= numeric(row, 'amount') ? 'Payée' : settled > 0 ? 'Partiellement payée' : text(row, 'due_on') < today ? 'En retard' : 'A venir' };
     }) };
   };
 

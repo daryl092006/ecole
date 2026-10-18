@@ -10,7 +10,7 @@ export function getFinancialReport(students: Student[], role: RoleName, asOfDate
     let paid = student.financials.paid;
     let overdue = 0;
     for (const installment of [...student.financials.installments].filter(item => item.status !== 'Annulée').sort((a, b) => a.dueDate.localeCompare(b.dueDate))) {
-      const allocated = Math.min(installment.amount, paid);
+      const allocated = installment.settledAmount === undefined ? Math.min(installment.amount, Math.max(0, paid)) : Math.min(installment.amount, Math.max(0, installment.settledAmount));
       paid -= allocated;
       if (installment.dueDate < asOfDate) overdue += installment.amount - allocated;
     }

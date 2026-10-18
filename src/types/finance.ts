@@ -3,6 +3,7 @@ export type InstallmentStatus = 'A venir' | 'Partiellement payée' | 'Payée' | 
 export interface Installment {
   dueDate: string;
   amount: number;
+  settledAmount?: number;
   status: InstallmentStatus;
 }
 

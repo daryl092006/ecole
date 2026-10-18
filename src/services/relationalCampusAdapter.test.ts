@@ -66,4 +66,14 @@ assert.equal(actual.levels.length, 1);
 assert.equal(actual.levels[0].cycle, '');
 assert.deepEqual(actual.students[0].financials, { available: true, expected: 480000, paid: 100000, remaining: 380000, installments: [] });
 assert.equal(actual.enrollments[0].financials.paid, 100000);
+const allocatedSnapshot = structuredClone(operational);
+allocatedSnapshot.tables.installments = [{ id: 'I', version_id: 'VERSION', position: 1, due_on: '2026-11-01', amount: 480000 }];
+allocatedSnapshot.tables.payment_allocations = [
+  { id: 'A', installment_id: 'I', payment_id: 'PAID', amount: 30000 },
+  { id: 'B', installment_id: 'I', payment_id: 'PENDING', amount: 50000 },
+  { id: 'C', installment_id: 'I', payment_id: 'CANCELLED', amount: 10000 },
+  { id: 'D', installment_id: 'I', payment_id: 'PAID', amount: 20000 },
+];
+allocatedSnapshot.tables.allocation_reversals = [{ id: 'AR', allocation_id: 'D' }];
+assert.equal(projectRelationalCampus(allocatedSnapshot).data.students[0].financials.installments[0].settledAmount, 30000);
 console.log('Dossiers opérationnels : groupe sans date supposée, filière absente conservée et paiements en attente ou annulés exclus du solde.');
