@@ -45,6 +45,9 @@ async function inspect(page: Page) {
       if (element.closest('.skip-link') && element !== document.activeElement) continue;
       // Horizontally scrollable regions are reachable; record them separately below.
       if (element.closest('.table-wrap, .section-tabs, .record-sections, .schedule-calendar-scroll')) continue;
+      const tableCard = element.closest('.card > .data-table')?.parentElement;
+      if (tableCard && tableCard.scrollWidth > tableCard.clientWidth
+        && ['auto', 'scroll'].includes(getComputedStyle(tableCard).overflowX)) continue;
       const box = element.getBoundingClientRect();
       if (box.left < -1 || box.right > width + 1) issues.push(`Élément hors largeur : ${name(element)} (${Math.round(box.left)}–${Math.round(box.right)}px)`);
       const css = getComputedStyle(element);
@@ -109,6 +112,7 @@ for (const width of widths.filter(value => !process.env.ESCEN_AUDIT_WIDTH || Str
         // A baseline layout issue is an audit finding; broken fixtures or failed rendering are test failures.
         expect.soft(problems, `${screen.key} : lectures et route`).toEqual([]);
         expect.soft(errors, `${screen.key} : rendu React`).toEqual([]);
+        if (stage === 'after') expect.soft(issues, `${screen.key} : responsive après correction`).toEqual([]);
       }
     } finally {
       const report = resolve(`${artifactRoot}/${stage}/audit-${width}.json`);
