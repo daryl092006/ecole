@@ -462,12 +462,29 @@ function ReferenceCrudContent({
     .filter(row => !row.archived_at && row.academic_year_id === form.academic_year_id
       && data?.tables.curricula?.some(curriculum => curriculum.id === row.curriculum_id && curriculum.program_id === programId))
     .map(row => ({ curriculum_id: String(row.curriculum_id), delivery_mode: row.delivery_mode ? String(row.delivery_mode) : null }));
+  useEffect(() => {
+    if (collection === 'groups' && selected?.isPrefilled && dialog === 'edit' && offeringIds.length === 0 && groupChoices.length > 0) {
+      const names = String(selected._associatedOfferings || selected._summaryText || '')
+        .split(' ; ')
+        .map(s => s.trim().toLowerCase())
+        .filter(s => s && s !== 'filière');
+      const matched = groupChoices.filter(o =>
+        names.some(name => String(o.name || '').toLowerCase().includes(name))
+      ).map(o => o.id);
+      setOfferingIds(matched.length > 0 ? matched : groupChoices.map(o => o.id));
+    }
+  }, [collection, selected, dialog, offeringIds.length, groupChoices]);
+
   const existingAnnualVariants = creatingOfferings ? savedAnnualVariants(form.program_id) : [];
   const annualLevelName = (curriculumId: unknown) => {
     const curriculum = data?.tables.curricula?.find(row => row.id === curriculumId);
     return String(data?.tables.levels?.find(row => row.id === curriculum?.level_id)?.name || 'Niveau à préciser');
   };
   const open = (mode: typeof dialog, row: DatabaseRow | null = null) => {
+    const nextForm = completeRelations(collection, data, initialValues(spec.fields, data, setup?.yearId || portal.academicYearContext?.selectedYearId || '', setup?.category, row, collection));
+    const targetLevelId = nextForm.level_id || row?.level_id;
+    const targetYear = nextForm.academic_year_id || setupYearId || row?.academic_year_id;
+
     let initialGroupOfferings: string[] = [];
     if (collection === 'groups' && row) {
       if (!row.isPrefilled) {
@@ -475,29 +492,28 @@ function ReferenceCrudContent({
           .filter(link => link.group_id === row.id && !link.archived_at)
           .map(link => String(link.offering_id));
       } else {
-        const targetOfferings = (data?.tables.academic_offerings || []).filter(o =>
+        const availableOfferings = (data?.tables.academic_offerings || []).filter(o =>
           !o.archived_at &&
-          o.academic_year_id === (setupYearId || row.academic_year_id) &&
-          o.level_id === row.level_id
+          (!targetYear || o.academic_year_id === targetYear) &&
+          (!targetLevelId || o.level_id === targetLevelId)
         );
         const linkedList = Array.isArray(row._linkedOfferings) ? row._linkedOfferings : [];
         const linkedCurricula = new Set(linkedList.map((item: { curriculum_id?: string }) => item.curriculum_id).filter(Boolean));
-        const matchedByCurricula = targetOfferings.filter(o => linkedCurricula.has(String(o.curriculum_id))).map(o => o.id);
+        const matchedByCurricula = availableOfferings.filter(o => linkedCurricula.has(String(o.curriculum_id))).map(o => o.id);
 
-        const names = String(row._associatedOfferings || '')
+        const names = String(row._associatedOfferings || row._summaryText || '')
           .split(' ; ')
           .map(s => s.trim().toLowerCase())
           .filter(s => s && s !== 'filière');
-        const matchedByName = targetOfferings.filter(o =>
+        const matchedByName = availableOfferings.filter(o =>
           names.some(name => String(o.name || '').toLowerCase().includes(name))
         ).map(o => o.id);
 
-        if (matchedByCurricula.length > 0) {
-          initialGroupOfferings = matchedByCurricula;
-        } else if (matchedByName.length > 0) {
-          initialGroupOfferings = matchedByName;
+        const matched = [...new Set([...matchedByCurricula, ...matchedByName])];
+        if (matched.length > 0) {
+          initialGroupOfferings = matched;
         } else {
-          initialGroupOfferings = targetOfferings.map(o => o.id);
+          initialGroupOfferings = availableOfferings.map(o => o.id);
         }
       }
     }
@@ -514,7 +530,6 @@ function ReferenceCrudContent({
       defaultReason = `Enregistrement de ${rowTitle(row)} pré-rempli(e) pour ${setup?.yearName || ''}`;
     }
     setReason(defaultReason);
-    const nextForm = completeRelations(collection, data, initialValues(spec.fields, data, setup?.yearId || portal.academicYearContext?.selectedYearId || '', setup?.category, row, collection));
     setForm({ ...nextForm, ...(collection === 'academic_offerings' && mode === 'create' ? { program_id: annualPrograms.length === 1 ? annualPrograms[0].id : '' } : {}) });
   };
   const manageAnnualGroup = (group: AnnualOfferingGroup) => {
