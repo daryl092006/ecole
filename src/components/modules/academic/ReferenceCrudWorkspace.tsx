@@ -37,37 +37,17 @@ function InlineSubView({
   busy?: boolean;
 }) {
   return (
-    <div
-      className="inline-subview"
-      style={{
-        background: 'var(--color-bg-surface, rgba(255,255,255,0.03))',
-        border: '1px solid var(--color-border-subtle, rgba(255,255,255,0.1))',
-        borderRadius: '8px',
-        padding: '1.25rem',
-        marginTop: '0.5rem',
-        marginBottom: '1rem',
-      }}
-    >
-      <header
-        style={{
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'space-between',
-          marginBottom: '1rem',
-          paddingBottom: '0.75rem',
-          borderBottom: '1px solid var(--color-border-subtle, rgba(255,255,255,0.1))',
-        }}
-      >
+    <div className="inline-subview">
+      <header className="inline-subview-header">
         <DrawerCloseButton
           type="button"
           className="btn btn-sm btn-outline"
           disabled={busy}
           onClose={onClose}
-          style={{ display: 'inline-flex', alignItems: 'center', gap: '0.35rem' }}
         >
           ← Retour à la liste
         </DrawerCloseButton>
-        <h2 style={{ margin: 0, fontSize: '1.1rem', fontWeight: 600 }}>{title}</h2>
+        <h2>{title}</h2>
       </header>
       <div>{children}</div>
     </div>
@@ -628,7 +608,7 @@ function ReferenceCrudContent({
     <div className={setup ? 'setup-actions' : 'page-intro'}>
       {setup ? (
         <div>
-          <h2 style={{ fontSize: '1.25rem', fontWeight: 600, margin: '0 0 0.5rem 0' }}>{spec.title}</h2>
+          <h2>{spec.title}</h2>
         </div>
       ) : (
         <div>

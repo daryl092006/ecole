@@ -40,8 +40,10 @@ export default function AnnualOfferingList({ rows, allRows, snapshot, canEdit, p
       return <tr key={group.id}><td><strong>{group.name}</strong></td><td>
         {group.rows.map(row => <div key={row.id}>{levelName(row)} · {modeName(row)}</div>)}
       </td><td>{group.rows.length - pending.length > 0 && <div>{group.rows.length - pending.length} niveau(x) et mode(s) enregistré(s)</div>}{group.rows.some(row => !row.delivery_mode) && <p className="pill pill-warning">Mode de formation à préciser</p>}{pending.length > 0 && <div><span className="pill pill-warning">Niveaux et modes à confirmer</span><div className="cell-sub">{pending.length} proposition(s){previousYear ? ` d’après ${previousYear}` : ''} · non enregistrées pour cette année</div></div>}</td><td>
-        {canEdit && <button className="btn btn-sm btn-primary" onClick={() => onManage(group)}>{pending.length ? 'Vérifier les niveaux' : 'Ajouter des niveaux'}</button>}
-        {canEdit && group.rows.every(row => !row.archived_at) && <button className="btn btn-sm btn-outline btn-danger" onClick={() => { setRemoving(group); setReason(''); setError(''); }}>Retirer toute la ligne</button>}
+        <div className="btn-group">
+          {canEdit && <button className="btn btn-sm btn-primary" onClick={() => onManage(group)}>{pending.length ? 'Vérifier les niveaux' : 'Ajouter des niveaux'}</button>}
+          {canEdit && group.rows.every(row => !row.archived_at) && <button className="btn btn-sm btn-outline btn-danger" onClick={() => { setRemoving(group); setReason(''); setError(''); }}>Retirer toute la ligne</button>}
+        </div>
         <details><summary>Voir les niveaux</summary>{group.rows.map(row => <div className="annual-offering-detail" key={row.id}><strong>{levelName(row)} · {modeName(row)}</strong>{canEdit && <div className="btn-group"><IconButton className="btn btn-sm btn-outline" label="Modifier" onClick={() => onEdit(row)} />{row.isPrefilled ? <IconButton className="btn btn-sm btn-outline" label="Retirer de la proposition" onClick={() => onRemove(row)} /> : <IconButton className="btn btn-sm btn-outline" label="Archiver" onClick={() => onArchive(row)} />}</div>}</div>)}</details>
       </td></tr>;
     })}

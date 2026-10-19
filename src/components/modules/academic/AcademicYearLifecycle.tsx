@@ -135,19 +135,19 @@ export default function AcademicYearLifecycle({
   }
 
   return (
-    <section className="card mb-2">
+    <section className="card card-full">
       <div className="card-header">
         <h2>Années scolaires & Cycle de gestion</h2>
       </div>
 
       {error && (
-        <div className="restricted-box mb-2" role="alert" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '8px' }}>
+        <div className="restricted-box" role="alert">
           <p style={{ margin: 0 }}>{error}</p>
           <button type="button" className="btn btn-sm btn-outline" onClick={() => setError('')}>Fermer</button>
         </div>
       )}
 
-      <div className="year-summary-box mb-2">
+      <div className="year-summary-box">
         <p>
           Année de travail active : <strong>{current ? String(current.name) : 'Aucune année de travail désignée'}</strong>
         </p>
@@ -167,16 +167,16 @@ export default function AcademicYearLifecycle({
                 <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px' }}>
                   <strong>{String(year.name)}</strong>
                   <span
-                    className={`badge ${
+                    className={`pill ${
                       isCurrent
-                        ? 'badge-success'
+                        ? 'pill-success'
                         : status === 'OUVERTE'
-                        ? 'badge-warning'
+                        ? 'pill-warning'
                         : status === 'BROUILLON'
-                        ? 'badge-neutral'
+                        ? 'pill-default'
                         : status === 'EN_CLOTURE'
-                        ? 'badge-warning'
-                        : 'badge-archived'
+                        ? 'pill-warning'
+                        : 'pill-default'
                     }`}
                   >
                     {isCurrent ? '● Année active' : YEAR_STATUS_LABELS[status] || status}

@@ -135,30 +135,50 @@ export default function YearPreparationPanel({
       ) : (
         <>
           {message && <p className="info-box" role="status">{message}</p>}
-          <div className="card mb-3 p-3" style={{ background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '8px', marginBottom: '16px' }}>
-            <strong style={{ color: '#1e293b', display: 'block', marginBottom: '4px' }}>
-              Configuration obligatoire avant ouverture
-            </strong>
-            <p className="cell-sub" style={{ color: '#475569', marginBottom: '8px' }}>
-              Pour être ouverte, l’année scolaire exige la configuration complète de ses formations, groupes rattachés, frais de scolarité, frais d’inscription et moyens d’encaissement.
-            </p>
-            <p style={{ margin: 0 }}>
-              <strong>{checks.filter(check => check.ready).length} sur {checks.length}</strong> étapes terminées
-            </p>
-          </div>
+          {(() => {
+            const readyCount = checks.filter(check => check.ready).length;
+            const totalCount = checks.length;
+            const pct = totalCount > 0 ? Math.round((readyCount / totalCount) * 100) : 0;
+            return (
+              <div className="preparation-summary-card">
+                <div className="preparation-summary-header">
+                  <div className="preparation-summary-content">
+                    <strong className="preparation-summary-title">Configuration obligatoire avant ouverture</strong>
+                    <p className="preparation-summary-desc">
+                      Pour être ouverte, l’année scolaire exige la configuration complète de ses formations, groupes rattachés, frais de scolarité, frais d’inscription et moyens d’encaissement.
+                    </p>
+                  </div>
+                  {next && (
+                    <div className="preparation-summary-cta">
+                      <button className="btn btn-primary" onClick={() => handleConfigureClick(next.key)}>
+                        Continuer : {steps[next.key]?.title || next.label} →
+                      </button>
+                    </div>
+                  )}
+                </div>
+                <div className="preparation-progress-bar">
+                  <div className="preparation-progress-meta">
+                    <span>Progression globale</span>
+                    <strong>{readyCount} sur {totalCount} étapes terminées ({pct} %)</strong>
+                  </div>
+                  <div className="preparation-progress-track">
+                    <div className="preparation-progress-fill" style={{ width: `${pct}%` }} />
+                  </div>
+                </div>
+              </div>
+            );
+          })()}
 
-          {next ? (
-            <button className="btn btn-primary" onClick={() => handleConfigureClick(next.key)}>
-              Continuer : {steps[next.key]?.title || next.label}
-            </button>
-          ) : (
-            <div className="card mb-3 p-3" style={{ background: 'var(--success-light, #ecfdf5)', border: '1px solid #10b981', borderRadius: '8px', marginBottom: '16px' }}>
-              <strong style={{ color: '#047857', display: 'block', marginBottom: '4px' }}>
-                ✓ Configuration complète : l’année est prête pour l’ouverture
-              </strong>
-              <p className="cell-sub" style={{ color: '#065f46', marginBottom: '12px' }}>
-                Toutes les conditions requises sont remplies. Vous pouvez désormais valider et ouvrir cette année scolaire.
-              </p>
+          {!next && (
+            <div className="preparation-ready-banner">
+              <div>
+                <strong className="preparation-ready-title">
+                  ✓ Configuration complète : l’année est prête pour l’ouverture
+                </strong>
+                <p className="cell-sub" style={{ margin: 0 }}>
+                  Toutes les conditions requises sont remplies. Vous pouvez désormais valider et ouvrir cette année scolaire.
+                </p>
+              </div>
               {onActivate && (
                 <button
                   type="button"
@@ -171,47 +191,50 @@ export default function YearPreparationPanel({
             </div>
           )}
 
-          <ol className="preparation-steps">
+          <ol className="preparation-steps-list">
             {checks.map((check, index) => {
               const stepConfig = steps[check.key];
               const prefilled = getStepPreFilledItems(check.key, previousSummary);
               const hasPrefilled = !check.ready && Boolean(previousYear && prefilled.length > 0);
+              const isNext = next?.key === check.key;
+              const statusClass = check.ready ? 'is-ready' : isNext ? 'is-active' : hasPrefilled ? 'is-pending' : '';
 
               return (
-                <li key={check.key} style={{ display: 'block', marginBottom: '0.75rem' }}>
-                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '0.75rem', flexWrap: 'wrap' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-                      <span className="preparation-number">{index + 1}</span>
-                      <div>
-                        <strong>{stepConfig?.title || check.label}</strong>
-                        <div>
-                          {check.ready ? (
-                            <span className="pill pill-success">Configuration prête</span>
-                          ) : hasPrefilled ? (
-                            <span className="pill pill-warning">
-                              Pré-rempli depuis {previousYear!.name} ({prefilled.length}) · À vérifier
-                            </span>
-                          ) : (
-                            <span className="cell-sub">À compléter</span>
-                          )}
-                        </div>
+                <li key={check.key} className={`preparation-step-card ${statusClass}`}>
+                  <div className="preparation-step-main">
+                    <span className={`preparation-number ${check.ready ? 'is-ready' : isNext ? 'is-active' : ''}`}>
+                      {check.ready ? '✓' : index + 1}
+                    </span>
+                    <div>
+                      <div className="preparation-step-badge-row">
+                        <span className="preparation-step-title">{stepConfig?.title || check.label}</span>
+                        {check.ready ? (
+                          <span className="pill pill-success">Configuration prête</span>
+                        ) : hasPrefilled ? (
+                          <span className="pill pill-warning">
+                            Pré-rempli depuis {previousYear!.name} ({prefilled.length}) · À vérifier
+                          </span>
+                        ) : (
+                          <span className="pill pill-default">À compléter</span>
+                        )}
                       </div>
+                      <p className="cell-sub">{stepConfig?.description}</p>
                     </div>
+                  </div>
 
-                    <div className="btn-group">
-                      {check.ready ? (
-                        <button className="btn btn-outline" onClick={() => enter(check.key, true)}>
-                          Consulter {stepConfig?.title.toLocaleLowerCase('fr') || check.label}
-                        </button>
-                      ) : (
-                        <button
-                          className={hasPrefilled ? 'btn btn-primary' : 'btn btn-outline'}
-                          onClick={() => handleConfigureClick(check.key)}
-                        >
-                          Configurer {stepConfig?.title.toLocaleLowerCase('fr') || check.label}
-                        </button>
-                      )}
-                    </div>
+                  <div className="preparation-step-action">
+                    {check.ready ? (
+                      <button className="btn btn-outline" onClick={() => enter(check.key, true)}>
+                        Consulter {stepConfig?.title.toLocaleLowerCase('fr') || check.label}
+                      </button>
+                    ) : (
+                      <button
+                        className={hasPrefilled || isNext ? 'btn btn-primary' : 'btn btn-outline'}
+                        onClick={() => handleConfigureClick(check.key)}
+                      >
+                        Configurer {stepConfig?.title.toLocaleLowerCase('fr') || check.label}
+                      </button>
+                    )}
                   </div>
                 </li>
               );
