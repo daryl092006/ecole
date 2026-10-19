@@ -59,6 +59,8 @@ export type Permission =
   | 'purchase.receive'
   | 'asset.view'
   | 'asset.manage'
+  | 'email.view'
+  | 'email.retry'
   | 'system.audit.view'
   | 'system.backup.manage'
   | 'system.support.manage';

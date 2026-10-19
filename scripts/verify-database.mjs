@@ -11,6 +11,7 @@ import { verifyPaymentAdjustments } from './verify-payment-adjustments.mjs';
 import { verifyNetFinances } from './verify-net-finances.mjs';
 import { verifyScheduleManagement } from './verify-schedule-management.mjs';
 import { verifyBlockedPeriodReasons } from './verify-blocked-period-reasons.mjs';
+import { verifyEmailOutbox } from './verify-email-outbox.mjs';
 import { readFile } from 'node:fs/promises';
 import { fileURLToPath } from 'node:url';
 import { randomUUID } from 'node:crypto';
@@ -51,8 +52,8 @@ try {
   });
   await check('Informaticien avec tous les droits, Stagiaire sans droit et aucune attribution automatique', async () => {
     assert.equal(await scalar('select count(*)::integer as value from escen.roles'), 14);
-    assert.equal(await scalar('select count(*)::integer as value from escen.permissions'), 44);
-    assert.equal(await scalar("select count(*)::integer as value from escen.role_permissions rp join escen.roles r on r.id = rp.role_id where r.code = 'IT'"), 44);
+    assert.equal(await scalar('select count(*)::integer as value from escen.permissions'), 46);
+    assert.equal(await scalar("select count(*)::integer as value from escen.role_permissions rp join escen.roles r on r.id = rp.role_id where r.code = 'IT'"), 46);
     assert.equal(await scalar("select count(*)::integer as value from escen.role_permissions rp join escen.roles r on r.id = rp.role_id where r.code = 'STG'"), 0);
     assert.equal(await scalar('select count(*)::integer as value from escen.role_grants'), 0);
   });
@@ -493,6 +494,7 @@ try {
   });
   await verifyCurriculumCatalog(db, check);
   await verifyBlockedPeriodReasons(db, check);
+  await verifyEmailOutbox({ db, check, insert, year, nextYear, assignment, account });
   console.log(`Base relationnelle : ${checks} groupes de contrôles PostgreSQL réussis.`);
 } catch (error) {
   console.error('Échec PostgreSQL :', error.message);

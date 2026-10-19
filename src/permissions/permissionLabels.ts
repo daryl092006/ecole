@@ -21,6 +21,7 @@ export const PERMISSION_LABELS: Record<Permission, string> = {
   'purchase.view': 'Consulter les demandes d’achat', 'purchase.create': 'Demander un achat',
   'purchase.approve': 'Approuver ou refuser un achat', 'purchase.receive': 'Réceptionner un achat approuvé',
   'asset.view': 'Consulter l’inventaire', 'asset.manage': 'Gérer les équipements',
+  'email.view': 'Consulter le suivi des mails', 'email.retry': 'Reprendre les mails en échec',
   'system.audit.view': 'Consulter le journal d’activité', 'system.backup.manage': 'Exporter le journal',
   'system.support.manage': 'Prendre en charge les demandes de support',
 };

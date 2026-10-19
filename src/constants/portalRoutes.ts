@@ -43,6 +43,7 @@ export const PORTAL_ROUTES: PortalRoute[] = [
   { tab: 'logistique', section: 'log_assets', href: '/logistique/inventaire', title: 'Inventaire du site' },
   { tab: 'systeme', section: 'sys_data', href: '/systeme/donnees', title: 'Données et contrôle de reprise' },
   { tab: 'systeme', section: 'sys_logs', href: '/systeme/journal', title: 'Journal d’activité' },
+  { tab: 'systeme', section: 'sys_emails', href: '/systeme/mails', title: 'Suivi des mails' },
   { tab: 'systeme', section: 'sys_backups', href: '/systeme/export', title: 'Export du journal' },
   { tab: 'systeme', section: 'sys_support', href: '/systeme/support', title: 'Centre de support' },
 ];

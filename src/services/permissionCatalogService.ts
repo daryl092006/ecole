@@ -12,7 +12,7 @@ export const PERMISSION_DOMAINS = [
   { id: 'staff', label: 'Personnel et accès', prefixes: ['staff', 'user'] },
   { id: 'logistics', label: 'Achats et inventaire', prefixes: ['purchase', 'asset'] },
   { id: 'communication', label: 'Communication', prefixes: ['communication'] },
-  { id: 'system', label: 'Système et support', prefixes: ['system'] },
+  { id: 'system', label: 'Système et support', prefixes: ['system', 'email'] },
 ];
 
 export function roleScopeDescription(role: RoleName): string {

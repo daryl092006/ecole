@@ -3,6 +3,7 @@ import ReenrollmentWorkspace from '@/components/modules/ReenrollmentWorkspace';
 import AnnualFeesWorkspace from '@/components/modules/AnnualFeesWorkspace';
 import FinanceOverview from '@/components/modules/FinanceOverview';
 import AuditJournalPanel from '@/components/modules/AuditJournalPanel';
+import EmailOutboxPanel from '@/components/modules/EmailOutboxPanel';
 import HistoricalWorkspace, { HISTORY_SECTIONS } from '@/components/modules/history/HistoricalWorkspace';
 import PersonnelDossiers from '@/components/modules/personnel/PersonnelDossiers';
 import TeachersWorkspace from '@/components/modules/personnel/TeachersWorkspace';
@@ -35,6 +36,7 @@ export default function PortalScreen({ tab: _tab, section }: { tab: string; sect
 
   if (state.session && section === 'espace_exams') return <StudentExamsWorkspace />;
   if (state.session && section === 'sys_logs') return <AuditJournalPanel />;
+  if (state.session && section === 'sys_emails') return <EmailOutboxPanel key={`${activeRole}:${state.academicYearSelection}`} />;
   if (state.session && section === 'sys_backups') return <AuditJournalPanel exportMode />;
   if (state.session && section === 'acad_complaints' && perms.permissions.includes('complaint.view') && (
     perms.permissions.includes('complaint.review')

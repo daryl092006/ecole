@@ -30,7 +30,7 @@ export const MODULE_JOURNEYS: Record<string, JourneyStage[]> = {
   ],
   systeme: [
     { title: 'Contrôler les données', description: 'Examiner les dossiers et les anomalies sans modifier les sources originales.', sections: ['sys_data'] },
-    { title: 'Tracer et exporter', description: 'Retrouver les événements et choisir précisément les lignes à exporter.', sections: ['sys_logs', 'sys_backups'] },
+    { title: 'Tracer et exporter', description: 'Retrouver les événements, suivre les mails et choisir les lignes à exporter.', sections: ['sys_logs', 'sys_emails', 'sys_backups'] },
     { title: 'Assistance', description: 'Consulter le périmètre d’assistance disponible et les demandes et messages enregistrés.', sections: ['sys_support'] },
   ],
 };

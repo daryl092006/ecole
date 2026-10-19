@@ -2,7 +2,7 @@
 
 Généré avec `npm run db:describe` en exécutant les migrations dans PostgreSQL local (PGlite). Aucun accès à Supabase ou aux données de la sauvegarde.
 
-112 tables métier, 13 tables privées, 957 colonnes, 264 clés étrangères, 213 CHECK de tables et 4 exclusions. Les domaines ajoutent les bornes des notes, des montants FCFA et des textes obligatoires.
+113 tables métier, 13 tables privées, 981 colonnes, 267 clés étrangères, 231 CHECK de tables et 4 exclusions. Les domaines ajoutent les bornes des notes, des montants FCFA et des textes obligatoires.
 
 Toutes les tables ont RLS activée, sans accès applicatif permis à ce stade. Les noms techniques ne sont pas des libellés à afficher dans l’interface.
 
@@ -44,6 +44,7 @@ Toutes les tables ont RLS activée, sans accès applicatif permis à ce stade. L
 | escen | document_requirements | 4 | 2 | Oui |
 | escen | document_reviews | 6 | 2 | Oui |
 | escen | document_types | 6 | 0 | Oui |
+| escen | email_outbox | 24 | 3 | Oui |
 | escen | enrollment_events | 7 | 2 | Oui |
 | escen | enrollment_groups | 9 | 4 | Oui |
 | escen | enrollments | 7 | 3 | Oui |
@@ -1484,6 +1485,93 @@ Index :
 ```sql
 CREATE UNIQUE INDEX document_types_code_key ON escen.document_types USING btree (code)
 CREATE UNIQUE INDEX document_types_pkey ON escen.document_types USING btree (id)
+```
+
+## escen.email_outbox
+
+| Attribut | Type | Nullable | Défaut | Généré |
+|---|---|---|---|---|
+| id | uuid | NO | gen_random_uuid() | NEVER |
+| academic_year_id | uuid | NO | — | NEVER |
+| event_type | text | NO | — | NEVER |
+| source_table | text | NO | — | NEVER |
+| source_id | uuid | NO | — | NEVER |
+| source_version | text | NO | — | NEVER |
+| recipient_email | text | NO | — | NEVER |
+| recipient_name | text | NO | — | NEVER |
+| subject | text | NO | — | NEVER |
+| text_body | text | NO | — | NEVER |
+| html_body | text | NO | — | NEVER |
+| status | text | NO | 'PENDING'::text | NEVER |
+| attempts | int4 | NO | 0 | NEVER |
+| lock_token | uuid | YES | — | NEVER |
+| locked_until | timestamptz | YES | — | NEVER |
+| provider_reference | text | YES | — | NEVER |
+| accepted_at | timestamptz | YES | — | NEVER |
+| last_error_code | text | YES | — | NEVER |
+| requested_by | uuid | YES | — | NEVER |
+| last_modified_by | uuid | YES | — | NEVER |
+| reason | text | NO | — | NEVER |
+| version | int8 | NO | 1 | NEVER |
+| created_at | timestamptz | NO | clock_timestamp() | NEVER |
+| updated_at | timestamptz | NO | clock_timestamp() | NEVER |
+
+Contraintes :
+
+```sql
+email_outbox_academic_year_id_fkey: FOREIGN KEY (academic_year_id) REFERENCES escen.academic_years(id) ON DELETE RESTRICT
+email_outbox_academic_year_id_not_null: NOT NULL academic_year_id
+email_outbox_acceptance: CHECK ((((status = 'ACCEPTED'::text) AND (accepted_at IS NOT NULL) AND (provider_reference IS NOT NULL)) OR ((status <> 'ACCEPTED'::text) AND (accepted_at IS NULL) AND (provider_reference IS NULL))))
+email_outbox_attempts_check: CHECK (((attempts >= 0) AND (attempts <= 5)))
+email_outbox_attempts_not_null: NOT NULL attempts
+email_outbox_created_at_not_null: NOT NULL created_at
+email_outbox_error: CHECK ((((status = ANY (ARRAY['FAILED'::text, 'UNKNOWN'::text])) AND (last_error_code IS NOT NULL)) OR ((status <> ALL (ARRAY['FAILED'::text, 'UNKNOWN'::text])) AND (last_error_code IS NULL))))
+email_outbox_event_type_check: CHECK ((event_type = ANY (ARRAY['application_received'::text, 'application_status_changed'::text, 'exam_attempt_submitted'::text, 'exam_attempt_expired'::text, 'teaching_assignment_created'::text, 'grades_submitted'::text, 'grades_returned'::text, 'grades_approved'::text, 'grades_published'::text, 'course_scheduled'::text, 'course_schedule_changed'::text, 'course_cancelled'::text, 'exam_scheduled'::text, 'exam_schedule_changed'::text, 'exam_cancelled'::text, 'payment_recorded'::text, 'tuition_settled'::text])))
+email_outbox_event_type_not_null: NOT NULL event_type
+email_outbox_event_unique: UNIQUE (event_type, source_id, source_version, recipient_email)
+email_outbox_html_body_check: CHECK (((length(btrim(html_body)) >= 1) AND (length(btrim(html_body)) <= 50000)))
+email_outbox_html_body_not_null: NOT NULL html_body
+email_outbox_id_not_null: NOT NULL id
+email_outbox_last_error_code_check: CHECK ((last_error_code = ANY (ARRAY['CONFIGURATION'::text, 'PROVIDER_REJECTED'::text, 'RECIPIENT_INVALID'::text, 'NETWORK_AMBIGUOUS'::text, 'LEASE_EXPIRED'::text, 'UNEXPECTED_RESPONSE'::text])))
+email_outbox_last_modified_by_fkey: FOREIGN KEY (last_modified_by) REFERENCES escen.accounts(id) ON DELETE RESTRICT
+email_outbox_lock: CHECK ((((status = 'PROCESSING'::text) AND (lock_token IS NOT NULL) AND (locked_until IS NOT NULL)) OR ((status <> 'PROCESSING'::text) AND (lock_token IS NULL) AND (locked_until IS NULL))))
+email_outbox_pkey: PRIMARY KEY (id)
+email_outbox_provider_reference_check: CHECK (((length(provider_reference) >= 1) AND (length(provider_reference) <= 240)))
+email_outbox_reason_check: CHECK (((length(btrim(reason)) >= 3) AND (length(btrim(reason)) <= 1000)))
+email_outbox_reason_not_null: NOT NULL reason
+email_outbox_recipient_email_check: CHECK (((length(recipient_email) <= 254) AND (recipient_email = lower(btrim(recipient_email))) AND (recipient_email ~ '^[^[:space:]<>@]+@[^[:space:]<>@]+[.][^[:space:]<>@]+$'::text)))
+email_outbox_recipient_email_not_null: NOT NULL recipient_email
+email_outbox_recipient_name_check: CHECK (((length(btrim(recipient_name)) >= 1) AND (length(btrim(recipient_name)) <= 160)))
+email_outbox_recipient_name_not_null: NOT NULL recipient_name
+email_outbox_requested_by_fkey: FOREIGN KEY (requested_by) REFERENCES escen.accounts(id) ON DELETE RESTRICT
+email_outbox_source_id_not_null: NOT NULL source_id
+email_outbox_source_kind: CHECK ((((source_table = 'online_applications'::text) AND (event_type = ANY (ARRAY['application_received'::text, 'application_status_changed'::text]))) OR ((source_table = 'evaluations'::text) AND (event_type = ANY (ARRAY['grades_submitted'::text, 'grades_returned'::text, 'grades_approved'::text, 'grades_published'::text]))) OR ((source_table = 'sessions'::text) AND (event_type = ANY (ARRAY['course_scheduled'::text, 'course_schedule_changed'::text, 'course_cancelled'::text, 'exam_scheduled'::text, 'exam_schedule_changed'::text, 'exam_cancelled'::text]))) OR ((source_table = 'exam_attempts'::text) AND (event_type = ANY (ARRAY['exam_attempt_submitted'::text, 'exam_attempt_expired'::text]))) OR ((source_table = 'teaching_assignments'::text) AND (event_type = 'teaching_assignment_created'::text)) OR ((source_table = 'payments'::text) AND (event_type = 'payment_recorded'::text)) OR ((source_table = 'financial_contracts'::text) AND (event_type = 'tuition_settled'::text))))
+email_outbox_source_table_check: CHECK ((source_table = ANY (ARRAY['online_applications'::text, 'evaluations'::text, 'sessions'::text, 'exam_attempts'::text, 'teaching_assignments'::text, 'payments'::text, 'financial_contracts'::text])))
+email_outbox_source_table_not_null: NOT NULL source_table
+email_outbox_source_version_check: CHECK ((((length(source_version) >= 1) AND (length(source_version) <= 80)) AND (source_version = btrim(source_version))))
+email_outbox_source_version_not_null: NOT NULL source_version
+email_outbox_status_check: CHECK ((status = ANY (ARRAY['PENDING'::text, 'PROCESSING'::text, 'ACCEPTED'::text, 'FAILED'::text, 'UNKNOWN'::text])))
+email_outbox_status_not_null: NOT NULL status
+email_outbox_subject_check: CHECK ((((length(btrim(subject)) >= 1) AND (length(btrim(subject)) <= 180)) AND (subject !~ '[
+]'::text)))
+email_outbox_subject_not_null: NOT NULL subject
+email_outbox_text_body_check: CHECK (((length(btrim(text_body)) >= 1) AND (length(btrim(text_body)) <= 20000)))
+email_outbox_text_body_not_null: NOT NULL text_body
+email_outbox_updated_at_not_null: NOT NULL updated_at
+email_outbox_version_check: CHECK ((version > 0))
+email_outbox_version_not_null: NOT NULL version
+```
+
+Index :
+
+```sql
+CREATE UNIQUE INDEX email_outbox_event_unique ON escen.email_outbox USING btree (event_type, source_id, source_version, recipient_email)
+CREATE INDEX email_outbox_expired_lock ON escen.email_outbox USING btree (locked_until) WHERE (status = 'PROCESSING'::text)
+CREATE INDEX email_outbox_modifier ON escen.email_outbox USING btree (last_modified_by)
+CREATE INDEX email_outbox_pending ON escen.email_outbox USING btree (created_at, id) WHERE (status = 'PENDING'::text)
+CREATE UNIQUE INDEX email_outbox_pkey ON escen.email_outbox USING btree (id)
+CREATE INDEX email_outbox_requester ON escen.email_outbox USING btree (requested_by)
+CREATE INDEX email_outbox_year_date ON escen.email_outbox USING btree (academic_year_id, created_at DESC, id)
 ```
 
 ## escen.enrollment_events

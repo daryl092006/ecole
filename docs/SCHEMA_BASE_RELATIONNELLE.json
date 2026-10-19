@@ -1,10 +1,10 @@
 {
   "stats": {
-    "businessTables": 112,
+    "businessTables": 113,
     "privateTables": 13,
-    "columns": 957,
-    "foreignKeys": 264,
-    "checks": 213,
+    "columns": 981,
+    "foreignKeys": 267,
+    "checks": 231,
     "exclusions": 4
   },
   "tables": [
@@ -186,6 +186,11 @@
     {
       "schema": "escen",
       "name": "document_types",
+      "rls": true
+    },
+    {
+      "schema": "escen",
+      "name": "email_outbox",
       "rls": true
     },
     {
@@ -3081,6 +3086,222 @@
       "type": "int8",
       "nullable": "NO",
       "default": null,
+      "generated": "NEVER"
+    },
+    {
+      "schema": "escen",
+      "table": "email_outbox",
+      "name": "id",
+      "type": "uuid",
+      "nullable": "NO",
+      "default": "gen_random_uuid()",
+      "generated": "NEVER"
+    },
+    {
+      "schema": "escen",
+      "table": "email_outbox",
+      "name": "academic_year_id",
+      "type": "uuid",
+      "nullable": "NO",
+      "default": null,
+      "generated": "NEVER"
+    },
+    {
+      "schema": "escen",
+      "table": "email_outbox",
+      "name": "event_type",
+      "type": "text",
+      "nullable": "NO",
+      "default": null,
+      "generated": "NEVER"
+    },
+    {
+      "schema": "escen",
+      "table": "email_outbox",
+      "name": "source_table",
+      "type": "text",
+      "nullable": "NO",
+      "default": null,
+      "generated": "NEVER"
+    },
+    {
+      "schema": "escen",
+      "table": "email_outbox",
+      "name": "source_id",
+      "type": "uuid",
+      "nullable": "NO",
+      "default": null,
+      "generated": "NEVER"
+    },
+    {
+      "schema": "escen",
+      "table": "email_outbox",
+      "name": "source_version",
+      "type": "text",
+      "nullable": "NO",
+      "default": null,
+      "generated": "NEVER"
+    },
+    {
+      "schema": "escen",
+      "table": "email_outbox",
+      "name": "recipient_email",
+      "type": "text",
+      "nullable": "NO",
+      "default": null,
+      "generated": "NEVER"
+    },
+    {
+      "schema": "escen",
+      "table": "email_outbox",
+      "name": "recipient_name",
+      "type": "text",
+      "nullable": "NO",
+      "default": null,
+      "generated": "NEVER"
+    },
+    {
+      "schema": "escen",
+      "table": "email_outbox",
+      "name": "subject",
+      "type": "text",
+      "nullable": "NO",
+      "default": null,
+      "generated": "NEVER"
+    },
+    {
+      "schema": "escen",
+      "table": "email_outbox",
+      "name": "text_body",
+      "type": "text",
+      "nullable": "NO",
+      "default": null,
+      "generated": "NEVER"
+    },
+    {
+      "schema": "escen",
+      "table": "email_outbox",
+      "name": "html_body",
+      "type": "text",
+      "nullable": "NO",
+      "default": null,
+      "generated": "NEVER"
+    },
+    {
+      "schema": "escen",
+      "table": "email_outbox",
+      "name": "status",
+      "type": "text",
+      "nullable": "NO",
+      "default": "'PENDING'::text",
+      "generated": "NEVER"
+    },
+    {
+      "schema": "escen",
+      "table": "email_outbox",
+      "name": "attempts",
+      "type": "int4",
+      "nullable": "NO",
+      "default": "0",
+      "generated": "NEVER"
+    },
+    {
+      "schema": "escen",
+      "table": "email_outbox",
+      "name": "lock_token",
+      "type": "uuid",
+      "nullable": "YES",
+      "default": null,
+      "generated": "NEVER"
+    },
+    {
+      "schema": "escen",
+      "table": "email_outbox",
+      "name": "locked_until",
+      "type": "timestamptz",
+      "nullable": "YES",
+      "default": null,
+      "generated": "NEVER"
+    },
+    {
+      "schema": "escen",
+      "table": "email_outbox",
+      "name": "provider_reference",
+      "type": "text",
+      "nullable": "YES",
+      "default": null,
+      "generated": "NEVER"
+    },
+    {
+      "schema": "escen",
+      "table": "email_outbox",
+      "name": "accepted_at",
+      "type": "timestamptz",
+      "nullable": "YES",
+      "default": null,
+      "generated": "NEVER"
+    },
+    {
+      "schema": "escen",
+      "table": "email_outbox",
+      "name": "last_error_code",
+      "type": "text",
+      "nullable": "YES",
+      "default": null,
+      "generated": "NEVER"
+    },
+    {
+      "schema": "escen",
+      "table": "email_outbox",
+      "name": "requested_by",
+      "type": "uuid",
+      "nullable": "YES",
+      "default": null,
+      "generated": "NEVER"
+    },
+    {
+      "schema": "escen",
+      "table": "email_outbox",
+      "name": "last_modified_by",
+      "type": "uuid",
+      "nullable": "YES",
+      "default": null,
+      "generated": "NEVER"
+    },
+    {
+      "schema": "escen",
+      "table": "email_outbox",
+      "name": "reason",
+      "type": "text",
+      "nullable": "NO",
+      "default": null,
+      "generated": "NEVER"
+    },
+    {
+      "schema": "escen",
+      "table": "email_outbox",
+      "name": "version",
+      "type": "int8",
+      "nullable": "NO",
+      "default": "1",
+      "generated": "NEVER"
+    },
+    {
+      "schema": "escen",
+      "table": "email_outbox",
+      "name": "created_at",
+      "type": "timestamptz",
+      "nullable": "NO",
+      "default": "clock_timestamp()",
+      "generated": "NEVER"
+    },
+    {
+      "schema": "escen",
+      "table": "email_outbox",
+      "name": "updated_at",
+      "type": "timestamptz",
+      "nullable": "NO",
+      "default": "clock_timestamp()",
       "generated": "NEVER"
     },
     {
@@ -12003,6 +12224,286 @@
     },
     {
       "schema": "escen",
+      "table": "email_outbox",
+      "name": "email_outbox_academic_year_id_fkey",
+      "type": "f",
+      "definition": "FOREIGN KEY (academic_year_id) REFERENCES escen.academic_years(id) ON DELETE RESTRICT"
+    },
+    {
+      "schema": "escen",
+      "table": "email_outbox",
+      "name": "email_outbox_academic_year_id_not_null",
+      "type": "n",
+      "definition": "NOT NULL academic_year_id"
+    },
+    {
+      "schema": "escen",
+      "table": "email_outbox",
+      "name": "email_outbox_acceptance",
+      "type": "c",
+      "definition": "CHECK ((((status = 'ACCEPTED'::text) AND (accepted_at IS NOT NULL) AND (provider_reference IS NOT NULL)) OR ((status <> 'ACCEPTED'::text) AND (accepted_at IS NULL) AND (provider_reference IS NULL))))"
+    },
+    {
+      "schema": "escen",
+      "table": "email_outbox",
+      "name": "email_outbox_attempts_check",
+      "type": "c",
+      "definition": "CHECK (((attempts >= 0) AND (attempts <= 5)))"
+    },
+    {
+      "schema": "escen",
+      "table": "email_outbox",
+      "name": "email_outbox_attempts_not_null",
+      "type": "n",
+      "definition": "NOT NULL attempts"
+    },
+    {
+      "schema": "escen",
+      "table": "email_outbox",
+      "name": "email_outbox_created_at_not_null",
+      "type": "n",
+      "definition": "NOT NULL created_at"
+    },
+    {
+      "schema": "escen",
+      "table": "email_outbox",
+      "name": "email_outbox_error",
+      "type": "c",
+      "definition": "CHECK ((((status = ANY (ARRAY['FAILED'::text, 'UNKNOWN'::text])) AND (last_error_code IS NOT NULL)) OR ((status <> ALL (ARRAY['FAILED'::text, 'UNKNOWN'::text])) AND (last_error_code IS NULL))))"
+    },
+    {
+      "schema": "escen",
+      "table": "email_outbox",
+      "name": "email_outbox_event_type_check",
+      "type": "c",
+      "definition": "CHECK ((event_type = ANY (ARRAY['application_received'::text, 'application_status_changed'::text, 'exam_attempt_submitted'::text, 'exam_attempt_expired'::text, 'teaching_assignment_created'::text, 'grades_submitted'::text, 'grades_returned'::text, 'grades_approved'::text, 'grades_published'::text, 'course_scheduled'::text, 'course_schedule_changed'::text, 'course_cancelled'::text, 'exam_scheduled'::text, 'exam_schedule_changed'::text, 'exam_cancelled'::text, 'payment_recorded'::text, 'tuition_settled'::text])))"
+    },
+    {
+      "schema": "escen",
+      "table": "email_outbox",
+      "name": "email_outbox_event_type_not_null",
+      "type": "n",
+      "definition": "NOT NULL event_type"
+    },
+    {
+      "schema": "escen",
+      "table": "email_outbox",
+      "name": "email_outbox_event_unique",
+      "type": "u",
+      "definition": "UNIQUE (event_type, source_id, source_version, recipient_email)"
+    },
+    {
+      "schema": "escen",
+      "table": "email_outbox",
+      "name": "email_outbox_html_body_check",
+      "type": "c",
+      "definition": "CHECK (((length(btrim(html_body)) >= 1) AND (length(btrim(html_body)) <= 50000)))"
+    },
+    {
+      "schema": "escen",
+      "table": "email_outbox",
+      "name": "email_outbox_html_body_not_null",
+      "type": "n",
+      "definition": "NOT NULL html_body"
+    },
+    {
+      "schema": "escen",
+      "table": "email_outbox",
+      "name": "email_outbox_id_not_null",
+      "type": "n",
+      "definition": "NOT NULL id"
+    },
+    {
+      "schema": "escen",
+      "table": "email_outbox",
+      "name": "email_outbox_last_error_code_check",
+      "type": "c",
+      "definition": "CHECK ((last_error_code = ANY (ARRAY['CONFIGURATION'::text, 'PROVIDER_REJECTED'::text, 'RECIPIENT_INVALID'::text, 'NETWORK_AMBIGUOUS'::text, 'LEASE_EXPIRED'::text, 'UNEXPECTED_RESPONSE'::text])))"
+    },
+    {
+      "schema": "escen",
+      "table": "email_outbox",
+      "name": "email_outbox_last_modified_by_fkey",
+      "type": "f",
+      "definition": "FOREIGN KEY (last_modified_by) REFERENCES escen.accounts(id) ON DELETE RESTRICT"
+    },
+    {
+      "schema": "escen",
+      "table": "email_outbox",
+      "name": "email_outbox_lock",
+      "type": "c",
+      "definition": "CHECK ((((status = 'PROCESSING'::text) AND (lock_token IS NOT NULL) AND (locked_until IS NOT NULL)) OR ((status <> 'PROCESSING'::text) AND (lock_token IS NULL) AND (locked_until IS NULL))))"
+    },
+    {
+      "schema": "escen",
+      "table": "email_outbox",
+      "name": "email_outbox_pkey",
+      "type": "p",
+      "definition": "PRIMARY KEY (id)"
+    },
+    {
+      "schema": "escen",
+      "table": "email_outbox",
+      "name": "email_outbox_provider_reference_check",
+      "type": "c",
+      "definition": "CHECK (((length(provider_reference) >= 1) AND (length(provider_reference) <= 240)))"
+    },
+    {
+      "schema": "escen",
+      "table": "email_outbox",
+      "name": "email_outbox_reason_check",
+      "type": "c",
+      "definition": "CHECK (((length(btrim(reason)) >= 3) AND (length(btrim(reason)) <= 1000)))"
+    },
+    {
+      "schema": "escen",
+      "table": "email_outbox",
+      "name": "email_outbox_reason_not_null",
+      "type": "n",
+      "definition": "NOT NULL reason"
+    },
+    {
+      "schema": "escen",
+      "table": "email_outbox",
+      "name": "email_outbox_recipient_email_check",
+      "type": "c",
+      "definition": "CHECK (((length(recipient_email) <= 254) AND (recipient_email = lower(btrim(recipient_email))) AND (recipient_email ~ '^[^[:space:]<>@]+@[^[:space:]<>@]+[.][^[:space:]<>@]+$'::text)))"
+    },
+    {
+      "schema": "escen",
+      "table": "email_outbox",
+      "name": "email_outbox_recipient_email_not_null",
+      "type": "n",
+      "definition": "NOT NULL recipient_email"
+    },
+    {
+      "schema": "escen",
+      "table": "email_outbox",
+      "name": "email_outbox_recipient_name_check",
+      "type": "c",
+      "definition": "CHECK (((length(btrim(recipient_name)) >= 1) AND (length(btrim(recipient_name)) <= 160)))"
+    },
+    {
+      "schema": "escen",
+      "table": "email_outbox",
+      "name": "email_outbox_recipient_name_not_null",
+      "type": "n",
+      "definition": "NOT NULL recipient_name"
+    },
+    {
+      "schema": "escen",
+      "table": "email_outbox",
+      "name": "email_outbox_requested_by_fkey",
+      "type": "f",
+      "definition": "FOREIGN KEY (requested_by) REFERENCES escen.accounts(id) ON DELETE RESTRICT"
+    },
+    {
+      "schema": "escen",
+      "table": "email_outbox",
+      "name": "email_outbox_source_id_not_null",
+      "type": "n",
+      "definition": "NOT NULL source_id"
+    },
+    {
+      "schema": "escen",
+      "table": "email_outbox",
+      "name": "email_outbox_source_kind",
+      "type": "c",
+      "definition": "CHECK ((((source_table = 'online_applications'::text) AND (event_type = ANY (ARRAY['application_received'::text, 'application_status_changed'::text]))) OR ((source_table = 'evaluations'::text) AND (event_type = ANY (ARRAY['grades_submitted'::text, 'grades_returned'::text, 'grades_approved'::text, 'grades_published'::text]))) OR ((source_table = 'sessions'::text) AND (event_type = ANY (ARRAY['course_scheduled'::text, 'course_schedule_changed'::text, 'course_cancelled'::text, 'exam_scheduled'::text, 'exam_schedule_changed'::text, 'exam_cancelled'::text]))) OR ((source_table = 'exam_attempts'::text) AND (event_type = ANY (ARRAY['exam_attempt_submitted'::text, 'exam_attempt_expired'::text]))) OR ((source_table = 'teaching_assignments'::text) AND (event_type = 'teaching_assignment_created'::text)) OR ((source_table = 'payments'::text) AND (event_type = 'payment_recorded'::text)) OR ((source_table = 'financial_contracts'::text) AND (event_type = 'tuition_settled'::text))))"
+    },
+    {
+      "schema": "escen",
+      "table": "email_outbox",
+      "name": "email_outbox_source_table_check",
+      "type": "c",
+      "definition": "CHECK ((source_table = ANY (ARRAY['online_applications'::text, 'evaluations'::text, 'sessions'::text, 'exam_attempts'::text, 'teaching_assignments'::text, 'payments'::text, 'financial_contracts'::text])))"
+    },
+    {
+      "schema": "escen",
+      "table": "email_outbox",
+      "name": "email_outbox_source_table_not_null",
+      "type": "n",
+      "definition": "NOT NULL source_table"
+    },
+    {
+      "schema": "escen",
+      "table": "email_outbox",
+      "name": "email_outbox_source_version_check",
+      "type": "c",
+      "definition": "CHECK ((((length(source_version) >= 1) AND (length(source_version) <= 80)) AND (source_version = btrim(source_version))))"
+    },
+    {
+      "schema": "escen",
+      "table": "email_outbox",
+      "name": "email_outbox_source_version_not_null",
+      "type": "n",
+      "definition": "NOT NULL source_version"
+    },
+    {
+      "schema": "escen",
+      "table": "email_outbox",
+      "name": "email_outbox_status_check",
+      "type": "c",
+      "definition": "CHECK ((status = ANY (ARRAY['PENDING'::text, 'PROCESSING'::text, 'ACCEPTED'::text, 'FAILED'::text, 'UNKNOWN'::text])))"
+    },
+    {
+      "schema": "escen",
+      "table": "email_outbox",
+      "name": "email_outbox_status_not_null",
+      "type": "n",
+      "definition": "NOT NULL status"
+    },
+    {
+      "schema": "escen",
+      "table": "email_outbox",
+      "name": "email_outbox_subject_check",
+      "type": "c",
+      "definition": "CHECK ((((length(btrim(subject)) >= 1) AND (length(btrim(subject)) <= 180)) AND (subject !~ '[\r\n]'::text)))"
+    },
+    {
+      "schema": "escen",
+      "table": "email_outbox",
+      "name": "email_outbox_subject_not_null",
+      "type": "n",
+      "definition": "NOT NULL subject"
+    },
+    {
+      "schema": "escen",
+      "table": "email_outbox",
+      "name": "email_outbox_text_body_check",
+      "type": "c",
+      "definition": "CHECK (((length(btrim(text_body)) >= 1) AND (length(btrim(text_body)) <= 20000)))"
+    },
+    {
+      "schema": "escen",
+      "table": "email_outbox",
+      "name": "email_outbox_text_body_not_null",
+      "type": "n",
+      "definition": "NOT NULL text_body"
+    },
+    {
+      "schema": "escen",
+      "table": "email_outbox",
+      "name": "email_outbox_updated_at_not_null",
+      "type": "n",
+      "definition": "NOT NULL updated_at"
+    },
+    {
+      "schema": "escen",
+      "table": "email_outbox",
+      "name": "email_outbox_version_check",
+      "type": "c",
+      "definition": "CHECK ((version > 0))"
+    },
+    {
+      "schema": "escen",
+      "table": "email_outbox",
+      "name": "email_outbox_version_not_null",
+      "type": "n",
+      "definition": "NOT NULL version"
+    },
+    {
+      "schema": "escen",
       "table": "enrollment_events",
       "name": "enrollment_events_actor_id_fkey",
       "type": "f",
@@ -20186,6 +20687,48 @@
       "table": "document_types",
       "name": "document_types_pkey",
       "definition": "CREATE UNIQUE INDEX document_types_pkey ON escen.document_types USING btree (id)"
+    },
+    {
+      "schema": "escen",
+      "table": "email_outbox",
+      "name": "email_outbox_event_unique",
+      "definition": "CREATE UNIQUE INDEX email_outbox_event_unique ON escen.email_outbox USING btree (event_type, source_id, source_version, recipient_email)"
+    },
+    {
+      "schema": "escen",
+      "table": "email_outbox",
+      "name": "email_outbox_expired_lock",
+      "definition": "CREATE INDEX email_outbox_expired_lock ON escen.email_outbox USING btree (locked_until) WHERE (status = 'PROCESSING'::text)"
+    },
+    {
+      "schema": "escen",
+      "table": "email_outbox",
+      "name": "email_outbox_modifier",
+      "definition": "CREATE INDEX email_outbox_modifier ON escen.email_outbox USING btree (last_modified_by)"
+    },
+    {
+      "schema": "escen",
+      "table": "email_outbox",
+      "name": "email_outbox_pending",
+      "definition": "CREATE INDEX email_outbox_pending ON escen.email_outbox USING btree (created_at, id) WHERE (status = 'PENDING'::text)"
+    },
+    {
+      "schema": "escen",
+      "table": "email_outbox",
+      "name": "email_outbox_pkey",
+      "definition": "CREATE UNIQUE INDEX email_outbox_pkey ON escen.email_outbox USING btree (id)"
+    },
+    {
+      "schema": "escen",
+      "table": "email_outbox",
+      "name": "email_outbox_requester",
+      "definition": "CREATE INDEX email_outbox_requester ON escen.email_outbox USING btree (requested_by)"
+    },
+    {
+      "schema": "escen",
+      "table": "email_outbox",
+      "name": "email_outbox_year_date",
+      "definition": "CREATE INDEX email_outbox_year_date ON escen.email_outbox USING btree (academic_year_id, created_at DESC, id)"
     },
     {
       "schema": "escen",

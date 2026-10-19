@@ -113,6 +113,7 @@ export const ALL_TABS = [
     subTabs: [
       { id: 'sys_data', name: 'Toutes les données' },
       { id: 'sys_logs', name: 'Journal d\'Activité' },
+      { id: 'sys_emails', name: 'Suivi des mails' },
       { id: 'sys_backups', name: 'Export du journal' },
       { id: 'sys_support', name: 'Tickets de Support' },
     ],
@@ -154,6 +155,7 @@ const SUBTAB_PERMISSIONS: Record<string, Permission[]> = {
   comm_announcements: ['communication.manage'],
   comm_news: ['communication.view'],
   sys_logs: ['system.audit.view'],
+  sys_emails: ['email.view'],
   sys_backups: ['system.backup.manage'],
   sys_support: ['system.support.manage'],
 };
@@ -176,6 +178,7 @@ export function getAvailableTabs(role: RoleName, permissions?: Permission[], glo
           return effective.includes('communication.view') && ![ROLES.STUD, ROLES.DEL, ROLES.ENS].includes(role as typeof ROLES.STUD);
         }
         const effectiveRequired = SUBTAB_PERMISSIONS[subTab.id];
+        if (subTab.id === 'sys_emails' && (!globalAccess || ![ROLES.DG, ROLES.IT].includes(role as typeof ROLES.DG))) return false;
         if (permissions && effectiveRequired && !effectiveRequired.some(permission => permissions.includes(permission))) return false;
         if (role === ROLES.IT && !permissions) return true;
         if (role === ROLES.IT && permissions) { const required = SUBTAB_PERMISSIONS[subTab.id]; return !required || required.some(permission => permissions.includes(permission)); }
