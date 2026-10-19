@@ -547,7 +547,9 @@ input.search-input:not([type="checkbox"]):not([type="radio"]):not([type="file"])
 /* ============================================
    TABLES
    ============================================ */
-.table-wrap { overflow-x: auto; }
+/* Keep absolutely positioned accessible labels inside the scrolling table region. */
+.table-wrap { position: relative; overflow-x: auto; }
+.card:has(> .data-table) { position: relative; overflow-x: auto; max-width: 100%; -webkit-overflow-scrolling: touch; }
 
 .data-table {
   width: 100%;
@@ -1275,6 +1277,7 @@ form { scroll-margin-top: 1rem; }
   .workspace-breadcrumb { gap: .35rem; flex-wrap: wrap; }
   fieldset { min-width: 0; }
 
+  .card:has(> .mobile-record-table) { overflow: visible; }
   .table-wrap:has(> .mobile-record-table) { border: 0; border-radius: 0; overflow: visible; }
   .data-table.mobile-record-table { display: block; min-width: 0; width: 100%; border-collapse: separate; }
   .mobile-record-table > thead {
@@ -1632,6 +1635,8 @@ form { scroll-margin-top: 1rem; }
 .account-identity small { color: #617887; font-size: 11px; }
 .account-name { display: block; margin-bottom: 12px; overflow-wrap: anywhere; color: #223b4a; }
 .account-summary::-webkit-details-marker { display: none; }
+.account-control:not([open]) .account-popover,
+.account-control:not([open]) > :not(summary) { display: none; }
 .account-popover { position: absolute; top: calc(100% + 8px); right: 0; z-index: 150; width: min(340px,90vw); padding: 16px; border: 1px solid #dce5eb; border-radius: 10px; background: white; box-shadow: 0 10px 35px #122b3b20; }
 .account-popover .role-switcher { display: flex; flex-wrap: wrap; padding: 0; border: 0; gap: 9px; }
 .account-popover .role-select { max-width: 100%; width: 100%; }
@@ -1848,7 +1853,6 @@ label.form-group {
   font-weight: 600;
   cursor: pointer;
   transition: all 0.15s ease;
-  white-space: nowrap;
   text-decoration: none;
   box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04);
 }
