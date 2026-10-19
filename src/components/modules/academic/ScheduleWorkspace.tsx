@@ -99,7 +99,7 @@ function ScheduleManager() {
   const sessions = directory.sessions.filter(session => !groupId || session.groupId === groupId);
   const active = sessions.filter(session => !['ANNULE', 'REPORTE'].includes(session.status));
   const hasArchives = portal.history.enabled && Boolean(portal.history.catalog?.datasets.some(dataset => dataset.table === 'emploi_du_temps' && dataset.count > 0));
-  const showArchives = hasArchives && (sourceSelection?.yearId === yearId ? sourceSelection.source === 'archives' : directory.sessions.length === 0);
+  const showArchives = hasArchives && sourceSelection?.yearId === yearId && sourceSelection.source === 'archives';
   return <div className="domain-workspace">
     <div className="page-intro"><div><span className="page-eyebrow">PLANNING</span><h1>Séances et emploi du temps</h1><p>Horaires en heure de Lomé (UTC). Les conflits sont contrôlés avant enregistrement.</p></div><div className="btn-group">
       {directory.canCreate && <button className="btn btn-primary" onClick={() => open('create_session')}>Nouvelle séance</button>}

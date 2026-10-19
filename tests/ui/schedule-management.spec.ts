@@ -3,6 +3,7 @@ import { authenticateFixture, snapshot as baseSnapshot, historyCatalog, fixtureC
 import { ROLES } from '../../src/types/permissions';
 import { scheduleFixture, attachScheduledExam } from './schedule-management-fixture';
 import { securityContext, securityIds as id, uuid } from './security-fixture';
+import { filterSnapshotForAcademicYear } from '../../src/services/academicYearScopeService';
 
 async function connectedSchedule(page: Page, withExam = false) {
   await authenticateFixture(page);
@@ -11,8 +12,11 @@ async function connectedSchedule(page: Page, withExam = false) {
   let reads = 0;
   await page.route('**/api/campus', route => {
     reads++;
-    return route.fulfill({ json: { ...fixture.snapshot, tables: { ...baseSnapshot.tables, ...fixture.snapshot.tables, people: [...baseSnapshot.tables.people, ...fixture.snapshot.tables.people] },
-      academicContext: { currentYearId: id.year, currentYearConfigured: true, selectedYearId: id.year, selection: 'current', years: fixture.snapshot.tables.academic_years } } });
+    const selection = route.request().headers()['x-escen-year'] || 'current';
+    const selectedYearId = selection === id.otherYear ? id.otherYear : id.year;
+    const scoped = filterSnapshotForAcademicYear({ ...fixture.snapshot, tables: { ...baseSnapshot.tables, ...fixture.snapshot.tables, people: [...baseSnapshot.tables.people, ...fixture.snapshot.tables.people] } }, selectedYearId);
+    return route.fulfill({ json: { ...scoped,
+      academicContext: { currentYearId: id.year, currentYearConfigured: true, selectedYearId, selection, years: fixture.snapshot.tables.academic_years } } });
   });
   await page.route('**/api/schedule', async route => {
     const request = route.request();
@@ -45,6 +49,9 @@ for (const width of [390, 1440]) test(`Un seul calendrier et filtre des archives
     return route.fulfill({ json: { ...historyCatalog, datasets: historyCatalog.datasets.map(dataset => dataset.table === 'emploi_du_temps' ? { ...dataset, count: 2 } : dataset) } });
   });
   await page.goto('/academique/emploi-du-temps');
+  await expect(page.getByRole('button', { name: 'Planning de l’année', exact: true })).toHaveAttribute('aria-pressed', 'true');
+  await expect(page.locator('.calendar-session:visible')).toHaveCount(0);
+  await page.getByRole('button', { name: 'Archives importées', exact: true }).click();
   await expect(page.getByRole('button', { name: 'Archives importées', exact: true })).toHaveAttribute('aria-pressed', 'true');
   await expect(page.locator('.calendar-toolbar')).toHaveCount(1);
   const group = page.getByRole('combobox', { name: 'Groupe', exact: true });
@@ -63,6 +70,53 @@ for (const width of [390, 1440]) test(`Un seul calendrier et filtre des archives
   await page.getByRole('button', { name: 'Archives importées', exact: true }).click();
   await expect(page.locator('.calendar-toolbar')).toHaveCount(1);
   await expect(page.getByRole('combobox', { name: 'Groupe', exact: true })).toBeVisible();
+  expect(fixture.transactions).toEqual([]);
+});
+
+for (const readOnly of [false, true]) for (const width of [390, 1440]) test(`Changer d’année conserve le planning par défaut, consultation seule=${readOnly}, à ${width}px`, async ({ page }) => {
+  await page.setViewportSize({ width, height: 1000 });
+  const fixture = await connectedSchedule(page);
+  fixture.snapshot.tables.sessions = [];
+  let archiveReads = 0;
+  if (readOnly) await page.route('**/api/session', route => route.fulfill({ json: {
+    capabilities: { ...fixtureCapabilities, [ROLES.IT]: { permissions: ['schedule.view', 'system.audit.view'], globalAccess: true } },
+    accountId: ACCOUNT_IDS[1], name: 'Jean Technique', email: 'it@example.test', role: ROLES.IT, availableRoles: [ROLES.IT], studentId: null, teacherId: null, matricule: null, mustChangePassword: false,
+  } }));
+  await page.route('**/api/history*', route => {
+    const table = new URL(route.request().url()).searchParams.get('table');
+    if (!table) return route.fulfill({ json: historyCatalog });
+    archiveReads += 1;
+    return route.fulfill({ json: { table, total: 1, offset: 0, limit: 50, records: [{ id: 'ARCHIVE', sourceId: 'A1', batchId: 'batch-fixture', status: 'PENDING', issues: [], values: { group_id: 'G1', uv_id: 'UV1', debut: '2026-10-20T08:00:00Z', fin: '2026-10-20T10:00:00Z' } }] } });
+  });
+  const year = page.getByRole('combobox', { name: 'Année consultée', exact: true });
+  const planning = page.getByRole('button', { name: 'Planning de l’année', exact: true });
+  const archives = page.getByRole('button', { name: 'Archives importées', exact: true });
+  const changeYear = async (value: string, month: string) => {
+    const loaded = page.waitForResponse(response => new URL(response.url()).pathname === '/api/campus' && response.request().headers()['x-escen-year'] === value);
+    await year.selectOption(value);
+    await loaded;
+    await expect(planning).toHaveAttribute('aria-pressed', 'true');
+    await expect(archives).toHaveAttribute('aria-pressed', 'false');
+    await expect(page.getByLabel('Mois', { exact: true })).toHaveAttribute('min', month);
+    await expect(page.locator('.calendar-toolbar')).toHaveCount(1);
+    await expect(page.locator('.calendar-session:visible')).toHaveCount(0);
+  };
+  await page.goto('/academique/emploi-du-temps');
+  await expect(planning).toHaveAttribute('aria-pressed', 'true');
+  expect(archiveReads).toBe(0);
+  await changeYear(id.otherYear, '2026-10');
+  expect(archiveReads).toBe(0);
+  await archives.click();
+  await expect(page.locator('.calendar-session:visible')).toHaveCount(1);
+  await expect(archives).toHaveAttribute('aria-pressed', 'true');
+  expect(archiveReads).toBe(1);
+  await changeYear('current', '2026-01');
+  expect(archiveReads).toBe(1);
+  await archives.click();
+  await expect(page.locator('.calendar-session:visible')).toHaveCount(1);
+  expect(archiveReads).toBe(2);
+  await changeYear(id.otherYear, '2026-10');
+  expect(archiveReads).toBe(2);
   expect(fixture.transactions).toEqual([]);
 });
 
