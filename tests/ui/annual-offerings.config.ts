@@ -2,7 +2,7 @@ import { defineConfig } from '@playwright/test';
 import base from './attendance-management.config';
 
 export default defineConfig(base, {
-  testMatch: ['annual-offerings.spec.ts', 'annual-setup-inline.spec.ts', 'annual-configuration.spec.ts', 'year-preparation.spec.ts', 'year-preparation-layout.spec.ts'],
+  testMatch: ['annual-offerings.spec.ts', 'annual-setup-inline.spec.ts', 'annual-configuration.spec.ts', 'tuition-fees.spec.ts', 'year-preparation.spec.ts', 'year-preparation-layout.spec.ts'],
   outputDir: '../../test-results/annual-offerings',
   webServer: {
     command: 'node scripts/run-next.mjs dev --port 3119', cwd: process.cwd(),

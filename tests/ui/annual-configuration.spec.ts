@@ -132,8 +132,8 @@ for (const width of [390, 1440]) test(`Consulter les frais ouvre la liste avant 
   await page.getByRole('button', { name: 'Configurer 2026-2027', exact: true }).click();
   await page.getByRole('button', { name: 'Consulter frais de scolarité', exact: true }).click();
   const list = page.getByRole('dialog', { name: 'Frais de scolarité · 2026-2027', exact: true });
-  await expect(list.getByRole('cell', { name: /(?:^| )480000$/ })).toBeVisible();
-  await expect(list.getByRole('cell', { name: /(?:^| )50000$/ })).toHaveCount(0);
+  await expect(list.getByRole('cell', { name: /480\s000 FCFA$/ })).toBeVisible();
+  await expect(list.getByRole('cell', { name: /50\s000 FCFA$/ })).toHaveCount(0);
   await expect(page.getByRole('dialog', { name: /^Ajouter/ })).toHaveCount(0);
   await list.getByRole('button', { name: 'Voir', exact: true }).click();
   await expect(list.getByRole('heading', { name: 'Consulter un tarif annuel · 2026-2027', exact: true })).toBeVisible();
