@@ -2675,6 +2675,8 @@ input[type="radio"] {
 .annual-offering-levels-list li::before { content: "•"; color: var(--accent); font-weight: bold; }
 .annual-offering-mode-tag { display: inline-block; padding: 1px 7px; border-radius: 4px; background: var(--bg-tertiary); color: var(--text-secondary); font-size: 0.76rem; font-weight: 600; }
 .annual-offering-status-cell { display: flex; flex-direction: column; gap: 6px; align-items: flex-start; }
+.annual-offering-actions { display: inline-flex; flex-direction: row; align-items: center; gap: 8px; flex-wrap: nowrap; }
+.annual-offering-actions > .btn.icon-action { flex: 0 0 auto; }
 .annual-offering-details { margin-top: 0.5rem; border-top: 1px dashed var(--border); padding-top: 0.4rem; }
 .annual-offering-details summary { cursor: pointer; font-size: 0.82rem; font-weight: 600; color: var(--accent); }
 .annual-offering-details-list { display: flex; flex-direction: column; gap: 6px; margin-top: 8px; }

@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { annualOfferingChanges, annualOfferingLabel, archiveAnnualOfferings, groupAnnualOfferings } from './annualOfferingService';
+import { annualOfferingChanges, annualOfferingLabel, annualOfferingProposals, archiveAnnualOfferings, groupAnnualOfferings } from './annualOfferingService';
 import { assertOfferingPrepared } from './yearPreparationService';
 import {yearPreparation,assertYearPrepared,suggestNextAcademicYear,getPreviousYearConfigSummary,buildReconductChanges} from './yearPreparationService';
 const snapshot={revision:1,tables:{academic_years:[{id:'Y',name:'2025-2026',code:'2025-2026',starts_on:'2025-10-13',ends_on:'2026-06-30',status:'OUVERTE'}],academic_offerings:[{id:'O',academic_year_id:'Y',curriculum_id:'C',level_id:'L'}],curricula:[{id:'C',program_id:'P'}],programs:[{id:'P',name:'Informatique'}],levels:[{id:'L',name:'Licence 1'}],groups:[{id:'G',academic_year_id:'Y',name:'Groupe A',level_id:'L'}],group_offerings:[{id:'GO',offering_id:'O',group_id:'G',academic_year_id:'Y',level_id:'L'}],subjects:[{id:'S',academic_year_id:'Y'}],curriculum_components:[{id:'CC',curriculum_id:'C',subject_id:'S'}],annual_fee_schedules:[{id:'F1',academic_year_id:'Y',category:'SCOLARITE',amount:100},{id:'F2',academic_year_id:'Y',category:'INSCRIPTION',program_id:'P',level_id:'L',amount:50}],annual_payment_channels:[{id:'PM',academic_year_id:'Y',name:'Caisse',method:'ESPECES'}]}};
@@ -24,6 +24,23 @@ assert.equal(annualChanges.length, 2);
 assert.deepEqual(annualChanges.map(change => [change.record.level_id, change.record.delivery_mode]), [['L1', 'En ligne'], ['L2', 'Présentiel']]);
 assert.ok(annualChanges.every(change => change.record.academic_year_id === 'TARGET' && change.record.reason === 'Choix des niveaux'));
 assert.equal(annualFixture.tables.academic_offerings.length, 1);
+assert.deepEqual(annualOfferingChanges(annualFixture, 'TARGET', 'P', [selectedVariants[0]], 'Sélection inchangée'), []);
+const deselected = annualOfferingChanges(annualFixture, 'TARGET', 'P', [selectedVariants[2]], 'Modification des niveaux');
+assert.equal(deselected.length, 2);
+assert.equal(deselected[1].record.id, 'SAVED');
+assert.ok(deselected[1].record.archived_at);
+const archivedFixture = { ...annualFixture, tables: { ...annualFixture.tables, academic_offerings: [
+  { ...annualFixture.tables.academic_offerings[0], archived_at: '2026-10-19' },
+  { ...annualFixture.tables.academic_offerings[0], id: 'OTHER-YEAR', academic_year_id: 'CLOSED' },
+] } };
+assert.deepEqual(annualOfferingChanges(archivedFixture, 'TARGET', 'P', [selectedVariants[0]], 'Niveau rétabli'), [
+  { table: 'academic_offerings', operation: 'update', record: { id: 'SAVED', archived_at: null, reason: 'Niveau rétabli' } },
+]);
+assert.throws(() => annualOfferingChanges({ ...annualFixture, tables: { ...annualFixture.tables, group_offerings: [{ id: 'LINK', offering_id: 'SAVED' }] } }, 'TARGET', 'P', [selectedVariants[2]], 'Retrait'), /rattachée/);
+const proposals = [{ id: 'PROPOSED1', curriculum_id: 'C1' }, { id: 'PROPOSED2', curriculum_id: 'C2' }];
+assert.deepEqual(annualOfferingProposals(annualFixture, 'TARGET', proposals), []);
+assert.deepEqual(annualOfferingProposals(archivedFixture, 'TARGET', proposals), []);
+assert.deepEqual(annualOfferingProposals(annualFixture, 'NEW-YEAR', proposals), proposals);
 assert.throws(() => annualOfferingChanges(annualFixture, 'TARGET', 'OTHER', selectedVariants, 'Test'), /niveaux enregistrés/);
 assert.throws(() => annualOfferingChanges(annualFixture, 'CLOSED', 'P', selectedVariants, 'Test'), /année en préparation/);
 assert.throws(() => annualOfferingChanges(annualFixture, 'TARGET', 'P', [selectedVariants[0], selectedVariants[0]], 'Test'), /deux fois/);

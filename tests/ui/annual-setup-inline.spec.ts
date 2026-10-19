@@ -49,6 +49,8 @@ for (const width of [390, 1440]) {
     await dialog.getByRole('button', { name: 'Créer une filière ici', exact: true }).click();
     await dialog.getByLabel('Nom', { exact: true }).fill('Brouillon non enregistré');
     await dialog.getByRole('button', { name: 'Revenir aux formations de l’année', exact: true }).click();
+    await expect(dialog.getByRole('heading', { name: 'Quitter sans enregistrer ?', exact: true })).toBeVisible();
+    await dialog.getByRole('button', { name: 'Abandonner les modifications', exact: true }).click();
     await expect(dialog.getByRole('combobox', { name: 'Filière', exact: true })).toHaveValue('P1');
     await expect(dialog.getByRole('checkbox', { name: 'Licence 1 · Présentiel', exact: true })).toBeChecked();
     expect(writes).toHaveLength(0);
@@ -84,8 +86,8 @@ for (const width of [390, 1440]) {
     await dialog.getByRole('checkbox', { name: 'Licence 2 · En ligne', exact: true }).check();
     await expect(dialog.getByRole('combobox', { name: 'Année universitaire', exact: true })).toHaveCount(0);
     await expect(page).toHaveURL(/\/academique\/referentiel\?collection=academic_years$/);
-    await page.screenshot({ path: `.tmp/interface/${width}/preparation-filiere-sur-place.png` });
-    await dialog.getByRole('button', { name: 'Vérifier les informations', exact: true }).click();
+    await page.screenshot({ path: `tmp/screenshots/annual-offerings/${width}/preparation-filiere-sur-place.png` });
+    await dialog.getByRole('button', { name: 'Enregistrer les niveaux', exact: true }).click();
     expect(writes).toHaveLength(3);
     await dialog.getByRole('button', { name: 'Confirmer l’enregistrement', exact: true }).click();
     await expect(page.getByRole('heading', { name: 'Préparer l’année · 2026-2027', exact: true })).toBeVisible();

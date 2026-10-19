@@ -91,7 +91,7 @@ export default function YearPreparationPanel({
           previousSummary: previousSummary || undefined,
           prefilledItems: prefilledItems.length ? prefilledItems : undefined,
           onChoose: setCollection,
-          onSaved: () => { setRetry(value => value + 1); portal.reloadCampus(); }
+          onSaved: () => { setRetry(value => value + 1); portal.refreshCampus(); }
         }}
       />
     </DetailDrawer>;

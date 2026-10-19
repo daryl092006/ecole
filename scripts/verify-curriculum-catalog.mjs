@@ -65,6 +65,8 @@ export async function verifyCurriculumCatalog(db, check) {
       try {
         const data = name === 'escen_backend_snapshot'
           ? await value('select public.escen_backend_snapshot() as value')
+          : name === 'escen_academic_year_context'
+            ? await value('select public.escen_academic_year_context() as value')
           : name === 'escen_backend_transaction'
             ? await value('select public.escen_backend_transaction($1,$2,$3::jsonb) as value', [args.p_actor_id, args.p_expected_revision, JSON.stringify(args.p_changes)])
             : assert.fail(`RPC inattendue : ${name}`);
@@ -102,6 +104,38 @@ export async function verifyCurriculumCatalog(db, check) {
   let version = 0;
   const draft = () => insert('curricula', { program_id: program.id, level_id: level.id, version: ++version });
   const curriculum = await draft();
+  await check('Formations annuelles : création, modification, réactivation et année isolée via API et RPC', async () => {
+    const year = await insert('academic_years', { code: `OFF-${suffix}`, name: 'Année des formations', starts_on: '2039-09-01', ends_on: '2040-07-01', status: 'BROUILLON' });
+    const otherYear = await insert('academic_years', { code: `OFF2-${suffix}`, name: 'Autre année des formations', starts_on: '2040-09-01', ends_on: '2041-07-01', status: 'BROUILLON' });
+    const updateOfferings = async (modes, yearId = year.id) => writeCatalog(new Request('http://local.test/api/catalog/academic_offerings', {
+      method: 'POST', headers: { 'Content-Type': 'application/json', 'x-escen-year': yearId },
+      body: JSON.stringify({ revision: await revision(), reason: 'Modification des niveaux annuels', values: {
+        academic_year_id: year.id, program_id: program.id, variants: modes.map(delivery_mode => ({ curriculum_id: curriculum.id, delivery_mode })),
+      } }),
+    }), 'academic_offerings');
+    assert.equal((await updateOfferings(['Présentiel', 'En ligne'])).status, 201);
+    const offerings = () => db.query('select * from escen.academic_offerings where academic_year_id=$1 order by delivery_mode', [year.id]);
+    const initial = (await offerings()).rows;
+    assert.equal(initial.length, 2);
+    const online = initial.find(item => item.delivery_mode === 'En ligne');
+    assert.equal((await updateOfferings(['Présentiel'])).status, 201);
+    assert.ok((await row('academic_offerings', online.id)).archived_at);
+    assert.equal((await updateOfferings(['Présentiel', 'En ligne'])).status, 201);
+    assert.equal((await row('academic_offerings', online.id)).archived_at, null);
+    assert.equal((await offerings()).rows.length, 2);
+    const events = await audit('academic_offerings', online.id);
+    assert.equal(events.length, 3);
+    assert.equal(events[2].actor_id, actor.id);
+    assert.ok(events[2].old_value.archived_at);
+    assert.equal(events[2].new_value.archived_at, null);
+    const before = await revision();
+    assert.equal((await updateOfferings(['Présentiel', 'En ligne'])).status, 200);
+    assert.equal(await revision(), before);
+    await assert.rejects(updateOfferings(['Présentiel'], otherYear.id), /année précise/);
+    assert.equal(await revision(), before);
+    assert.equal((await offerings()).rows.filter(item => !item.archived_at).length, 2);
+    assert.equal(await value('select count(*)::int as value from escen.academic_offerings where academic_year_id=$1', [otherYear.id]), 0);
+  });
   let semester; let unit; let component;
   await check('Catalogue / curriculum_semesters : création persistée avec crédits décimaux', async () => {
     const saved = await save('curriculum_semesters', { curriculum_id: curriculum.id, position: 1, name: 'Semestre de recette', target_credits: 3.5 }, { reason: 'Création du semestre' });

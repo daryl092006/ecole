@@ -50,6 +50,8 @@ next-env.d.ts
 /.next-responsive-audit/
 /test-results/
 /playwright-report/
+/tmp/next-annual-offerings/
+/tmp/screenshots/annual-offerings/
 
 # Local Supabase CLI connection metadata
 /supabase/.temp/

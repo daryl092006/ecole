@@ -60,7 +60,7 @@ export default function AnnualOfferingList({ rows, allRows, snapshot, canEdit, o
           </div>
         </td>
         <td>
-          <div className="btn-group" style={{ display: 'inline-flex', flexDirection: 'row', alignItems: 'center', gap: '8px', flexWrap: 'nowrap' }}>
+          <div className="annual-offering-actions">
             {canEdit && <IconButton className="btn btn-sm btn-primary" label="Vérifier les niveaux" onClick={() => onManage(group)} />}
             {canEdit && group.rows.every(row => !row.archived_at) && <IconButton className="btn btn-sm btn-outline btn-danger" label="Retirer toute la ligne" onClick={() => { setRemoving(group); setReason(''); setError(''); }} />}
           </div>

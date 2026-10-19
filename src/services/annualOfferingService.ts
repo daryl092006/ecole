@@ -16,6 +16,17 @@ export function archiveAnnualOfferings(snapshot: RelationalSnapshot, yearId: str
 export interface AnnualOfferingGroup { id: string; programId: string; name: string; rows: DatabaseRow[]; }
 export const offeringVariantKey = (row: DatabaseRow | AnnualOfferingVariant) => JSON.stringify([row.curriculum_id, row.delivery_mode || null]);
 
+// Dès qu'une filière a été enregistrée pour l'année, sa sélection persistée
+// remplace les suggestions historiques, y compris les niveaux retirés.
+export function annualOfferingProposals(snapshot: RelationalSnapshot, yearId: string, proposals: DatabaseRow[]): DatabaseRow[] {
+  const programByCurriculum = new Map((snapshot.tables.curricula || []).map(row => [row.id, row.program_id]));
+  const savedPrograms = new Set((snapshot.tables.academic_offerings || [])
+    .filter(row => row.academic_year_id === yearId)
+    .map(row => programByCurriculum.get(String(row.curriculum_id)))
+    .filter(Boolean));
+  return proposals.filter(row => !savedPrograms.has(programByCurriculum.get(String(row.curriculum_id))));
+}
+
 export function groupAnnualOfferings(rows: DatabaseRow[], snapshot: RelationalSnapshot): AnnualOfferingGroup[] {
   const groups = new Map<string, AnnualOfferingGroup>();
   for (const row of rows) {
@@ -60,8 +71,13 @@ export function annualOfferingChanges(snapshot: RelationalSnapshot, yearId: stri
     requestedKeys.add(key);
     const curriculum = snapshot.tables.curricula?.find(row => row.id === variant.curriculum_id && row.program_id === programId && !row.archived_at && row.status !== 'ARCHIVED');
     if (!curriculum || !snapshot.tables.levels?.some(row => row.id === curriculum.level_id && !row.archived_at && row.active !== false)) throw new Error('Choisissez uniquement des niveaux enregistrés pour cette filière.');
-    if (!snapshot.tables.academic_offerings?.some(row => row.academic_year_id === yearId && !row.archived_at && offeringVariantKey(row) === key)) {
-      inserts.push({ table: 'academic_offerings', operation: 'insert' as const, record: { id: crypto.randomUUID(), academic_year_id: yearId, curriculum_id: curriculum.id, level_id: curriculum.level_id, delivery_mode: variant.delivery_mode || null, reason } });
+    const matching = (snapshot.tables.academic_offerings || []).filter(row => row.academic_year_id === yearId && offeringVariantKey(row) === key);
+    if (!matching.some(row => !row.archived_at)) {
+      const archived = matching.find(row => row.archived_at && !row.site_id);
+      // L'index unique couvre aussi les archives : réutiliser la ligne annuelle.
+      inserts.push(archived
+        ? { table: 'academic_offerings', operation: 'update', record: { id: archived.id, archived_at: null, reason } }
+        : { table: 'academic_offerings', operation: 'insert', record: { id: crypto.randomUUID(), academic_year_id: yearId, curriculum_id: curriculum.id, level_id: curriculum.level_id, delivery_mode: variant.delivery_mode || null, reason } });
     }
   }
 
