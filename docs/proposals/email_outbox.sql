@@ -5,8 +5,16 @@ begin;
 create table escen.email_outbox (
   id uuid primary key default gen_random_uuid(),
   academic_year_id uuid not null references escen.academic_years(id) on delete restrict,
-  event_type text not null check (event_type in ('application_received','application_status_changed','grades_submitted','grades_published','exam_schedule_changed')),
-  source_table text not null check (source_table in ('online_applications','evaluations','sessions')),
+  event_type text not null check (event_type in (
+    'application_received','application_status_changed',
+    'exam_attempt_submitted','exam_attempt_expired',
+    'teaching_assignment_created',
+    'grades_submitted','grades_returned','grades_approved','grades_published',
+    'course_scheduled','course_schedule_changed','course_cancelled',
+    'exam_scheduled','exam_schedule_changed','exam_cancelled',
+    'payment_recorded','tuition_settled'
+  )),
+  source_table text not null check (source_table in ('online_applications','evaluations','sessions','exam_attempts','teaching_assignments','payments','financial_contracts')),
   source_id uuid not null,
   source_version text not null check (length(source_version) between 1 and 80 and source_version=btrim(source_version)),
   recipient_email text not null check (length(recipient_email) <= 254 and recipient_email = lower(btrim(recipient_email)) and recipient_email ~ '^[^[:space:]<>@]+@[^[:space:]<>@]+[.][^[:space:]<>@]+$'),
@@ -33,8 +41,12 @@ create table escen.email_outbox (
   constraint email_outbox_error check ((status in ('FAILED','UNKNOWN') and last_error_code is not null) or (status not in ('FAILED','UNKNOWN') and last_error_code is null)),
   constraint email_outbox_source_kind check (
     (source_table='online_applications' and event_type in ('application_received','application_status_changed'))
-    or (source_table='evaluations' and event_type in ('grades_submitted','grades_published'))
-    or (source_table='sessions' and event_type='exam_schedule_changed')
+    or (source_table='evaluations' and event_type in ('grades_submitted','grades_returned','grades_approved','grades_published'))
+    or (source_table='sessions' and event_type in ('course_scheduled','course_schedule_changed','course_cancelled','exam_scheduled','exam_schedule_changed','exam_cancelled'))
+    or (source_table='exam_attempts' and event_type in ('exam_attempt_submitted','exam_attempt_expired'))
+    or (source_table='teaching_assignments' and event_type='teaching_assignment_created')
+    or (source_table='payments' and event_type='payment_recorded')
+    or (source_table='financial_contracts' and event_type='tuition_settled')
   )
 );
 create index email_outbox_year_date on escen.email_outbox(academic_year_id,created_at desc,id);
@@ -97,11 +109,44 @@ begin
   elsif p_source_table='evaluations' then
     select o.academic_year_id into source_year from escen.evaluations e
     left join escen.teaching_assignments a on a.id=e.assignment_id
-    join escen.academic_offerings o on o.id=coalesce(e.offering_id,a.offering_id) where e.id=p_source_id;
+    join escen.academic_offerings o on o.id=coalesce(e.offering_id,a.offering_id) where e.id=p_source_id and e.cancelled_at is null
+      and ((p_event_type='grades_submitted' and e.status='SOUMISES')
+        or (p_event_type='grades_approved' and e.status='VALIDEES')
+        or (p_event_type='grades_published' and e.status='PUBLIEES')
+        or (p_event_type='grades_returned' and e.status in ('BROUILLON','SAISIES') and exists(
+          select 1 from escen.evaluation_transitions t where t.evaluation_id=e.id
+            and t.from_status in ('SOUMISES','A_CONTROLER','VALIDEES') and t.to_status=e.status)));
   elsif p_source_table='sessions' then
     select o.academic_year_id into source_year from escen.sessions s
     join escen.academic_offerings o on o.id=s.offering_id where s.id=p_source_id
-      and exists(select 1 from escen.exam_deliveries d where d.session_id=s.id);
+      and (
+        (p_event_type in ('exam_scheduled','exam_schedule_changed','exam_cancelled')
+          and exists(select 1 from escen.exam_deliveries d where d.session_id=s.id))
+        or (p_event_type in ('course_scheduled','course_schedule_changed','course_cancelled')
+          and s.mode='COURS' and not exists(select 1 from escen.exam_deliveries d where d.session_id=s.id))
+      )
+      and ((p_event_type in ('course_cancelled','exam_cancelled') and s.status='ANNULE')
+        or (p_event_type not in ('course_cancelled','exam_cancelled') and s.status not in ('ANNULE','REPORTE')));
+  elsif p_source_table='exam_attempts' then
+    select o.academic_year_id into source_year from escen.exam_attempts a
+    join escen.evaluation_candidates c on c.id=a.candidate_id and c.evaluation_id=a.evaluation_id
+    join escen.enrollments n on n.id=c.enrollment_id
+    join escen.academic_offerings o on o.id=n.offering_id where a.id=p_source_id and a.submitted_at is not null
+      and ((p_event_type='exam_attempt_submitted' and a.status='REMISE' and a.submission_kind='MANUAL')
+        or (p_event_type='exam_attempt_expired' and a.status='EXPIREE' and a.submission_kind='AUTO_DEADLINE'));
+  elsif p_source_table='teaching_assignments' then
+    select o.academic_year_id into source_year from escen.teaching_assignments a
+    join escen.academic_offerings o on o.id=a.offering_id where a.id=p_source_id;
+  elsif p_source_table='payments' then
+    select o.academic_year_id into source_year from escen.payments p
+    join escen.enrollments n on n.id=p.enrollment_id
+    join escen.academic_offerings o on o.id=n.offering_id where p.id=p_source_id and p.status<>'PENDING'
+      and not exists(select 1 from escen.payment_reversals r where r.payment_id=p.id);
+  elsif p_source_table='financial_contracts' then
+    select o.academic_year_id into source_year from escen.financial_contracts c
+    join escen.enrollments n on n.id=c.enrollment_id
+    join escen.academic_offerings o on o.id=n.offering_id where c.id=p_source_id
+      and exists(select 1 from escen.contract_balances b where b.contract_id=c.id and b.expected<=b.paid);
   end if;
   if source_year is null or p_year_id is null or source_year<>p_year_id then
     raise exception 'Source absente ou rattachée à une autre année' using errcode='23514';
