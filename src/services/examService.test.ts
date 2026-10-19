@@ -6,7 +6,13 @@ import { transitionGradeWorkflow } from '@/services/gradeService';
 import { ROLES } from '@/types/permissions';
 const data = emptyDataset();
 data.assignments.push({ id: 'A', teacherId: 'T', groupId: 'G', academicYearId: 'Y', semesterId: 'S', subjectId: 'SUB', active: true });
-data.students.push({ matricule: 'E', groupId: 'G', academicYearId: 'Y', status: 'Inscrit', history: [], financials: { expected: 0, paid: 0, remaining: 0, installments: [] } } as typeof data.students[number]);
+data.students.push({
+  matricule: 'E', firstname: 'Étudiant', lastname: 'Test', email: '', phone: '',
+  gender: '', birthDate: '', nationality: '', address: '', city: '', country: '',
+  filiere: '', niveau: '', groupe: 'G', groupId: 'G', academicYearId: 'Y',
+  status: 'Inscrit', history: [], bourse: { active: false, type: '', percent: 0, amount: 0 },
+  financials: { expected: 0, paid: 0, remaining: 0, installments: [] },
+});
 data.exams.push({ id: 'X', assignmentId: 'A', evaluationId: 'V', mode: 'EN_LIGNE', date: '2026-10-15', startTime: '08:00', endTime: '09:00', kind: 'EXAMEN', roomCode: '', supervisorId: '', status: 'PLANIFIE', reason: '' });
 data.evaluations.push({ id: 'V', classId: 'A', type: 'Examen', name: 'Test', date: '2026-10-15', status: 'BROUILLON', grades: [{ matricule: 'E', value: null }], history: [] });
 const before = new Date('2026-10-14T10:00:00Z');

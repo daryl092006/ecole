@@ -1,4 +1,5 @@
 'use client';
+import DrawerActions from '@/components/ui/DrawerActions';
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { usePortal } from '@/hooks/usePortal';
@@ -25,7 +26,7 @@ export default function StudentCrudActions({ matricule, onCreated }: { matricule
         }}>
         <fieldset className="permission-fieldset" disabled={saving}>
           {matricule ? <><p>Vérifiez l’identité du dossier à retirer et indiquez le motif. Vous pourrez relire les conséquences avant de confirmer.</p><label className="form-group">Motif<textarea className="input" required minLength={3} maxLength={1000} value={reason} onChange={event => setReason(event.target.value)} /></label></> : <><p>Renseignez l’identité officielle de la personne à inscrire. Recherchez d’abord son nom ou son matricule pour éviter un doublon. La nouvelle inscription annuelle sera confirmée dans le parcours Nouvelle inscription.</p><label className="form-group">Matricule officiel<input className="input" required maxLength={160} value={number} onChange={event => setNumber(event.target.value)} /></label><div className="form-grid">{(Object.keys(labels) as (keyof typeof labels)[]).map(key => <label className="form-group" key={key}>{labels[key]}<input className="input" required={key === 'firstname' || key === 'lastname'} maxLength={key === 'address' ? 1000 : key === 'phone' ? 80 : 160} type={key === 'birthDate' ? 'date' : key === 'email' ? 'email' : key === 'phone' ? 'tel' : 'text'} value={person[key]} onChange={event => setPerson({ ...person, [key]: event.target.value })} /></label>)}</div></>}
-          <button className="btn btn-primary" type="submit">Vérifier les informations</button>
+          <DrawerActions><button className="btn btn-primary" type="submit">Vérifier les informations</button></DrawerActions>
         </fieldset>
       </ReviewedForm>
     </WorkPage>}

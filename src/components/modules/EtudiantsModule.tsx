@@ -73,6 +73,7 @@ export default function EtudiantsModule({ persistent = false, activeRole, create
                   <tr>
                     <th>Matricule</th>
                     <th>Nom complet</th>
+                    <th>Nationalité</th>
                     <th>Filière / Niveau</th>
                     {canViewFinance && <th>Situation financière</th>}
                     {canViewFinance && <th>Bourse</th>}
@@ -88,6 +89,7 @@ export default function EtudiantsModule({ persistent = false, activeRole, create
                         <div className="cell-main">{s.firstname} {s.lastname}</div>
                         <div className="cell-sub">{s.email}</div>
                       </td>
+                      <td>{s.nationality.trim() || 'Non renseignée'}</td>
                       <td>
                         <div className="cell-main">{s.filiere}</div>
                         <div className="cell-sub">{s.niveau} · {s.groupe}</div>
@@ -109,7 +111,7 @@ export default function EtudiantsModule({ persistent = false, activeRole, create
                       </td>
                     </tr>
                   ))}
-                  {filteredStudents.length === 0 && <tr><td colSpan={canViewFinance ? 7 : 5}>{students.length ? 'Aucun étudiant ne correspond aux filtres.' : 'Aucun dossier étudiant créé.'}</td></tr>}
+                  {filteredStudents.length === 0 && <tr><td colSpan={canViewFinance ? 8 : 6}>{students.length ? 'Aucun étudiant ne correspond aux filtres.' : 'Aucun dossier étudiant créé.'}</td></tr>}
                 </tbody>
               </ResponsiveTable>
             </div>

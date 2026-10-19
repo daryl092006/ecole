@@ -80,6 +80,36 @@ export function filterRelationalSnapshot(snapshot: RelationalSnapshot, context: 
   const paymentIds = new Set(rows('payments').filter(row => enrollmentIds.has(field(row,'enrollment_id'))).map(row => row.id));
   const allocationIds = new Set(rows('payment_allocations').filter(row => paymentIds.has(field(row,'payment_id'))).map(row => row.id));
   const decisionIds = new Set(rows('jury_decisions').filter(row => enrollmentIds.has(field(row,'enrollment_id')) && (!self || row.decision !== undefined)).map(row => row.id));
+  const communicationAccess = can('communication.view') || self;
+  const communicationAdministration = communicationAccess && unscoped && !self && !teacher && !supervisor
+    && (can('communication.manage') || context.role === ROLES.DG || context.role === ROLES.IT);
+  const now = Date.now();
+  const communicationRoleIds = new Set(rows('roles').filter(row => row.code === context.roleCode && row.active !== false).map(row => row.id));
+  const groupInCommunicationYear = (groupId: string, communication: DatabaseRow) => groupIds.has(groupId)
+    && (!communication.academic_year_id || rows('groups').some(group => group.id === groupId && group.academic_year_id === communication.academic_year_id)
+      || rows('group_offerings').some(link => link.group_id === groupId && offeringIds.has(field(link,'offering_id')) && rows('academic_offerings').some(offering => offering.id === link.offering_id && offering.academic_year_id === communication.academic_year_id)));
+  const audienceMatches = (audience: DatabaseRow, communication: DatabaseRow) => context.grants.some(grant => {
+    if (grant.academic_year_id && grant.academic_year_id !== communication.academic_year_id) return false;
+    // Each audience has exactly one target in the SQL schema. Unknown targets never imply everyone.
+    if (audience.all_accounts === true) return true;
+    if (audience.role_id) return communicationRoleIds.has(field(audience,'role_id'));
+    if (audience.group_id) return (!grant.group_id || grant.group_id === audience.group_id)
+      && groupInCommunicationYear(field(audience,'group_id'), communication)
+      && (!grant.site_id || rows('academic_offerings').some(offering => offering.site_id === grant.site_id && rows('group_offerings').some(link => link.group_id === audience.group_id && link.offering_id === offering.id)));
+    if (audience.site_id) return (!grant.site_id || grant.site_id === audience.site_id)
+      && (grant.site_id === audience.site_id || rows('academic_offerings').some(offering => offeringIds.has(offering.id) && offering.site_id === audience.site_id
+        && (!communication.academic_year_id || offering.academic_year_id === communication.academic_year_id)));
+    return false;
+  });
+  const communicationIds = new Set(rows('communications').filter(row => {
+    if (!communicationAccess) return false;
+    if (communicationAdministration) return true;
+    const published = Date.parse(field(row,'published_at'));
+    const expires = row.expires_at == null ? null : Date.parse(field(row,'expires_at'));
+    return Number.isFinite(published) && published <= now && !row.withdrawn_at
+      && (expires === null || Number.isFinite(expires) && expires > now)
+      && rows('communication_audiences').some(audience => audience.communication_id === row.id && audienceMatches(audience,row));
+  }).map(row => row.id));
   const peopleIds = new Set([context.personId]);
   rows('students').filter(row => studentIds.has(row.id)).forEach(row => peopleIds.add(field(row,'person_id')));
   const visibleTeacherIds = new Set((can('academic.view') || self ? assignments : []).map(row => field(row,'teacher_id')));
@@ -92,14 +122,18 @@ export function filterRelationalSnapshot(snapshot: RelationalSnapshot, context: 
   for (const [name, collection] of Object.entries(tables)) {
     const permitted = name === 'people' || name === 'file_objects' || name === 'support_tickets' || name === 'support_messages' || name === 'support_categories' || name === 'support_files'
       || !!policy.get(name) && can(policy.get(name)!)
-      || self && (financial.has(name) || academic.has(name) || ['students','enrollments','enrollment_groups','student_documents','document_types','document_reviews','generated_documents','communications','communication_audiences','communication_reads'].includes(name));
+      || self && (financial.has(name) || academic.has(name) || ['students','enrollments','enrollment_groups','student_documents','document_types','document_reviews','generated_documents','communications','communication_audiences','communication_reads','communication_files'].includes(name));
     if (!permitted || (teacher || supervisor || self) && ['academic_rule_versions','juries','jury_members','jury_decisions','jury_grade_inputs','credit_awards'].includes(name)) continue;
     source[name] = collection.filter(row => {
       if (name === 'attendances' || name === 'teacher_attendances') return attendanceSessionIds.has(field(row, 'session_id'));
       if (name === 'absence_justifications') return attendanceIds.has(field(row, 'attendance_id'));
       if (name === 'people') return peopleIds.has(row.id);
       if (name === 'staff' || name === 'staff_contracts') return unscoped || (name === 'staff' ? row.person_id === context.personId : rows('staff').some(staff => staff.id === row.staff_id && staff.person_id === context.personId));
-      if (name.startsWith('communication')) return false; // Publication et audiences traitées par un futur service dédié.
+      if (name === 'communications') return communicationIds.has(row.id);
+      if (name === 'communication_audiences') return communicationIds.has(field(row,'communication_id'))
+        && (communicationAdministration || rows('communications').some(communication => communication.id === row.communication_id && audienceMatches(row,communication)));
+      if (name === 'communication_reads') return communicationIds.has(field(row,'communication_id')) && row.account_id === context.accountId;
+      if (name === 'communication_files') return communicationIds.has(field(row,'communication_id'));
       if (name === 'file_objects') return false; // Autorisation séparée par le propriétaire de la pièce.
       if (name === 'accounts') return unscoped && can('user.manage') || row.id === context.accountId;
       if (name === 'role_grants') return unscoped || row.account_id === context.accountId;

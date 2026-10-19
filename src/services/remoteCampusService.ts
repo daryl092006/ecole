@@ -134,6 +134,10 @@ export async function manageEvaluation(role: RoleName, body: Record<string, unkn
   return readResponse(await fetch('/api/evaluations', { method: 'POST', headers: { ...await headers(role), 'Content-Type': 'application/json' }, body: JSON.stringify(body) }));
 }
 
+export async function manageComplaint(role: RoleName, body: Record<string, unknown>): Promise<{ id?: string; revision: number }> {
+  return readResponse(await fetch('/api/complaints', { method: 'POST', headers: { ...await headers(role), 'Content-Type': 'application/json' }, body: JSON.stringify(body) }));
+}
+
 export async function loadTeachers(role: RoleName, signal?: AbortSignal): Promise<import('@/types/teachers').TeacherDirectory> {
   return readResponse(await fetch('/api/teachers', { headers: await headers(role), cache: 'no-store', signal }));
 }

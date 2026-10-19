@@ -1,6 +1,18 @@
 import type { DatabaseRow, PersistentChange, RelationalSnapshot } from '@/types/persistence';
 
 export interface AnnualOfferingVariant { curriculum_id: string; delivery_mode: string | null; }
+export function archiveAnnualOfferings(snapshot: RelationalSnapshot, yearId: string, ids: string[], reason: string): PersistentChange[] {
+  const year = snapshot.tables.academic_years?.find(row => row.id === yearId && !row.archived_at);
+  if (!year || !['BROUILLON', 'OUVERTE'].includes(String(year.status))) throw new Error('Choisissez une année en préparation ou ouverte.');
+  if (!ids.length || ids.length > 100 || new Set(ids).size !== ids.length) throw new Error('Sélection de formations invalide.');
+  const archivedAt = new Date().toISOString();
+  return ids.map(id => {
+    const row = snapshot.tables.academic_offerings?.find(item => item.id === id && !item.archived_at);
+    if (!row || row.academic_year_id !== yearId) throw new Error('Une formation est indisponible ou appartient à une autre année.');
+    if (Object.entries(snapshot.tables).some(([table, records]) => table !== 'academic_offerings' && records.some(item => item.offering_id === id && !item.archived_at))) throw new Error('Cette filière comporte une formation rattachée à un groupe, une inscription ou une activité. Retirez ses rattachements avant de retirer la ligne.');
+    return { table: 'academic_offerings', operation: 'update', record: { id, archived_at: archivedAt, reason } };
+  });
+}
 export interface AnnualOfferingGroup { id: string; programId: string; name: string; rows: DatabaseRow[]; }
 export const offeringVariantKey = (row: DatabaseRow | AnnualOfferingVariant) => JSON.stringify([row.curriculum_id, row.delivery_mode || null]);
 
@@ -8,15 +20,28 @@ export function groupAnnualOfferings(rows: DatabaseRow[], snapshot: RelationalSn
   const groups = new Map<string, AnnualOfferingGroup>();
   for (const row of rows) {
     const curriculum = snapshot.tables.curricula?.find(item => item.id === row.curriculum_id);
-    const programId = String(curriculum?.program_id || row._programId || '');
-    const program = snapshot.tables.programs?.find(item => item.id === programId);
+    const program = snapshot.tables.programs?.find(item => item.id === curriculum?.program_id);
+    const programId = program ? program.id : '';
     // Une absence de filière confirmée ne permet pas de fusionner deux formations.
     const id = programId || `unresolved:${row.id}`;
     const group = groups.get(id) || { id, programId, name: String(program?.name || (programId ? row._programName : '') || 'Filière à préciser'), rows: [] };
     group.rows.push(row);
     groups.set(id, group);
   }
+  const levelName = (row: DatabaseRow) => String(snapshot.tables.levels?.find(level => level.id === row.level_id)?.name || row._levelName || '');
+  const rank = (row: DatabaseRow) => {
+    const name = levelName(row).toLocaleLowerCase('fr');
+    return name.startsWith('licence') ? 1 : name.startsWith('master') ? 2 : name.startsWith('executive') ? 3 : name.startsWith('doctorat') ? 4 : 5;
+  };
+  for (const group of groups.values()) group.rows.sort((a, b) => rank(a) - rank(b) || levelName(a).localeCompare(levelName(b), 'fr', { numeric: true }));
   return [...groups.values()];
+}
+
+export function annualOfferingLabel(row: DatabaseRow, snapshot: RelationalSnapshot): string {
+  const curriculum = snapshot.tables.curricula?.find(item => item.id === row.curriculum_id);
+  const program = snapshot.tables.programs?.find(item => item.id === curriculum?.program_id);
+  const level = snapshot.tables.levels?.find(item => item.id === row.level_id);
+  return `${program?.name || 'Filière à préciser'} · ${level?.name || row._levelName || 'Niveau à préciser'} · ${row.delivery_mode || 'Mode à préciser'}`;
 }
 
 export function annualOfferingChanges(snapshot: RelationalSnapshot, yearId: string, programId: string, variants: AnnualOfferingVariant[], reason: string): PersistentChange[] {

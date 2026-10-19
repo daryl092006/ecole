@@ -11,6 +11,7 @@ export const ALL_TABS = [
       { id: 'espace_dashboard', name: 'Tableau de bord' },
       { id: 'espace_support', name: 'Support technique' },
       { id: 'espace_announcements', name: 'Annonces & Actualités' },
+      { id: 'espace_exams', name: 'Mes épreuves en ligne' },
       { id: 'espace_documents', name: 'Mes documents' },
       { id: 'espace_finance', name: 'Ma scolarité' },
     ],
@@ -119,6 +120,7 @@ export const ALL_TABS = [
 ];
 
 const SUBTAB_PERMISSIONS: Record<string, Permission[]> = {
+  espace_exams: ['exam.take'],
   web_applications: ['student.view'],
   web_documents: ['student.view'],
   web_brochures: ['communication.view'],

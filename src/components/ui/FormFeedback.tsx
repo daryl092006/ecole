@@ -7,12 +7,14 @@ interface Props { message: string; error: boolean; }
 export default function FormFeedback({ message, error }: Props) {
   const [target, setTarget] = useState<Element | null>(null);
   useEffect(() => {
-    const main = document.getElementById('main-content');
-    if (!main) return;
-    const sync = () => setTarget(main.querySelector(':scope > .work-page .work-page-feedback'));
+    const sync = () => {
+      const active = Array.from(document.querySelectorAll<HTMLElement>('.detail-overlay'))
+        .filter(overlay => !overlay.inert && overlay.getAttribute('aria-hidden') !== 'true').at(-1);
+      setTarget(active?.querySelector('.detail-drawer-feedback') || null);
+    };
     sync();
     const observer = new MutationObserver(sync);
-    observer.observe(main, { childList: true });
+    observer.observe(document.body, { childList: true, subtree: true, attributes: true, attributeFilter: ['inert', 'aria-hidden'] });
     return () => observer.disconnect();
   }, []);
   if (!message) return null;

@@ -17,7 +17,7 @@ for (const width of [390, 1440]) {
     await page.route('**/api/subjects', route => route.fulfill({ json: { revision: 1, subjects: [] } }));
     const errors: string[] = [];
     page.on('pageerror', error => errors.push(error.message));
-    const reviews = [];
+    const reviews: { href: string; title: string[]; content: string; actions: string[] }[] = [];
     const routes = [...PORTAL_ROUTES, ...Object.entries(MODULE_PATHS).map(([tab, href]) => ({ tab, section: `${tab}_overview`, href, title: tab })), { tab: 'etudiants', section: 'student_record', href: studentPath('ESCEN-TEST-001'), title: 'Dossier étudiant' }];
     for (const route of routes) {
       await test.step(route.href, async () => {
@@ -48,6 +48,9 @@ for (const width of [390, 1440]) {
     await page.goto('/etudiants');
     await expect(page.getByRole('heading', { name: 'Dossiers étudiants', exact: true })).toBeVisible();
     await expect(page.getByRole('row').filter({ hasText: 'ESCEN-TEST-001' })).toBeVisible();
+    await page.getByRole('combobox', { name: 'Nationalité', exact: true }).selectOption('__missing__');
+    await expect(page.getByRole('row').filter({ hasText: 'ESCEN-TEST-001' })).toBeVisible();
+    await page.getByRole('button', { name: 'Effacer les filtres' }).click();
     await page.locator('.student-advanced-filters summary').click();
     await page.getByRole('combobox', { name: 'Filière', exact: true }).selectOption('Informatique');
     await expect(page.locator('.student-advanced-filters summary')).toContainText('(1)');

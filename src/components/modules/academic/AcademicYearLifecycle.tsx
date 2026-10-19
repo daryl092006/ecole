@@ -1,6 +1,9 @@
 'use client';
+import DrawerActions from '@/components/ui/DrawerActions';
+import { DrawerCloseButton } from '@/components/ui/DetailDrawer';
 import IconButton from '@/components/ui/IconButton';
 import YearPreparationPanel from './YearPreparationPanel';
+import WorkPage from '@/components/ui/WorkPage';
 import { useState } from 'react';
 import { usePortal } from '@/hooks/usePortal';
 import { changeAcademicYear, loadYearPreparation } from '@/services/remoteCampusService';
@@ -25,6 +28,7 @@ export default function AcademicYearLifecycle({
   const [busy, setBusy] = useState(false);
   const canManage = portal.globalAccess && portal.perms.permissions.includes('academic.year.open');
   const [preparing, setPreparing] = useState<string | null>(null);
+  const [pendingYear, setPendingYear] = useState<DatabaseRow | null>(null);
 
   const opened = rows.filter(year => year.status === 'OUVERTE');
   const currentId = portal.academicYearContext?.currentYearId;
@@ -55,16 +59,11 @@ export default function AcademicYearLifecycle({
         // Activation de l'année
         if (status === 'BROUILLON') {
           // Vérifier si la configuration de l'année est prête
-          try {
-            const prep = await loadYearPreparation(year.id, portal.activeRole);
-            if (!prep.ready) {
-              // Si pas prête, on ouvre directement le panneau de configuration obligatoire
-              setPreparing(year.id);
-              setBusy(false);
-              return;
-            }
-          } catch {
-            // Si la route de préparation n'est pas interceptée ou en environnement de test, on tente l'ouverture
+          const prep = await loadYearPreparation(year.id, portal.activeRole);
+          if (!prep.ready) {
+            setPreparing(year.id);
+            setPendingYear(null);
+            return;
           }
 
           const otherOpened = opened.find(y => y.id !== year.id);
@@ -119,11 +118,13 @@ export default function AcademicYearLifecycle({
         );
       }
 
+      setPendingYear(null);
       portal.reloadCampus();
       onSaved();
     } catch (cause) {
       if (cause instanceof Error && (cause.message.includes('non prête') || cause.message.includes('prête'))) {
         setPreparing(year.id);
+        setPendingYear(null);
         setError('');
         return;
       }
@@ -151,7 +152,7 @@ export default function AcademicYearLifecycle({
           Année de travail active : <strong>{current ? String(current.name) : 'Aucune année de travail désignée'}</strong>
         </p>
         <p className="cell-sub">
-          Activez ou désactivez directement l’année officielle avec son bouton d’activation. Si la configuration d’une année n’est pas terminée, le formulaire requis s’ouvrira automatiquement.
+          Le bouton d’activation présente les changements à confirmer. Une année en brouillon doit être entièrement préparée avant son ouverture.
         </p>
       </div>
 
@@ -195,7 +196,7 @@ export default function AcademicYearLifecycle({
                     title={isCurrent ? `Désactiver l’année ${year.name}` : status === 'CLOTUREE' ? 'Année clôturée' : `Activer l’année ${year.name}`}
                     className={`year-toggle-btn ${isCurrent ? 'active' : ''}`}
                     disabled={status === 'CLOTUREE' || busy}
-                    onClick={() => void handleToggle(year)}
+                    onClick={() => { setError(''); setPendingYear(year); }}
                   >
                     <span className="year-toggle-slider">
                       <span className="year-toggle-knob" />
@@ -219,6 +220,17 @@ export default function AcademicYearLifecycle({
           );
         })}
 
+      {pendingYear && <WorkPage title={`Changer l’année de travail · ${pendingYear.name}`} busy={busy} onClose={() => setPendingYear(null)}>
+        <p>Année concernée : <strong>{String(pendingYear.name)}</strong>.</p>
+        {pendingYear.id === currentId ? <p>Cette année cessera d’être l’année de travail. Elle conservera son état actuel. Les activités nécessiteront un choix explicite d’année tant qu’aucune année de travail ne sera désignée.</p> : <>
+          {pendingYear.status === 'BROUILLON' && <p>La configuration sera vérifiée avant l’ouverture de cette année.</p>}
+          {pendingYear.status === 'BROUILLON' && opened.filter(year => year.id !== pendingYear.id).map(year => <p key={year.id}>L’année <strong>{String(year.name)}</strong> passera de « Ouverte » à « En clôture ». Sa clôture définitive reste une opération distincte.</p>)}
+          <p><strong>{String(pendingYear.name)}</strong> deviendra l’année de travail de l’établissement. Les inscriptions et les paiements existants conserveront leur année.</p>
+        </>}
+        {error && <p role="alert">{error}</p>}
+        {busy && <p role="status">Vérification et changement de l’année en cours…</p>}
+        <DrawerActions><button className="btn btn-primary" disabled={busy} onClick={() => void handleToggle(pendingYear)}>Confirmer le changement d’année</button><DrawerCloseButton className="btn btn-outline" disabled={busy}>Annuler</DrawerCloseButton></DrawerActions>
+      </WorkPage>}
       {preparing && (
         <YearPreparationPanel
           key={preparing}
@@ -232,7 +244,8 @@ export default function AcademicYearLifecycle({
             const targetYear = rows.find(year => year.id === preparing);
             setPreparing(null);
             if (targetYear) {
-              void handleToggle(targetYear);
+              setError('');
+              setPendingYear(targetYear);
             }
           }}
         />

@@ -1,11 +1,15 @@
 import type { TeacherDirectory } from './teachers';
 
 export type SessionMode = 'COURS' | 'PAPIER' | 'EN_LIGNE';
+export interface ScheduledExam {
+  id: string; evaluationId: string; name: string; opensAt: string; closesAt: string;
+  durationMinutes: number | null; hasCopies: boolean; hasResults: boolean;
+}
 export interface ManagedSession {
   id: string; assignmentId: string; offeringId: string; groupId: string; teacherId: string;
   roomId: string | null; startsAt: string; endsAt: string; mode: SessionMode; status: string;
   replacementTeacherId: string | null; actualRoomId: string | null; reason: string;
-  hasAttendance: boolean; hasExam: boolean;
+  hasAttendance: boolean; hasExam: boolean; exam: ScheduledExam | null;
 }
 export interface ScheduleDirectory {
   revision: number; selectedYearId: string | null; canCreate: boolean; canUpdate: boolean;

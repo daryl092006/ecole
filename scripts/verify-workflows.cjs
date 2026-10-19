@@ -101,6 +101,15 @@ const accented = { ...student, firstname: 'Élodie' };
 assert.equal(filterRegisteredStudents([accented], { ...EMPTY_STUDENT_FILTERS, search: 'elodie' }, ROLES.LOG).length, 1);
 assert.equal(filterRegisteredStudents([student], { ...EMPTY_STUDENT_FILTERS, groupId: 'OTHER' }, ROLES.LOG).length, 0);
 assert.doesNotThrow(() => filterRegisteredStudents([student], EMPTY_STUDENT_FILTERS, ROLES.IT));
+const nationalities = [
+  { ...student, nationality: ' Béninoise ', gender: 'F', status: 'Inscrit' },
+  { ...student, nationality: 'BENINOISE', gender: 'M', status: 'Réinscrit' },
+  { ...student, nationality: ' ', gender: '', status: 'Inscrit' },
+];
+assert.equal(filterRegisteredStudents(nationalities, { ...EMPTY_STUDENT_FILTERS, nationality: 'beninoise' }, ROLES.IT).length, 2);
+assert.equal(filterRegisteredStudents(nationalities, { ...EMPTY_STUDENT_FILTERS, nationality: 'beninoise', gender: 'f', status: 'inscrit' }, ROLES.IT).length, 1);
+assert.equal(filterRegisteredStudents(nationalities, { ...EMPTY_STUDENT_FILTERS, nationality: '__missing__' }, ROLES.IT).length, 1);
+assert.equal(filterRegisteredStudents(nationalities, { ...EMPTY_STUDENT_FILTERS, nationality: 'togolaise' }, ROLES.IT).length, 0);
 const rows = getFinancialReport([second.updatedStudent], ROLES.RAF, '2027-01-01');
 assert.equal(rows[0].situation, 'EN_RETARD');
 assert.equal(rows[0].overdue, 500);
@@ -226,3 +235,5 @@ require('../src/services/academicYearClosureService.test.ts');
 require('../src/services/assessmentDisplayService.test.ts');
 require('../src/services/evaluationCandidateService.test.ts');
 require('../src/services/evaluationGradePolicy.test.ts');
+
+require('../src/services/onlineExamDraftService.test.ts');

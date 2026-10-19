@@ -2,7 +2,7 @@ import { test, expect } from '@playwright/test';
 import { mkdirSync, writeFileSync } from 'node:fs';
 import { PORTAL_ROUTES } from '../../src/constants/portalRoutes';
 import { getAvailableTabs } from '../../src/permissions/navigation';
-import { DEMO_ACCOUNTS, DEMO_PASSWORD } from '../../src/services/demoSessionService';
+import { DEMO_ACCOUNTS, DEMO_PASSWORD } from './legacy-demo-fixture';
 import { ROLES, type RoleName } from '../../src/types/permissions';
 import { expectWorkspaceFits } from './helpers';
 

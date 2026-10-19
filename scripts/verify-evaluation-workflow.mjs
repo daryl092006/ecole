@@ -1,3 +1,4 @@
+import { verifyOnlineExams } from './verify-online-exams.mjs';
 import assert from 'node:assert/strict';
 import { randomUUID } from 'node:crypto';
 import { loadLocalApiModule } from './local-api-fixture.mjs';
@@ -334,4 +335,5 @@ export async function verifyEvaluationWorkflow(db, check, { year, assignment, le
     assert.equal(audit.old_value.absence_status, 'NON_TRAITE');
     assert.equal(audit.new_value.absence_status, null);
   });
+  await verifyOnlineExams(db, check, { year, actor, teaching, offering, addStudent, insert, post });
 }

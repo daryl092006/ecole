@@ -32,7 +32,7 @@ for (const width of [390, 1440]) {
     await captureWorkspace(page, 'finance-operationnelle');
     await page.goto('/academique/examens');
     await expect(page.getByRole('cell', { name: /Épreuve opérationnelle$/ })).toBeVisible();
-    await expect(page.getByRole('cell', { name: /Publiées$/ })).toBeVisible();
+    await expect(page.getByRole('cell', { name: /Résultats publiés$/ })).toBeVisible();
     await page.getByRole('button', { name: 'Ouvrir le détail', exact: true }).click();
     await expect(page.getByRole('dialog')).toContainText('Alice Exemple');
     await expect(page.getByRole('dialog')).toContainText('17');

@@ -51,17 +51,6 @@ export default function WorkspaceHome({ mode = 'home' }: { mode?: 'home' | 'over
     : Math.max(0, expectedAmount - collectedAmount);
   const recoveryRate = expectedAmount > 0 ? Math.min(100, (collectedAmount / expectedAmount) * 100) : 0;
 
-  // Academic aggregates
-  const grades = activeRows('grades');
-  const numericScores = grades.map(g => Number(g.value ?? g.score)).filter(n => Number.isFinite(n));
-  const globalAverage = numericScores.length
-    ? `${(numericScores.reduce((a, b) => a + b, 0) / numericScores.length).toFixed(1).replace('.', ',')}/20`
-    : '—';
-  const passingCount = numericScores.filter(n => n >= 10).length;
-  const globalPassRate = numericScores.length
-    ? `${Math.round((passingCount / numericScores.length) * 100)} %`
-    : '—';
-
   // Population breakdowns
   const totalStudents = state.students.length;
   const filiereMap = new Map<string, number>();
@@ -109,11 +98,10 @@ export default function WorkspaceHome({ mode = 'home' }: { mode?: 'home' | 'over
           icon: Server,
           items: [
             { label: 'Comptes actifs', value: `${activeUsers}/${state.users.length}` },
-            { label: 'Rôles actifs', value: `${count('user_roles')}` },
             { label: 'Enseignants', value: `${count('teachers')}` },
             { label: 'Support ouvert', value: `${openTickets}` },
             { label: 'Journal d’activité', value: `${count('audit_logs')}` },
-            { label: 'Étudiants inscrits', value: `${totalStudents}` },
+            { label: 'Dossiers étudiants', value: `${totalStudents}` },
           ],
         },
         {
@@ -124,9 +112,8 @@ export default function WorkspaceHome({ mode = 'home' }: { mode?: 'home' | 'over
             { label: 'Filières', value: `${filiereBreakdown.length}` },
             { label: 'Groupes', value: `${count('groups')}` },
             { label: 'Épreuves', value: `${activeEvals.length}` },
-            { label: 'Moyenne', value: globalAverage },
             { label: 'Encaissé', value: fmtCompactFcfa(collectedAmount) },
-            { label: 'Recouvrement', value: `${Math.round(recoveryRate)} %` },
+            { label: 'Recouvrement', value: expectedAmount > 0 ? `${Math.round(recoveryRate)} %` : 'Non établi' },
           ],
         },
       ];
@@ -139,12 +126,10 @@ export default function WorkspaceHome({ mode = 'home' }: { mode?: 'home' | 'over
           href: '/etudiants',
           icon: GraduationCap,
           items: [
-            { label: 'Inscrits', value: `${totalStudents}` },
+            { label: 'Dossiers', value: `${totalStudents}` },
             { label: 'Filières', value: `${filiereBreakdown.length}` },
             { label: 'Groupes', value: `${count('groups')}` },
             { label: 'Enseignants', value: `${count('teachers')}` },
-            { label: 'Moyenne', value: globalAverage },
-            { label: 'Réussite', value: globalPassRate },
           ],
         },
         {
@@ -152,10 +137,10 @@ export default function WorkspaceHome({ mode = 'home' }: { mode?: 'home' | 'over
           href: '/finance',
           icon: TrendingUp,
           items: [
-            { label: 'Attendu', value: fmtCompactFcfa(expectedAmount) },
+            { label: 'Attendu', value: knownFinancialStudents.length ? fmtCompactFcfa(expectedAmount) : 'Non établi' },
             { label: 'Encaissé', value: fmtCompactFcfa(collectedAmount) },
-            { label: 'Reste à payer', value: fmtCompactFcfa(remainingAmount) },
-            { label: 'Recouvrement', value: `${Math.round(recoveryRate)} %` },
+            { label: 'Reste à payer', value: knownFinancialStudents.length ? fmtCompactFcfa(remainingAmount) : 'Non établi' },
+            { label: 'Recouvrement', value: expectedAmount > 0 ? `${Math.round(recoveryRate)} %` : 'Non établi' },
             { label: 'Dossiers soldés', value: `${settledStudents}` },
             { label: 'Débiteurs', value: `${debtorStudents}` },
           ],
@@ -185,8 +170,6 @@ export default function WorkspaceHome({ mode = 'home' }: { mode?: 'home' | 'over
           items: [
             { label: 'Épreuves', value: `${activeEvals.length}` },
             { label: 'Notes', value: `${count('grades')}` },
-            { label: 'Moyenne', value: globalAverage },
-            { label: 'Réussite', value: globalPassRate },
             { label: 'Réclamations', value: `${count('complaints')}` },
             { label: 'Décisions jury', value: `${count('jury_decisions')}` },
           ],
@@ -234,7 +217,7 @@ export default function WorkspaceHome({ mode = 'home' }: { mode?: 'home' | 'over
           icon: Wallet,
           items: [
             { label: 'Facturés', value: `${knownFinancialStudents.length}/${totalStudents}` },
-            { label: 'Attendu', value: fmtCompactFcfa(expectedAmount) },
+            { label: 'Attendu', value: knownFinancialStudents.length ? fmtCompactFcfa(expectedAmount) : 'Non établi' },
             { label: 'Contrats', value: `${count('financial_contracts')}` },
             { label: 'Échéances', value: `${count('installments')}` },
             { label: 'Bourses', value: `${count('scholarship_awards')}` },
@@ -247,8 +230,8 @@ export default function WorkspaceHome({ mode = 'home' }: { mode?: 'home' | 'over
           icon: TrendingUp,
           items: [
             { label: 'Encaissé', value: fmtCompactFcfa(collectedAmount) },
-            { label: 'Reste à payer', value: fmtCompactFcfa(remainingAmount) },
-            { label: 'Recouvrement', value: `${Math.round(recoveryRate)} %` },
+            { label: 'Reste à payer', value: knownFinancialStudents.length ? fmtCompactFcfa(remainingAmount) : 'Non établi' },
+            { label: 'Recouvrement', value: expectedAmount > 0 ? `${Math.round(recoveryRate)} %` : 'Non établi' },
             { label: 'Règlements', value: `${confirmedPayments.length}` },
             { label: 'En attente', value: `${pendingPayments.length}` },
             { label: 'Reçus', value: `${count('receipts')}` },
@@ -280,8 +263,6 @@ export default function WorkspaceHome({ mode = 'home' }: { mode?: 'home' | 'over
             { label: 'Épreuves', value: `${activeEvals.length}` },
             { label: 'Copies', value: `${count('evaluation_candidates')}` },
             { label: 'Notes', value: `${count('grades')}` },
-            { label: 'Moyenne', value: globalAverage },
-            { label: 'Réussite', value: globalPassRate },
             { label: 'Réclamations', value: `${count('complaints')}` },
           ],
         },
@@ -341,7 +322,7 @@ export default function WorkspaceHome({ mode = 'home' }: { mode?: 'home' | 'over
       return [
         {
           title: 'Communication & Site',
-          href: '/communication/actualites',
+          href: '/site-web/articles',
           icon: Megaphone,
           items: [
             { label: 'Publications', value: `${count('communications')}` },
@@ -364,7 +345,6 @@ export default function WorkspaceHome({ mode = 'home' }: { mode?: 'home' | 'over
             { label: 'Niveau', value: me?.niveau || '—' },
             { label: 'Groupe', value: me?.groupe || '—' },
             { label: 'Notes', value: `${count('grades')}` },
-            { label: 'Moyenne', value: globalAverage },
             { label: 'Payé', value: me?.financials?.available ? fmtCompactFcfa(me.financials.paid) : '—' },
             { label: 'Reste', value: me?.financials?.available ? fmtCompactFcfa(me.financials.remaining) : '—' },
           ],
@@ -382,10 +362,10 @@ export default function WorkspaceHome({ mode = 'home' }: { mode?: 'home' | 'over
       ? [{ label: 'Dossiers étudiants', href: '/etudiants', icon: GraduationCap }]
       : []),
     ...(state.perms.permissions.includes('payment.record')
-      ? [{ label: 'Encaisser un versement', href: '/finance/versements', icon: Wallet }]
+      ? [{ label: 'Versements et reçus', href: '/finance/versements', icon: Wallet }]
       : []),
     ...(state.perms.permissions.includes('grade.enter') || state.perms.permissions.includes('grade.review')
-      ? [{ label: 'Saisir les notes', href: '/academique/notes', icon: BookOpen }]
+      ? [{ label: 'Consulter les notes', href: '/academique/notes', icon: BookOpen }]
       : []),
     ...(state.perms.permissions.includes('schedule.create') || state.perms.permissions.includes('attendance.record')
       ? [{ label: 'Emploi du temps', href: '/academique/emploi-du-temps', icon: CalendarDays }]
@@ -500,11 +480,8 @@ export default function WorkspaceHome({ mode = 'home' }: { mode?: 'home' | 'over
         </div>
       </div>}
 
-      {renderKpiCards()}
-      {renderPopulationBreakdown()}
-
       <div className="home-section-heading" style={{ marginTop: '2rem' }}><div><h2>Rubriques de l’établissement</h2></div></div>
-      <div className="home-destinations home-navigation">{destinations.map(group => <section className="card" key={group.id} aria-label={group.name}><h3>{group.name}</h3><div>{group.pages.map(page => <Link href={page.href} key={page.id}><span>{page.name}</span><ArrowUpRight size={16} /></Link>)}</div></section>)}</div>
+      <div className="home-destinations home-navigation">{destinations.map(group => <section className="card" key={group.id} aria-label={group.name}><details className="home-directory-group"><summary><h3>{group.name}</h3><span>{group.pages.length} rubrique(s)</span></summary><div>{group.pages.map(page => <Link href={page.href} key={page.id}><span>{page.name}</span><ArrowUpRight size={16} /></Link>)}</div></details></section>)}</div>
     </>}
 
     {mode === 'overview' && <>

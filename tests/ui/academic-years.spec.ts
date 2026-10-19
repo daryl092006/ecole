@@ -27,6 +27,7 @@ async function annualFixture(page: Page, configured = true) {
     return route.fulfill({ json: { ...filterSnapshotForAcademicYear({ ...source, revision }, selectedYearId), academicContext: { selection, selectedYearId, currentYearId, years } } });
   });
   await page.route('**/api/catalog/*', route => route.fulfill({ json: { revision, tables: { academic_years: years }, historyLinks: [] } }));
+  await page.route('**/api/year-preparation', route => route.fulfill({ json: { ready: true, checks: [] } }));
   await page.route('**/api/academic-years?*', route => route.fulfill({ json: academicYearClosureReview({ ...source, revision }, new URL(route.request().url()).searchParams.get('yearId')!) }));
   await page.route('**/api/academic-years', async route => {
     const body = route.request().postDataJSON(); commands.push(body);
@@ -65,11 +66,16 @@ for (const width of [390, 1440]) {
     await expect(page.getByRole('switch', { name: 'Activer l’année 2027-2028' })).not.toBeChecked();
 
     await page.getByRole('switch', { name: 'Désactiver l’année 2026-2027' }).click();
+    expect(fixture.commands).toHaveLength(0);
+    await page.getByRole('button', { name: 'Confirmer le changement d’année', exact: true }).click();
     await expect(page.getByRole('switch', { name: 'Activer l’année 2026-2027' })).toBeVisible();
     expect(fixture.commands).toHaveLength(1);
     expect(fixture.commands[0]).toMatchObject({ action: 'current', yearId: null });
 
     await page.getByRole('switch', { name: 'Activer l’année 2027-2028' }).click();
+    await expect(page.getByRole('dialog')).toContainText('En clôture');
+    expect(fixture.commands).toHaveLength(1);
+    await page.getByRole('button', { name: 'Confirmer le changement d’année', exact: true }).click();
     await expect(page.getByRole('combobox', { name: 'Année consultée', exact: true }).locator('option:checked')).toHaveText('Année de travail : 2027-2028');
     expect(fixture.commands[1]).toMatchObject({ action: 'transition', status: 'EN_CLOTURE', yearId: currentId });
     expect(fixture.commands[2]).toMatchObject({ action: 'transition', status: 'OUVERTE', yearId: futureId });
@@ -78,11 +84,30 @@ for (const width of [390, 1440]) {
 
     fixture.fail();
     await page.getByRole('switch', { name: 'Désactiver l’année 2027-2028' }).click();
-    await expect(page.getByRole('alert').filter({ hasText: 'Modification concurrente' })).toBeVisible();
+    await page.getByRole('button', { name: 'Confirmer le changement d’année', exact: true }).click();
+    await expect(page.getByRole('dialog').getByRole('alert').filter({ hasText: 'Modification concurrente' })).toBeVisible();
   });
 }
 test('Commande annuelle refusée sans session', async ({ request }) => {
   expect((await request.post('/api/academic-years', { data: { action: 'current', yearId: currentId, revision: 0, reason: 'Interdit' } })).status()).toBe(401);
+});
+
+test('Une erreur de préparation bloque tout changement annuel et permet la reprise', async ({ page }) => {
+  const fixture = await annualFixture(page);
+  let unavailable = true;
+  await page.route('**/api/year-preparation', route => route.fulfill(unavailable
+    ? { status: 503, json: { error: 'Vérification de préparation indisponible.' } }
+    : { json: { ready: true, checks: [] } }));
+  await page.goto('/academique/referentiel?collection=academic_years');
+  await page.getByRole('switch', { name: 'Activer l’année 2027-2028' }).click();
+  await page.getByRole('button', { name: 'Confirmer le changement d’année', exact: true }).click();
+  await expect(page.getByRole('dialog').getByRole('alert')).toContainText('Vérification de préparation indisponible.');
+  expect(fixture.commands).toHaveLength(0);
+  unavailable = false;
+  await page.getByRole('button', { name: 'Confirmer le changement d’année', exact: true }).click();
+  await expect(page.getByRole('dialog')).toHaveCount(0);
+  await expect(page.getByRole('combobox', { name: 'Année consultée', exact: true }).locator('option:checked')).toHaveText('Année de travail : 2027-2028');
+  expect(fixture.commands).toHaveLength(4);
 });
 
 for (const width of [390, 1440]) {

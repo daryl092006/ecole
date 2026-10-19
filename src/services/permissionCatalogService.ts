@@ -7,7 +7,7 @@ export const PERMISSION_DOMAINS = [
   { id: 'academic', label: 'Référentiel académique', prefixes: ['academic'] },
   { id: 'students', label: 'Dossiers étudiants', prefixes: ['student'] },
   { id: 'planning', label: 'Planning et présences', prefixes: ['schedule', 'attendance'] },
-  { id: 'grades', label: 'Notes et réclamations', prefixes: ['evaluation', 'grade', 'complaint'] },
+  { id: 'grades', label: 'Notes et réclamations', prefixes: ['exam', 'evaluation', 'grade', 'complaint'] },
   { id: 'finance', label: 'Finance', prefixes: ['finance', 'payment'] },
   { id: 'staff', label: 'Personnel et accès', prefixes: ['staff', 'user'] },
   { id: 'logistics', label: 'Achats et inventaire', prefixes: ['purchase', 'asset'] },

@@ -56,7 +56,7 @@ for(const width of [390,1440]) {
     await page.setViewportSize({width,height:950});await authenticateFixture(page);const campus=structuredClone(snapshot);
     await page.route('**/api/campus',route=>route.fulfill({json:campus}));let created=false;let archived=false;
     await page.route('**/api/students**',async route=>{
-      if(route.request().method()==='GET') { if(new URL(route.request().url()).pathname.endsWith('/operations')) { await route.fulfill({json:{revision:campus.revision,enrollments:[],payments:[],channels:[]}}); } else { await route.fulfill({json:{student:projectRelationalCampus(campus).data.students.find(student=>student.id==='ESCEN-CRUD-1')}}); } return; }
+      if(route.request().method()==='GET') { if(new URL(route.request().url()).pathname.endsWith('/operations')) { await route.fulfill({json:{revision:campus.revision,enrollments:[],payments:[],channels:[]}}); } else { await route.fulfill({json:{student:projectRelationalCampus(campus).data.students.find(student=>student.matricule==='ESCEN-CRUD-1')}}); } return; }
       const body=route.request().postDataJSON();if(route.request().method()==='POST'){
         expect(body.matricule).toBe('ESCEN-CRUD-1');created=true;campus.revision++;campus.tables.people.push({id:'PERSON-CRUD',...body.person});campus.tables.students.push({id:'STUDENT-CRUD',person_id:'PERSON-CRUD',matricule:body.matricule});await route.fulfill({status:201,json:{matricule:body.matricule}});
       }else if(route.request().method()==='PATCH'){expect(body.revision).toBe(campus.revision);Object.assign(campus.tables.people.find(row=>row.id==='PERSON-CRUD')!,body);campus.revision++;await route.fulfill({json:{revision:campus.revision}});

@@ -2,7 +2,7 @@ import { openAccountMenu } from './helpers';
 import { test, expect, type Page } from '@playwright/test';
 import { ROLES } from '../../src/types/permissions';
 import { getAvailableTabs, isRouteAllowed } from '../../src/permissions/navigation';
-import { DEMO_ACCOUNTS, DEMO_PASSWORD } from '../../src/services/demoSessionService';
+import { DEMO_ACCOUNTS, DEMO_PASSWORD } from './legacy-demo-fixture';
 import { captureWorkspace } from './helpers';
 
 async function follow(page: Page, href: string) {

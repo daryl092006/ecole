@@ -56,7 +56,7 @@ export default function PortalShell({ children }: { children: ReactNode }) {
       if (event.shiftKey && document.activeElement === first) { event.preventDefault(); last?.focus(); }
       else if (!event.shiftKey && document.activeElement === last) { event.preventDefault(); first?.focus(); }
     };
-    const resize = () => { if (window.innerWidth > 800) setMenuOpen(false); };
+    const resize = () => { if (window.innerWidth > 768) setMenuOpen(false); };
     document.addEventListener('keydown', containFocus);
     window.addEventListener('resize', resize);
     return () => {
@@ -85,7 +85,7 @@ export default function PortalShell({ children }: { children: ReactNode }) {
         </div>
         {selectedYear && currentYear && selectedYear.id !== currentYear.id && (
           <aside className="academic-context-banner" aria-label="Contexte de consultation annuelle">
-            <span>Vous consultez l’historique de l’année scolaire <strong>{selectedYear.name}</strong> ({YEAR_STATUS_LABELS[selectedYear.status] || selectedYear.status}).</span>
+            <span>Vous consultez l’année scolaire <strong>{selectedYear.name}</strong> ({YEAR_STATUS_LABELS[selectedYear.status] || selectedYear.status}), distincte de l’année de travail.</span>
             <button className="btn btn-sm btn-outline" onClick={() => state.changeAcademicYearSelection('current')}>
               Revenir à l’année en cours ({currentYear.name})
             </button>

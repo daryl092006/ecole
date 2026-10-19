@@ -1,27 +1,141 @@
-import IconButton from '@/components/ui/IconButton';
-import { displayLabel } from '@/utils/display';
-import { useState } from 'react';
+'use client';
+import DrawerActions from '@/components/ui/DrawerActions';
+import { useEffect, useState } from 'react';
 import { usePortal } from '@/hooks/usePortal';
-import type { Reclamation } from '@/types';
 import { ROLES } from '@/types/permissions';
+import type { ComplaintWorkflowStatus } from '@/types/academic';
+import type { DatabaseRow } from '@/types/persistence';
+import { connectedRecordName, connectedRecordValue } from '@/services/connectedRecordDisplayService';
+import { manageComplaint } from '@/services/remoteCampusService';
+import { academicYearRequestHeaders } from '@/services/academicYearSelection';
+import { getSupabaseBrowserClient } from '@/lib/supabase/client';
+import LoadingState from '@/components/ui/LoadingState';
+import WorkPage from '@/components/ui/WorkPage';
+import ReviewedForm from '@/components/ui/ReviewedForm';
+
+interface ComplaintDirectory { revision: number; complaints: DatabaseRow[]; events: DatabaseRow[]; revisions: DatabaseRow[]; }
+interface TransitionAction { complaint: DatabaseRow; target: ComplaintWorkflowStatus; label: string; correction?: boolean; }
+
 export default function ComplaintsPanel() {
-  const state = usePortal(); const [filter, setFilter] = useState('');
-  const [selected, setSelected] = useState<{ id: string; target: Reclamation['status']; label: string; correction?: boolean } | null>(null);
-  const [reason, setReason] = useState(''); const [grade, setGrade] = useState('');
-  const records = state.reclamations.filter(item => !filter || (filter === 'EN_COURS' ? item.status !== 'CLOTUREE' : item.status === filter));
-  const choose = (id: string, target: Reclamation['status'], label: string, correction = false) => { setSelected({ id, target, label, correction }); setReason(''); setGrade(''); };
-  const controls = (item: Reclamation) => {
-    if (state.perms.permissions.includes('complaint.review')) {
-      if (item.status === 'NOUVELLE') return <button className="btn btn-sm btn-outline" onClick={() => state.transitionReclamation(item.id, 'EN_ANALYSE')}>Prendre en charge</button>;
-      if (item.status === 'EN_ANALYSE') return <button className="btn btn-sm btn-outline" onClick={() => choose(item.id, 'TRANSMISE_ENSEIGNANT', 'Transmettre à l’enseignant')}>Transmettre à l’enseignant</button>;
-      if (item.status === 'AVIS_ENSEIGNANT') return <button className="btn btn-sm btn-outline" onClick={() => choose(item.id, 'DECISION_ACADEMIQUE', 'Enregistrer la décision académique')}>Prendre une décision</button>;
-      if (item.status === 'DECISION_ACADEMIQUE') return <div className="btn-group"><button className="btn btn-sm btn-outline" onClick={() => choose(item.id, 'CLOTUREE', 'Clôturer sans correction')}>Clôturer sans correction</button><button className="btn btn-sm btn-outline" onClick={() => choose(item.id, 'CORRECTION_EVENTUELLE', 'Demander une correction')}>Demander une correction</button></div>;
-      if (item.status === 'CORRECTION_EVENTUELLE') return <button className="btn btn-sm btn-outline" onClick={() => choose(item.id, 'CLOTUREE', 'Corriger la note et clôturer', true)}>Appliquer la correction</button>;
-    }
-    if ((state.activeRole === ROLES.ENS || state.activeRole === ROLES.IT) && item.status === 'TRANSMISE_ENSEIGNANT') return <button className="btn btn-sm btn-outline" onClick={() => choose(item.id, 'AVIS_ENSEIGNANT', 'Enregistrer mon avis')}>Donner mon avis</button>;
-    return <span className="cell-sub">{item.status === 'CLOTUREE' ? 'Traitement terminé' : 'En attente du rôle compétent'}</span>;
+  const portal = usePortal();
+  const snapshot = portal.relationalSnapshot;
+  const permissions = portal.perms.permissions;
+  const [directory, setDirectory] = useState<ComplaintDirectory | null>(null);
+  const [loadError, setLoadError] = useState('');
+  const [retry, setRetry] = useState(0);
+  const [filter, setFilter] = useState('');
+  const [creating, setCreating] = useState(false);
+  const [selected, setSelected] = useState<TransitionAction | null>(null);
+  const [gradeId, setGradeId] = useState('');
+  const [reason, setReason] = useState('');
+  const [correctedGrade, setCorrectedGrade] = useState('');
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState('');
+  const [message, setMessage] = useState('');
+  const preciseYear = !!portal.academicYearContext?.selectedYearId;
+  const canDeposit = permissions.includes('complaint.view') && [ROLES.STUD, ROLES.DEL, ROLES.IT].includes(portal.activeRole as typeof ROLES.STUD);
+  const canReview = permissions.includes('complaint.review');
+  const canCorrect = canReview && permissions.includes('grade.approve');
+
+  useEffect(() => {
+    const controller = new AbortController();
+    setDirectory(null); setLoadError('');
+    void (async () => {
+      const { data } = await getSupabaseBrowserClient().auth.getSession();
+      if (!data.session) throw new Error('Connexion requise.');
+      const response = await fetch('/api/complaints', {
+        headers: { Authorization: `Bearer ${data.session.access_token}`, 'x-escen-role': portal.activeRole, ...academicYearRequestHeaders() },
+        cache: 'no-store', signal: controller.signal,
+      });
+      const result = await response.json();
+      if (!response.ok) throw new Error(result.error || 'Chargement des réclamations impossible.');
+      if (!controller.signal.aborted) setDirectory(result);
+    })().catch(cause => { if (!controller.signal.aborted) setLoadError(cause instanceof Error ? cause.message : 'Chargement impossible.'); });
+    return () => controller.abort();
+  }, [portal.activeRole, portal.academicYearSelection, retry]);
+
+  const candidates = snapshot.tables.evaluation_candidates || [];
+  const evaluations = snapshot.tables.evaluations || [];
+  const grades = snapshot.tables.grades || [];
+  const eligibleGrades = grades.filter(grade => {
+    const candidate = candidates.find(row => row.id === grade.candidate_id);
+    const evaluation = evaluations.find(row => row.id === candidate?.evaluation_id);
+    const enrollment = snapshot.tables.enrollments?.find(row => row.id === candidate?.enrollment_id);
+    return evaluation?.status === 'PUBLIEES'
+      && (portal.activeRole === ROLES.IT || enrollment?.student_id === portal.session?.studentId)
+      && !directory?.complaints.some(row => row.grade_id === grade.id && row.status !== 'CLOTUREE');
+  });
+  const gradeLabel = (grade: DatabaseRow) => `${connectedRecordName('grades', grade, snapshot)} · ${grade.value == null ? 'Absence ou note non renseignée' : `${grade.value}/20`}`;
+  const complaintLabel = (complaint: DatabaseRow) => {
+    if (typeof complaint.label === 'string') return complaint.label;
+    const candidate = candidates.find(row => row.id === complaint.candidate_id);
+    return candidate ? connectedRecordName('evaluation_candidates', candidate, snapshot) : 'Dossier ou évaluation non retrouvé';
   };
-  return <div><div className="module-header"><h1>Réclamations académiques</h1></div><div className="card card-full"><div className="card-header"><h2>Réclamations ({records.length})</h2><label className="form-group">État du traitement<select className="select-input" value={filter} onChange={event => setFilter(event.target.value)}><option value="">Toutes</option><option value="EN_COURS">En cours</option><option value="CLOTUREE">Clôturées</option></select></label></div>{records.map(item => <article className="ledger-item" key={item.id}><div className="catalog-item"><div><strong>{item.studentMatricule} · {state.evaluations.find(evaluation => evaluation.id === item.evaluationId)?.name}</strong><p>{item.reason}</p></div><span className="pill pill-default">{displayLabel(item.status)}</span></div>{item.response && <p>Dernier avis : {item.response}</p>}<div className="mt-2">{controls(item)}</div>{item.correction && <p className="cell-sub">Correction : {item.correction.previousGrade} → {item.correction.newGrade}/20 · {item.correction.reason}</p>}<details className="mt-2"><summary>Historique ({item.history.length})</summary>{item.history.map(entry => <p className="cell-sub" key={entry.id}>{new Date(entry.date).toLocaleString('fr-FR')} · {entry.role} · {displayLabel(entry.from)} → {displayLabel(entry.to)} · {entry.comment}</p>)}</details></article>)}{!records.length && <div className="empty-state"><strong>Aucune réclamation</strong><span>Les demandes correspondant au filtre apparaîtront ici.</span></div>}</div>
-    {selected && <form className="card card-full mt-2" onSubmit={event => { event.preventDefault(); if (state.transitionReclamation(selected.id, selected.target, reason, selected.correction ? Number(grade) : undefined)) setSelected(null); }}><h2>{selected.label}</h2>{selected.correction && <label className="form-group">Nouvelle note /20<input className="input" required type="number" min="0" max="20" step="0.5" value={grade} onChange={event => setGrade(event.target.value)} /></label>}<label className="form-group">Avis ou motif<textarea autoFocus required minLength={3} maxLength={1000} className="input" value={reason} onChange={event => setReason(event.target.value)} /></label><div className="btn-group"><button className="btn btn-primary">Confirmer</button><IconButton className="btn btn-outline" type="button" onClick={() => setSelected(null)} label="Fermer" /></div></form>}
+  const choose = (complaint: DatabaseRow, target: ComplaintWorkflowStatus, label: string, correction = false) => {
+    setSelected({ complaint, target, label, correction }); setReason(''); setCorrectedGrade(''); setError('');
+  };
+  const controls = (complaint: DatabaseRow) => {
+    if (!preciseYear) return null;
+    if (canReview) {
+      if (complaint.status === 'NOUVELLE') return <button className="btn btn-outline" onClick={() => choose(complaint, 'EN_ANALYSE', 'Prendre en charge')}>Prendre en charge</button>;
+      if (complaint.status === 'EN_ANALYSE') return <button className="btn btn-outline" onClick={() => choose(complaint, 'TRANSMISE_ENSEIGNANT', 'Transmettre à l’enseignant')}>Transmettre à l’enseignant</button>;
+      if (complaint.status === 'AVIS_ENSEIGNANT') return <button className="btn btn-outline" onClick={() => choose(complaint, 'DECISION_ACADEMIQUE', 'Enregistrer la décision académique')}>Prendre une décision</button>;
+      if (complaint.status === 'DECISION_ACADEMIQUE') return <div className="btn-group"><button className="btn btn-outline" onClick={() => choose(complaint, 'CLOTUREE', 'Clôturer sans correction')}>Clôturer sans correction</button><button className="btn btn-outline" onClick={() => choose(complaint, 'CORRECTION_EVENTUELLE', 'Demander une correction')}>Demander une correction</button></div>;
+      if (complaint.status === 'CORRECTION_EVENTUELLE' && canCorrect) return <button className="btn btn-outline" onClick={() => choose(complaint, 'CLOTUREE', 'Corriger la note et clôturer', true)}>Appliquer la correction</button>;
+    }
+    if (complaint.status === 'TRANSMISE_ENSEIGNANT' && permissions.includes('complaint.view') && (portal.activeRole === ROLES.ENS || portal.activeRole === ROLES.IT && canReview)) {
+      return <button className="btn btn-outline" onClick={() => choose(complaint, 'AVIS_ENSEIGNANT', 'Enregistrer mon avis')}>Donner mon avis</button>;
+    }
+    return <p className="cell-sub">{complaint.status === 'CLOTUREE' ? 'Traitement terminé' : 'En attente du rôle compétent'}</p>;
+  };
+  const save = async () => {
+    if (!directory || busy) return;
+    setBusy(true); setError('');
+    try {
+      await manageComplaint(portal.activeRole, creating ? {
+        action: 'create_complaint', gradeId, reason, revision: directory.revision,
+      } : {
+        action: 'transition_complaint', complaintId: selected!.complaint.id,
+        fromStatus: selected!.complaint.status, toStatus: selected!.target,
+        reason, revision: directory.revision,
+        ...(selected!.correction ? { correctedGrade: Number(correctedGrade) } : {}),
+      });
+      setMessage(creating ? 'Réclamation déposée. Son traitement est disponible dans la liste.' : selected?.correction ? 'Note corrigée et réclamation clôturée. L’ancienne valeur est conservée.' : 'Étape de traitement enregistrée.');
+      setCreating(false); setSelected(null); setRetry(value => value + 1); portal.refreshCampus();
+    } catch (cause) { setError(cause instanceof Error ? cause.message : 'Enregistrement impossible.'); }
+    finally { setBusy(false); }
+  };
+  const records = directory?.complaints.filter(row => !filter || (filter === 'EN_COURS' ? row.status !== 'CLOTUREE' : row.status === filter)) || [];
+  const chosenGrade = eligibleGrades.find(row => row.id === gradeId);
+  return <div>
+    <div className="module-header"><h1>Réclamations académiques</h1>{canDeposit && preciseYear && <button className="btn btn-primary" disabled={!directory || !!loadError} onClick={() => { setCreating(true); setGradeId(''); setReason(''); setError(''); }}>Déposer une réclamation</button>}</div>
+    {!preciseYear && <p className="info-box">Toutes les années : consultation uniquement. Choisissez une année précise pour déposer ou traiter une réclamation.</p>}
+    {message && <p role="status">{message}</p>}
+    {loadError ? <section className="card" role="alert"><p>{loadError}</p><button className="btn btn-outline" onClick={() => setRetry(value => value + 1)}>Réessayer</button></section> : !directory ? <LoadingState label="Chargement des réclamations…" /> : <section className="card card-full">
+      <div className="card-header"><h2>Réclamations ({records.length})</h2><label className="form-group">État du traitement<select className="select-input" value={filter} onChange={event => setFilter(event.target.value)}><option value="">Toutes</option><option value="EN_COURS">En cours</option><option value="CLOTUREE">Clôturées</option></select></label></div>
+      {records.map(complaint => <article className="ledger-item" key={complaint.id}>
+        <div className="catalog-item"><strong>{complaintLabel(complaint)}</strong><span className="pill pill-default">{connectedRecordValue('complaints', 'status', complaint.status, snapshot)}</span></div>
+        <p>{String(complaint.reason || '')}</p>
+        {controls(complaint)}
+        <details><summary>Historique du traitement</summary>
+          <p>Motif du dépôt : {String(complaint.reason || 'Non renseigné')}</p>
+          {directory.events.filter(row => row.complaint_id === complaint.id).sort((a, b) => String(a.happened_at || '').localeCompare(String(b.happened_at || ''))).map(event => <p key={event.id}>{connectedRecordValue('complaint_events', 'happened_at', event.happened_at, snapshot)} · {connectedRecordValue('complaint_events', 'from_status', event.from_status, snapshot)} → {connectedRecordValue('complaint_events', 'to_status', event.to_status, snapshot)} · {String(event.reason || '')} · Auteur : {String(event.actor_id || 'Non renseigné')}</p>)}
+          {directory.revisions.filter(row => row.complaint_id === complaint.id).map(revision => <p key={revision.id}>Correction : {String(revision.old_value)} → {String(revision.new_value)}/20 · {String(revision.reason || '')}</p>)}
+        </details>
+      </article>)}
+      {!records.length && <p>Aucune réclamation pour ce filtre dans votre périmètre.</p>}
+    </section>}
+    {(creating || selected) && <WorkPage title={creating ? 'Déposer une réclamation' : selected!.label} busy={busy} onClose={() => { setCreating(false); setSelected(null); }}>
+      <ReviewedForm busy={busy} error={error} confirmLabel={creating ? 'Confirmer le dépôt' : 'Confirmer le traitement'}
+        fields={[{ label: 'Note ou dossier', value: creating ? chosenGrade ? gradeLabel(chosenGrade) : '' : complaintLabel(selected!.complaint) }, { label: 'Motif', value: reason }, ...(selected?.correction ? [{ label: 'Nouvelle note /20', value: correctedGrade }] : [])]}
+        consequence={creating ? 'La réclamation sera enregistrée sur cette note publiée. La note reste inchangée pendant son analyse.' : selected?.correction ? 'La correction et la clôture seront enregistrées ensemble, avec conservation de l’ancienne note et du motif.' : 'Cette étape sera enregistrée avec son auteur et son motif.'}
+        validate={() => creating && !chosenGrade ? 'Choisissez une note publiée disponible.' : selected?.correction && (!correctedGrade.trim() || !Number.isFinite(Number(correctedGrade)) || Number(correctedGrade) < 0 || Number(correctedGrade) > 20) ? 'La note doit être comprise entre 0 et 20.' : null}
+        onConfirm={() => { void save(); }}>
+        {creating && <label className="form-group">Note concernée<select className="select-input" required value={gradeId} onChange={event => setGradeId(event.target.value)}><option value="">Choisir une note publiée</option>{eligibleGrades.map(grade => <option key={grade.id} value={grade.id}>{gradeLabel(grade)}</option>)}</select>{!eligibleGrades.length && <span>Aucune note publiée sans réclamation en cours dans votre périmètre.</span>}</label>}
+        {selected?.correction && <label className="form-group">Nouvelle note /20<input className="input" required type="number" min="0" max="20" step="0.25" value={correctedGrade} onChange={event => setCorrectedGrade(event.target.value)} /></label>}
+        <label className="form-group">{creating ? 'Motif de la réclamation' : 'Avis ou motif'}<textarea className="input" required minLength={creating ? 5 : 3} maxLength={1000} value={reason} onChange={event => setReason(event.target.value)} /></label>
+        <DrawerActions><button className="btn btn-primary" disabled={creating && !eligibleGrades.length}>Vérifier les informations</button></DrawerActions>
+      </ReviewedForm>
+    </WorkPage>}
   </div>;
 }

@@ -21,10 +21,17 @@ for (const width of [390, 1440]) {
     const saved: DatabaseRow[] = [];
     const writes: { values: { academic_year_id: string; program_id: string; variants: { curriculum_id: string; delivery_mode: string | null }[] } }[] = [];
     let failWrite = true;
+    let failArchive = true;
     await page.route('**/api/campus', route => route.fulfill({ json: { ...snapshot, academicContext: { selection: 'current', selectedYearId: '10000000-0000-4000-8000-000000000099', currentYearId: '10000000-0000-4000-8000-000000000099', years } } }));
     await page.route('**/api/catalog/*', route => {
       if (route.request().method() === 'POST') {
         const body = route.request().postDataJSON();
+        if (body.values.archive_ids) {
+          if (failArchive) { failArchive = false; return route.fulfill({ status: 409, json: { error: 'Formation rattachée : retrait refusé.' } }); }
+          expect(body.values.archive_ids).toEqual(['S0', 'S1', 'S2']);
+          saved.forEach(row => { if (body.values.archive_ids.includes(row.id)) row.archived_at = '2026-10-17'; });
+          return route.fulfill({ json: { revision: 3 } });
+        }
         writes.push(body);
         if (failWrite) { failWrite = false; return route.fulfill({ status: 409, json: { error: 'Modification concurrente. Réessayez.' } }); }
         body.values.variants.forEach((variant: { curriculum_id: string; delivery_mode: string | null }, index: number) => saved.push({ id: `S${index}`, academic_year_id: '10000000-0000-4000-8000-000000000001', ...variant, level_id: curricula.find(row => row.id === variant.curriculum_id)?.level_id }));
@@ -43,13 +50,13 @@ for (const width of [390, 1440]) {
     await page.getByRole('button', { name: 'Préparer 2026-2027', exact: true }).click();
     await page.getByRole('button', { name: 'Configurer formations proposées', exact: true }).click();
     const dialog = page.getByRole('dialog');
-    await expect(dialog.locator('tbody > tr')).toHaveCount(3);
+    await expect(dialog.locator('tbody > tr')).toHaveCount(2);
     const finance = dialog.getByRole('row').filter({ has: page.getByText('Finance Digitale', { exact: true }) });
     await expect(finance).toContainText('Licence 1 · Présentiel');
     await expect(finance).toContainText('Licence 2 · Présentiel');
     await expect(finance).toContainText('Licence 3 · En ligne');
     await expect(finance).toContainText('Licence 3 · Présentiel');
-    await expect(dialog.getByText('Filière à préciser', { exact: true })).toBeVisible();
+    await expect(dialog.getByRole('region', { name: 'Propositions à compléter' })).toContainText('Filière à préciser');
     await expect(dialog.getByText('Programme de formation', { exact: true })).toHaveCount(0);
     await page.screenshot({ path: `.tmp/interface/${width}/formations-annuelles-par-filiere.png` });
     await finance.getByRole('button', { name: 'Vérifier les niveaux', exact: true }).click();
@@ -70,7 +77,27 @@ for (const width of [390, 1440]) {
     ] });
     await page.getByRole('button', { name: 'Consulter formations proposées', exact: true }).click();
     await expect(dialog.getByText('Marketing Digital', { exact: true })).toBeVisible();
-    await expect(dialog.getByText('Filière à préciser', { exact: true })).toBeVisible();
+    const incomplete = dialog.getByRole('region', { name: 'Propositions à compléter' });
+    await expect(incomplete).toContainText('Licence 1 · Mode à préciser');
+    await incomplete.getByRole('button', { name: 'Retirer de la proposition', exact: true }).click();
+    await expect(dialog).toContainText('Filière à préciser · Licence 1 · Mode à préciser retiré(e) de la proposition.');
+    await expect(dialog).not.toContainText('prefilled:');
+    await expect(incomplete).toHaveCount(0);
+    await finance.getByRole('button', { name: 'Retirer toute la ligne', exact: true }).click();
+    await dialog.getByRole('button', { name: 'Conserver la ligne', exact: true }).click();
+    await expect(finance).toBeVisible();
+    await finance.getByRole('button', { name: 'Retirer toute la ligne', exact: true }).click();
+    await dialog.getByLabel('Motif du retrait').fill('Filière non proposée cette année');
+    await dialog.getByRole('button', { name: 'Confirmer le retrait de toute la ligne', exact: true }).click();
+    await expect(dialog.getByRole('alert')).toContainText('retrait refusé');
+    await dialog.getByRole('button', { name: 'Confirmer le retrait de toute la ligne', exact: true }).click();
+    await expect(finance).toHaveCount(0);
+    const marketing = dialog.getByRole('row').filter({ has: page.getByText('Marketing Digital', { exact: true }) });
+    await marketing.getByRole('button', { name: 'Retirer toute la ligne', exact: true }).click();
+    await dialog.getByLabel('Motif du retrait').fill('Proposition non retenue');
+    await dialog.getByRole('button', { name: 'Confirmer le retrait de toute la ligne', exact: true }).click();
+    await expect(marketing).toHaveCount(0);
+    expect(writes).toHaveLength(2);
     await expectWorkspaceFits(page);
   });
 }

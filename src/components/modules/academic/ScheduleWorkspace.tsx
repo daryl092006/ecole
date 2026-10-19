@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import { usePortal } from '@/hooks/usePortal';
 import { loadSchedule, manageSchedule } from '@/services/remoteCampusService';
+import { shiftExamAccess } from '@/services/scheduleManagementService';
 import type { ManagedSession, ScheduleCommand, ScheduleDirectory, SessionMode } from '@/types/scheduleManagement';
 import ConnectedDomainWorkspace from '../ConnectedDomainWorkspace';
 import LoadingState from '@/components/ui/LoadingState';
@@ -64,6 +65,9 @@ function ScheduleManager() {
   const current = operation?.session;
   const editing = action === 'create_session' || action === 'update_session';
   const timed = editing || action === 'move_session' || action === 'block_period';
+  const movingExam = current?.exam && timed && form.startsAt && form.endsAt
+    && (Date.parse(iso(form.startsAt)) !== Date.parse(current.startsAt) || Date.parse(iso(form.endsAt)) !== Date.parse(current.endsAt)) ? current.exam : null;
+  const nextAccess = movingExam && current ? shiftExamAccess(movingExam, current.startsAt, iso(form.startsAt)) : null;
   const assignment = directory.assignments.find(row => row.id === form.assignmentId);
   const siteId = directory.offerings.find(offering => offering.id === assignment?.offeringId)?.siteId;
   const fields: ReviewField[] = [
@@ -71,6 +75,10 @@ function ScheduleManager() {
       { label: 'Type de séance', value: form.mode, previous: current?.mode }, { label: 'Salle prévue', value: roomName(form.roomId || null), ...(current ? { previous: roomName(current.roomId) } : {}) }] : []),
     ...(timed ? [{ label: 'Début (heure de Lomé)', value: form.startsAt ? displayTime(iso(form.startsAt)) : '', ...(current ? { previous: displayTime(current.startsAt) } : {}) },
       { label: 'Fin (heure de Lomé)', value: form.endsAt ? displayTime(iso(form.endsAt)) : '', ...(current ? { previous: displayTime(current.endsAt) } : {}) }] : []),
+    ...(movingExam && nextAccess ? [{ label: 'Épreuve déplacée', value: movingExam.name },
+      { label: 'Ouverture de l’épreuve (Lomé)', value: displayTime(nextAccess.opensAt), previous: displayTime(movingExam.opensAt) },
+      { label: 'Fermeture de l’épreuve (Lomé)', value: displayTime(nextAccess.closesAt), previous: displayTime(movingExam.closesAt) },
+      { label: 'Durée de composition conservée', value: movingExam.durationMinutes == null ? 'Non renseignée' : `${movingExam.durationMinutes} minutes` }] : []),
     ...(action === 'cancel_session' && current ? [{ label: 'Séance', value: assignmentName(current.assignmentId) }, { label: 'Statut', value: 'ANNULE', previous: current.status }] : []),
     ...(action === 'replace_teacher' && current ? [{ label: 'Enseignant effectif', value: teacherName(form.teacherId || current.teacherId), previous: teacherName(current.replacementTeacherId || current.teacherId) }] : []),
     ...(action === 'block_period' ? [{ label: 'Intitulé', value: form.name }, { label: 'Type de période', value: form.kind }, { label: 'Site', value: directory.sites.find(site => site.id === form.siteId)?.name || 'Tous les sites' }] : []),
@@ -79,6 +87,7 @@ function ScheduleManager() {
   const consequence = action === 'block_period' ? 'La période bloquera toute nouvelle séance sur ce créneau et ce périmètre dans l’année sélectionnée. Les séances existantes doivent être traitées avant ce blocage.'
     : action === 'cancel_session' ? 'La séance sera marquée annulée avec son motif et restera dans l’historique. Les émargements et les examens avec copies ou résultats protègent son annulation.'
       : action === 'replace_teacher' ? 'Seul l’enseignant effectif de cette séance changera. L’affectation d’origine et les autres séances seront conservées. Les conflits du remplaçant seront contrôlés.'
+        : movingExam ? 'La séance et les horaires d’accès à l’épreuve seront déplacés ensemble, dans un seul enregistrement. La durée de composition sera conservée. Le déplacement sera refusé si l’épreuve est déjà ouverte, possède une copie ou un résultat, ou si un conflit apparaît.'
         : 'La séance sera enregistrée après contrôle du groupe, de l’enseignant, de la salle, du semestre et des périodes bloquées. Les autres séances resteront inchangées.';
   const active = directory.sessions.filter(session => !['ANNULE', 'REPORTE'].includes(session.status));
   return <div className="domain-workspace">
@@ -96,6 +105,7 @@ function ScheduleManager() {
       <div><dt>Affectation</dt><dd>{assignmentName(detail.assignmentId)}</dd></div><div><dt>Horaires (Lomé)</dt><dd>{displayTime(detail.startsAt)} → {displayTime(detail.endsAt)}</dd></div>
       <div><dt>Enseignant effectif</dt><dd>{teacherName(detail.replacementTeacherId || detail.teacherId)}</dd></div><div><dt>Salle effective</dt><dd>{roomName(detail.actualRoomId || detail.roomId)}</dd></div>
       <div><dt>Statut</dt><dd>{detail.status}</dd></div><div><dt>Motif</dt><dd>{detail.reason || 'Non renseigné'}</dd></div></dl>
+      {detail.exam && <section className="card"><h2>{detail.exam.name}</h2><p>Accès (Lomé) : {displayTime(detail.exam.opensAt)} → {displayTime(detail.exam.closesAt)}</p>{(detail.exam.hasCopies || detail.exam.hasResults) && <p className="restricted-box">Cette épreuve possède une copie ou un résultat : ses horaires ne peuvent plus être déplacés.</p>}</section>}
       {detail.hasAttendance && <p className="restricted-box">Séance déjà émargée : ses horaires, son affectation et son annulation sont protégés.</p>}
       {directory.canUpdate && !['ANNULE', 'REPORTE'].includes(detail.status) && <div className="btn-group">
         <button className="btn btn-outline" onClick={() => open('update_session', detail)}>Modifier la séance</button>

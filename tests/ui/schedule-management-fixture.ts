@@ -24,7 +24,20 @@ export function scheduleFixture(context: PersistentContext = securityContext(), 
       for (const change of changes) {
         const rows = tables[change.table] ||= [];
         if (change.operation === 'insert') rows.push(change.record as typeof rows[number]);
-        else Object.assign(rows.find(row => row.id === change.record.id)!, change.record);
+        else {
+          const previous = rows.find(row => row.id === change.record.id)!;
+          // Simulate only transport-side effects; real SQL protections run in PGlite tests.
+          if (change.table === 'sessions' && ['starts_at', 'ends_at'].some(key => change.record[key] != null && Date.parse(String(change.record[key])) !== Date.parse(String(previous[key])))) {
+            const delivery = tables.exam_deliveries.find(row => row.session_id === previous.id);
+            if (delivery) {
+              const offset = Date.parse(String(change.record.starts_at || previous.starts_at)) - Date.parse(String(previous.starts_at));
+              delivery.access_opens_at = new Date(Date.parse(String(delivery.access_opens_at)) + offset).toISOString();
+              delivery.access_closes_at = new Date(Date.parse(String(delivery.access_closes_at)) + offset).toISOString();
+              delivery.reason = change.record.reason;
+            }
+          }
+          Object.assign(previous, change.record);
+        }
       }
       snapshot.revision++;
     }
@@ -37,3 +50,14 @@ export function scheduleFixture(context: PersistentContext = securityContext(), 
 }
 
 export const createSession = { action: 'create_session', assignmentId: id.assignment(0), roomId: uuid(950), mode: 'COURS', startsAt: '2026-10-21T08:00:00Z', endsAt: '2026-10-21T10:00:00Z' };
+
+export function attachScheduledExam(fixture: ReturnType<typeof scheduleFixture>) {
+  const { tables } = fixture.snapshot;
+  tables.sessions[0].mode = 'PAPIER';
+  tables.evaluations[0].name = 'Épreuve d’analyse';
+  tables.grades[0].value = null; tables.grades[0].absence_status = null;
+  tables.exam_attempts = [];
+  const delivery = { id: uuid(985), session_id: uuid(970), evaluation_id: id.evaluation(0), access_opens_at: '2026-10-20T08:15:00Z', access_closes_at: '2026-10-20T09:45:00Z', duration_minutes: 60 };
+  tables.exam_deliveries.push(delivery);
+  return delivery;
+}

@@ -1,9 +1,10 @@
 'use client';
+import DrawerActions from '@/components/ui/DrawerActions';
 import IconButton from '@/components/ui/IconButton';
 import LoadingState from '@/components/ui/LoadingState';
 import CatalogTaskDialog from './CatalogTaskDialog';
 import AnnualOfferingList from './AnnualOfferingList';
-import { offeringVariantKey, type AnnualOfferingGroup, type AnnualOfferingVariant } from '@/services/annualOfferingService';
+import { annualOfferingLabel, offeringVariantKey, type AnnualOfferingGroup, type AnnualOfferingVariant } from '@/services/annualOfferingService';
 import { useSearchParams } from 'next/navigation';
 import { YEAR_STATUS_LABELS, type YearStatus } from '@/types/academicYearContext';
 import AcademicYearLifecycle from './AcademicYearLifecycle';
@@ -17,6 +18,7 @@ import type { HistoryRecord } from '@/types/history';
 import type { DatabaseRow, CatalogSnapshot } from '@/types/persistence';
 import ResponsiveTable from '@/components/ui/ResponsiveTable';
 import WorkPage from '@/components/ui/WorkPage';
+import { DrawerCloseButton } from '@/components/ui/DetailDrawer';
 import ReviewedForm from '@/components/ui/ReviewedForm';
 import ActionResult from '@/components/ui/ActionResult';
 import { historyValue } from '@/services/historyDisplayService';
@@ -56,15 +58,15 @@ function InlineSubView({
           borderBottom: '1px solid var(--color-border-subtle, rgba(255,255,255,0.1))',
         }}
       >
-        <button
+        <DrawerCloseButton
           type="button"
           className="btn btn-sm btn-outline"
           disabled={busy}
-          onClick={onClose}
+          onClose={onClose}
           style={{ display: 'inline-flex', alignItems: 'center', gap: '0.35rem' }}
         >
           ← Retour à la liste
-        </button>
+        </DrawerCloseButton>
         <h2 style={{ margin: 0, fontSize: '1.1rem', fontWeight: 600 }}>{title}</h2>
       </header>
       <div>{children}</div>
@@ -496,10 +498,10 @@ function ReferenceCrudContent({
   const manageAnnualGroup = (group: AnnualOfferingGroup) => {
     open('create');
     setForm(values => ({ ...values, program_id: group.programId }));
-    setAnnualVariants(group.rows.filter(row => row.curriculum_id).map(row => ({ curriculum_id: String(row.curriculum_id), delivery_mode: row.delivery_mode ? String(row.delivery_mode) : null })));
+    setAnnualVariants(group.rows.filter(row => group.programId && row.curriculum_id).map(row => ({ curriculum_id: String(row.curriculum_id), delivery_mode: row.delivery_mode ? String(row.delivery_mode) : null })));
     setAnnualProposalIds(group.rows.filter(row => row.isPrefilled).map(row => row.id));
   };
-  const rowTitle = (row: DatabaseRow | null) => row ? String(row.name || row.code || (row.category ? `${row.category} · ${row.amount} FCFA` : row.id)) : spec.title;
+  const rowTitle = (row: DatabaseRow | null) => row ? collection === 'academic_offerings' && data ? annualOfferingLabel(row, data) : String(row.name || row.code || (row.category ? `${row.category} · ${row.amount} FCFA` : row.isPrefilled ? 'Élément proposé' : row.id)) : spec.title;
   const fixedField = (field: CrudField) => {
     if (setup && field.reference && field.required === false && !(data?.tables[field.reference] || []).some(row => !row.archived_at && row.active !== false)) return true;
     if (field.key === 'level_id' && collection === 'academic_offerings' && data?.tables.curricula?.find(row => row.id === form.curriculum_id)?.level_id) return true;
@@ -514,6 +516,20 @@ function ReferenceCrudContent({
       setSelected(null);
       setDialog(null);
     }
+  };
+  const removeAnnualGroup = async (group: AnnualOfferingGroup, removalReason: string) => {
+    if (!data || !canEdit) throw new Error('Retrait non autorisé.');
+    const saved = group.rows.filter(row => !row.isPrefilled);
+    const yearId = setup?.yearId || portal.academicYearContext?.selectedYearId || '';
+    if (saved.length) {
+      const result = await mutateCatalog('academic_offerings', { revision: data.revision, reason: removalReason, values: { academic_year_id: yearId, archive_ids: saved.map(row => row.id) } }, activeRole, undefined, false, yearId);
+      const ids = new Set(saved.map(row => row.id));
+      setData(current => current ? { ...current, revision: result.revision, tables: { ...current.tables, academic_offerings: (current.tables.academic_offerings || []).map(row => ids.has(row.id) ? { ...row, archived_at: new Date().toISOString() } : row) } } : current);
+      portal.refreshCampus();
+    }
+    const removedKeys = new Set(group.rows.map(offeringVariantKey));
+    setExcludedPrefilledIds(current => [...new Set([...current, ...group.rows.filter(row => row.isPrefilled).map(row => row.id), ...allPrefilledRows.filter(row => row.curriculum_id && removedKeys.has(offeringVariantKey(row))).map(row => row.id)])]);
+    setFeedback(`${group.name} : ligne retirée (${group.rows.length} niveaux et modes).`);
   };
 
   const handleConfirmSinglePrefilled = async () => {
@@ -604,7 +620,7 @@ function ReferenceCrudContent({
   };
   if (inlineReference && setup) return <div>
     {inlineBusy ? <LoadingState label="Actualisation des filières et niveaux…" /> : inlineError ? <section role="alert"><p>{inlineError}</p><button className="btn btn-outline" onClick={() => void refreshAfterInline()}>Réessayer la lecture</button></section> : <>
-      <button type="button" className="btn btn-outline" onClick={() => setInlineReference(null)}>{collection === 'academic_offerings' ? 'Revenir aux formations de l’année' : 'Revenir à la filière'}</button>
+      <DrawerCloseButton className="btn btn-outline" onClose={() => setInlineReference(null)}>{collection === 'academic_offerings' ? 'Revenir aux formations de l’année' : 'Revenir à la filière'}</DrawerCloseButton>
       <ReferenceCrudWorkspace key={`${inlineReference.collection}:${inlineReference.editId || 'new'}`} section={inlineReference.collection === 'programs' ? 'acad_program' : 'acad_reference'} setup={{ collection: inlineReference.collection, yearId: setup.yearId, yearName: setup.yearName, createOnLoad: true, editId: inlineReference.editId, onCancel: () => setInlineReference(null), onChoose: () => {}, onSaved: id => void refreshAfterInline(id) }} />
     </>}
   </div>;
@@ -629,7 +645,7 @@ function ReferenceCrudContent({
     {canEdit && data && prerequisites.length > 0 && <section className="prerequisite-panel"><p>Cette opération utilise des informations qui restent à enregistrer. Complétez-les dans l’ordre, puis poursuivez ici.</p><button className="btn btn-primary" onClick={() => setGuided(true)}>Compléter dans l’ordre</button></section>}
     {guided && <CatalogTaskDialog root={collection} yearId={setup?.yearId} yearName={setup?.yearName} category={setup?.category} onClose={() => setGuided(false)} onSaved={() => { setGuided(false); setRetry(value => value + 1); if (setup) setup.onSaved(); else { setFeedback(`${spec.title} : enregistrement confirmé`); portal.refreshCampus(); } }} />}
     {error ? <section className="card" role="alert"><p>{error}</p><IconButton className="btn btn-outline" onClick={() => setRetry(value => value + 1)} label="Réessayer" /></section> : !data ? <LoadingState label="Chargement du référentiel…" /> : collection === 'academic_years' ? <>{sources.length > 0 && <details className="card"><summary>Années aux dates à compléter ({sources.length})</summary>{sourceRecords.map(row => <div className="academic-year-row" key={row.id}><strong>{rowTitle(row)}</strong>{canEdit && <button className="btn btn-outline" onClick={() => resume(sourceById.get(row.id)!)}>Compléter les dates</button>}</div>)}</details>}</> : (setup && dialog ? null : <section className="card card-full"><div className="directory-toolbar" hidden={!!setup && !rows.length}><label>Rechercher<input className="input" type="search" value={query} onChange={event => setQuery(event.target.value)} placeholder={`Nom ou code · ${spec.title.toLocaleLowerCase('fr')}`} /></label><label hidden={!!setup}>Afficher<select className="select-input" value={archived ? 'archived' : 'active'} onChange={event => setArchived(event.target.value === 'archived')}><option value="active">Enregistrements disponibles</option><option value="archived">Enregistrements archivés</option></select></label></div>
-      {collection === 'academic_offerings' ? <AnnualOfferingList rows={rows} snapshot={data} canEdit={canEdit} previousYear={effectivePreviousYear?.name} onManage={manageAnnualGroup} onEdit={row => open('edit', row)} onArchive={row => open('archive', row)} onRemove={removePrefilled} /> : <ResponsiveTable className="data-table"><thead><tr>{spec.fields.filter(field => field.type !== 'textarea').map(field => <th key={field.key}>{field.label}</th>)}{collection === 'groups' && <th>Formations associées</th>}{collection === 'academic_years' && <th>État</th>}<th>Actions</th></tr></thead><tbody>{rows.map(row => <tr key={row.id}>{spec.fields.filter(field => field.type !== 'textarea').map((field, fIdx) => {
+      {collection === 'academic_offerings' ? <AnnualOfferingList allRows={[...savedRows, ...prefilledRows]} onRemoveGroup={removeAnnualGroup} rows={rows} snapshot={data} canEdit={canEdit} previousYear={effectivePreviousYear?.name} onManage={manageAnnualGroup} onEdit={row => open('edit', row)} onArchive={row => open('archive', row)} onRemove={removePrefilled} /> : <ResponsiveTable className="data-table"><thead><tr>{spec.fields.filter(field => field.type !== 'textarea').map(field => <th key={field.key}>{field.label}</th>)}{collection === 'groups' && <th>Formations associées</th>}{collection === 'academic_years' && <th>État</th>}<th>Actions</th></tr></thead><tbody>{rows.map(row => <tr key={row.id}>{spec.fields.filter(field => field.type !== 'textarea').map((field, fIdx) => {
         const isPrimary = (collection === 'academic_offerings' && field.key === 'curriculum_id') ||
           (collection === 'annual_fee_schedules' && field.key === 'amount') ||
           (field.key === 'name') ||
@@ -641,7 +657,7 @@ function ReferenceCrudContent({
       {inlineReference && !setup ? (
         <div>
           {inlineBusy ? <LoadingState label="Actualisation des filières et niveaux…" /> : inlineError ? <section role="alert"><p>{inlineError}</p><button className="btn btn-outline" onClick={() => void refreshAfterInline()}>Réessayer la lecture</button></section> : <>
-            <button type="button" className="btn btn-outline" onClick={() => setInlineReference(null)}>Revenir à la filière</button>
+            <DrawerCloseButton className="btn btn-outline" onClose={() => setInlineReference(null)}>Revenir à la filière</DrawerCloseButton>
             <ReferenceCrudWorkspace key={`${inlineReference.collection}:${inlineReference.editId || 'new'}`} section={inlineReference.collection === 'programs' ? 'acad_program' : 'acad_reference'} setup={{ collection: inlineReference.collection, yearId: portal.academicYearContext?.selectedYearId || '', yearName: '', createOnLoad: true, editId: inlineReference.editId, onCancel: () => setInlineReference(null), onChoose: () => {}, onSaved: id => void refreshAfterInline(id) }} />
           </>}
         </div>
@@ -677,7 +693,7 @@ function ReferenceCrudContent({
                 onChange={e => setPrefilledReason(e.target.value)}
               />
             </label>
-            <button className="btn btn-primary" disabled={prefilledBusy}>
+            <DrawerActions><button className="btn btn-primary" disabled={prefilledBusy}>
               Vérifier les informations
             </button>
             {Boolean(selected?.isPrefilled) && (
@@ -691,6 +707,7 @@ function ReferenceCrudContent({
                 Valider uniquement {rowTitle(selected)}
               </button>
             )}
+            </DrawerActions>
           </fieldset>
         </ReviewedForm>
       ) : dialog === 'details' && selected ? <>{Boolean(selected.isPrefilled) && <div className="card mb-3 p-3" style={{ background: 'var(--color-bg-subtle, rgba(255,255,255,0.03))', border: '1px solid var(--color-border-subtle, rgba(255,255,255,0.15))', borderRadius: '6px', marginBottom: '1rem' }}><div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '0.5rem', marginBottom: '0.5rem' }}><span className="pill pill-warning">En attente de validation</span>{effectivePreviousYear && <span className="cell-sub">Pré-rempli depuis {effectivePreviousYear.name}</span>}</div><p className="cell-sub" style={{ margin: '0.25rem 0' }}>Cet enregistrement est pré-rempli pour l’année {setup?.yearName || ''}. Vous pouvez le valider, le modifier ou le retirer de la proposition.</p><div className="btn-group" style={{ marginTop: '0.75rem' }}><button type="button" className="btn btn-sm btn-primary" onClick={() => open('validate_prefilled', selected)}>Valider cet élément</button><IconButton type="button" className="btn btn-sm btn-outline" onClick={() => open('edit', selected)} label="Modifier" /><IconButton type="button" className="btn btn-sm btn-outline btn-danger" onClick={() => removePrefilled(selected)} label="Retirer de la proposition" /></div></div>}<dl className="record-details-grid">{spec.fields.map(field => <div key={field.key}><dt>{field.label}</dt><dd>{display(field, selected)}</dd></div>)}{collection === 'groups' && <div><dt>Formations associées</dt><dd>{groupFormations(selected)}</dd></div>}{selected.archived_at != null && <div><dt>Motif d’archivage</dt><dd>{String(selected.reason)}</dd></div>}</dl><p>{journey?.purpose}</p></> : <ReviewedForm validate={() => creatingOfferings && (!form.program_id || !annualVariants.length) ? 'Choisissez une filière et au moins un niveau avec son mode de formation.' : creatingGroup && !offeringIds.length ? 'Choisissez au moins une filière pour ce groupe.' : null} key={`${collection}:${dialog}:${selected?.id || sourceRowId || ''}`} busy={saving} error={saveError} danger={dialog === 'archive'} confirmLabel={dialog === 'archive' ? 'Confirmer l’archivage' : 'Confirmer l’enregistrement'} fields={dialog === 'archive' ? [{ label: spec.title, value: rowTitle(selected) }, { label: 'Motif', value: reason }] : creatingOfferings ? [{ label: 'Année', value: setup?.yearName || String(data.tables.academic_years?.find(row => row.id === form.academic_year_id)?.name || '') }, { label: 'Filière', value: String(annualPrograms.find(row => row.id === form.program_id)?.name || '') }, ...annualVariants.map((variant, index) => ({ label: `Niveau ${index + 1}`, value: `${annualLevelName(variant.curriculum_id)} · ${variant.delivery_mode || 'Mode non renseigné'}` })), { label: 'Motif', value: reason }] : [...spec.fields.map(field => ({ label: field.label, value: field.key === 'level_ids' ? display(field, { id: '', level_ids: (form.level_ids || '').split(',') }) : field.reference ? field.required === false && !form[field.key] ? emptyReferenceLabel(field) : String(data.tables[field.reference]?.find(row => row.id === form[field.key])?.name || '') : field.type === 'select' ? field.options?.find(option => option.value === form[field.key])?.label || '' : form[field.key], ...(selected ? { previous: display(field, selected) } : {}) })), ...(creatingGroup ? [{ label: 'Filières accueillies', value: groupChoices.filter(row => offeringIds.includes(row.id)).map(row => String(row.name)).join(', ') }] : []), { label: 'Motif', value: reason }]} consequence={dialog === 'archive' ? 'L’enregistrement ne sera plus proposé pour de nouvelles affectations. Les relations existantes et les anciennes valeurs seront conservées ; le motif sera audité.' : `${journey?.result || ''}${sourceRowId ? ' L’archive originale restera conservée et liée au nouvel enregistrement.' : ''}`} onConfirm={() => {
@@ -729,7 +746,7 @@ function ReferenceCrudContent({
         })}</fieldset>)}{form.program_id && !annualCurricula.length && <p>Aucun niveau enregistré pour cette filière. Utilisez « Définir ses niveaux ici » pour les ajouter sans quitter la préparation.</p>}</fieldset></>}
         {collection === 'programs' && dialog !== 'archive' && !sourceRowId && <fieldset><legend>Niveaux disponibles dans cette filière</legend><p>Cochez les niveaux proposés. Les niveaux déjà rattachés sont conservés.</p>{canEdit && <button type="button" className="btn btn-outline" onClick={() => beginInline('levels')}>Créer un niveau ici</button>}{(data.tables.levels || []).filter(level => !level.archived_at && level.active !== false).map(level => <label className="form-group" key={level.id}><span><input type="checkbox" checked={(form.level_ids || '').split(',').includes(level.id)} disabled={String(selected?.level_ids || '').split(',').includes(level.id)} onChange={event => setForm(current => ({ ...current, level_ids: (event.target.checked ? [...(current.level_ids || '').split(',').filter(Boolean), level.id] : (current.level_ids || '').split(',').filter(id => id !== level.id)).join(',') }))} /> {String(level.name)}</span></label>)}{!data.tables.levels?.length && <p>Aucun niveau n’est encore enregistré. Vous pourrez les ajouter à cette filière après leur création.</p>}</fieldset>}
         {creatingGroup && <fieldset><legend>Filières accueillies dans ce groupe</legend><p>Choisissez une ou plusieurs formations du niveau sélectionné.</p>{groupChoices.map(row => <label className="form-group" key={row.id}><span><input type="checkbox" checked={offeringIds.includes(row.id)} onChange={event => setOfferingIds(ids => event.target.checked ? [...ids, row.id] : ids.filter(id => id !== row.id))} /> {String(row.name)}</span></label>)}{!groupChoices.length && <p>Aucune formation proposée pour ce niveau dans cette année. Configurez les formations proposées avant de créer le groupe.</p>}</fieldset>}
-        <label className="form-group">Motif<textarea className="input" required minLength={3} maxLength={1000} value={reason} onChange={event => setReason(event.target.value)} /></label><button className="btn btn-primary">Vérifier les informations</button>
+        <label className="form-group">Motif<textarea className="input" required minLength={3} maxLength={1000} value={reason} onChange={event => setReason(event.target.value)} /></label><DrawerActions><button className="btn btn-primary">Vérifier les informations</button></DrawerActions>
       </fieldset></ReviewedForm>}
     </Editor>}
   </div>;

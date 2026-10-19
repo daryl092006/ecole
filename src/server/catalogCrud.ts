@@ -6,7 +6,7 @@ import { ROLES } from '@/types/permissions';
 import { CRUD_CATALOG } from '@/data/crudCatalog';
 import { catalogSpec, parseCatalogRecord, canManageCatalog, validateCatalogReferences, programLevelChanges } from '@/services/catalogCrudService';
 import { buildReconductChanges } from '@/services/yearPreparationService';
-import { annualOfferingChanges } from '@/services/annualOfferingService';
+import { annualOfferingChanges, archiveAnnualOfferings } from '@/services/annualOfferingService';
 import type { RelationalSnapshot, PersistentChange } from '@/types/persistence';
 const curriculumArchiveErrors = new Set([
   'Archivage interdit : la maquette est approuvée ou archivée. Le gel de la maquette prime.',
@@ -31,6 +31,18 @@ export async function writeCatalog(request: Request, key: string, id?: string) {
   const target = id ? snapshot.tables[key]?.find(row => row.id === z.uuid().parse(id)) : undefined;
   if (id && !target) throw new RequestError(404,'Enregistrement introuvable.');
   if (target?.archived_at) throw new RequestError(409,'Cet enregistrement est archivé.');
+  if (key === 'academic_offerings' && !id && !archive && body.values?.archive_ids !== undefined) {
+    if (body.sourceRowId) throw new RequestError(400, 'Reprise historique incompatible avec un retrait.');
+    const values = z.object({ academic_year_id: z.uuid(), archive_ids: z.array(z.uuid()).min(1).max(100) }).strict().parse(body.values);
+    const year = await resolveAcademicYear(request, client, context, snapshot);
+    if (year.selectedYearId !== values.academic_year_id) throw new RequestError(409, 'Choisissez l’année précise à préparer.');
+    let changes: PersistentChange[];
+    try { changes = archiveAnnualOfferings(snapshot, values.academic_year_id, values.archive_ids, body.reason); }
+    catch (error) { throw new RequestError(409, error instanceof Error ? error.message : 'Retrait impossible.'); }
+    const response = await client.rpc('escen_backend_transaction', { p_actor_id: context.accountId, p_expected_revision: snapshot.revision, p_changes: changes });
+    if (response.error) throw new RequestError(409, 'Retrait refusé : relation incompatible ou modification concurrente. Aucune formation retirée.');
+    return Response.json({ revision: response.data, count: changes.length }, { headers: { 'Cache-Control': 'no-store' } });
+  }
   if (key === 'academic_offerings' && !id && !archive && body.values?.variants !== undefined) {
     if (body.sourceRowId) throw new RequestError(400, 'Cette opération ne remplace pas une reprise historique.');
     const values = z.object({ academic_year_id: z.uuid(), program_id: z.uuid(), variants: z.array(z.object({ curriculum_id: z.uuid(), delivery_mode: z.enum(['Présentiel', 'En ligne']).nullable() }).strict()).min(1).max(80) }).strict().parse(body.values);

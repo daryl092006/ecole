@@ -2,7 +2,7 @@ import { z } from 'zod';
 import { requireAccount, requirePermission, RequestError, errorResponse } from '@/server/auth';
 import { resolveAcademicYear } from '@/server/academicYearContext';
 import type { DatabaseRow, PersistentChange, RelationalSnapshot } from '@/types/persistence';
-import { canBlockSite, overlaps, scheduleConflict, scheduleDatabaseError, scheduleDirectory } from '@/services/scheduleManagementService';
+import { canBlockSite, examRescheduleIssue, overlaps, scheduleConflict, scheduleDatabaseError, scheduleDirectory } from '@/services/scheduleManagementService';
 
 export const dynamic = 'force-dynamic';
 const common = { revision: z.number().int().nonnegative(), reason: z.string().trim().min(3).max(1000) };
@@ -79,10 +79,14 @@ export async function POST(request: Request) {
       const contextChanged = original && (original.assignment_id !== proposed.assignment_id
         || ['starts_at', 'ends_at'].some(key => Date.parse(String(original[key])) !== Date.parse(String(proposed[key]))));
       if (current?.hasAttendance && (contextChanged || body.action === 'cancel_session')) throw new RequestError(409, 'Cette séance a déjà été émargée : ses horaires, son affectation et son annulation sont protégés.');
-      // Preserve the existing exam-delivery invariants when the parent session changes.
+      // The database trigger shifts exam access in the same transaction as the session.
       const deliveries = rows('exam_deliveries').filter(delivery => delivery.session_id === id);
       if (deliveries.length && (proposed.mode === 'COURS' || deliveries.some(delivery => rows('evaluations').some(evaluation => evaluation.id === delivery.evaluation_id && evaluation.assignment_id !== proposed.assignment_id)))) throw new RequestError(409, 'Cette séance est liée à une épreuve : son type et son affectation doivent rester compatibles avec cette épreuve.');
-      if (deliveries.some(delivery => Date.parse(String(delivery.access_opens_at)) < Date.parse(String(proposed.starts_at)) || Date.parse(String(delivery.access_closes_at)) > Date.parse(String(proposed.ends_at)))) throw new RequestError(409, 'Ces horaires placeraient l’accès à l’épreuve en dehors de sa séance. Aucun horaire d’épreuve ne sera déplacé automatiquement.');
+      const timeChanged = original && ['starts_at', 'ends_at'].some(key => Date.parse(String(original[key])) !== Date.parse(String(proposed[key])));
+      if (timeChanged && current?.exam) {
+        const issue = examRescheduleIssue(current.exam, current.startsAt, String(proposed.starts_at), String(proposed.ends_at));
+        if (issue) throw new RequestError(409, issue);
+      }
       if (!['ANNULE', 'REPORTE'].includes(String(proposed.status))) {
         const offering = rows('academic_offerings').find(offering => offering.id === proposed.offering_id)!;
         const effectiveRoomId = proposed.actual_room_id || proposed.room_id;

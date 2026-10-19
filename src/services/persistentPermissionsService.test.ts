@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
 import { filterRelationalSnapshot } from './persistentPermissionsService';
+import { filterSnapshotForAcademicYear } from './academicYearScopeService';
 import { ROLE_ACCESS } from '@/permissions/rolePermissions';
 import { ROLES, type RoleName } from '@/types/permissions';
 import type { PersistentContext, RelationalSnapshot } from '@/types/persistence';
@@ -65,7 +66,7 @@ for (const role of [ROLES.MKT,ROLES.STG,ROLES.ACHATS]) {
   assert.deepEqual(filtered.people.map(row => row.id),['pm']);
   assert.equal(filtered.grades,undefined);
   assert.equal(filtered.payments,undefined);
-  assert.equal(filtered.communications?.length ?? 0,0);
+  assert.equal(filtered.communications?.length ?? 0,role === ROLES.MKT ? 1 : 0);
 }
 const technician = filterRelationalSnapshot(snapshot,context(ROLES.IT)).tables;
 assert.equal(technician.grades.length,3);
@@ -97,3 +98,59 @@ assert.ok(filterRelationalSnapshot(recoveredSnapshot,context(ROLES.STUD,{ person
 assert.ok(!filterRelationalSnapshot(recoveredSnapshot,context(ROLES.STUD,{ personId:'p2',studentId:'s2' })).tables.grades.some(row => row.id === 'mark_rec'));
 assert.ok(!filterRelationalSnapshot(recoveredSnapshot,context(ROLES.ENS,{ personId:'pt',teacherId:'t1' })).tables.grades.some(row => row.id === 'mark_rec'));
 console.log('Vérification réussie : lectures persistantes, rôles, groupes, confidentialité et notes publiées.');
+
+const communicationSnapshot: RelationalSnapshot = { revision: 7, tables: {
+  ...snapshot.tables,
+  roles: [{id:'role-student',code:'STUD',active:true},{id:'role-marketing',code:'MKT',active:true},{id:'role-delegate',code:'DEL',active:true}],
+  groups: [{id:'g1',academic_year_id:'y1'},{id:'g2',academic_year_id:'y1'}],
+  communications: [
+    ...['all','role','group','site','other-group','other-role','no-audience','draft','future','expired','withdrawn','invalid-date','other-year'].map(id => ({
+      id,title:id,content:`Contenu ${id}`,author_id:'account1',academic_year_id:id === 'other-year' ? 'y2' : 'y1',
+      published_at:id === 'draft' ? null : id === 'future' ? '2999-01-01T00:00:00Z' : id === 'invalid-date' ? 'invalid' : '2000-01-01T00:00:00Z',
+      expires_at:id === 'expired' ? '2001-01-01T00:00:00Z' : null,
+      withdrawn_at:id === 'withdrawn' ? '2001-01-01T00:00:00Z' : null,
+    })),
+  ],
+  communication_audiences: [
+    ...['all','draft','future','expired','withdrawn','invalid-date','other-year'].map(id => ({id:`aud-${id}`,communication_id:id,all_accounts:true})),
+    {id:'aud-role',communication_id:'role',role_id:'role-student'},
+    {id:'aud-group',communication_id:'group',group_id:'g1'},
+    {id:'aud-site',communication_id:'site',site_id:'site1'},
+    {id:'aud-other-group',communication_id:'other-group',group_id:'g2'},
+    {id:'aud-other-role',communication_id:'other-role',role_id:'role-marketing'},
+    {id:'aud-unknown',communication_id:'no-audience',all_accounts:false},
+    {id:'aud-hidden-target',communication_id:'group',group_id:'g2'},
+  ],
+  communication_files: [{id:'file-visible',communication_id:'group',file_id:'private-file'},{id:'file-draft',communication_id:'draft',file_id:'secret-file'}],
+  file_objects: [{id:'private-file',storage_path:'private/path'},{id:'secret-file',storage_path:'secret/path'}],
+  communication_reads: [{id:'read-own',communication_id:'group',account_id:'account1'},{id:'read-other',communication_id:'group',account_id:'account2'},{id:'read-draft',communication_id:'draft',account_id:'account1'}],
+} };
+const communicationStudent = context(ROLES.STUD,{personId:'p1',studentId:'s1',roleCode:'STUD'});
+const readCommunications = (actor: PersistentContext) => filterRelationalSnapshot(communicationSnapshot,actor);
+const personalCommunications = readCommunications(communicationStudent);
+assert.deepEqual(personalCommunications.tables.communications.map(row => row.id),['all','role','group','site','other-year']);
+assert.deepEqual(personalCommunications.tables.communication_audiences.map(row => row.id),['aud-all','aud-other-year','aud-role','aud-group','aud-site']);
+assert.deepEqual(personalCommunications.tables.communication_reads.map(row => row.id),['read-own']);
+assert.deepEqual(personalCommunications.tables.communication_files.map(row => row.id),['file-visible']);
+assert.deepEqual(personalCommunications.tables.file_objects,[]);
+assert.deepEqual(filterSnapshotForAcademicYear(personalCommunications,'y1').tables.communications.map(row => row.id),['all','role','group','site']);
+assert.deepEqual(filterSnapshotForAcademicYear(personalCommunications,'y1').tables.communication_files.map(row => row.id),['file-visible']);
+for (const role of [ROLES.DG,ROLES.IT,ROLES.MKT]) {
+  const managed = readCommunications(context(role));
+  assert.equal(managed.tables.communications.length,communicationSnapshot.tables.communications.length);
+  assert.equal(managed.tables.communication_audiences.length,communicationSnapshot.tables.communication_audiences.length);
+  assert.ok(managed.tables.communication_reads.every(row => row.account_id === 'account1'));
+}
+for (const role of [ROLES.ENS,ROLES.STG,ROLES.ACHATS]) assert.equal(readCommunications(context(role)).tables.communications,undefined);
+assert.equal(readCommunications(context(ROLES.IT,{permissions:[]})).tables.communications,undefined);
+const restrictedMarketing = context(ROLES.MKT,{grants:[{role_code:'MKT',role_name:ROLES.MKT,site_id:null,group_id:null,academic_year_id:'y1'}]});
+assert.deepEqual(readCommunications(restrictedMarketing).tables.communications.map(row => row.id),['all','group','site','other-group','other-role']);
+const delegated = readCommunications(context(ROLES.DEL,{personId:'p1',studentId:'s1',roleCode:'DEL'})).tables.communications;
+assert.ok(!delegated.some(row => row.id === 'role')); // No implicit STUD-to-DEL role equivalence.
+const orphanStudent = readCommunications(context(ROLES.STUD,{personId:'missing',studentId:'missing',roleCode:'STUD'}));
+assert.ok(!orphanStudent.tables.communications.some(row => ['group','site'].includes(row.id)));
+const teacherReader = readCommunications(context(ROLES.ENS,{teacherId:'t1',roleCode:'ENS',permissions:['communication.view']}));
+assert.ok(teacherReader.tables.communications.some(row => row.id === 'group'));
+assert.ok(!teacherReader.tables.communications.some(row => row.id === 'other-group'));
+assert.equal(communicationSnapshot.tables.communication_audiences.length,14);
+console.log('Communications : administration, audiences exactes, états, année, lectures privées et pièces protégées vérifiés.');

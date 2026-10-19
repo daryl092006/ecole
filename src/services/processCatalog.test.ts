@@ -19,7 +19,7 @@ for (const role of Object.values(ROLES)) {
 assert.deepEqual(getWorkspaceNavigation(getAvailableTabs(ROLES.IT, [])).flatMap(group => group.pages.map(page => page.id)).sort(), getAvailableTabs(ROLES.IT, []).flatMap(tab => tab.subTabs.map(page => page.id)).sort());
 
 const routeSections = new Set(PORTAL_ROUTES.map(route => route.section));
-const connected = new Set([...Object.keys(DOMAIN_WORKSPACES), ...Object.keys(CRUD_SECTIONS), 'web_applications', 'web_documents', 'web_brochures', 'espace_dashboard', 'dashboard_kpis', 'dashboard_reports', 'acad_settings', 'acad_subjects', 'acad_exams', 'acad_resits', 'acad_assessments', 'stud_list', 'stud_accounts', 'staff_records', 'staff_list', 'staff_roles', 'staff_permissions', 'sys_data']);
+const connected = new Set(['espace_exams', ...Object.keys(DOMAIN_WORKSPACES), ...Object.keys(CRUD_SECTIONS), 'web_applications', 'web_documents', 'web_brochures', 'espace_dashboard', 'dashboard_kpis', 'dashboard_reports', 'acad_settings', 'acad_subjects', 'acad_exams', 'acad_resits', 'acad_assessments', 'stud_list', 'stud_accounts', 'staff_records', 'staff_list', 'staff_roles', 'staff_permissions', 'sys_data']);
 for (const route of PORTAL_ROUTES) assert.ok(connected.has(route.section), `${route.href} doit disposer d’un écran connecté explicite.`);
 for (const stages of Object.values(MODULE_JOURNEYS)) for (const stage of stages) for (const section of stage.sections) assert.ok(routeSections.has(section), `Destination de parcours inconnue : ${section}`);
 for (const [tab, stages] of Object.entries(MODULE_JOURNEYS)) {

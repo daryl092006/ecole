@@ -1,6 +1,6 @@
 import { openAccountMenu } from './helpers';
 import { test, expect } from '@playwright/test';
-import { DEMO_PASSWORD } from '../../src/services/demoSessionService';
+import { DEMO_PASSWORD } from './legacy-demo-fixture';
 import { ROLES } from '../../src/types/permissions';
 import { openActionPanel, expectWorkspaceFits, captureWorkspace } from './helpers';
 

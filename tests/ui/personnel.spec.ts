@@ -1,6 +1,6 @@
 import { test, expect, type Page } from '@playwright/test';
 import { ROLES } from '../../src/types/permissions';
-import { DEMO_PASSWORD } from '../../src/services/demoSessionService';
+import { DEMO_PASSWORD } from './legacy-demo-fixture';
 import { captureWorkspace, openActionPanel } from './helpers';
 
 async function navigate(page: Page, href: string) {

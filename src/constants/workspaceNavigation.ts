@@ -8,13 +8,13 @@ export interface NavigationGroup {
 
 // Presentation only: destinations are intersected with the existing authorized pages.
 export const WORKSPACE_NAVIGATION: NavigationGroup[] = [
-  { id: 'home', name: 'Mon espace', icon: 'Home', category: 'Accueil et suivi', sections: ['espace_dashboard', 'espace_announcements', 'espace_documents', 'espace_finance', 'espace_support'] },
+  { id: 'home', name: 'Mon espace', icon: 'Home', category: 'Accueil et suivi', sections: ['espace_exams', 'espace_dashboard', 'espace_announcements', 'espace_documents', 'espace_finance', 'espace_support'] },
   { id: 'overview', name: 'Pilotage', icon: 'BarChart2', category: 'Accueil et suivi', sections: ['dashboard_kpis', 'dashboard_reports'] },
   { id: 'year', name: 'Année scolaire', icon: 'CalendarDays', category: 'Scolarité', sections: ['acad_reference', 'acad_settings'] },
-  { id: 'students', name: 'Dossiers étudiants', icon: 'GraduationCap', category: 'Scolarité', sections: ['stud_list', 'stud_cards'] },
+  { id: 'students', name: 'Dossiers étudiants', icon: 'GraduationCap', category: 'Scolarité', sections: ['stud_list', 'stud_status', 'stud_cards'] },
   { id: 'teaching', name: 'Cours et présences', icon: 'BookOpen', category: 'Scolarité', sections: ['acad_program', 'staff_teachers', 'acad_schedule', 'acad_attendance'] },
   { id: 'results', name: 'Examens et résultats', icon: 'ClipboardCheck', category: 'Scolarité', sections: ['acad_subjects', 'acad_assessments', 'acad_exams', 'acad_resits', 'acad_grades', 'acad_complaints', 'acad_jury'] },
-  { id: 'payments', name: 'Scolarité et paiements', icon: 'CreditCard', category: 'Services de l’établissement', sections: ['stud_status', 'fin_contracts', 'fin_payments', 'fin_kpis', 'fin_reports'] },
+  { id: 'payments', name: 'Scolarité et paiements', icon: 'CreditCard', category: 'Services de l’établissement', sections: ['fin_kpis', 'fin_contracts', 'fin_payments', 'fin_reports'] },
   { id: 'staff', name: 'Personnel', icon: 'Users', category: 'Services de l’établissement', sections: ['staff_records'] },
   { id: 'communication', name: 'Communication', icon: 'Megaphone', category: 'Services de l’établissement', sections: ['comm_announcements'] },
   { id: 'logistics', name: 'Achats et matériel', icon: 'Package', category: 'Services de l’établissement', sections: ['log_suppliers', 'log_purchases', 'log_assets'] },

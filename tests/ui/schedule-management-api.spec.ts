@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test';
-import { scheduleFixture, createSession } from './schedule-management-fixture';
+import { scheduleFixture, createSession, attachScheduledExam } from './schedule-management-fixture';
 import { securityContext, securityIds as id, uuid } from './security-fixture';
 import { ROLES } from '../../src/types/permissions';
 
@@ -111,14 +111,64 @@ test('Séance émargée : une correction de salle ne confond pas les formats ISO
   expect(fixture.snapshot.tables.sessions[0].room_id).toBe(uuid(951));
 });
 
-test('Épreuve liée : les accès doivent rester compris dans la séance, aucun décalage implicite', async () => {
+test('Épreuve liée : déplacement coordonné et une seule commande de séance', async () => {
+  const fixture = scheduleFixture(securityContext(), true);
+  const delivery = attachScheduledExam(fixture);
+  const response = await fixture.post({ action: 'move_session', sessionId: uuid(970), startsAt: createSession.startsAt, endsAt: createSession.endsAt });
+  expect(response.status).toBe(200);
+  expect(delivery).toMatchObject({ access_opens_at: '2026-10-21T08:15:00.000Z', access_closes_at: '2026-10-21T09:45:00.000Z', duration_minutes: 60, reason: 'Organisation pédagogique validée' });
+  expect(fixture.transactions).toHaveLength(1);
+  expect(fixture.transactions[0]).toHaveLength(1);
+  expect(fixture.transactions[0][0].table).toBe('sessions');
+});
+
+test('Modifier la séance applique aussi le déplacement coordonné et expose uniquement le récapitulatif', async () => {
+  const fixture = scheduleFixture(securityContext(), true);
+  attachScheduledExam(fixture);
+  const directory = await (await fixture.get()).json();
+  expect(directory.sessions[0].exam).toMatchObject({ name: 'Épreuve d’analyse', hasCopies: false, hasResults: false, durationMinutes: 60 });
+  expect(Object.keys(directory.sessions[0].exam).sort()).toEqual(['closesAt', 'durationMinutes', 'evaluationId', 'hasCopies', 'hasResults', 'id', 'name', 'opensAt']);
+  const response = await fixture.post({ ...createSession, action: 'update_session', sessionId: uuid(970), mode: 'PAPIER' });
+  expect(response.status).toBe(200);
+  expect(fixture.snapshot.tables.exam_deliveries[0].access_opens_at).toBe('2026-10-21T08:15:00.000Z');
+});
+
+for (const blocked of ['ouverte', 'copie interrompue', 'zéro réel', 'absence']) test(`Épreuve non déplaçable : ${blocked}`, async () => {
   const fixture = scheduleFixture();
-  fixture.snapshot.tables.sessions[0].mode = 'PAPIER';
-  fixture.snapshot.tables.exam_deliveries.push({ id: uuid(985), session_id: uuid(970), evaluation_id: id.evaluation(0), access_opens_at: '2026-10-20T08:00:00Z', access_closes_at: '2026-10-20T10:00:00Z' });
+  const delivery = attachScheduledExam(fixture);
+  if (blocked === 'ouverte') delivery.access_opens_at = new Date(Date.now() - 60000).toISOString();
+  if (blocked === 'copie interrompue') fixture.snapshot.tables.exam_attempts.push({ id: uuid(986), evaluation_id: id.evaluation(0), status: 'INTERROMPUE' });
+  if (blocked === 'zéro réel') fixture.snapshot.tables.grades[0].value = 0;
+  if (blocked === 'absence') fixture.snapshot.tables.grades[0].absence_status = 'ABSENT';
   const response = await fixture.post({ action: 'move_session', sessionId: uuid(970), startsAt: createSession.startsAt, endsAt: createSession.endsAt });
   expect(response.status).toBe(409);
-  expect((await response.json()).error).toMatch(/accès à l’épreuve/);
+  expect((await response.json()).error).toMatch(blocked === 'ouverte' ? /déjà ouverte/ : /copie ou résultat/);
   expect(fixture.transactions).toEqual([]);
+});
+
+test('La fenêtre complète doit tenir dans le nouveau créneau et rester future', async () => {
+  const fixture = scheduleFixture();
+  attachScheduledExam(fixture);
+  for (const [startsAt, endsAt, message] of [
+    ['2026-10-21T08:00:00Z', '2026-10-21T09:00:00Z', /toute la fenêtre/],
+    ['2026-01-02T08:00:00Z', '2026-01-02T10:00:00Z', /futur/],
+  ] as const) {
+    const response = await fixture.post({ action: 'move_session', sessionId: uuid(970), startsAt, endsAt });
+    expect(response.status).toBe(409);
+    expect((await response.json()).error).toMatch(message);
+  }
+  expect(fixture.transactions).toEqual([]);
+});
+
+test('Un refus SQL arrivé après le récapitulatif conserve les deux horaires', async () => {
+  const fixture = scheduleFixture(securityContext(), true);
+  attachScheduledExam(fixture);
+  const before = structuredClone(fixture.snapshot);
+  fixture.fail('Épreuve déjà ouverte : déplacement interdit');
+  const response = await fixture.post({ action: 'move_session', sessionId: uuid(970), startsAt: createSession.startsAt, endsAt: createSession.endsAt });
+  expect(response.status).toBe(409);
+  expect((await response.json()).error).toMatch(/déjà ouverte/);
+  expect(fixture.snapshot).toEqual(before);
 });
 
 test('Un conflit SQL concurrent devient un message métier sans succès fictif', async () => {

@@ -1,11 +1,12 @@
 import { expect, test, type Locator, type Page } from '@playwright/test';
 import { authenticateFixture, snapshot as baseSnapshot } from './persistent-fixture';
-import { scheduleFixture } from './schedule-management-fixture';
+import { scheduleFixture, attachScheduledExam } from './schedule-management-fixture';
 import { securityContext, securityIds as id, uuid } from './security-fixture';
 
-async function connectedSchedule(page: Page) {
+async function connectedSchedule(page: Page, withExam = false) {
   await authenticateFixture(page);
   const fixture = scheduleFixture(securityContext(), true);
+  if (withExam) attachScheduledExam(fixture);
   let reads = 0;
   await page.route('**/api/campus', route => {
     reads++;
@@ -129,4 +130,59 @@ test('Conflit : message dans le formulaire actif, champs verrouillés pendant l�
   release();
   await expect(dialog.getByRole('alert')).toHaveText('Cet enseignant a déjà une séance sur ce créneau.');
   expect(fixture.transactions).toEqual([]);
+});
+
+for (const width of [360, 390, 1440]) test(`Épreuve liée : récapitulatif du déplacement coordonné à ${width}px`, async ({ page }) => {
+  await page.setViewportSize({ width, height: 900 });
+  const fixture = await connectedSchedule(page, true);
+  await page.goto('/academique/emploi-du-temps');
+  await selectInitial(page);
+  await expect(page.getByRole('heading', { name: 'Épreuve d’analyse', exact: true })).toBeVisible();
+  await page.getByRole('button', { name: 'Déplacer la séance', exact: true }).click();
+  const dialog = page.getByRole('dialog', { name: 'Déplacer la séance', exact: true });
+  await dialog.getByLabel('Début (heure de Lomé)', { exact: true }).fill('2026-10-21T08:00');
+  await dialog.getByLabel('Fin (heure de Lomé)', { exact: true }).fill('2026-10-21T10:00');
+  await dialog.getByRole('textbox', { name: 'Motif', exact: true }).fill('Déplacement validé avant ouverture');
+  await dialog.getByRole('button', { name: 'Vérifier les informations', exact: true }).click();
+  const review = dialog.getByRole('region', { name: 'Vérification avant enregistrement' });
+  await expect(review).toContainText('Épreuve d’analyse');
+  const opening = review.locator('.review-values > div').filter({ hasText: 'Ouverture de l’épreuve (Lomé)' });
+  await expect(opening).toContainText(/Avant : 20\/10\/2026.*08:15/);
+  await expect(opening).toContainText(/21\/10\/2026.*08:15/);
+  const closing = review.locator('.review-values > div').filter({ hasText: 'Fermeture de l’épreuve (Lomé)' });
+  await expect(closing).toContainText(/21\/10\/2026.*09:45/);
+  await expect(review).toContainText('60 minutes');
+  await expect(review).toContainText('dans un seul enregistrement');
+  expect(fixture.transactions).toEqual([]);
+  expect(fixture.snapshot.tables.exam_deliveries[0].access_opens_at).toBe('2026-10-20T08:15:00Z');
+  const confirm = dialog.getByRole('button', { name: /^Confirmer/ });
+  if (width < 768) await expect(confirm).toBeInViewport();
+  await confirm.click();
+  await expect(dialog).not.toBeVisible();
+  expect(fixture.snapshot.tables.sessions[0].starts_at).toBe('2026-10-21T08:00:00.000Z');
+  expect(fixture.snapshot.tables.exam_deliveries[0]).toMatchObject({ access_opens_at: '2026-10-21T08:15:00.000Z', access_closes_at: '2026-10-21T09:45:00.000Z', duration_minutes: 60 });
+  expect(fixture.transactions).toHaveLength(1);
+  await expect.poll(fixture.campusReads).toBeGreaterThan(1);
+});
+
+test('Épreuve liée : ouverture arrivée pendant la confirmation, refus visible et aucun horaire modifié', async ({ page }) => {
+  const fixture = await connectedSchedule(page, true);
+  await page.goto('/academique/emploi-du-temps');
+  await selectInitial(page);
+  await page.getByRole('button', { name: 'Déplacer la séance', exact: true }).click();
+  const dialog = page.getByRole('dialog', { name: 'Déplacer la séance', exact: true });
+  await dialog.getByLabel('Début (heure de Lomé)', { exact: true }).fill('2026-10-21T08:00');
+  await dialog.getByLabel('Fin (heure de Lomé)', { exact: true }).fill('2026-10-21T10:00');
+  await dialog.getByRole('textbox', { name: 'Motif', exact: true }).fill('Demande arrivée avant ouverture');
+  await dialog.getByRole('button', { name: 'Vérifier les informations', exact: true }).click();
+  fixture.fail('Épreuve déjà ouverte : déplacement interdit');
+  await dialog.getByRole('button', { name: /^Confirmer/ }).click();
+  await expect(dialog.getByRole('alert')).toHaveText('Épreuve déjà ouverte : déplacement interdit.');
+  expect(fixture.transactions).toEqual([]);
+  expect(fixture.snapshot.tables.sessions[0].starts_at).toBe('2026-10-20T08:00:00Z');
+  expect(fixture.snapshot.tables.exam_deliveries[0].access_opens_at).toBe('2026-10-20T08:15:00Z');
+  await dialog.getByRole('button', { name: 'Revenir aux informations', exact: true }).click();
+  await dialog.getByRole('button', { name: 'Annuler', exact: true }).click();
+  await page.getByRole('button', { name: 'Abandonner les modifications', exact: true }).click();
+  await expect(dialog).not.toBeVisible();
 });

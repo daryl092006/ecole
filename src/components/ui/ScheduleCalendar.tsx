@@ -19,8 +19,17 @@ export default function ScheduleCalendar({ sessions, onSelect, period }: { sessi
   const first = new Date(year, month - 1, 1);
   const count = new Date(year, month, 0).getDate();
   const offset = (first.getDay() + 6) % 7;
+  const listedDays = Array.from({ length: count }, (_, index) => `${base}-${String(index + 1).padStart(2,'0')}`)
+    .filter(date => dated.some(row => row.start.slice(0,10) === date));
   const move = (delta: number) => { const date = new Date(year, month - 1 + delta, 1); setChosen(`${date.getFullYear()}-${String(date.getMonth()+1).padStart(2,'0')}`); };
   return <section className="card"><div className="calendar-toolbar"><button className="btn btn-outline" disabled={!!lower && base <= lower} onClick={() => move(-1)} aria-label="Mois précédent">←</button><h2>{first.toLocaleDateString('fr-FR', { month: 'long', year: 'numeric' })}</h2><button className="btn btn-outline" disabled={!!upper && base >= upper} onClick={() => move(1)} aria-label="Mois suivant">→</button><button className="btn btn-outline" disabled={!inPeriod(today)} onClick={() => setChosen(today.slice(0,7))}>Aujourd’hui</button><label>Mois<input className="input" type="month" min={lower} max={upper} value={base} onChange={event => setChosen(event.target.value)} /></label></div>
+    <div className="schedule-calendar-list" role="region" aria-label="Séances du mois">
+      {listedDays.map(date => <section className="calendar-list-day" key={date}>
+        <h3><time dateTime={date}>{new Date(year, month - 1, Number(date.slice(8,10))).toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' })}</time></h3>
+        {dated.filter(row => row.start.slice(0,10) === date).map(row => <button className="calendar-session" key={row.id} onClick={() => onSelect(row.id)}><strong>{row.start.slice(11,16)}{row.end ? `–${row.end.slice(11,16)}` : ''} · {row.title}</strong><span>{row.subtitle}</span></button>)}
+      </section>)}
+      {!listedDays.length && dated.length > 0 && <p>Aucune séance pour ce mois.</p>}
+    </div>
     <div className="schedule-calendar-scroll"><div className="schedule-calendar" aria-label="Calendrier des séances">
       {['Lundi','Mardi','Mercredi','Jeudi','Vendredi','Samedi','Dimanche'].map(day => <strong className="calendar-weekday" key={day}>{day}</strong>)}
       {Array.from({ length: offset }, (_, i) => <div className="calendar-day calendar-outside" key={`empty-${i}`} />)}
