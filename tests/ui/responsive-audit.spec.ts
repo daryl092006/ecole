@@ -23,7 +23,7 @@ const screens: Screen[] = [
   }))),
 ];
 const widths = [360, 390, 768, 1024, 1440];
-const artifactRoot = 'tmp/screenshots/responsive-audit';
+const artifactRoot = process.env.ESCEN_AUDIT_ARTIFACT_ROOT || 'tmp/screenshots/responsive-audit';
 const stage = process.env.ESCEN_RESPONSIVE_STAGE || 'before';
 if (!['before', 'after'].includes(stage)) throw new Error('Étape responsive invalide.');
 const selectedScreens = screens.filter(screen => !process.env.ESCEN_AUDIT_SCREEN || new RegExp(process.env.ESCEN_AUDIT_SCREEN).test(screen.key));
