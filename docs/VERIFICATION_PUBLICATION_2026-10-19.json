@@ -1,0 +1,38 @@
+{
+  "checkedAt": "2026-10-19T10:42:27.628Z",
+  "applicationCommit": "6c0a129083a9b799d17d9a866e25337d97341ef6",
+  "checkedSourceFiles": 484,
+  "declaredDependencyVersions": {
+    "@supabase/supabase-js": "2.112.3",
+    "lucide-react": "1.31.0",
+    "next": "15.5.27",
+    "react": "19.2.8",
+    "react-dom": "19.2.8",
+    "server-only": "0.0.1",
+    "zod": "4.6.7",
+    "@electric-sql/pglite": "0.5.9",
+    "@playwright/test": "1.64.0",
+    "@types/node": "22.20.5",
+    "@types/react": "19.2.18",
+    "@types/react-dom": "19.2.4",
+    "eslint": "9.39.5",
+    "eslint-config-next": "15.5.27",
+    "typescript": "5.9.3"
+  },
+  "importedExternalPackages": [
+    "@electric-sql/pglite",
+    "@playwright/test",
+    "@supabase/supabase-js",
+    "lucide-react",
+    "next",
+    "react",
+    "react-dom",
+    "server-only",
+    "typescript",
+    "zod"
+  ],
+  "importedDependenciesDeclared": true,
+  "installedDependenciesMatchLockfile": true,
+  "unpublishedRuntimeFiles": [],
+  "remainingTsConfigDifference": "include ordering only"
+}
