@@ -565,6 +565,8 @@ function ReferenceCrudContent({
         values.academic_year_id = setupYearId;
         values.name = selected.name || form.name;
         values.level_id = selected.level_id || form.level_id;
+        const resolvedOfferings = offeringIds.length > 0 ? offeringIds : groupOfferingSelection(data, selected, setupYearId, String(values.level_id));
+        values.offering_ids = resolvedOfferings.length > 0 ? resolvedOfferings : (data?.tables.academic_offerings || []).filter(o => !o.archived_at && o.academic_year_id === setupYearId && o.level_id === values.level_id).map(o => o.id);
       } else if (collection === 'annual_fee_schedules') {
         values.academic_year_id = setupYearId;
         values.category = selected.category || form.category || setupCategory || 'SCOLARITE';

@@ -218,8 +218,8 @@ export function getStepPreFilledItems(step: string, summary: ReconductConfigSumm
   }
 }
 
-export function groupOfferingSelection(snapshot: RelationalSnapshot, group: DatabaseRow | null, yearId: string, levelId: string): string[] {
-  if (!group) return [];
+export function groupOfferingSelection(snapshot: RelationalSnapshot | import('@/types/persistence').CatalogSnapshot | null | undefined, group: DatabaseRow | null, yearId: string, levelId: string): string[] {
+  if (!snapshot || !group) return [];
   const choices = (snapshot.tables.academic_offerings || []).filter(row => !row.archived_at && row.academic_year_id === yearId && row.level_id === levelId);
   if (!group.isPrefilled) {
     const linkedIds = new Set((snapshot.tables.group_offerings || []).filter(link => link.group_id === group.id && !link.archived_at).map(link => link.offering_id));
