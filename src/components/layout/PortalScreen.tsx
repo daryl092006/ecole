@@ -114,5 +114,6 @@ export default function PortalScreen({ tab: _tab, section }: { tab: string; sect
   if (state.history.enabled && HISTORY_SECTIONS[section]) return <HistoricalWorkspace key={section} section={section} />;
   if (section === 'sys_data') return <HistoricalWorkspace section="history_all" />;
 
+  if (state.session) return <section className="card"><h1>Fonction indisponible</h1><p>Cette fonction n’est pas encore disponible.</p></section>;
   return null;
 }
