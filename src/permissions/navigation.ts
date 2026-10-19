@@ -166,6 +166,7 @@ export function getAvailableTabs(role: RoleName, permissions?: Permission[], glo
     .map(tab => ({
       ...tab,
       subTabs: tab.subTabs?.filter(subTab => {
+        if (subTab.id === 'espace_exams' && role !== ROLES.STUD && role !== ROLES.DEL) return false;
         if (tab.id === 'website') {
           if (!globalAccess) return false;
           const effective = permissions || roleAccess.permissions;

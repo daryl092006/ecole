@@ -192,6 +192,7 @@ Cette section actualise les constats historiques des sections 1 et 5, notamment 
 - `campusWorkflowService.ts` reste utilisé par l'état global, `verify-campus.cjs` et des tests. `runWorkflow` bloque les écritures de démonstration lorsqu'une session est active. Une suppression exige de traiter ces dépendances ; ne pas remplacer une écriture persistante par ce service.
 - `useDemoUsers` reste appelé par l'état global. `demoIdentity` reçoit encore l'identité de la session réelle et intervient dans les projections et la clé de PortalShell. `src/types/demoUsers.ts` est absent. Ne pas qualifier ces symboles de code sans usage ni les utiliser dans une nouvelle règle métier.
 - Le journal et son export sont montés via `AuditJournalPanel` ; les réclamations via `ComplaintsPanel` pour les rôles autorisés ; la consultation des communications via `ConnectedDomainWorkspace`. Ne pas remplacer ces écrans actifs par une indisponibilité globale.
+- « Mes épreuves en ligne » est un parcours personnel réservé aux rôles Étudiant et Délégué. La permission globale `exam.take` de l'Informaticien ne doit pas afficher cette rubrique ni autoriser sa page personnelle ; appliquer ce filtre avant l'exception de navigation IT. Les fonctions d'administration des examens restent accessibles selon les permissions métier. Un compte cumulant IT et Étudiant doit sélectionner son rôle étudiant pour passer ses épreuves.
 
 ### Décisions et limites à préserver
 
