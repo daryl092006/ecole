@@ -1,0 +1,347 @@
+{
+  "checkedAt": "2026-10-19T10:19:04.445Z",
+  "projectRef": "zmxapemyktxhppdxenzb",
+  "appliedDuringThisDeployment": [
+    {
+      "name": "coordinated_exam_reschedule",
+      "version": "202610180042"
+    },
+    {
+      "name": "attendance_management",
+      "version": "202610180043"
+    },
+    {
+      "name": "atomic_payment_allocations",
+      "version": "202610180044"
+    },
+    {
+      "name": "payment_adjustments",
+      "version": "202610180045"
+    },
+    {
+      "name": "net_financial_projections",
+      "version": "202610180046"
+    }
+  ],
+  "history": [
+    {
+      "name": "academic_structure",
+      "version": "202608130001"
+    },
+    {
+      "name": "relational_core",
+      "version": "202610140001"
+    },
+    {
+      "name": "academic_workflows",
+      "version": "202610140002"
+    },
+    {
+      "name": "finance_and_operations",
+      "version": "202610140003"
+    },
+    {
+      "name": "integrity_guards",
+      "version": "202610140004"
+    },
+    {
+      "name": "history_and_security",
+      "version": "202610140005"
+    },
+    {
+      "name": "linked_details",
+      "version": "202610140006"
+    },
+    {
+      "name": "import_provenance",
+      "version": "202610140007"
+    },
+    {
+      "name": "resource_integrity",
+      "version": "202610140008"
+    },
+    {
+      "name": "role_catalog",
+      "version": "202610140009"
+    },
+    {
+      "name": "identity_stability",
+      "version": "202610140010"
+    },
+    {
+      "name": "remote_operations",
+      "version": "202610140011"
+    },
+    {
+      "name": "authenticated_audit_context",
+      "version": "202610140012"
+    },
+    {
+      "name": "legacy_identity_import",
+      "version": "202610140014"
+    },
+    {
+      "name": "it_full_platform_access",
+      "version": "202610140015"
+    },
+    {
+      "name": "account_lifecycle",
+      "version": "202610140016"
+    },
+    {
+      "name": "historical_read_access",
+      "version": "202610140017"
+    },
+    {
+      "name": "historical_document_access",
+      "version": "202610140018"
+    },
+    {
+      "name": "exam_copy_read",
+      "version": "202610140019"
+    },
+    {
+      "name": "reference_archival",
+      "version": "202610140020"
+    },
+    {
+      "name": "subject_composition",
+      "version": "202610140021"
+    },
+    {
+      "name": "website_exchange",
+      "version": "202610150022"
+    },
+    {
+      "name": "academic_year_context",
+      "version": "202610150023"
+    },
+    {
+      "name": "annual_business_scope",
+      "version": "202610150024"
+    },
+    {
+      "name": "restore_source_academic_years",
+      "version": "202610150025"
+    },
+    {
+      "name": "annual_fees_and_subjects",
+      "version": "202610150026"
+    },
+    {
+      "name": "year_preparation",
+      "version": "202610150027"
+    },
+    {
+      "name": "remove_location_prerequisites",
+      "version": "202610150028"
+    },
+    {
+      "name": "canonical_recovery_support",
+      "version": "202610150029"
+    },
+    {
+      "name": "single_open_academic_year",
+      "version": "202610160030"
+    },
+    {
+      "name": "website_brochures",
+      "version": "202610160031"
+    },
+    {
+      "name": "website_annual_offerings",
+      "version": "202610160032"
+    },
+    {
+      "name": "website_brochure_programs",
+      "version": "202610160033"
+    },
+    {
+      "name": "audit_journal_read",
+      "version": "202610170034"
+    },
+    {
+      "name": "curriculum_reference_archival",
+      "version": "202610180035"
+    },
+    {
+      "name": "atomic_evaluation_batches",
+      "version": "202610180036"
+    },
+    {
+      "name": "unprocessed_copy_zero",
+      "version": "202610180037"
+    },
+    {
+      "name": "persistent_exam_deadlines",
+      "version": "202610180038"
+    },
+    {
+      "name": "block_unprocessed_grade_submission",
+      "version": "202610180039"
+    },
+    {
+      "name": "teacher_assignment_reasons",
+      "version": "202610180040"
+    },
+    {
+      "name": "blocked_period_reasons",
+      "version": "202610180041"
+    },
+    {
+      "name": "coordinated_exam_reschedule",
+      "version": "202610180042"
+    },
+    {
+      "name": "attendance_management",
+      "version": "202610180043"
+    },
+    {
+      "name": "atomic_payment_allocations",
+      "version": "202610180044"
+    },
+    {
+      "name": "payment_adjustments",
+      "version": "202610180045"
+    },
+    {
+      "name": "net_financial_projections",
+      "version": "202610180046"
+    }
+  ],
+  "verification": {
+    "attendance_review_roles": [
+      "DA",
+      "IT"
+    ],
+    "columns": [
+      {
+        "actual_type": "text",
+        "column": "reason",
+        "expected_type": "text",
+        "nullable": true,
+        "table": "attendances"
+      },
+      {
+        "actual_type": "timestamp with time zone",
+        "column": "archived_at",
+        "expected_type": "timestamp with time zone",
+        "nullable": true,
+        "table": "curriculum_components"
+      },
+      {
+        "actual_type": "text",
+        "column": "reason",
+        "expected_type": "text",
+        "nullable": true,
+        "table": "curriculum_components"
+      },
+      {
+        "actual_type": "timestamp with time zone",
+        "column": "archived_at",
+        "expected_type": "timestamp with time zone",
+        "nullable": true,
+        "table": "curriculum_semesters"
+      },
+      {
+        "actual_type": "text",
+        "column": "reason",
+        "expected_type": "text",
+        "nullable": true,
+        "table": "curriculum_semesters"
+      },
+      {
+        "actual_type": "text",
+        "column": "reason",
+        "expected_type": "text",
+        "nullable": true,
+        "table": "exam_deliveries"
+      },
+      {
+        "actual_type": "timestamp with time zone",
+        "column": "archived_at",
+        "expected_type": "timestamp with time zone",
+        "nullable": true,
+        "table": "teaching_units"
+      },
+      {
+        "actual_type": "text",
+        "column": "reason",
+        "expected_type": "text",
+        "nullable": true,
+        "table": "teaching_units"
+      }
+    ],
+    "rpcs": [
+      {
+        "anon_execute": false,
+        "authenticated_execute": false,
+        "exists": true,
+        "security_definer": true,
+        "service_role_execute": true,
+        "signature": "public.escen_attendance_transaction(uuid,bigint,jsonb)"
+      },
+      {
+        "anon_execute": false,
+        "authenticated_execute": false,
+        "exists": true,
+        "security_definer": true,
+        "service_role_execute": true,
+        "signature": "public.escen_payment_adjustment(uuid,bigint,text,uuid,numeric,text,text)"
+      },
+      {
+        "anon_execute": false,
+        "authenticated_execute": false,
+        "exists": true,
+        "security_definer": true,
+        "service_role_execute": true,
+        "signature": "public.escen_payment_transaction(uuid,bigint,text,uuid,jsonb)"
+      }
+    ],
+    "tables_with_rls": 112,
+    "tables_without_rls": [],
+    "triggers": [
+      {
+        "enabled": true,
+        "table": "absence_justifications",
+        "trigger": "absence_justification_review"
+      },
+      {
+        "enabled": true,
+        "table": "attendances",
+        "trigger": "attendance_correction_reason"
+      },
+      {
+        "enabled": true,
+        "table": "exam_deliveries",
+        "trigger": "exam_reschedule_guard"
+      },
+      {
+        "enabled": true,
+        "table": "sessions",
+        "trigger": "session_exam_reschedule"
+      }
+    ],
+    "views": [
+      {
+        "definition": " SELECT a.id,\n    a.payment_id,\n    a.enrollment_id,\n    a.contract_id,\n    a.version_id,\n    a.line_id,\n    a.installment_id,\n    a.amount,\n    a.allocated_by,\n    a.allocated_at\n   FROM escen.payment_allocations a\n     JOIN escen.payments p ON p.id = a.payment_id\n  WHERE p.status <> 'PENDING'::text AND NOT (EXISTS ( SELECT 1\n           FROM escen.allocation_reversals r\n          WHERE r.allocation_id = a.id)) AND NOT (EXISTS ( SELECT 1\n           FROM escen.payment_reversals r\n          WHERE r.payment_id = a.payment_id));",
+        "name": "active_payment_allocations",
+        "security_invoker": true
+      },
+      {
+        "definition": " SELECT c.id AS contract_id,\n    c.enrollment_id,\n    v.id AS version_id,\n    COALESCE(( SELECT sum(l.amount::numeric) AS sum\n           FROM escen.contract_lines l\n          WHERE l.version_id = v.id), 0::numeric) - COALESCE(( SELECT sum(d.amount::numeric) AS sum\n           FROM escen.contract_discounts d\n          WHERE d.version_id = v.id), 0::numeric) - COALESCE(( SELECT sum(n.amount::numeric) AS sum\n           FROM escen.credit_notes n\n             JOIN escen.contract_lines l ON l.id = n.line_id\n          WHERE l.version_id = v.id), 0::numeric) AS expected,\n    COALESCE(( SELECT sum(p.amount::numeric - COALESCE(( SELECT sum(f.amount::numeric) AS sum\n                   FROM escen.refunds f\n                  WHERE f.payment_id = p.id), 0::numeric)) AS sum\n           FROM escen.payments p\n          WHERE p.enrollment_id = c.enrollment_id AND p.status <> 'PENDING'::text AND NOT (EXISTS ( SELECT 1\n                   FROM escen.payment_reversals r\n                  WHERE r.payment_id = p.id))), 0::numeric) AS paid\n   FROM escen.financial_contracts c\n     JOIN escen.contract_versions v ON v.contract_id = c.id AND v.status = 'APPROVED'::text;",
+        "name": "contract_balances",
+        "security_invoker": true
+      }
+    ]
+  },
+  "restApi": {
+    "status": 200,
+    "availableRpcPaths": [
+      "/rpc/escen_attendance_transaction",
+      "/rpc/escen_payment_transaction",
+      "/rpc/escen_payment_adjustment"
+    ]
+  },
+  "remoteChecksReadOnly": true
+}
