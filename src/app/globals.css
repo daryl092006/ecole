@@ -2898,6 +2898,9 @@ input[type="radio"] {
 
 .calendar-toolbar { display:flex; align-items:center; flex-wrap:wrap; gap: .75rem; margin-bottom:1rem; }
 .calendar-toolbar h2 { margin:0; text-transform:capitalize; }
+.schedule-group-filter { display: flex; flex-wrap: wrap; align-items: flex-end; gap: 1rem; }
+.schedule-group-filter > .form-group { flex: 1 1 240px; max-width: 420px; margin: 0; min-width: 0; }
+.schedule-group-filter > p { margin: 0; padding-bottom: .65rem; color: var(--text-secondary); font-size: .875rem; }
 .schedule-calendar-scroll { overflow-x:auto; max-width:100%; }
 .schedule-calendar { display:grid; grid-template-columns:repeat(7,minmax(130px,1fr)); min-width:910px; gap:1px; background:var(--border-color,#ddd); border:1px solid var(--border-color,#ddd); }
 .calendar-weekday { padding:.65rem; background:var(--bg-card,#fff); text-align:center; }
@@ -2907,6 +2910,7 @@ input[type="radio"] {
 .calendar-session span { display:block; margin-top:.25rem; font-size:.8rem; }
 .schedule-calendar-list { display: none; }
 @media (max-width: 768px) {
+  .schedule-group-filter > .form-group { flex-basis: 100%; max-width: none; }
   .schedule-calendar-scroll { display: none; }
   .schedule-calendar-list { display: grid; gap: 1rem; min-width: 0; }
   .calendar-list-day { min-width: 0; padding: .75rem; border: 1px solid var(--border); border-radius: var(--radius-sm); }

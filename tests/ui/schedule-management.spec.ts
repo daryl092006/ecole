@@ -1,5 +1,6 @@
 import { expect, test, type Locator, type Page } from '@playwright/test';
-import { authenticateFixture, snapshot as baseSnapshot } from './persistent-fixture';
+import { authenticateFixture, snapshot as baseSnapshot, historyCatalog, fixtureCapabilities, ACCOUNT_IDS } from './persistent-fixture';
+import { ROLES } from '../../src/types/permissions';
 import { scheduleFixture, attachScheduledExam } from './schedule-management-fixture';
 import { securityContext, securityIds as id, uuid } from './security-fixture';
 
@@ -30,6 +31,80 @@ async function confirm(dialog: Locator) {
 const selectInitial = (page: Page) => page.locator('.calendar-list-day, .calendar-day')
   .filter({ has: page.locator('time[datetime="2026-10-20"]') })
   .getByRole('button', { name: /08:00–10:00.*Groupe 1/ }).filter({ visible: true }).click();
+
+for (const width of [390, 1440]) test(`Un seul calendrier et filtre des archives par groupe à ${width}px`, async ({ page }) => {
+  await page.setViewportSize({ width, height: 1000 });
+  const fixture = await connectedSchedule(page);
+  fixture.snapshot.tables.sessions = [];
+  const records = [0, 1].map(index => ({ id: `ARCHIVE-${index}`, sourceId: `A${index}`, batchId: 'batch-fixture', status: 'PENDING', issues: [], values: {
+    group_id: `G${index + 1}`, uv_id: 'UV1', debut: `2026-10-20T${index ? '10' : '08'}:00:00Z`, fin: `2026-10-20T${index ? '12' : '10'}:00:00Z`,
+  } }));
+  await page.route('**/api/history*', route => {
+    const params = new URL(route.request().url()).searchParams;
+    if (params.get('table')) return route.fulfill({ json: { table: 'emploi_du_temps', total: records.length, records, offset: 0, limit: 50 } });
+    return route.fulfill({ json: { ...historyCatalog, datasets: historyCatalog.datasets.map(dataset => dataset.table === 'emploi_du_temps' ? { ...dataset, count: 2 } : dataset) } });
+  });
+  await page.goto('/academique/emploi-du-temps');
+  await expect(page.getByRole('button', { name: 'Archives importées', exact: true })).toHaveAttribute('aria-pressed', 'true');
+  await expect(page.locator('.calendar-toolbar')).toHaveCount(1);
+  const group = page.getByRole('combobox', { name: 'Groupe', exact: true });
+  await expect(group).toBeVisible();
+  await expect(page.locator('.calendar-session:visible')).toHaveCount(2);
+  await group.selectOption('batch-fixture:G1');
+  await expect(page.locator('.calendar-session:visible')).toHaveCount(1);
+  await expect(page.locator('.calendar-session:visible')).toContainText('08:00');
+  await group.selectOption('batch-fixture:G2');
+  await expect(page.locator('.calendar-session:visible')).toHaveCount(1);
+  await expect(page.locator('.calendar-session:visible')).toContainText('10:00');
+  await page.getByRole('button', { name: 'Planning de l’année', exact: true }).click();
+  await expect(page.locator('.calendar-toolbar')).toHaveCount(1);
+  await expect(page.locator('.calendar-session:visible')).toHaveCount(0);
+  await expect(page.getByText('Aucune séance datée pour ces filtres.', { exact: true })).toBeVisible();
+  await page.getByRole('button', { name: 'Archives importées', exact: true }).click();
+  await expect(page.locator('.calendar-toolbar')).toHaveCount(1);
+  await expect(page.getByRole('combobox', { name: 'Groupe', exact: true })).toBeVisible();
+  expect(fixture.transactions).toEqual([]);
+});
+
+for (const readOnly of [false, true]) for (const width of [390, 1440]) test(`Planning par groupe, consultation seule=${readOnly}, à ${width}px`, async ({ page }) => {
+  await page.setViewportSize({ width, height: 1000 });
+  const fixture = await connectedSchedule(page);
+  const initial = fixture.snapshot.tables.sessions[0];
+  fixture.snapshot.tables.sessions.push(
+    { ...initial, id: uuid(971), assignment_id: id.assignment(1), group_id: id.otherGroup, teacher_id: uuid(21), starts_at: '2026-10-20T10:00:00Z', ends_at: '2026-10-20T12:00:00Z' },
+    { ...initial, id: uuid(972), assignment_id: id.assignment(1), group_id: id.otherGroup, status: 'ANNULE', starts_at: '2026-10-21T10:00:00Z', ends_at: '2026-10-21T12:00:00Z' },
+  );
+  if (readOnly) await page.route('**/api/session', route => route.fulfill({ json: {
+    capabilities: { ...fixtureCapabilities, [ROLES.IT]: { permissions: ['schedule.view'], globalAccess: true } },
+    accountId: ACCOUNT_IDS[1], name: 'Jean Technique', email: 'it@example.test', role: ROLES.IT, availableRoles: [ROLES.IT], studentId: null, teacherId: null, matricule: null, mustChangePassword: false,
+  } }));
+  await page.goto('/academique/emploi-du-temps');
+  const group = page.getByRole('combobox', { name: 'Groupe', exact: true });
+  await expect(group).toBeVisible();
+  await expect(page.locator('.calendar-toolbar')).toHaveCount(1);
+  await group.selectOption(id.group);
+  await expect(page.locator('.calendar-session:visible')).toHaveCount(1);
+  await expect(page.locator('.calendar-session:visible')).toContainText('Groupe 1');
+  if (!readOnly) await expect(page.getByText('Séances annulées ou reportées', { exact: true })).toHaveCount(0);
+  await page.getByRole('button', { name: 'Mois suivant', exact: true }).click();
+  await expect(group).toHaveValue(id.group);
+  await page.getByRole('button', { name: 'Mois précédent', exact: true }).click();
+  await expect(page.locator('.calendar-session:visible')).toHaveCount(1);
+  await page.screenshot({ path: `tmp/screenshots/annual-offerings/${width}/emploi-du-temps-groupe-${readOnly ? 'consultation' : 'gestion'}.png` });
+  await group.selectOption(id.otherGroup);
+  await expect(page.locator('.calendar-session:visible')).toHaveCount(readOnly ? 2 : 1);
+  if (!readOnly) {
+    await expect(page.getByText('Séances annulées ou reportées', { exact: true })).toBeVisible();
+    await group.selectOption(id.otherSiteGroup);
+    await expect(page.locator('.calendar-session:visible')).toHaveCount(0);
+    await expect(page.locator('.calendar-toolbar')).toHaveCount(1);
+    await expect(page.getByRole('button', { name: 'Planning de l’année', exact: true })).toHaveAttribute('aria-pressed', 'true');
+  }
+  await page.getByRole('button', { name: 'Afficher tous les groupes', exact: true }).click();
+  await expect(group).toHaveValue('');
+  await expect(page.locator('.calendar-session:visible')).toHaveCount(readOnly ? 3 : 2);
+  expect(fixture.transactions).toEqual([]);
+});
 
 for (const width of [360, 390, 1440]) test(`Séance : créer, modifier, déplacer, remplacer et annuler à ${width}px`, async ({ page }) => {
   await page.setViewportSize({ width, height: 900 });

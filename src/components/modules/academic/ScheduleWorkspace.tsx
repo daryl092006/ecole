@@ -8,6 +8,8 @@ import type { ManagedSession, ScheduleCommand, ScheduleDirectory, SessionMode } 
 import ConnectedDomainWorkspace from '../ConnectedDomainWorkspace';
 import LoadingState from '@/components/ui/LoadingState';
 import ScheduleCalendar from '@/components/ui/ScheduleCalendar';
+import ScheduleGroupFilter from '@/components/ui/ScheduleGroupFilter';
+import ArchiveSchedule from '../history/ArchiveSchedule';
 import WorkPage from '@/components/ui/WorkPage';
 import ReviewedForm, { type ReviewField } from '@/components/ui/ReviewedForm';
 import DrawerActions from '@/components/ui/DrawerActions';
@@ -36,6 +38,8 @@ function ScheduleManager() {
   const [reload, setReload] = useState(0), [detail, setDetail] = useState<ManagedSession | null>(null);
   const [operation, setOperation] = useState<Operation | null>(null), [form, setForm] = useState(blank);
   const [saving, setSaving] = useState(false), [saveError, setSaveError] = useState('');
+  const [groupSelection, setGroupSelection] = useState({ yearId: '', groupId: '' });
+  const [sourceSelection, setSourceSelection] = useState<{ yearId: string; source: 'current' | 'archives' } | null>(null);
   useEffect(() => {
     const controller = new AbortController();
     setLoading(true); setError(''); setDetail(null); setOperation(null);
@@ -47,7 +51,7 @@ function ScheduleManager() {
   if (loading) return <LoadingState label="Chargement du planning…" />;
   if (error || !directory) return <section className="card" role="alert"><p>{error || 'Planning indisponible.'}</p><button className="btn btn-outline" onClick={() => setReload(value => value + 1)}>Réessayer</button></section>;
   const teacherName = (id: string | null) => directory.teachers.find(teacher => teacher.id === id)?.name || 'Enseignant indisponible';
-  const groupName = (id: string) => directory.groups.find(group => group.id === id)?.label || 'Groupe indisponible';
+  const groupName = (id: string) => directory.groups.find(group => group.id === id)?.label || String(portal.relationalSnapshot.tables.groups?.find(group => group.id === id)?.name || 'Groupe indisponible');
   const componentName = (assignmentId: string) => directory.components.find(component => component.id === directory.assignments.find(assignment => assignment.id === assignmentId)?.componentId)?.label || 'Matière';
   const assignmentName = (assignmentId: string) => {
     const assignment = directory.assignments.find(row => row.id === assignmentId);
@@ -89,7 +93,13 @@ function ScheduleManager() {
       : action === 'replace_teacher' ? 'Seul l’enseignant effectif de cette séance changera. L’affectation d’origine et les autres séances seront conservées. Les conflits du remplaçant seront contrôlés.'
         : movingExam ? 'La séance et les horaires d’accès à l’épreuve seront déplacés ensemble, dans un seul enregistrement. La durée de composition sera conservée. Le déplacement sera refusé si l’épreuve est déjà ouverte, possède une copie ou un résultat, ou si un conflit apparaît.'
         : 'La séance sera enregistrée après contrôle du groupe, de l’enseignant, de la salle, du semestre et des périodes bloquées. Les autres séances resteront inchangées.';
-  const active = directory.sessions.filter(session => !['ANNULE', 'REPORTE'].includes(session.status));
+  const yearId = directory.selectedYearId || '';
+  const groups = [...new Map([...directory.groups, ...directory.sessions.map(session => ({ id: session.groupId, label: groupName(session.groupId) }))].map(group => [group.id, group])).values()];
+  const groupId = groupSelection.yearId === yearId && groups.some(group => group.id === groupSelection.groupId) ? groupSelection.groupId : '';
+  const sessions = directory.sessions.filter(session => !groupId || session.groupId === groupId);
+  const active = sessions.filter(session => !['ANNULE', 'REPORTE'].includes(session.status));
+  const hasArchives = portal.history.enabled && Boolean(portal.history.catalog?.datasets.some(dataset => dataset.table === 'emploi_du_temps' && dataset.count > 0));
+  const showArchives = hasArchives && (sourceSelection?.yearId === yearId ? sourceSelection.source === 'archives' : directory.sessions.length === 0);
   return <div className="domain-workspace">
     <div className="page-intro"><div><span className="page-eyebrow">PLANNING</span><h1>Séances et emploi du temps</h1><p>Horaires en heure de Lomé (UTC). Les conflits sont contrôlés avant enregistrement.</p></div><div className="btn-group">
       {directory.canCreate && <button className="btn btn-primary" onClick={() => open('create_session')}>Nouvelle séance</button>}
@@ -97,10 +107,16 @@ function ScheduleManager() {
     </div></div>
     {success && <p className="card" role="status">{success}</p>}
     {!directory.selectedYearId && <p className="restricted-box">Choisissez une année scolaire précise pour gérer le planning.</p>}
+    {hasArchives && <nav className="record-sections" aria-label="Source de l’emploi du temps">
+      <button type="button" className={!showArchives ? 'selected' : ''} aria-pressed={!showArchives} onClick={() => setSourceSelection({ yearId, source: 'current' })}>Planning de l’année</button>
+      <button type="button" className={showArchives ? 'selected' : ''} aria-pressed={showArchives} onClick={() => setSourceSelection({ yearId, source: 'archives' })}>Archives importées</button>
+    </nav>}
+    {showArchives ? <ArchiveSchedule /> : <>
+    <section className="card"><ScheduleGroupFilter groups={groups} value={groupId} onChange={id => setGroupSelection({ yearId, groupId: id })} count={active.length} /></section>
     <ScheduleCalendar period={portal.academicYearContext?.years.find(year => year.id === directory.selectedYearId)} sessions={active.map(session => ({ id: session.id, start: session.startsAt, end: session.endsAt, title: `${componentName(session.assignmentId)} · ${groupName(session.groupId)}`, subtitle: `${teacherName(session.replacementTeacherId || session.teacherId)} · ${roomName(session.actualRoomId || session.roomId)} · ${session.status}` }))} onSelect={id => setDetail(directory.sessions.find(session => session.id === id) || null)} />
-    {directory.sessions.some(session => ['ANNULE', 'REPORTE'].includes(session.status)) && <details className="card"><summary>Séances annulées ou reportées</summary>{directory.sessions.filter(session => ['ANNULE', 'REPORTE'].includes(session.status)).map(session => <p key={session.id}><button className="btn btn-outline" onClick={() => setDetail(session)}>{displayTime(session.startsAt)} · {groupName(session.groupId)} · {session.status}</button></p>)}</details>}
+    {sessions.some(session => ['ANNULE', 'REPORTE'].includes(session.status)) && <details className="card"><summary>Séances annulées ou reportées</summary>{sessions.filter(session => ['ANNULE', 'REPORTE'].includes(session.status)).map(session => <p key={session.id}><button className="btn btn-outline" onClick={() => setDetail(session)}>{displayTime(session.startsAt)} · {groupName(session.groupId)} · {session.status}</button></p>)}</details>}
     <details className="card"><summary>Périodes bloquées ({directory.blockedPeriods.length})</summary>{directory.blockedPeriods.map(period => <p key={period.id}><strong>{period.name}</strong> · {displayTime(period.startsAt)} → {displayTime(period.endsAt)} · {period.reason || 'Motif historique non renseigné'}</p>)}{!directory.blockedPeriods.length && <p>Aucune période bloquée.</p>}</details>
-    {!directory.sessions.length && portal.history.enabled && <ConnectedDomainWorkspace section="acad_schedule" />}
+    </>}
     {detail && <WorkPage title="Détail de la séance" onClose={() => setDetail(null)}><dl className="record-details-grid">
       <div><dt>Affectation</dt><dd>{assignmentName(detail.assignmentId)}</dd></div><div><dt>Horaires (Lomé)</dt><dd>{displayTime(detail.startsAt)} → {displayTime(detail.endsAt)}</dd></div>
       <div><dt>Enseignant effectif</dt><dd>{teacherName(detail.replacementTeacherId || detail.teacherId)}</dd></div><div><dt>Salle effective</dt><dd>{roomName(detail.actualRoomId || detail.roomId)}</dd></div>
