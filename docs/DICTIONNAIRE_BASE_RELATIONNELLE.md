@@ -2,7 +2,7 @@
 
 Généré avec `npm run db:describe` en exécutant les migrations dans PostgreSQL local (PGlite). Aucun accès à Supabase ou aux données de la sauvegarde.
 
-112 tables métier, 13 tables privées, 939 colonnes, 262 clés étrangères, 200 CHECK de tables et 4 exclusions. Les domaines ajoutent les bornes des notes, des montants FCFA et des textes obligatoires.
+112 tables métier, 13 tables privées, 957 colonnes, 264 clés étrangères, 213 CHECK de tables et 4 exclusions. Les domaines ajoutent les bornes des notes, des montants FCFA et des textes obligatoires.
 
 Toutes les tables ont RLS activée, sans accès applicatif permis à ce stade. Les noms techniques ne sont pas des libellés à afficher dans l’interface.
 
@@ -22,8 +22,8 @@ Toutes les tables ont RLS activée, sans accès applicatif permis à ce stade. L
 | escen | assessment_weights | 5 | 1 | Oui |
 | escen | asset_movements | 8 | 4 | Oui |
 | escen | assets | 8 | 1 | Oui |
-| escen | attendances | 11 | 3 | Oui |
-| escen | blocked_periods | 7 | 2 | Oui |
+| escen | attendances | 12 | 3 | Oui |
+| escen | blocked_periods | 8 | 2 | Oui |
 | escen | buildings | 6 | 1 | Oui |
 | escen | communication_audiences | 6 | 4 | Oui |
 | escen | communication_files | 3 | 2 | Oui |
@@ -37,8 +37,8 @@ Toutes les tables ont RLS activée, sans accès applicatif permis à ce stade. L
 | escen | credit_awards | 5 | 2 | Oui |
 | escen | credit_notes | 6 | 2 | Oui |
 | escen | curricula | 10 | 4 | Oui |
-| escen | curriculum_components | 13 | 3 | Oui |
-| escen | curriculum_semesters | 5 | 1 | Oui |
+| escen | curriculum_components | 15 | 3 | Oui |
+| escen | curriculum_semesters | 7 | 1 | Oui |
 | escen | cycles | 5 | 0 | Oui |
 | escen | delegate_mandates | 6 | 2 | Oui |
 | escen | document_requirements | 4 | 2 | Oui |
@@ -51,8 +51,8 @@ Toutes les tables ont RLS activée, sans accès applicatif permis à ce stade. L
 | escen | evaluation_transitions | 7 | 2 | Oui |
 | escen | evaluations | 17 | 6 | Oui |
 | escen | exam_answers | 6 | 2 | Oui |
-| escen | exam_attempts | 9 | 2 | Oui |
-| escen | exam_deliveries | 6 | 2 | Oui |
+| escen | exam_attempts | 14 | 3 | Oui |
+| escen | exam_deliveries | 7 | 2 | Oui |
 | escen | exam_options | 5 | 1 | Oui |
 | escen | exam_papers | 16 | 5 | Oui |
 | escen | exam_parts | 6 | 1 | Oui |
@@ -113,12 +113,12 @@ Toutes les tables ont RLS activée, sans accès applicatif permis à ce stade. L
 | escen | support_tickets | 11 | 4 | Oui |
 | escen | syllabuses | 11 | 2 | Oui |
 | escen | teacher_attendances | 7 | 3 | Oui |
-| escen | teachers | 4 | 1 | Oui |
-| escen | teaching_assignments | 8 | 4 | Oui |
-| escen | teaching_units | 6 | 1 | Oui |
+| escen | teachers | 5 | 1 | Oui |
+| escen | teaching_assignments | 9 | 4 | Oui |
+| escen | teaching_units | 8 | 1 | Oui |
 | escen | tracks | 7 | 1 | Oui |
 | escen | website_articles | 13 | 2 | Oui |
-| escen | website_brochures | 14 | 2 | Oui |
+| escen | website_brochures | 16 | 3 | Oui |
 | escen | website_intakes | 9 | 3 | Oui |
 | escen_private | application_access | 3 | 1 | Oui |
 | escen_private | archive_objects | 11 | 1 | Oui |
@@ -672,10 +672,12 @@ CREATE INDEX fk_19210 ON escen.assets USING btree (site_id)
 | recorded_by | uuid | NO | — | NEVER |
 | recorded_at | timestamptz | NO | now() | NEVER |
 | comment | text | YES | — | NEVER |
+| reason | text | YES | — | NEVER |
 
 Contraintes :
 
 ```sql
+attendance_reason_length: CHECK (((reason IS NULL) OR ((char_length(btrim(reason)) >= 3) AND (char_length(btrim(reason)) <= 1000))))
 attendances_check: CHECK (((left_at IS NULL) OR ((arrived_at IS NOT NULL) AND (left_at >= arrived_at))))
 attendances_enrollment_id_not_null: NOT NULL enrollment_id
 attendances_enrollment_id_offering_id_fkey: FOREIGN KEY (enrollment_id, offering_id) REFERENCES escen.enrollments(id, offering_id) ON DELETE RESTRICT
@@ -714,10 +716,12 @@ CREATE INDEX fk_17539 ON escen.attendances USING btree (enrollment_id, offering_
 | kind | text | NO | — | NEVER |
 | starts_at | timestamptz | NO | — | NEVER |
 | ends_at | timestamptz | NO | — | NEVER |
+| reason | text | YES | — | NEVER |
 
 Contraintes :
 
 ```sql
+blocked_period_reason_length: CHECK (((reason IS NULL) OR ((char_length(btrim(reason)) >= 3) AND (char_length(btrim(reason)) <= 1000))))
 blocked_periods_academic_year_id_fkey: FOREIGN KEY (academic_year_id) REFERENCES escen.academic_years(id) ON DELETE RESTRICT
 blocked_periods_check: CHECK ((ends_at > starts_at))
 blocked_periods_ends_at_not_null: NOT NULL ends_at
@@ -1246,10 +1250,13 @@ CREATE INDEX fk_16837 ON escen.curricula USING btree (track_id, program_id)
 | other_hours | numeric | YES | 0 | NEVER |
 | legacy_source_row_id | uuid | YES | — | NEVER |
 | total_hours | numeric | YES | — | NEVER |
+| reason | text | YES | — | NEVER |
+| archived_at | timestamptz | YES | — | NEVER |
 
 Contraintes :
 
 ```sql
+component_archive_reason: CHECK (((archived_at IS NULL) OR ((length(btrim(COALESCE(reason, ''::text))) >= 3) AND (length(btrim(COALESCE(reason, ''::text))) <= 1000))))
 component_coefficient_evidence: CHECK ((((coefficient IS NOT NULL) AND (coefficient > (0)::numeric)) OR ((legacy_source_row_id IS NOT NULL) AND ((coefficient IS NULL) OR (coefficient >= (0)::numeric)))))
 component_definition_evidence: CHECK ((((curriculum_id IS NOT NULL) AND (unit_id IS NOT NULL) AND (credits IS NOT NULL)) OR (legacy_source_row_id IS NOT NULL)))
 component_hours_evidence: CHECK (((legacy_source_row_id IS NOT NULL) OR ((cm_hours IS NOT NULL) AND (td_hours IS NOT NULL) AND (tp_hours IS NOT NULL) AND (other_hours IS NOT NULL))))
@@ -1288,6 +1295,8 @@ CREATE INDEX fk_16928 ON escen.curriculum_components USING btree (unit_id, curri
 | position | int2 | NO | — | NEVER |
 | name | escen.nonempty_text | NO | — | NEVER |
 | target_credits | numeric | NO | — | NEVER |
+| reason | text | YES | — | NEVER |
+| archived_at | timestamptz | YES | — | NEVER |
 
 Contraintes :
 
@@ -1303,6 +1312,7 @@ curriculum_semesters_position_check: CHECK (("position" > 0))
 curriculum_semesters_position_not_null: NOT NULL "position"
 curriculum_semesters_target_credits_check: CHECK ((target_credits > (0)::numeric))
 curriculum_semesters_target_credits_not_null: NOT NULL target_credits
+semester_archive_reason: CHECK (((archived_at IS NULL) OR ((length(btrim(COALESCE(reason, ''::text))) >= 3) AND (length(btrim(COALESCE(reason, ''::text))) <= 1000))))
 ```
 
 Index :
@@ -1784,6 +1794,11 @@ CREATE INDEX fk_17861 ON escen.exam_answers USING btree (question_id, paper_id)
 | deadline_at | timestamptz | NO | — | NEVER |
 | submitted_at | timestamptz | YES | — | NEVER |
 | status | text | NO | — | NEVER |
+| revision | int8 | NO | 0 | NEVER |
+| last_save_id | uuid | YES | — | NEVER |
+| started_by | uuid | YES | — | NEVER |
+| submission_kind | text | YES | — | NEVER |
+| completion_status | text | YES | — | NEVER |
 
 Contraintes :
 
@@ -1796,6 +1811,7 @@ exam_attempts_candidate_id_not_null: NOT NULL candidate_id
 exam_attempts_check: CHECK ((deadline_at > started_at))
 exam_attempts_check1: CHECK ((((status = ANY (ARRAY['REMISE'::text, 'EXPIREE'::text])) AND (submitted_at IS NOT NULL)) OR ((status <> ALL (ARRAY['REMISE'::text, 'EXPIREE'::text])) AND (submitted_at IS NULL))))
 exam_attempts_check2: CHECK (((submitted_at IS NULL) OR (submitted_at >= started_at)))
+exam_attempts_completion_status_check: CHECK ((completion_status = ANY (ARRAY['NON_TRAITE'::text, 'PARTIELLE'::text, 'COMPLETE'::text])))
 exam_attempts_deadline_at_not_null: NOT NULL deadline_at
 exam_attempts_evaluation_id_not_null: NOT NULL evaluation_id
 exam_attempts_id_not_null: NOT NULL id
@@ -1803,14 +1819,19 @@ exam_attempts_id_paper_id_key: UNIQUE (id, paper_id)
 exam_attempts_paper_id_evaluation_id_fkey: FOREIGN KEY (paper_id, evaluation_id) REFERENCES escen.exam_papers(id, evaluation_id) ON DELETE RESTRICT
 exam_attempts_paper_id_not_null: NOT NULL paper_id
 exam_attempts_pkey: PRIMARY KEY (id)
+exam_attempts_revision_check: CHECK ((revision >= 0))
+exam_attempts_revision_not_null: NOT NULL revision
 exam_attempts_started_at_not_null: NOT NULL started_at
+exam_attempts_started_by_fkey: FOREIGN KEY (started_by) REFERENCES escen.accounts(id) ON DELETE RESTRICT
 exam_attempts_status_check: CHECK ((status = ANY (ARRAY['EN_COURS'::text, 'REMISE'::text, 'EXPIREE'::text, 'INTERROMPUE'::text])))
 exam_attempts_status_not_null: NOT NULL status
+exam_attempts_submission_kind_check: CHECK ((submission_kind = ANY (ARRAY['MANUAL'::text, 'AUTO_DEADLINE'::text])))
 ```
 
 Index :
 
 ```sql
+CREATE INDEX exam_attempt_deadline_pending ON escen.exam_attempts USING btree (deadline_at) WHERE (status = 'EN_COURS'::text)
 CREATE UNIQUE INDEX exam_attempts_candidate_id_attempt_number_key ON escen.exam_attempts USING btree (candidate_id, attempt_number)
 CREATE UNIQUE INDEX exam_attempts_id_paper_id_key ON escen.exam_attempts USING btree (id, paper_id)
 CREATE UNIQUE INDEX exam_attempts_pkey ON escen.exam_attempts USING btree (id)
@@ -1828,6 +1849,7 @@ CREATE INDEX fk_17834 ON escen.exam_attempts USING btree (paper_id, evaluation_i
 | access_opens_at | timestamptz | NO | — | NEVER |
 | access_closes_at | timestamptz | NO | — | NEVER |
 | duration_minutes | int4 | YES | — | NEVER |
+| reason | text | YES | — | NEVER |
 
 Contraintes :
 
@@ -1845,6 +1867,7 @@ exam_deliveries_pkey: PRIMARY KEY (id)
 exam_deliveries_session_id_fkey: FOREIGN KEY (session_id) REFERENCES escen.sessions(id) ON DELETE RESTRICT
 exam_deliveries_session_id_key: UNIQUE (session_id)
 exam_deliveries_session_id_not_null: NOT NULL session_id
+exam_delivery_reason_length: CHECK (((reason IS NULL) OR ((char_length(btrim(reason)) >= 3) AND (char_length(btrim(reason)) <= 1000))))
 ```
 
 Index :
@@ -2427,7 +2450,6 @@ grades_absence_status_check: CHECK ((absence_status = ANY (ARRAY['ABSENT'::text,
 grades_candidate_id_fkey: FOREIGN KEY (candidate_id) REFERENCES escen.evaluation_candidates(id) ON DELETE RESTRICT
 grades_candidate_id_key: UNIQUE (candidate_id)
 grades_candidate_id_not_null: NOT NULL candidate_id
-grades_check: CHECK (((absence_status IS NULL) OR (value IS NULL)))
 grades_entered_at_not_null: NOT NULL entered_at
 grades_entered_by_fkey: FOREIGN KEY (entered_by) REFERENCES escen.accounts(id) ON DELETE RESTRICT
 grades_entered_by_not_null: NOT NULL entered_by
@@ -2438,6 +2460,7 @@ grades_legacy_source_row_id_fkey: FOREIGN KEY (legacy_source_row_id) REFERENCES 
 grades_pkey: PRIMARY KEY (id)
 grades_revision_check: CHECK ((revision > 0))
 grades_revision_not_null: NOT NULL revision
+grades_value_absence_check: CHECK (((absence_status IS NULL) OR ((absence_status = ANY (ARRAY['ABSENT'::text, 'JUSTIFIE'::text])) AND (value IS NULL)) OR ((absence_status = 'NON_TRAITE'::text) AND ((value IS NULL) OR ((value)::numeric = (0)::numeric)))))
 ```
 
 Index :
@@ -4163,10 +4186,12 @@ CREATE UNIQUE INDEX teacher_attendances_session_id_teacher_id_key ON escen.teach
 | staff_id | uuid | NO | — | NEVER |
 | specialty | text | YES | — | NEVER |
 | active | bool | NO | true | NEVER |
+| reason | text | YES | — | NEVER |
 
 Contraintes :
 
 ```sql
+teacher_reason_length: CHECK (((reason IS NULL) OR ((char_length(btrim(reason)) >= 3) AND (char_length(btrim(reason)) <= 1000))))
 teachers_active_not_null: NOT NULL active
 teachers_id_not_null: NOT NULL id
 teachers_pkey: PRIMARY KEY (id)
@@ -4195,10 +4220,12 @@ CREATE UNIQUE INDEX teachers_staff_id_key ON escen.teachers USING btree (staff_i
 | component_id | uuid | NO | — | NEVER |
 | valid_from | date | NO | — | NEVER |
 | valid_until | date | YES | — | NEVER |
+| reason | text | YES | — | NEVER |
 
 Contraintes :
 
 ```sql
+assignment_reason_length: CHECK (((reason IS NULL) OR ((char_length(btrim(reason)) >= 3) AND (char_length(btrim(reason)) <= 1000))))
 teaching_assignments_check: CHECK (((valid_until IS NULL) OR (valid_until >= valid_from)))
 teaching_assignments_component_id_curriculum_id_fkey: FOREIGN KEY (component_id, curriculum_id) REFERENCES escen.curriculum_components(id, curriculum_id) ON DELETE RESTRICT
 teaching_assignments_component_id_not_null: NOT NULL component_id
@@ -4240,6 +4267,8 @@ CREATE UNIQUE INDEX teaching_assignments_teacher_id_group_id_offering_id_compon_
 | code | escen.nonempty_text | NO | — | NEVER |
 | name | escen.nonempty_text | NO | — | NEVER |
 | credits | numeric | NO | — | NEVER |
+| reason | text | YES | — | NEVER |
+| archived_at | timestamptz | YES | — | NEVER |
 
 Contraintes :
 
@@ -4255,6 +4284,7 @@ teaching_units_pkey: PRIMARY KEY (id)
 teaching_units_semester_id_code_key: UNIQUE (semester_id, code)
 teaching_units_semester_id_curriculum_id_fkey: FOREIGN KEY (semester_id, curriculum_id) REFERENCES escen.curriculum_semesters(id, curriculum_id) ON DELETE RESTRICT
 teaching_units_semester_id_not_null: NOT NULL semester_id
+unit_archive_reason: CHECK (((archived_at IS NULL) OR ((length(btrim(COALESCE(reason, ''::text))) >= 3) AND (length(btrim(COALESCE(reason, ''::text))) <= 1000))))
 ```
 
 Index :
@@ -4371,16 +4401,20 @@ CREATE UNIQUE INDEX website_articles_slug_key ON escen.website_articles USING bt
 | created_by | uuid | NO | — | NEVER |
 | updated_at | timestamptz | NO | now() | NEVER |
 | reason | text | NO | — | NEVER |
+| program_id | uuid | YES | — | NEVER |
+| cycle | text | YES | — | NEVER |
 
 Contraintes :
 
 ```sql
+website_brochure_formation: CHECK (((program_id IS NULL) = (cycle IS NULL)))
 website_brochures_academic_year_id_fkey: FOREIGN KEY (academic_year_id) REFERENCES escen.academic_years(id) ON DELETE RESTRICT
 website_brochures_academic_year_id_not_null: NOT NULL academic_year_id
 website_brochures_byte_size_check: CHECK (((byte_size >= 1) AND (byte_size <= 10485760)))
 website_brochures_byte_size_not_null: NOT NULL byte_size
 website_brochures_created_by_fkey: FOREIGN KEY (created_by) REFERENCES escen.accounts(id) ON DELETE RESTRICT
 website_brochures_created_by_not_null: NOT NULL created_by
+website_brochures_cycle_check: CHECK ((cycle = ANY (ARRAY['LICENCE'::text, 'MASTER'::text, 'EXECUTIVE'::text])))
 website_brochures_description_check: CHECK ((length(description) <= 500))
 website_brochures_description_not_null: NOT NULL description
 website_brochures_filename_not_null: NOT NULL filename
@@ -4388,6 +4422,7 @@ website_brochures_id_not_null: NOT NULL id
 website_brochures_object_path_key: UNIQUE (object_path)
 website_brochures_object_path_not_null: NOT NULL object_path
 website_brochures_pkey: PRIMARY KEY (id)
+website_brochures_program_id_fkey: FOREIGN KEY (program_id) REFERENCES escen.programs(id) ON DELETE RESTRICT
 website_brochures_reason_check: CHECK ((length(btrim(reason)) >= 3))
 website_brochures_reason_not_null: NOT NULL reason
 website_brochures_sha256_check: CHECK ((sha256 ~ '^[a-f0-9]{64}$'::text))
@@ -4407,6 +4442,8 @@ Index :
 
 ```sql
 CREATE INDEX website_brochure_author ON escen.website_brochures USING btree (created_by)
+CREATE INDEX website_brochure_program ON escen.website_brochures USING btree (program_id)
+CREATE UNIQUE INDEX website_brochure_published_formation ON escen.website_brochures USING btree (academic_year_id, program_id, cycle) WHERE ((status = 'PUBLIE'::text) AND (program_id IS NOT NULL))
 CREATE INDEX website_brochure_year ON escen.website_brochures USING btree (academic_year_id)
 CREATE UNIQUE INDEX website_brochures_object_path_key ON escen.website_brochures USING btree (object_path)
 CREATE UNIQUE INDEX website_brochures_pkey ON escen.website_brochures USING btree (id)
@@ -4900,18 +4937,19 @@ CREATE UNIQUE INDEX website_rate_limits_pkey ON escen_private.website_rate_limit
 ### escen.active_payment_allocations
 
 ```sql
- SELECT id,
-    payment_id,
-    enrollment_id,
-    contract_id,
-    version_id,
-    line_id,
-    installment_id,
-    amount,
-    allocated_by,
-    allocated_at
-   FROM escen.payment_allocations a
-  WHERE ((NOT (EXISTS ( SELECT 1
+ SELECT a.id,
+    a.payment_id,
+    a.enrollment_id,
+    a.contract_id,
+    a.version_id,
+    a.line_id,
+    a.installment_id,
+    a.amount,
+    a.allocated_by,
+    a.allocated_at
+   FROM (escen.payment_allocations a
+     JOIN escen.payments p ON ((p.id = a.payment_id)))
+  WHERE ((p.status <> 'PENDING'::text) AND (NOT (EXISTS ( SELECT 1
            FROM escen.allocation_reversals r
           WHERE (r.allocation_id = a.id)))) AND (NOT (EXISTS ( SELECT 1
            FROM escen.payment_reversals r
@@ -4932,14 +4970,13 @@ CREATE UNIQUE INDEX website_rate_limits_pkey ON escen_private.website_rate_limit
            FROM (escen.credit_notes n
              JOIN escen.contract_lines l ON ((l.id = n.line_id)))
           WHERE (l.version_id = v.id)), (0)::numeric)) AS expected,
-    (COALESCE(( SELECT sum((p.amount)::numeric) AS sum
+    COALESCE(( SELECT sum(((p.amount)::numeric - COALESCE(( SELECT sum((f.amount)::numeric) AS sum
+                   FROM escen.refunds f
+                  WHERE (f.payment_id = p.id)), (0)::numeric))) AS sum
            FROM escen.payments p
-          WHERE ((p.enrollment_id = c.enrollment_id) AND (NOT (EXISTS ( SELECT 1
+          WHERE ((p.enrollment_id = c.enrollment_id) AND (p.status <> 'PENDING'::text) AND (NOT (EXISTS ( SELECT 1
                    FROM escen.payment_reversals r
-                  WHERE (r.payment_id = p.id)))))), (0)::numeric) - COALESCE(( SELECT sum((f.amount)::numeric) AS sum
-           FROM (escen.refunds f
-             JOIN escen.payments p ON ((p.id = f.payment_id)))
-          WHERE (p.enrollment_id = c.enrollment_id)), (0)::numeric)) AS paid
+                  WHERE (r.payment_id = p.id)))))), (0)::numeric) AS paid
    FROM (escen.financial_contracts c
      JOIN escen.contract_versions v ON (((v.contract_id = c.id) AND (v.status = 'APPROVED'::text))));
 ```

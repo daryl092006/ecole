@@ -2,9 +2,9 @@
   "stats": {
     "businessTables": 112,
     "privateTables": 13,
-    "columns": 939,
-    "foreignKeys": 262,
-    "checks": 200,
+    "columns": 957,
+    "foreignKeys": 264,
+    "checks": 213,
     "exclusions": 4
   },
   "tables": [
@@ -1753,6 +1753,15 @@
     },
     {
       "schema": "escen",
+      "table": "attendances",
+      "name": "reason",
+      "type": "text",
+      "nullable": "YES",
+      "default": null,
+      "generated": "NEVER"
+    },
+    {
+      "schema": "escen",
       "table": "blocked_periods",
       "name": "id",
       "type": "uuid",
@@ -1811,6 +1820,15 @@
       "name": "ends_at",
       "type": "timestamptz",
       "nullable": "NO",
+      "default": null,
+      "generated": "NEVER"
+    },
+    {
+      "schema": "escen",
+      "table": "blocked_periods",
+      "name": "reason",
+      "type": "text",
+      "nullable": "YES",
       "default": null,
       "generated": "NEVER"
     },
@@ -2743,6 +2761,24 @@
     },
     {
       "schema": "escen",
+      "table": "curriculum_components",
+      "name": "reason",
+      "type": "text",
+      "nullable": "YES",
+      "default": null,
+      "generated": "NEVER"
+    },
+    {
+      "schema": "escen",
+      "table": "curriculum_components",
+      "name": "archived_at",
+      "type": "timestamptz",
+      "nullable": "YES",
+      "default": null,
+      "generated": "NEVER"
+    },
+    {
+      "schema": "escen",
       "table": "curriculum_semesters",
       "name": "id",
       "type": "uuid",
@@ -2783,6 +2819,24 @@
       "name": "target_credits",
       "type": "numeric",
       "nullable": "NO",
+      "default": null,
+      "generated": "NEVER"
+    },
+    {
+      "schema": "escen",
+      "table": "curriculum_semesters",
+      "name": "reason",
+      "type": "text",
+      "nullable": "YES",
+      "default": null,
+      "generated": "NEVER"
+    },
+    {
+      "schema": "escen",
+      "table": "curriculum_semesters",
+      "name": "archived_at",
+      "type": "timestamptz",
+      "nullable": "YES",
       "default": null,
       "generated": "NEVER"
     },
@@ -3652,6 +3706,51 @@
     },
     {
       "schema": "escen",
+      "table": "exam_attempts",
+      "name": "revision",
+      "type": "int8",
+      "nullable": "NO",
+      "default": "0",
+      "generated": "NEVER"
+    },
+    {
+      "schema": "escen",
+      "table": "exam_attempts",
+      "name": "last_save_id",
+      "type": "uuid",
+      "nullable": "YES",
+      "default": null,
+      "generated": "NEVER"
+    },
+    {
+      "schema": "escen",
+      "table": "exam_attempts",
+      "name": "started_by",
+      "type": "uuid",
+      "nullable": "YES",
+      "default": null,
+      "generated": "NEVER"
+    },
+    {
+      "schema": "escen",
+      "table": "exam_attempts",
+      "name": "submission_kind",
+      "type": "text",
+      "nullable": "YES",
+      "default": null,
+      "generated": "NEVER"
+    },
+    {
+      "schema": "escen",
+      "table": "exam_attempts",
+      "name": "completion_status",
+      "type": "text",
+      "nullable": "YES",
+      "default": null,
+      "generated": "NEVER"
+    },
+    {
+      "schema": "escen",
       "table": "exam_deliveries",
       "name": "id",
       "type": "uuid",
@@ -3700,6 +3799,15 @@
       "table": "exam_deliveries",
       "name": "duration_minutes",
       "type": "int4",
+      "nullable": "YES",
+      "default": null,
+      "generated": "NEVER"
+    },
+    {
+      "schema": "escen",
+      "table": "exam_deliveries",
+      "name": "reason",
+      "type": "text",
       "nullable": "YES",
       "default": null,
       "generated": "NEVER"
@@ -7810,6 +7918,15 @@
     },
     {
       "schema": "escen",
+      "table": "teachers",
+      "name": "reason",
+      "type": "text",
+      "nullable": "YES",
+      "default": null,
+      "generated": "NEVER"
+    },
+    {
+      "schema": "escen",
       "table": "teaching_assignments",
       "name": "id",
       "type": "uuid",
@@ -7882,6 +7999,15 @@
     },
     {
       "schema": "escen",
+      "table": "teaching_assignments",
+      "name": "reason",
+      "type": "text",
+      "nullable": "YES",
+      "default": null,
+      "generated": "NEVER"
+    },
+    {
+      "schema": "escen",
       "table": "teaching_units",
       "name": "id",
       "type": "uuid",
@@ -7931,6 +8057,24 @@
       "name": "credits",
       "type": "numeric",
       "nullable": "NO",
+      "default": null,
+      "generated": "NEVER"
+    },
+    {
+      "schema": "escen",
+      "table": "teaching_units",
+      "name": "reason",
+      "type": "text",
+      "nullable": "YES",
+      "default": null,
+      "generated": "NEVER"
+    },
+    {
+      "schema": "escen",
+      "table": "teaching_units",
+      "name": "archived_at",
+      "type": "timestamptz",
+      "nullable": "YES",
       "default": null,
       "generated": "NEVER"
     },
@@ -8237,6 +8381,24 @@
       "name": "reason",
       "type": "text",
       "nullable": "NO",
+      "default": null,
+      "generated": "NEVER"
+    },
+    {
+      "schema": "escen",
+      "table": "website_brochures",
+      "name": "program_id",
+      "type": "uuid",
+      "nullable": "YES",
+      "default": null,
+      "generated": "NEVER"
+    },
+    {
+      "schema": "escen",
+      "table": "website_brochures",
+      "name": "cycle",
+      "type": "text",
+      "nullable": "YES",
       "default": null,
       "generated": "NEVER"
     },
@@ -10169,6 +10331,13 @@
     {
       "schema": "escen",
       "table": "attendances",
+      "name": "attendance_reason_length",
+      "type": "c",
+      "definition": "CHECK (((reason IS NULL) OR ((char_length(btrim(reason)) >= 3) AND (char_length(btrim(reason)) <= 1000))))"
+    },
+    {
+      "schema": "escen",
+      "table": "attendances",
       "name": "attendances_check",
       "type": "c",
       "definition": "CHECK (((left_at IS NULL) OR ((arrived_at IS NOT NULL) AND (left_at >= arrived_at))))"
@@ -10270,6 +10439,13 @@
       "name": "attendances_status_not_null",
       "type": "n",
       "definition": "NOT NULL status"
+    },
+    {
+      "schema": "escen",
+      "table": "blocked_periods",
+      "name": "blocked_period_reason_length",
+      "type": "c",
+      "definition": "CHECK (((reason IS NULL) OR ((char_length(btrim(reason)) >= 3) AND (char_length(btrim(reason)) <= 1000))))"
     },
     {
       "schema": "escen",
@@ -11303,6 +11479,13 @@
     {
       "schema": "escen",
       "table": "curriculum_components",
+      "name": "component_archive_reason",
+      "type": "c",
+      "definition": "CHECK (((archived_at IS NULL) OR ((length(btrim(COALESCE(reason, ''::text))) >= 3) AND (length(btrim(COALESCE(reason, ''::text))) <= 1000))))"
+    },
+    {
+      "schema": "escen",
+      "table": "curriculum_components",
       "name": "component_coefficient_evidence",
       "type": "c",
       "definition": "CHECK ((((coefficient IS NOT NULL) AND (coefficient > (0)::numeric)) OR ((legacy_source_row_id IS NOT NULL) AND ((coefficient IS NULL) OR (coefficient >= (0)::numeric)))))"
@@ -11495,6 +11678,13 @@
       "name": "curriculum_semesters_target_credits_not_null",
       "type": "n",
       "definition": "NOT NULL target_credits"
+    },
+    {
+      "schema": "escen",
+      "table": "curriculum_semesters",
+      "name": "semester_archive_reason",
+      "type": "c",
+      "definition": "CHECK (((archived_at IS NULL) OR ((length(btrim(COALESCE(reason, ''::text))) >= 3) AND (length(btrim(COALESCE(reason, ''::text))) <= 1000))))"
     },
     {
       "schema": "escen",
@@ -12535,6 +12725,13 @@
     {
       "schema": "escen",
       "table": "exam_attempts",
+      "name": "exam_attempts_completion_status_check",
+      "type": "c",
+      "definition": "CHECK ((completion_status = ANY (ARRAY['NON_TRAITE'::text, 'PARTIELLE'::text, 'COMPLETE'::text])))"
+    },
+    {
+      "schema": "escen",
+      "table": "exam_attempts",
       "name": "exam_attempts_deadline_at_not_null",
       "type": "n",
       "definition": "NOT NULL deadline_at"
@@ -12584,9 +12781,30 @@
     {
       "schema": "escen",
       "table": "exam_attempts",
+      "name": "exam_attempts_revision_check",
+      "type": "c",
+      "definition": "CHECK ((revision >= 0))"
+    },
+    {
+      "schema": "escen",
+      "table": "exam_attempts",
+      "name": "exam_attempts_revision_not_null",
+      "type": "n",
+      "definition": "NOT NULL revision"
+    },
+    {
+      "schema": "escen",
+      "table": "exam_attempts",
       "name": "exam_attempts_started_at_not_null",
       "type": "n",
       "definition": "NOT NULL started_at"
+    },
+    {
+      "schema": "escen",
+      "table": "exam_attempts",
+      "name": "exam_attempts_started_by_fkey",
+      "type": "f",
+      "definition": "FOREIGN KEY (started_by) REFERENCES escen.accounts(id) ON DELETE RESTRICT"
     },
     {
       "schema": "escen",
@@ -12601,6 +12819,13 @@
       "name": "exam_attempts_status_not_null",
       "type": "n",
       "definition": "NOT NULL status"
+    },
+    {
+      "schema": "escen",
+      "table": "exam_attempts",
+      "name": "exam_attempts_submission_kind_check",
+      "type": "c",
+      "definition": "CHECK ((submission_kind = ANY (ARRAY['MANUAL'::text, 'AUTO_DEADLINE'::text])))"
     },
     {
       "schema": "escen",
@@ -12692,6 +12917,13 @@
       "name": "exam_deliveries_session_id_not_null",
       "type": "n",
       "definition": "NOT NULL session_id"
+    },
+    {
+      "schema": "escen",
+      "table": "exam_deliveries",
+      "name": "exam_delivery_reason_length",
+      "type": "c",
+      "definition": "CHECK (((reason IS NULL) OR ((char_length(btrim(reason)) >= 3) AND (char_length(btrim(reason)) <= 1000))))"
     },
     {
       "schema": "escen",
@@ -13907,13 +14139,6 @@
     {
       "schema": "escen",
       "table": "grades",
-      "name": "grades_check",
-      "type": "c",
-      "definition": "CHECK (((absence_status IS NULL) OR (value IS NULL)))"
-    },
-    {
-      "schema": "escen",
-      "table": "grades",
       "name": "grades_entered_at_not_null",
       "type": "n",
       "definition": "NOT NULL entered_at"
@@ -13980,6 +14205,13 @@
       "name": "grades_revision_not_null",
       "type": "n",
       "definition": "NOT NULL revision"
+    },
+    {
+      "schema": "escen",
+      "table": "grades",
+      "name": "grades_value_absence_check",
+      "type": "c",
+      "definition": "CHECK (((absence_status IS NULL) OR ((absence_status = ANY (ARRAY['ABSENT'::text, 'JUSTIFIE'::text])) AND (value IS NULL)) OR ((absence_status = 'NON_TRAITE'::text) AND ((value IS NULL) OR ((value)::numeric = (0)::numeric)))))"
     },
     {
       "schema": "escen",
@@ -17449,6 +17681,13 @@
     {
       "schema": "escen",
       "table": "teachers",
+      "name": "teacher_reason_length",
+      "type": "c",
+      "definition": "CHECK (((reason IS NULL) OR ((char_length(btrim(reason)) >= 3) AND (char_length(btrim(reason)) <= 1000))))"
+    },
+    {
+      "schema": "escen",
+      "table": "teachers",
       "name": "teachers_active_not_null",
       "type": "n",
       "definition": "NOT NULL active"
@@ -17487,6 +17726,13 @@
       "name": "teachers_staff_id_not_null",
       "type": "n",
       "definition": "NOT NULL staff_id"
+    },
+    {
+      "schema": "escen",
+      "table": "teaching_assignments",
+      "name": "assignment_reason_length",
+      "type": "c",
+      "definition": "CHECK (((reason IS NULL) OR ((char_length(btrim(reason)) >= 3) AND (char_length(btrim(reason)) <= 1000))))"
     },
     {
       "schema": "escen",
@@ -17676,6 +17922,13 @@
       "name": "teaching_units_semester_id_not_null",
       "type": "n",
       "definition": "NOT NULL semester_id"
+    },
+    {
+      "schema": "escen",
+      "table": "teaching_units",
+      "name": "unit_archive_reason",
+      "type": "c",
+      "definition": "CHECK (((archived_at IS NULL) OR ((length(btrim(COALESCE(reason, ''::text))) >= 3) AND (length(btrim(COALESCE(reason, ''::text))) <= 1000))))"
     },
     {
       "schema": "escen",
@@ -17883,6 +18136,13 @@
     {
       "schema": "escen",
       "table": "website_brochures",
+      "name": "website_brochure_formation",
+      "type": "c",
+      "definition": "CHECK (((program_id IS NULL) = (cycle IS NULL)))"
+    },
+    {
+      "schema": "escen",
+      "table": "website_brochures",
       "name": "website_brochures_academic_year_id_fkey",
       "type": "f",
       "definition": "FOREIGN KEY (academic_year_id) REFERENCES escen.academic_years(id) ON DELETE RESTRICT"
@@ -17921,6 +18181,13 @@
       "name": "website_brochures_created_by_not_null",
       "type": "n",
       "definition": "NOT NULL created_by"
+    },
+    {
+      "schema": "escen",
+      "table": "website_brochures",
+      "name": "website_brochures_cycle_check",
+      "type": "c",
+      "definition": "CHECK ((cycle = ANY (ARRAY['LICENCE'::text, 'MASTER'::text, 'EXECUTIVE'::text])))"
     },
     {
       "schema": "escen",
@@ -17970,6 +18237,13 @@
       "name": "website_brochures_pkey",
       "type": "p",
       "definition": "PRIMARY KEY (id)"
+    },
+    {
+      "schema": "escen",
+      "table": "website_brochures",
+      "name": "website_brochures_program_id_fkey",
+      "type": "f",
+      "definition": "FOREIGN KEY (program_id) REFERENCES escen.programs(id) ON DELETE RESTRICT"
     },
     {
       "schema": "escen",
@@ -20126,6 +20400,12 @@
     {
       "schema": "escen",
       "table": "exam_attempts",
+      "name": "exam_attempt_deadline_pending",
+      "definition": "CREATE INDEX exam_attempt_deadline_pending ON escen.exam_attempts USING btree (deadline_at) WHERE (status = 'EN_COURS'::text)"
+    },
+    {
+      "schema": "escen",
+      "table": "exam_attempts",
       "name": "exam_attempts_candidate_id_attempt_number_key",
       "definition": "CREATE UNIQUE INDEX exam_attempts_candidate_id_attempt_number_key ON escen.exam_attempts USING btree (candidate_id, attempt_number)"
     },
@@ -21938,6 +22218,18 @@
     {
       "schema": "escen",
       "table": "website_brochures",
+      "name": "website_brochure_program",
+      "definition": "CREATE INDEX website_brochure_program ON escen.website_brochures USING btree (program_id)"
+    },
+    {
+      "schema": "escen",
+      "table": "website_brochures",
+      "name": "website_brochure_published_formation",
+      "definition": "CREATE UNIQUE INDEX website_brochure_published_formation ON escen.website_brochures USING btree (academic_year_id, program_id, cycle) WHERE ((status = 'PUBLIE'::text) AND (program_id IS NOT NULL))"
+    },
+    {
+      "schema": "escen",
+      "table": "website_brochures",
       "name": "website_brochure_year",
       "definition": "CREATE INDEX website_brochure_year ON escen.website_brochures USING btree (academic_year_id)"
     },
@@ -22198,12 +22490,12 @@
     {
       "schema": "escen",
       "name": "active_payment_allocations",
-      "definition": " SELECT id,\n    payment_id,\n    enrollment_id,\n    contract_id,\n    version_id,\n    line_id,\n    installment_id,\n    amount,\n    allocated_by,\n    allocated_at\n   FROM escen.payment_allocations a\n  WHERE ((NOT (EXISTS ( SELECT 1\n           FROM escen.allocation_reversals r\n          WHERE (r.allocation_id = a.id)))) AND (NOT (EXISTS ( SELECT 1\n           FROM escen.payment_reversals r\n          WHERE (r.payment_id = a.payment_id)))));"
+      "definition": " SELECT a.id,\n    a.payment_id,\n    a.enrollment_id,\n    a.contract_id,\n    a.version_id,\n    a.line_id,\n    a.installment_id,\n    a.amount,\n    a.allocated_by,\n    a.allocated_at\n   FROM (escen.payment_allocations a\n     JOIN escen.payments p ON ((p.id = a.payment_id)))\n  WHERE ((p.status <> 'PENDING'::text) AND (NOT (EXISTS ( SELECT 1\n           FROM escen.allocation_reversals r\n          WHERE (r.allocation_id = a.id)))) AND (NOT (EXISTS ( SELECT 1\n           FROM escen.payment_reversals r\n          WHERE (r.payment_id = a.payment_id)))));"
     },
     {
       "schema": "escen",
       "name": "contract_balances",
-      "definition": " SELECT c.id AS contract_id,\n    c.enrollment_id,\n    v.id AS version_id,\n    ((COALESCE(( SELECT sum((l.amount)::numeric) AS sum\n           FROM escen.contract_lines l\n          WHERE (l.version_id = v.id)), (0)::numeric) - COALESCE(( SELECT sum((d.amount)::numeric) AS sum\n           FROM escen.contract_discounts d\n          WHERE (d.version_id = v.id)), (0)::numeric)) - COALESCE(( SELECT sum((n.amount)::numeric) AS sum\n           FROM (escen.credit_notes n\n             JOIN escen.contract_lines l ON ((l.id = n.line_id)))\n          WHERE (l.version_id = v.id)), (0)::numeric)) AS expected,\n    (COALESCE(( SELECT sum((p.amount)::numeric) AS sum\n           FROM escen.payments p\n          WHERE ((p.enrollment_id = c.enrollment_id) AND (NOT (EXISTS ( SELECT 1\n                   FROM escen.payment_reversals r\n                  WHERE (r.payment_id = p.id)))))), (0)::numeric) - COALESCE(( SELECT sum((f.amount)::numeric) AS sum\n           FROM (escen.refunds f\n             JOIN escen.payments p ON ((p.id = f.payment_id)))\n          WHERE (p.enrollment_id = c.enrollment_id)), (0)::numeric)) AS paid\n   FROM (escen.financial_contracts c\n     JOIN escen.contract_versions v ON (((v.contract_id = c.id) AND (v.status = 'APPROVED'::text))));"
+      "definition": " SELECT c.id AS contract_id,\n    c.enrollment_id,\n    v.id AS version_id,\n    ((COALESCE(( SELECT sum((l.amount)::numeric) AS sum\n           FROM escen.contract_lines l\n          WHERE (l.version_id = v.id)), (0)::numeric) - COALESCE(( SELECT sum((d.amount)::numeric) AS sum\n           FROM escen.contract_discounts d\n          WHERE (d.version_id = v.id)), (0)::numeric)) - COALESCE(( SELECT sum((n.amount)::numeric) AS sum\n           FROM (escen.credit_notes n\n             JOIN escen.contract_lines l ON ((l.id = n.line_id)))\n          WHERE (l.version_id = v.id)), (0)::numeric)) AS expected,\n    COALESCE(( SELECT sum(((p.amount)::numeric - COALESCE(( SELECT sum((f.amount)::numeric) AS sum\n                   FROM escen.refunds f\n                  WHERE (f.payment_id = p.id)), (0)::numeric))) AS sum\n           FROM escen.payments p\n          WHERE ((p.enrollment_id = c.enrollment_id) AND (p.status <> 'PENDING'::text) AND (NOT (EXISTS ( SELECT 1\n                   FROM escen.payment_reversals r\n                  WHERE (r.payment_id = p.id)))))), (0)::numeric) AS paid\n   FROM (escen.financial_contracts c\n     JOIN escen.contract_versions v ON (((v.contract_id = c.id) AND (v.status = 'APPROVED'::text))));"
     },
     {
       "schema": "escen",

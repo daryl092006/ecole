@@ -159,3 +159,50 @@ Brochures du site : la migration 31 ajoute des PDF privés, publiés ou retirés
 États d’épreuves : `assessmentDisplayService.test.ts` vérifie la distinction entre date d’épreuve, échéance de correction, soumission de correction et publication. Une échéance passée ne prouve pas une correction terminée. Les regroupements multi-formations signalent les états différents, sans reprendre silencieusement celui de la première formation.
 
 La migration 32 synchronise les campagnes du site avec les formations exactes de l’année de travail ouverte, sans remplacer les fermetures ou exigences documentaires configurées. Les demandes gardent leur année d’origine. Recette : `ESCEN_TEST_WEBSITE_URL=http://localhost:3200 npm run test:ui -- tests/ui/website-levels.spec.ts`.
+
+---
+
+## Mise à jour vérifiée du 19 octobre 2026
+
+Cette section actualise les constats historiques des sections 1 et 5, notamment le branchement des écrans, la fonction d'audit et les éléments encore utilisés. Les autres consignes restent applicables.
+
+### Travail et points d'arrêt
+
+- Un commit local par sous-étape ; un commit par suppression de fichier. Ne rien pousser.
+- Avant chaque migration SQL : présenter son SQL et attendre l'accord. Ne modifier aucune migration existante, y compris les migrations postérieures à 034. Les migrations 035 à 046 existent désormais dans le dépôt.
+- N'appliquer les migrations qu'en local ou dans les tests ; aucune application distante pendant ce chantier.
+- Avant toute suppression : montrer le grep des usages et attendre l'accord. Avant une règle métier indécise ou un changement visible non encore approuvé : présenter la proposition et attendre l'accord. En fin de phase : bilan fait/testé/reste et autorisation de poursuivre.
+- Préserver les modifications préexistantes, y compris celles des fichiers partagés. Si le constat du rapport est faux dans le code actuel, le signaler et passer au suivant.
+
+### Checklist des fichiers et conventions actuelles
+
+- Migration nouvelle et datée dans `supabase/migrations/` : schéma `escen`, contraintes, index, RLS et droits des RPC. Réutiliser l'audit existant : la fonction réellement définie est `escen_private.record_audit()`, avec le trigger `audit_event` après INSERT ou UPDATE ; `escen_private.audit_trigger()` n'existe pas dans les migrations actuelles. Ne pas créer un second audit sur une table déjà couverte.
+- Permission : `src/types/permissions.ts`, `src/permissions/rolePermissions.ts` et permissions persistées en SQL ; navigation : `src/permissions/navigation.ts`, `src/constants/workspaceNavigation.ts` et `src/constants/portalRoutes.ts`.
+- Écran : types métier, composant dans `src/components/modules/`, branche authentifiée dans `src/components/layout/PortalScreen.tsx`, puis page légère App Router. Les anciennes branches démo de PortalScreen ont déjà été retirées : ne pas se baser sur les anciens numéros de lignes.
+- API : `requireAccount`, `requirePermission`, validation Zod, snapshot filtré par rôle et année, vérification du groupe et de l'affectation avant écriture, puis RPC transactionnelle et audit.
+- Écritures sensibles avec `ReviewedForm` ; fenêtres avec `DetailDrawer` ou `WorkPage` ; appeler `portal.refreshCampus()` après mutation réussie.
+- Styles sémantiques dans `src/app/globals.css` ; aucune nouvelle classe Tailwind. Breakpoints : 480/768/1024 px ; un seul `:root` et une seule définition de `--sidebar-width`. Tableaux en fiches et calendrier en liste au seuil mobile de 768 px. Les tableaux larges sur ordinateur défilent dans leur conteneur.
+- Documentation du schéma : régénérer simultanément `docs/SCHEMA_BASE_RELATIONNELLE.json` et `docs/DICTIONNAIRE_BASE_RELATIONNELLE.md` avec `npm run db:describe`. Cette commande applique les migrations dans PGlite local, sans accès à Supabase. Aucune édition manuelle du JSON.
+
+### État réel du code historique
+
+- `src/utils/data.ts` et les anciens modules AcademiqueModule, FinancePaymentsPanel, LogisticsModule et MarketingModule sont déjà absents. Les branches de secours démo de PortalScreen ont également disparu.
+- `src/components/modules/SupportPanel.tsx` et `src/components/modules/academic/JuryPanel.tsx` ont été supprimés après preuve par grep et accord utilisateur. Ne pas les réintroduire ; les écrans actuels utilisent les routes connectées.
+- `src/mocks/data.ts` reste importé par `useAppState` et `useAcademicReferences` : il fournit des collections initiales typées vides, et non des étudiants ou comptes de démonstration préchargés. Il n'est pas sans usage. Ne pas l'étendre pour de nouvelles données métier.
+- `campusWorkflowService.ts` reste utilisé par l'état global, `verify-campus.cjs` et des tests. `runWorkflow` bloque les écritures de démonstration lorsqu'une session est active. Une suppression exige de traiter ces dépendances ; ne pas remplacer une écriture persistante par ce service.
+- `useDemoUsers` reste appelé par l'état global. `demoIdentity` reçoit encore l'identité de la session réelle et intervient dans les projections et la clé de PortalShell. `src/types/demoUsers.ts` est absent. Ne pas qualifier ces symboles de code sans usage ni les utiliser dans une nouvelle règle métier.
+- Le journal et son export sont montés via `AuditJournalPanel` ; les réclamations via `ComplaintsPanel` pour les rôles autorisés ; la consultation des communications via `ConnectedDomainWorkspace`. Ne pas remplacer ces écrans actifs par une indisponibilité globale.
+
+### Décisions et limites à préserver
+
+- Semestres, UE et matières du programme : `reason` et `archived_at` nullables ; motif d'archivage de 3 à 1000 caractères ; audit existant ; contrôles de crédits et pondérations sur les lignes actives ; aucun archivage dans une maquette approuvée, ni d'un parent ayant des enfants actifs. Pas des crédits : 0.01 ; coefficient : 0.001 ; position entière.
+- Notes : REINSCRIT fait partie des candidats ; ABSENT et JUSTIFIE sont traités, NON_TRAITE bloque la soumission ; une correction vide ne devient jamais zéro. Les lots RPC sont bornés et signalent tout échec partiel.
+- Finance : affectation automatique à l'échéance non soldée la plus ancienne, réaffectation possible ; annulation par contre-opération motivée ; remboursements et avoirs déduits des projections. Les paiements PENDING et annulés ne comptent pas comme encaissés.
+- Passage de niveau et compensation : ne rien implémenter sans règles approuvées. Délibérations, nouveaux documents officiels, circuit d'achat, traitement du support, publication d'annonces, conversion des candidatures et provisionnement des comptes ne sont pas à présenter comme disponibles lorsqu'ils restent consultatifs ou non montés.
+
+### Vérifications et artefacts
+
+- Après chaque sous-étape : `npx tsc --noEmit --incremental false` (évite d'écrire tsconfig.tsbuildinfo), `npm run lint` et les tests Playwright concernés ; ajouter `npm test` pour le backend, SQL ou les services métier. Corriger les échecs avant de poursuivre.
+- Ne pas lancer ce contrôle TypeScript en parallèle d'un build Next.js qui régénère les types inclus par tsconfig ; attendre la fin du build pour éviter des fichiers temporairement absents.
+- Responsive : rapports `docs/RESPONSIVE_AVANT_2026-10-19.md`, `docs/RESPONSIVE_APRES_2026-10-19.md` et `docs/RESPONSIVE_AVANT_APRES_2026-10-19.md` ; 71 écrans/variantes aux largeurs 360/390/768/1024/1440, 10 cas problématiques avant et aucun après les corrections.
+- Captures dans `tmp/screenshots/responsive-audit/`, sans toucher aux données protégées de `.tmp/`. La configuration `tests/ui/legacy-cleanup.config.ts` contrôle support et délibérations et écrit dans un dossier séparé de l'audit initial.
