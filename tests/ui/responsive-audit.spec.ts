@@ -10,7 +10,7 @@ const screens: Screen[] = [
   { key: 'auth_connexion', name: 'Connexion', href: '/connexion', account: 'anonymous' },
   { key: 'auth_forgot', name: 'Mot de passe oublié', href: '/mot-de-passe-oublie', account: 'anonymous' },
   { key: 'auth_reset', name: 'Réinitialiser le mot de passe', href: '/mot-de-passe-reinitialiser', account: 'anonymous' },
-  { key: 'auth_required', name: 'Changement obligatoire du mot de passe', href: '/mot-de-passe-modifier', account: 'password' },
+  { key: 'auth_required', name: 'Changement obligatoire du mot de passe', href: '/mot-de-passe-modifier', readyHeading: 'Choisissez un nouveau mot de passe', account: 'password' },
   ...PORTAL_ROUTES.map(route => ({ key: route.section, name: route.title, href: route.href, account: (route.section.startsWith('espace_') && route.section !== 'espace_dashboard' ? 'student' : 'staff') as AuditAccount })),
   ...Object.entries(MODULE_PATHS).map(([key, href]) => ({ key: `module_${key}`, name: `Accueil ${key}`, href, account: 'staff' as const })),
   { key: 'student_record', name: 'Dossier individuel étudiant', href: studentPath('ESCEN-TEST-001'), account: 'staff' },
