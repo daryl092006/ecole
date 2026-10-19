@@ -23,7 +23,7 @@ import ReviewedForm from '@/components/ui/ReviewedForm';
 import ActionResult from '@/components/ui/ActionResult';
 import { historyValue } from '@/services/historyDisplayService';
 
-import { suggestNextAcademicYear, getStepPreFilledItems, collectionToStep, type ReconductConfigSummary } from '@/services/yearPreparationService';
+import { suggestNextAcademicYear, getStepPreFilledItems, groupOfferingSelection, collectionToStep, type ReconductConfigSummary } from '@/services/yearPreparationService';
 
 function InlineSubView({
   title,
@@ -270,7 +270,8 @@ function ReferenceCrudContent({
   const journey = CATALOG_JOURNEYS[collection];
   const [data, setData] = useState<CatalogSnapshot | null>(null); const [error, setError] = useState(''); const [retry, setRetry] = useState(0);
   const [query, setQuery] = useState(''); const [archived, setArchived] = useState(false); const [feedback, setFeedback] = useState('');
-  const [offeringIds, setOfferingIds] = useState<string[]>([]);
+  // null reprend les rattachements d’origine ; [] conserve une sélection décochée.
+  const [offeringSelection, setOfferingSelection] = useState<string[] | null>(null);
   const [annualVariants, setAnnualVariants] = useState<AnnualOfferingVariant[]>([]);
   const [annualProposalIds, setAnnualProposalIds] = useState<string[]>([]);
   const [inlineReference, setInlineReference] = useState<{ collection: 'programs' | 'levels'; editId?: string } | null>(null);
@@ -336,7 +337,7 @@ function ReferenceCrudContent({
     }
   }, [section, searchParams, setup?.collection]);
   useEffect(() => {
-    const controller = new AbortController(); setData(null); setError(''); setDialog(null); setOfferingIds([]);
+    const controller = new AbortController(); setData(null); setError(''); setDialog(null); setOfferingSelection(null);
     void loadCatalog(collection, activeRole, controller.signal, setupYearId).then(result => {
       if (controller.signal.aborted) return;
       setData(result);
@@ -450,10 +451,11 @@ function ReferenceCrudContent({
   };
   const resume = (source: HistoryRecord) => { pendingResume.current = source; setRetry(value => value + 1); };
   const fillRelations = (values: Record<string, string>) => {
-    if (values.level_id !== form.level_id || values.academic_year_id !== form.academic_year_id) setOfferingIds([]);
+    if (values.level_id !== form.level_id || values.academic_year_id !== form.academic_year_id) setOfferingSelection([]);
     return completeRelations(collection, data, values);
   };
   const groupChoices = (data?.tables.academic_offerings || []).filter(row => !row.archived_at && row.level_id === form.level_id && row.academic_year_id === form.academic_year_id);
+  const offeringIds = offeringSelection ?? (collection === 'groups' && data ? groupOfferingSelection(data, selected, form.academic_year_id, form.level_id) : []);
   const creatingGroup = collection === 'groups' && !sourceRowId && (dialog === 'create' || (dialog === 'edit' && groupChoices.length > 0));
   const creatingOfferings = collection === 'academic_offerings' && dialog === 'create' && !sourceRowId;
   const annualPrograms = (data?.tables.programs || []).filter(row => !row.archived_at && row.active !== false);
@@ -462,19 +464,6 @@ function ReferenceCrudContent({
     .filter(row => !row.archived_at && row.academic_year_id === form.academic_year_id
       && data?.tables.curricula?.some(curriculum => curriculum.id === row.curriculum_id && curriculum.program_id === programId))
     .map(row => ({ curriculum_id: String(row.curriculum_id), delivery_mode: row.delivery_mode ? String(row.delivery_mode) : null }));
-  useEffect(() => {
-    if (collection === 'groups' && selected?.isPrefilled && dialog === 'edit' && offeringIds.length === 0 && groupChoices.length > 0) {
-      const names = String(selected._associatedOfferings || selected._summaryText || '')
-        .split(' ; ')
-        .map(s => s.trim().toLowerCase())
-        .filter(s => s && s !== 'filière');
-      const matched = groupChoices.filter(o =>
-        names.some(name => String(o.name || '').toLowerCase().includes(name))
-      ).map(o => o.id);
-      setOfferingIds(matched.length > 0 ? matched : groupChoices.map(o => o.id));
-    }
-  }, [collection, selected, dialog, offeringIds.length, groupChoices]);
-
   const existingAnnualVariants = creatingOfferings ? savedAnnualVariants(form.program_id) : [];
   const annualLevelName = (curriculumId: unknown) => {
     const curriculum = data?.tables.curricula?.find(row => row.id === curriculumId);
@@ -482,43 +471,8 @@ function ReferenceCrudContent({
   };
   const open = (mode: typeof dialog, row: DatabaseRow | null = null) => {
     const nextForm = completeRelations(collection, data, initialValues(spec.fields, data, setup?.yearId || portal.academicYearContext?.selectedYearId || '', setup?.category, row, collection));
-    const targetLevelId = nextForm.level_id || row?.level_id;
-    const targetYear = nextForm.academic_year_id || setupYearId || row?.academic_year_id;
-
-    let initialGroupOfferings: string[] = [];
-    if (collection === 'groups' && row) {
-      if (!row.isPrefilled) {
-        initialGroupOfferings = (data?.tables.group_offerings || [])
-          .filter(link => link.group_id === row.id && !link.archived_at)
-          .map(link => String(link.offering_id));
-      } else {
-        const availableOfferings = (data?.tables.academic_offerings || []).filter(o =>
-          !o.archived_at &&
-          (!targetYear || o.academic_year_id === targetYear) &&
-          (!targetLevelId || o.level_id === targetLevelId)
-        );
-        const linkedList = Array.isArray(row._linkedOfferings) ? row._linkedOfferings : [];
-        const linkedCurricula = new Set(linkedList.map((item: { curriculum_id?: string }) => item.curriculum_id).filter(Boolean));
-        const matchedByCurricula = availableOfferings.filter(o => linkedCurricula.has(String(o.curriculum_id))).map(o => o.id);
-
-        const names = String(row._associatedOfferings || row._summaryText || '')
-          .split(' ; ')
-          .map(s => s.trim().toLowerCase())
-          .filter(s => s && s !== 'filière');
-        const matchedByName = availableOfferings.filter(o =>
-          names.some(name => String(o.name || '').toLowerCase().includes(name))
-        ).map(o => o.id);
-
-        const matched = [...new Set([...matchedByCurricula, ...matchedByName])];
-        if (matched.length > 0) {
-          initialGroupOfferings = matched;
-        } else {
-          initialGroupOfferings = availableOfferings.map(o => o.id);
-        }
-      }
-    }
     setFeedback('');
-    setOfferingIds(initialGroupOfferings); setSourceRowId(undefined); setDialog(mode); setSelected(row); setSaveError('');
+    setOfferingSelection(null); setSourceRowId(undefined); setDialog(mode); setSelected(row); setSaveError('');
     setAnnualVariants([]); setAnnualProposalIds([]);
     let defaultReason = mode === 'create' ? `Création dans ${spec.title.toLocaleLowerCase('fr')}` : '';
     if (collection === 'academic_years' && mode === 'create') {
@@ -806,8 +760,8 @@ function ReferenceCrudContent({
           return <label className="offering-mode-option" key={key}><input type="checkbox" aria-label={`${annualLevelName(curriculum.id)} · ${mode || 'Mode non renseigné'}`} checked={isSelected} onChange={event => setAnnualVariants(items => event.target.checked ? [...items, variant] : items.filter(item => offeringVariantKey(item) !== key))} /> <span>{mode || 'Mode standard'}</span></label>;
         })}</div></div>)}</div>{form.program_id && !annualCurricula.length && <p className="cell-sub">Aucun niveau enregistré pour cette filière. Utilisez « Définir ses niveaux ici » pour les ajouter sans quitter la préparation.</p>}</fieldset></>}
         {collection === 'programs' && dialog !== 'archive' && !sourceRowId && <fieldset className="offering-levels-box"><legend>Niveaux disponibles dans cette filière</legend><p className="cell-sub" style={{ margin: '0 0 10px' }}>Cochez ou décochez les niveaux. Un niveau déjà utilisé ne peut pas être retiré.</p>{canEdit && <button type="button" className="btn btn-outline" style={{ marginBottom: '12px' }} onClick={() => beginInline('levels')}>Créer un niveau ici</button>}<div className="offering-modes-grid">{(data.tables.levels || []).filter(level => !level.archived_at && level.active !== false).map(level => <label className="offering-mode-option" key={level.id}><input type="checkbox" checked={(form.level_ids || '').split(',').includes(level.id)} onChange={event => setForm(current => ({ ...current, level_ids: (event.target.checked ? [...(current.level_ids || '').split(',').filter(Boolean), level.id] : (current.level_ids || '').split(',').filter(id => id !== level.id)).join(',') }))} /> <span>{String(level.name)}</span></label>)}</div>{!data.tables.levels?.length && <p className="cell-sub">Aucun niveau n’est encore enregistré. Vous pourrez les ajouter à cette filière après leur création.</p>}</fieldset>}
-        {creatingGroup && <fieldset className="offering-levels-box"><legend>Filières accueillies dans ce groupe</legend><p className="cell-sub" style={{ margin: '0 0 10px' }}>Choisissez une ou plusieurs formations du niveau sélectionné.</p><div className="offering-modes-grid">{groupChoices.map(row => <label className="offering-mode-option" key={row.id}><input type="checkbox" checked={offeringIds.includes(row.id)} onChange={event => setOfferingIds(ids => event.target.checked ? [...ids, row.id] : ids.filter(id => id !== row.id))} /> <span>{String(row.name)}</span></label>)}</div>{!groupChoices.length && <p className="cell-sub">Aucune formation proposée pour ce niveau dans cette année. Configurez les formations proposées avant de créer le groupe.</p>}</fieldset>}
-        <label className="form-group">Motif<textarea className="input" required minLength={3} maxLength={1000} value={reason} onChange={event => setReason(event.target.value)} /></label><DrawerActions><button className="btn btn-primary" aria-label={creatingOfferings ? 'Enregistrer les niveaux' : 'Vérifier les informations'} style={{ display: 'inline-flex', alignItems: 'center', gap: '8px' }}><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z" /><polyline points="17 21 17 13 7 13 7 21" /><polyline points="7 3 7 8 15 8" /></svg><span>{creatingOfferings ? 'Enregistrer les niveaux' : 'Enregistrer'}</span></button></DrawerActions>
+        {creatingGroup && <fieldset className="offering-levels-box"><legend>Filières accueillies dans ce groupe</legend><p className="cell-sub" style={{ margin: '0 0 10px' }}>Choisissez une ou plusieurs formations du niveau sélectionné.</p><div className="offering-modes-grid">{groupChoices.map(row => <label className="offering-mode-option" key={row.id}><input type="checkbox" checked={offeringIds.includes(row.id)} onChange={event => setOfferingSelection(event.target.checked ? [...offeringIds, row.id] : offeringIds.filter(id => id !== row.id))} /> <span>{String(row.name)}</span></label>)}</div>{!groupChoices.length && <p className="cell-sub">Aucune formation proposée pour ce niveau dans cette année. Configurez les formations proposées avant de créer le groupe.</p>}</fieldset>}
+        <label className="form-group">Motif<textarea className="input" required minLength={3} maxLength={1000} value={reason} onChange={event => setReason(event.target.value)} /></label><DrawerActions><button className="btn btn-primary" aria-label={creatingOfferings ? 'Enregistrer les niveaux' : creatingGroup ? 'Enregistrer' : 'Vérifier les informations'} style={{ display: 'inline-flex', alignItems: 'center', gap: '8px' }}><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z" /><polyline points="17 21 17 13 7 13 7 21" /><polyline points="7 3 7 8 15 8" /></svg><span>{creatingOfferings ? 'Enregistrer les niveaux' : 'Enregistrer'}</span></button></DrawerActions>
       </fieldset></ReviewedForm>}
     </Editor>}
   </div>;

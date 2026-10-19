@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { annualOfferingChanges, annualOfferingLabel, annualOfferingProposals, archiveAnnualOfferings, groupAnnualOfferings } from './annualOfferingService';
 import { assertOfferingPrepared } from './yearPreparationService';
-import {yearPreparation,assertYearPrepared,suggestNextAcademicYear,getPreviousYearConfigSummary,buildReconductChanges} from './yearPreparationService';
+import {yearPreparation,assertYearPrepared,suggestNextAcademicYear,getPreviousYearConfigSummary,buildReconductChanges,groupOfferingSelection} from './yearPreparationService';
 const snapshot={revision:1,tables:{academic_years:[{id:'Y',name:'2025-2026',code:'2025-2026',starts_on:'2025-10-13',ends_on:'2026-06-30',status:'OUVERTE'}],academic_offerings:[{id:'O',academic_year_id:'Y',curriculum_id:'C',level_id:'L'}],curricula:[{id:'C',program_id:'P'}],programs:[{id:'P',name:'Informatique'}],levels:[{id:'L',name:'Licence 1'}],groups:[{id:'G',academic_year_id:'Y',name:'Groupe A',level_id:'L'}],group_offerings:[{id:'GO',offering_id:'O',group_id:'G',academic_year_id:'Y',level_id:'L'}],subjects:[{id:'S',academic_year_id:'Y'}],curriculum_components:[{id:'CC',curriculum_id:'C',subject_id:'S'}],annual_fee_schedules:[{id:'F1',academic_year_id:'Y',category:'SCOLARITE',amount:100},{id:'F2',academic_year_id:'Y',category:'INSCRIPTION',program_id:'P',level_id:'L',amount:50}],annual_payment_channels:[{id:'PM',academic_year_id:'Y',name:'Caisse',method:'ESPECES'}]}};
 const annualFixture = { revision: 1, tables: {
   academic_years: [{ id: 'TARGET', status: 'BROUILLON' }, { id: 'CLOSED', status: 'CLOTUREE' }],
@@ -94,6 +94,36 @@ assert.equal(summary.tuitionCount, 1);
 assert.equal(summary.registrationCount, 1);
 assert.equal(summary.paymentChannelsCount, 1);
 assert.equal(summary.totalCount, 5);
+assert.deepEqual(summary.rawGroups?.[0]._linkedOfferings, [{ offering_id: 'O', curriculum_id: 'C', delivery_mode: undefined, program_id: 'P', program_name: 'Informatique' }]);
+
+const groupSelectionSnapshot = { revision: 1, tables: {
+  curricula: [{ id: 'C1', program_id: 'P1' }],
+  academic_offerings: [
+    { id: 'PRESENT', academic_year_id: 'TARGET', level_id: 'L1', curriculum_id: 'C1', program_id: 'P1', delivery_mode: 'Présentiel', name: 'Informatique · Présentiel' },
+    { id: 'ONLINE', academic_year_id: 'TARGET', level_id: 'L1', curriculum_id: 'C1', program_id: 'P1', delivery_mode: 'En ligne', name: 'Informatique · En ligne' },
+    { id: 'NEW', academic_year_id: 'TARGET', level_id: 'L1', curriculum_id: 'C2', program_id: 'P2', delivery_mode: 'Présentiel', name: 'Informatique avancée · Présentiel' },
+    { id: 'UNKNOWN', academic_year_id: 'TARGET', level_id: 'L1', curriculum_id: null, delivery_mode: 'Présentiel', name: 'Filière non renseignée · Présentiel' },
+    { id: 'ARCHIVED', academic_year_id: 'TARGET', level_id: 'L1', curriculum_id: 'C1', delivery_mode: 'Présentiel', archived_at: '2026-10-19' },
+    { id: 'OTHER-YEAR', academic_year_id: 'PREVIOUS', level_id: 'L1', curriculum_id: 'C1', delivery_mode: 'Présentiel' },
+    { id: 'OTHER-LEVEL', academic_year_id: 'TARGET', level_id: 'L2', curriculum_id: 'C1', delivery_mode: 'Présentiel' },
+  ],
+  group_offerings: [
+    { id: 'LINK', group_id: 'SAVED-GROUP', offering_id: 'ONLINE' },
+    { id: 'ARCHIVED-LINK', group_id: 'SAVED-GROUP', offering_id: 'PRESENT', archived_at: '2026-10-19' },
+    { id: 'OTHER-LINK', group_id: 'SAVED-GROUP', offering_id: 'OTHER-YEAR' },
+  ],
+} };
+const proposedGroup = { id: 'PROPOSAL', isPrefilled: true, _associatedOfferings: 'Informatique ; Filière', _linkedOfferings: [
+  { curriculum_id: 'C1', program_id: 'P1', delivery_mode: 'Présentiel' },
+  { curriculum_id: null, program_name: 'Filière', delivery_mode: 'Présentiel' },
+] };
+assert.deepEqual(groupOfferingSelection(groupSelectionSnapshot, proposedGroup, 'TARGET', 'L1'), ['PRESENT']);
+assert.deepEqual(groupOfferingSelection(groupSelectionSnapshot, { ...proposedGroup, _linkedOfferings: [{ curriculum_id: 'OLD-CURRICULUM', program_id: 'P1', delivery_mode: 'En ligne' }] }, 'TARGET', 'L1'), ['ONLINE']);
+assert.deepEqual(groupOfferingSelection(groupSelectionSnapshot, { ...proposedGroup, _linkedOfferings: [{ curriculum_id: 'MISSING', program_name: 'Filière' }] }, 'TARGET', 'L1'), []);
+assert.deepEqual(groupOfferingSelection(groupSelectionSnapshot, { ...proposedGroup, _linkedOfferings: [] }, 'TARGET', 'L1'), []);
+assert.deepEqual(groupOfferingSelection(groupSelectionSnapshot, { ...proposedGroup, _linkedOfferings: [], _associatedOfferings: 'Informatique avancée ; Filière' }, 'TARGET', 'L1'), ['NEW']);
+assert.deepEqual(groupOfferingSelection(groupSelectionSnapshot, { id: 'SAVED-GROUP' }, 'TARGET', 'L1'), ['ONLINE']);
+assert.deepEqual(groupOfferingSelection(groupSelectionSnapshot, null, 'TARGET', 'L1'), []);
 
 // Test buildReconductChanges
 const changes = buildReconductChanges(snapshot, 'Y', 'NEW_YEAR', 'Reconduction test');

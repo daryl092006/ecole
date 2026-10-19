@@ -22,7 +22,7 @@ export async function GET(request: Request, { params }: Context) {
       tables.academic_offerings = (scoped.tables.academic_offerings || []).map(row => {
         const curriculum = snapshot.tables.curricula?.find(item => item.id === row.curriculum_id);
         const program = snapshot.tables.programs?.find(item => item.id === curriculum?.program_id);
-        return { ...row, name: [program?.name || 'Filière non renseignée', row.delivery_mode].filter(Boolean).join(' · ') };
+        return { ...row, program_id: program?.id || null, name: [program?.name || 'Filière non renseignée', row.delivery_mode].filter(Boolean).join(' · ') };
       });
     }
     if (key === 'programs') {

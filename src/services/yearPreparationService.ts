@@ -157,6 +157,7 @@ export function getPreviousYearConfigSummary(snapshot: RelationalSnapshot, previ
         offering_id: link.offering_id,
         curriculum_id: off?.curriculum_id,
         delivery_mode: off?.delivery_mode,
+        program_id: prog?.id,
         program_name: prog?.name || 'Filière',
       };
     }).filter(item => Boolean(item.curriculum_id || item.program_name));
@@ -215,6 +216,32 @@ export function getStepPreFilledItems(step: string, summary: ReconductConfigSumm
     case 'payments': return summary.paymentChannels || [];
     default: return [];
   }
+}
+
+export function groupOfferingSelection(snapshot: RelationalSnapshot, group: DatabaseRow | null, yearId: string, levelId: string): string[] {
+  if (!group) return [];
+  const choices = (snapshot.tables.academic_offerings || []).filter(row => !row.archived_at && row.academic_year_id === yearId && row.level_id === levelId);
+  if (!group.isPrefilled) {
+    const linkedIds = new Set((snapshot.tables.group_offerings || []).filter(link => link.group_id === group.id && !link.archived_at).map(link => link.offering_id));
+    return choices.filter(row => linkedIds.has(row.id)).map(row => row.id);
+  }
+  const links = Array.isArray(group._linkedOfferings) ? group._linkedOfferings.filter((link): link is Record<string, unknown> => typeof link === 'object' && link !== null) : [];
+  if (links.length) {
+    const programId = (row: DatabaseRow) => row.program_id || snapshot.tables.curricula?.find(curriculum => curriculum.id === row.curriculum_id)?.program_id;
+    return [...new Set(links.flatMap(link => {
+      const sameMode = choices.filter(row => (row.delivery_mode || null) === (link.delivery_mode || null));
+      const sameCurriculum = sameMode.filter(row => link.curriculum_id && row.curriculum_id === link.curriculum_id);
+      if (sameCurriculum.length) return sameCurriculum.map(row => row.id);
+      const sameProgram = sameMode.filter(row => link.program_id && programId(row) === link.program_id);
+      return sameProgram.length === 1 ? [sameProgram[0].id] : [];
+    }))];
+  }
+  // Compatibilité avec les résumés anciens, sans sélectionner une filière inconnue.
+  const names = String(group._associatedOfferings || '').split(/\s*;\s*/).map(name => name.trim().toLocaleLowerCase('fr')).filter(name => name && name !== 'filière');
+  return choices.filter(row => {
+    const name = String(row.name || '').split(' · ')[0].trim().toLocaleLowerCase('fr');
+    return names.includes(name) && choices.filter(choice => String(choice.name || '').split(' · ')[0].trim().toLocaleLowerCase('fr') === name).length === 1;
+  }).map(row => row.id);
 }
 
 export function collectionToStep(collection: string, category?: string): 'offerings' | 'groups' | 'tuition' | 'registration' | 'payments' | null {
