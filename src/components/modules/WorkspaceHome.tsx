@@ -7,6 +7,8 @@ import { HISTORY_TABLES, HISTORY_DOMAINS } from '@/data/historyCatalog';
 import { getWorkspaceNavigation } from '@/constants/workspaceNavigation';
 import { ROLES } from '@/types/permissions';
 import type { HistoryDomain } from '@/types/history';
+import { netPaymentTotal } from '@/services/financialProjectionService';
+import { effectivePayments } from '@/services/paymentAllocationService';
 
 function fmtCompactFcfa(amount: number): string {
   if (amount >= 1_000_000) return `${(amount / 1_000_000).toFixed(1).replace('.0', '').replace('.', ',')} M FCFA`;
@@ -37,9 +39,9 @@ export default function WorkspaceHome({ mode = 'home' }: { mode?: 'home' | 'over
   // Financial aggregates
   const knownFinancialStudents = state.students.filter(s => s.financials?.available !== false);
   const payments = activeRows('payments');
-  const confirmedPayments = payments.filter(p => ['CONFIRMED', 'POSTED'].includes(String(p.status || '').toUpperCase()));
+  const confirmedPayments = effectivePayments(state.relationalSnapshot);
   const pendingPayments = payments.filter(p => String(p.status || '').toUpperCase() === 'PENDING');
-  const paymentsCollected = confirmedPayments.reduce((sum, p) => sum + (Number(p.amount ?? 0) || 0), 0);
+  const paymentsCollected = netPaymentTotal(state.relationalSnapshot);
   const expectedAmount = knownFinancialStudents.reduce((sum, s) => sum + (Number(s.financials?.expected ?? 0) || 0), 0);
   const collectedAmount = knownFinancialStudents.length
     ? knownFinancialStudents.reduce((sum, s) => sum + (Number(s.financials?.paid ?? 0) || 0), 0)
@@ -90,7 +92,7 @@ export default function WorkspaceHome({ mode = 'home' }: { mode?: 'home' | 'over
     .sort((a, b) => b.count - a.count || a.name.localeCompare(b.name, 'fr'));
 
   const activeEvals = activeRows('evaluations').filter(e => !e.cancelled_at);
-  const settledStudents = knownFinancialStudents.filter(s => (s.financials?.remaining ?? 0) <= 0 && (s.financials?.expected ?? 0) > 0).length;
+  const settledStudents = knownFinancialStudents.filter(s => (s.financials?.remaining ?? 0) <= 0 && (s.financials?.available === true || (s.financials?.expected ?? 0) > 0)).length;
   const debtorStudents = knownFinancialStudents.filter(s => (s.financials?.remaining ?? 0) > 0).length;
 
   // Compact role-specific KPI cards (short 1-2 word labels, big numbers)

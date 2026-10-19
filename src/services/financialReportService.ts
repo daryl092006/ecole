@@ -14,8 +14,9 @@ export function getFinancialReport(students: Student[], role: RoleName, asOfDate
       paid -= allocated;
       if (installment.dueDate < asOfDate) overdue += installment.amount - allocated;
     }
-    const situation: FinancialSituation = student.financials.expected === 0 ? 'SANS_CONTRAT'
-      : student.financials.remaining === 0 ? 'SCOLARITE_SOLDEE' : overdue > 0 ? 'EN_RETARD' : 'A_JOUR';
+    overdue = Math.min(overdue, Math.max(0, student.financials.remaining));
+    const situation: FinancialSituation = student.financials.expected === 0 && student.financials.available !== true ? 'SANS_CONTRAT'
+      : student.financials.remaining <= 0 ? 'SCOLARITE_SOLDEE' : overdue > 0 ? 'EN_RETARD' : 'A_JOUR';
     return { student, situation, overdue };
   });
 }

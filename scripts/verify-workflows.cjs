@@ -165,6 +165,7 @@ require('../src/services/paymentAllocationService.test.ts');
 require('../src/services/paymentAdjustmentService.test.ts');
 require('../src/services/paymentReceiptService.test.ts');
 require('../src/services/financialReportService.test.ts');
+require('../src/services/financialProjectionService.test.ts');
 
 require('../src/services/historyDisplayService.test.ts');
 

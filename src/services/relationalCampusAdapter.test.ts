@@ -77,3 +77,14 @@ allocatedSnapshot.tables.payment_allocations = [
 allocatedSnapshot.tables.allocation_reversals = [{ id: 'AR', allocation_id: 'D' }];
 assert.equal(projectRelationalCampus(allocatedSnapshot).data.students[0].financials.installments[0].settledAmount, 30000);
 console.log('Dossiers opérationnels : groupe sans date supposée, filière absente conservée et paiements en attente ou annulés exclus du solde.');
+
+const netSnapshot = structuredClone(allocatedSnapshot);
+netSnapshot.tables.refunds = [{ id: 'REFUND', payment_id: 'PAID', amount: 20000 }];
+netSnapshot.tables.credit_notes = [{ id: 'CREDIT', line_id: 'LINE', amount: 30000 }];
+netSnapshot.tables.contract_discounts = [{ id: 'DISCOUNT', version_id: 'VERSION', amount: 10000 }];
+const net = projectRelationalCampus(netSnapshot).data;
+assert.equal(net.students[0].financials.expected, 440000);
+assert.equal(net.students[0].financials.paid, 80000);
+assert.equal(net.students[0].financials.remaining, 360000);
+assert.deepEqual(net.enrollments[0].financials, net.students[0].financials, 'Student and annual enrollment projections must agree.');
+assert.equal(net.students[0].financials.installments[0].amount, 480000, 'Credits must not rewrite the contractual schedule.');

@@ -5,6 +5,7 @@ import { filterRelationalSnapshot } from '@/services/persistentPermissionsServic
 import { PaymentAllocationError, paymentAllocationDirectory, planPaymentAllocations } from '@/services/paymentAllocationService';
 import { PaymentAdjustmentError, assertPaymentAdjustment, paymentAdjustmentDirectory } from '@/services/paymentAdjustmentService';
 import { paymentReceiptDocument } from '@/services/paymentReceiptService';
+import { netContractAmount, netPaymentTotal } from '@/services/financialProjectionService';
 import type { PersistentChange, RelationalSnapshot } from '@/types/persistence';
 export const dynamic='force-dynamic';
 async function scope(request: Request, matricule: string) {
@@ -42,12 +43,10 @@ export async function GET(request:Request,{params}:Params){try{
     const versions=(scoped.tables.contract_versions || []).filter(row=>row.contract_id===contract.id);
     const activeVersion=versions.find(row=>['APPROVED','EN_COURS'].includes(String(row.status))) || versions.find(row=>row.status==='DRAFT');
     if(!activeVersion)return [];
-    const lines=(scoped.tables.contract_lines || []).filter(row=>row.version_id===activeVersion.id);
-    const discounts=(scoped.tables.contract_discounts || []).filter(row=>row.version_id===activeVersion.id);
-    const amount=lines.reduce((sum,row)=>sum+Number(row.amount || 0),0)-discounts.reduce((sum,row)=>sum+Number(row.amount || 0),0);
+    const amount=netContractAmount(scoped,activeVersion.id);
     return [{id:contract.id,versionId:activeVersion.id,enrollmentId:enrollment.id,reference:String(contract.reference || contract.id),status:String(activeVersion.status),amount}];
   }):[];
-  return Response.json({revision:snapshot.revision,adjustmentDirectory:context.permissions.includes('finance.view')?paymentAdjustmentDirectory(scoped,ids):{payments:[],lines:[]},allocationDirectory:context.permissions.includes('finance.view')?paymentAllocationDirectory(scoped,ids):{payments:[],installments:[]},channels:context.permissions.includes('finance.view')?(snapshot.tables.annual_payment_channels || []).filter(row=>row.academic_year_id=== (enrollments[0] ? snapshot.tables.academic_offerings.find(offering=>offering.id===enrollments[0].offering_id)?.academic_year_id : null) && !row.archived_at).map(row=>({name:row.name,method:row.method})):[],enrollments:enrollments.map(row=>({id:row.id,status:row.status,enrolledOn:row.enrolled_on})),contracts,payments:payments.map(row=>({id:row.id,reference:row.reference,amount:row.amount,paidOn:row.paid_on,cancelled:reversals.has(row.id),pending:row.status==='PENDING'})),paid:payments.reduce((sum,row)=>sum+(reversals.has(row.id)||row.status==='PENDING'?0:Number(row.amount)),0)},{headers:{'Cache-Control':'no-store'}});
+  return Response.json({revision:snapshot.revision,adjustmentDirectory:context.permissions.includes('finance.view')?paymentAdjustmentDirectory(scoped,ids):{payments:[],lines:[]},allocationDirectory:context.permissions.includes('finance.view')?paymentAllocationDirectory(scoped,ids):{payments:[],installments:[]},channels:context.permissions.includes('finance.view')?(snapshot.tables.annual_payment_channels || []).filter(row=>row.academic_year_id=== (enrollments[0] ? snapshot.tables.academic_offerings.find(offering=>offering.id===enrollments[0].offering_id)?.academic_year_id : null) && !row.archived_at).map(row=>({name:row.name,method:row.method})):[],enrollments:enrollments.map(row=>({id:row.id,status:row.status,enrolledOn:row.enrolled_on})),contracts,payments:payments.map(row=>({id:row.id,reference:row.reference,amount:row.amount,paidOn:row.paid_on,cancelled:reversals.has(row.id),pending:row.status==='PENDING'})),paid:context.permissions.includes('finance.view')?netPaymentTotal(scoped,ids):0},{headers:{'Cache-Control':'no-store'}});
 }catch(error){return errorResponse(error);}}
 const common={revision:z.number().int().nonnegative(),enrollmentId:z.uuid(),reason:z.string().trim().min(3).max(1000)};
 const schema=z.discriminatedUnion('action',[

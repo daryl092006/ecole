@@ -2,6 +2,8 @@ import { emptyDataset, DEFAULT_SETTINGS, type Dataset } from '@/types/applicatio
 import type { DatabaseRow, RelationalSnapshot } from '@/types/persistence';
 import type { DemoUser } from '@/types/user';
 import { ROLES, type RoleName } from '@/types/permissions';
+import { netContractAmount, netPaymentTotal } from './financialProjectionService';
+import { effectivePayments } from './paymentAllocationService';
 
 const text = (row: DatabaseRow | undefined, key: string) => typeof row?.[key] === 'string' ? row[key] as string : '';
 const numeric = (row: DatabaseRow, key: string) => Number(row[key] ?? 0);
@@ -31,11 +33,10 @@ export function projectRelationalCampus(snapshot: RelationalSnapshot, now = new 
   const financials = (enrollmentId: string): Dataset['students'][number]['financials'] => {
     const contract = rows('financial_contracts').find(row => row.enrollment_id === enrollmentId);
     const version = contract && rows('contract_versions').find(row => row.contract_id === contract.id && ['APPROVED', 'EN_COURS'].includes(text(row, 'status')));
-    const payments = rows('payments').filter(row => row.enrollment_id === enrollmentId && row.status !== 'PENDING' && !rows('payment_reversals').some(reversal => reversal.payment_id === row.id));
-    const paid = payments.reduce((sum, row) => sum + numeric(row, 'amount'), 0);
+    const payments = effectivePayments(snapshot).filter(row => row.enrollment_id === enrollmentId);
+    const paid = netPaymentTotal(snapshot, new Set([enrollmentId]));
     if (!version) return { available: false, expected: 0, paid, remaining: 0, installments: [] };
-    const lines = rows('contract_lines').filter(row => row.version_id === version.id);
-    const expected = lines.reduce((sum, row) => sum + numeric(row, 'amount'), 0) - rows('contract_discounts').filter(row => row.version_id === version.id).reduce((sum, row) => sum + numeric(row, 'amount'), 0);
+    const expected = netContractAmount(snapshot, version.id);
     return { available: true, expected, paid, remaining: expected - paid, installments: rows('installments').filter(row => row.version_id === version.id).sort((a,b) => numeric(a, 'position') - numeric(b, 'position')).map(row => {
       const settled = row.settled_amount == null ? rows('payment_allocations').filter(allocation => allocation.installment_id === row.id && payments.some(payment => payment.id === allocation.payment_id) && !rows('allocation_reversals').some(reversal => reversal.allocation_id === allocation.id)).reduce((sum, allocation) => sum + numeric(allocation, 'amount'), 0) : numeric(row, 'settled_amount');
       return { dueDate: text(row, 'due_on'), amount: numeric(row, 'amount'), settledAmount: settled, status: settled >= numeric(row, 'amount') ? 'Payée' : settled > 0 ? 'Partiellement payée' : text(row, 'due_on') < today ? 'En retard' : 'A venir' };
