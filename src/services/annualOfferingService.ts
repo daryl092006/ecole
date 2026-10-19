@@ -49,14 +49,33 @@ export function annualOfferingChanges(snapshot: RelationalSnapshot, yearId: stri
   if (!year || !['BROUILLON', 'OUVERTE'].includes(String(year.status))) throw new Error('Choisissez une année en préparation ou ouverte.');
   if (!snapshot.tables.programs?.some(row => row.id === programId && !row.archived_at && row.active !== false)) throw new Error('La filière sélectionnée est introuvable ou archivée.');
   const seen = new Set<string>();
-  return variants.flatMap(variant => {
+  const requestedKeys = new Set<string>();
+  const inserts: PersistentChange[] = [];
+
+  for (const variant of variants) {
     if (![null, '', 'Présentiel', 'En ligne'].includes(variant.delivery_mode)) throw new Error('Mode de formation invalide.');
     const key = offeringVariantKey(variant);
     if (seen.has(key)) throw new Error('Un même niveau et mode de formation ne peut être choisi deux fois.');
     seen.add(key);
+    requestedKeys.add(key);
     const curriculum = snapshot.tables.curricula?.find(row => row.id === variant.curriculum_id && row.program_id === programId && !row.archived_at && row.status !== 'ARCHIVED');
     if (!curriculum || !snapshot.tables.levels?.some(row => row.id === curriculum.level_id && !row.archived_at && row.active !== false)) throw new Error('Choisissez uniquement des niveaux enregistrés pour cette filière.');
-    if (snapshot.tables.academic_offerings?.some(row => row.academic_year_id === yearId && !row.archived_at && offeringVariantKey(row) === key)) return [];
-    return [{ table: 'academic_offerings', operation: 'insert' as const, record: { id: crypto.randomUUID(), academic_year_id: yearId, curriculum_id: curriculum.id, level_id: curriculum.level_id, delivery_mode: variant.delivery_mode || null, reason } }];
+    if (!snapshot.tables.academic_offerings?.some(row => row.academic_year_id === yearId && !row.archived_at && offeringVariantKey(row) === key)) {
+      inserts.push({ table: 'academic_offerings', operation: 'insert' as const, record: { id: crypto.randomUUID(), academic_year_id: yearId, curriculum_id: curriculum.id, level_id: curriculum.level_id, delivery_mode: variant.delivery_mode || null, reason } });
+    }
+  }
+
+  const programCurriculaIds = new Set((snapshot.tables.curricula || []).filter(c => c.program_id === programId && !c.archived_at).map(c => c.id));
+  const existingOfferings = (snapshot.tables.academic_offerings || []).filter(row => row.academic_year_id === yearId && !row.archived_at && programCurriculaIds.has(String(row.curriculum_id)));
+  const toArchive = existingOfferings.filter(row => !requestedKeys.has(offeringVariantKey(row)));
+
+  const archivedAt = new Date().toISOString();
+  const updates: PersistentChange[] = toArchive.map(row => {
+    if (Object.entries(snapshot.tables).some(([table, records]) => table !== 'academic_offerings' && records.some(item => item.offering_id === row.id && !item.archived_at))) {
+      throw new Error('Une des formations décochées est déjà rattachée à un groupe ou une inscription.');
+    }
+    return { table: 'academic_offerings', operation: 'update' as const, record: { id: row.id, archived_at: archivedAt, reason } };
   });
+
+  return [...inserts, ...updates];
 }
