@@ -42,7 +42,8 @@
     ".tmp/next-development/types/**/*.ts",
     ".tmp/next-ui-development/types/**/*.ts",
     "next-env.d.ts",
-    ".tmp/next-annual-site/types/**/*.ts"
+    ".tmp/next-annual-site/types/**/*.ts",
+    ".next-responsive-audit/types/**/*.ts"
   ],
   "exclude": [
     "node_modules"

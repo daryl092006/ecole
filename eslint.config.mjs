@@ -21,6 +21,7 @@ const eslintConfig = defineConfig([
     '.next/**',
     '.next-verification/**',
     '.next-ui-tests/**',
+    '.next-responsive-audit/**',
     '.tmp/**',
     'test-results/**',
     'out/**',
