@@ -2,6 +2,7 @@ import DrawerActions from '@/components/ui/DrawerActions';
 import type { DatabaseRow, RelationalSnapshot } from '@/types/persistence';
 import { groupAnnualOfferings, type AnnualOfferingGroup } from '@/services/annualOfferingService';
 import ResponsiveTable from '@/components/ui/ResponsiveTable';
+import IconButton from '@/components/ui/IconButton';
 import { useState } from 'react';
 
 interface Props {
@@ -67,20 +68,8 @@ export default function AnnualOfferingList({ rows, allRows, snapshot, canEdit, p
         </td>
         <td>
           <div className="btn-group">
-            {canEdit && <button className="btn btn-sm btn-primary" onClick={() => onManage(group)} style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}>
-              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-                <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" />
-                <circle cx="12" cy="12" r="3" />
-              </svg>
-              <span>{pending.length ? 'Vérifier les niveaux' : 'Ajouter des niveaux'}</span>
-            </button>}
-            {canEdit && group.rows.every(row => !row.archived_at) && <button className="btn btn-sm btn-outline btn-danger" onClick={() => { setRemoving(group); setReason(''); setError(''); }} style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}>
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-                <polyline points="3 6 5 6 21 6" />
-                <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
-              </svg>
-              <span>Retirer toute la ligne</span>
-            </button>}
+            {canEdit && <IconButton className="btn btn-sm btn-primary" label="Vérifier les niveaux" onClick={() => onManage(group)} />}
+            {canEdit && group.rows.every(row => !row.archived_at) && <IconButton className="btn btn-sm btn-outline btn-danger" label="Retirer toute la ligne" onClick={() => { setRemoving(group); setReason(''); setError(''); }} />}
           </div>
         </td>
       </tr>;

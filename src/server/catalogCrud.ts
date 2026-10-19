@@ -51,7 +51,9 @@ export async function writeCatalog(request: Request, key: string, id?: string) {
     let changes: PersistentChange[];
     try { changes = annualOfferingChanges(snapshot, values.academic_year_id, values.program_id, values.variants, body.reason); }
     catch (error) { throw new RequestError(400, error instanceof Error ? error.message : 'Vérifiez les niveaux sélectionnés.'); }
-    if (!changes.length) throw new RequestError(409, 'Ces niveaux et modes sont déjà proposés pour cette année.');
+    if (!changes.length) {
+      return Response.json({ revision: snapshot.revision, count: 0, message: 'Ces niveaux et modes sont déjà enregistrés pour cette année.' }, { status: 200, headers: { 'Cache-Control': 'no-store' } });
+    }
     const response = await client.rpc('escen_backend_transaction', { p_actor_id: context.accountId, p_expected_revision: snapshot.revision, p_changes: changes });
     if (response.error) throw new RequestError(409, 'Enregistrement refusé : doublon, relation incompatible ou modification concurrente.');
     return Response.json({ revision: response.data, count: changes.length }, { status: 201, headers: { 'Cache-Control': 'no-store' } });
