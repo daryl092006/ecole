@@ -75,6 +75,7 @@ export default function CatalogTaskDialog({
           previousSummary: task.collection === root ? previousSummary : undefined,
           prefilledItems: task.collection === root ? prefilledItems : undefined,
           onChoose: () => {},
+          onDone: task.collection === root && root === 'academic_offerings' ? onClose : undefined,
           onSaved: () => {
             if (task.collection === root) onSaved();
             else {

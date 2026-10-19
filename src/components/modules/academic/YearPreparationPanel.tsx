@@ -13,11 +13,11 @@ import { CRUD_SECTIONS } from '@/data/crudCatalog';
 import { catalogSpec } from '@/services/catalogCrudService';
 
 const steps: Record<string, { title: string; collections: string[]; description: string; category?: string }> = {
-  offerings: { title: 'Formations proposées', collections: ['academic_offerings'], description: 'Choisissez les formations qui accueilleront des étudiants cette année.' },
-  groups: { title: 'Groupes', collections: ['groups'], description: 'Créez chaque groupe pour un niveau, puis rattachez les filières qu’il accueille. Plusieurs filières peuvent partager le même groupe.' },
-  tuition: { title: 'Frais de scolarité', collections: ['annual_fee_schedules'], category: 'SCOLARITE', description: 'Indiquez le montant à payer. Précisez une filière ou un niveau uniquement si le tarif varie.' },
-  registration: { title: 'Frais d’inscription', collections: ['annual_fee_schedules'], category: 'INSCRIPTION', description: 'Indiquez les frais d’inscription, communs ou propres à une formation.' },
-  payments: { title: 'Encaissement', collections: ['annual_payment_channels'], description: 'Choisissez les moyens de paiement qui seront utilisés pour les inscriptions et la scolarité.' },
+  offerings: { title: 'Formations proposées', collections: ['academic_offerings'], description: 'Filières, niveaux et modes de cours.' },
+  groups: { title: 'Groupes', collections: ['groups'], description: 'Groupes et filières rattachées.' },
+  tuition: { title: 'Frais de scolarité', collections: ['annual_fee_schedules'], category: 'SCOLARITE', description: 'Tarifs communs ou par formation.' },
+  registration: { title: 'Frais d’inscription', collections: ['annual_fee_schedules'], category: 'INSCRIPTION', description: 'Montants à régler à l’inscription.' },
+  payments: { title: 'Encaissement', collections: ['annual_payment_channels'], description: 'Moyens de paiement acceptés.' },
 };
 
 export default function YearPreparationPanel({
@@ -69,13 +69,15 @@ export default function YearPreparationPanel({
     setMessage('');
   };
 
+  const leaveStep = () => { setStep(null); setCollection(''); setRetry(value => value + 1); };
+
   const handleConfigureClick = (checkKey: string) => {
     enter(checkKey, false);
   };
 
   if (selected && collection && consulting) {
     const section = Object.keys(CRUD_SECTIONS).find(key => CRUD_SECTIONS[key].includes(collection))!;
-    return <DetailDrawer title={`${selected.title} · ${yearName}`} onClose={() => { setStep(null); setCollection(''); }}>
+    return <DetailDrawer title={`${selected.title} · ${yearName}`} onClose={leaveStep}>
       {selected.collections.length > 1 && <nav className="record-sections" aria-label="Rubriques de configuration">{selected.collections.map(key => <button key={key} className={collection === key ? 'selected' : ''} aria-pressed={collection === key} onClick={() => setCollection(key)}>{catalogSpec(key).title}</button>)}</nav>}
       <ReferenceCrudWorkspace
         key={collection}
@@ -91,6 +93,7 @@ export default function YearPreparationPanel({
           previousSummary: previousSummary || undefined,
           prefilledItems: prefilledItems.length ? prefilledItems : undefined,
           onChoose: setCollection,
+          onDone: leaveStep,
           onSaved: () => { setRetry(value => value + 1); portal.refreshCampus(); }
         }}
       />
@@ -109,10 +112,10 @@ export default function YearPreparationPanel({
         previousYear={previousYear || undefined}
         previousSummary={previousSummary || undefined}
         prefilledItems={prefilledItems.length ? prefilledItems : undefined}
-        onClose={() => { setStep(null); setCollection(''); }}
+        onClose={leaveStep}
         onSaved={() => {
           const nextCollection = selected.collections[selected.collections.indexOf(collection) + 1];
-          setMessage(`${catalogSpec(collection).title} : enregistrement confirmé.`);
+          setMessage(`${selected.title} : enregistré.`);
           if (nextCollection && collection !== 'groups') setCollection(nextCollection);
           else { setStep(null); setCollection(''); }
           setRetry(value => value + 1);
@@ -135,111 +138,34 @@ export default function YearPreparationPanel({
       ) : (
         <>
           {message && <p className="info-box" role="status">{message}</p>}
-          {(() => {
-            const readyCount = checks.filter(check => check.ready).length;
-            const totalCount = checks.length;
-            const pct = totalCount > 0 ? Math.round((readyCount / totalCount) * 100) : 0;
-            return (
-              <div className="preparation-summary-card">
-                <div className="preparation-summary-header">
-                  <div className="preparation-summary-content">
-                    <strong className="preparation-summary-title">Configuration obligatoire avant ouverture</strong>
-                    <p className="preparation-summary-desc">
-                      Pour être ouverte, l’année scolaire exige la configuration complète de ses formations, groupes rattachés, frais de scolarité, frais d’inscription et moyens d’encaissement.
-                    </p>
-                  </div>
-                  {next && (
-                    <div className="preparation-summary-cta">
-                      <button className="btn btn-primary" onClick={() => handleConfigureClick(next.key)}>
-                        Continuer : {steps[next.key]?.title || next.label} →
-                      </button>
-                    </div>
-                  )}
-                </div>
-                <div className="preparation-progress-bar">
-                  <div className="preparation-progress-meta">
-                    <span>Progression globale</span>
-                    <strong>{readyCount} sur {totalCount} étapes terminées ({pct} %)</strong>
-                  </div>
-                  <div className="preparation-progress-track">
-                    <div className="preparation-progress-fill" style={{ width: `${pct}%` }} />
-                  </div>
-                </div>
-              </div>
-            );
-          })()}
-
-          {!next && (
-            <div className="preparation-ready-banner">
-              <div>
-                <strong className="preparation-ready-title">
-                  ✓ Configuration complète : l’année est prête pour l’ouverture
-                </strong>
-                <p className="cell-sub" style={{ margin: 0 }}>
-                  Toutes les conditions requises sont remplies. Vous pouvez désormais valider et ouvrir cette année scolaire.
-                </p>
-              </div>
-              {onActivate && (
-                <button
-                  type="button"
-                  className="btn btn-primary"
-                  onClick={onActivate}
-                >
-                  Valider et ouvrir l’année {yearName}
-                </button>
-              )}
-            </div>
-          )}
-
-          <ol className="preparation-steps-list">
+          <div className="year-preparation-overview">
+            <p><strong>{checks.filter(check => check.ready).length} sur {checks.length}</strong> rubriques prêtes</p>
+            {previousYear && <span>Année précédente : {previousYear.name}</span>}
+          </div>
+          <ol className="year-preparation-list" aria-label="Préparation de l’année">
             {checks.map((check, index) => {
               const stepConfig = steps[check.key];
-              const prefilled = getStepPreFilledItems(check.key, previousSummary);
-              const hasPrefilled = !check.ready && Boolean(previousYear && prefilled.length > 0);
-              const isNext = next?.key === check.key;
-              const statusClass = check.ready ? 'is-ready' : isNext ? 'is-active' : hasPrefilled ? 'is-pending' : '';
-
-              return (
-                <li key={check.key} className={`preparation-step-card ${statusClass}`}>
-                  <div className="preparation-step-main">
-                    <span className={`preparation-number ${check.ready ? 'is-ready' : isNext ? 'is-active' : ''}`}>
-                      {check.ready ? '✓' : index + 1}
-                    </span>
-                    <div>
-                      <div className="preparation-step-badge-row">
-                        <span className="preparation-step-title">{stepConfig?.title || check.label}</span>
-                        {check.ready ? (
-                          <span className="pill pill-success">Configuration prête</span>
-                        ) : hasPrefilled ? (
-                          <span className="pill pill-warning">
-                            Pré-rempli depuis {previousYear!.name} ({prefilled.length}) · À vérifier
-                          </span>
-                        ) : (
-                          <span className="pill pill-default">À compléter</span>
-                        )}
-                      </div>
-                      <p className="cell-sub">{stepConfig?.description}</p>
-                    </div>
-                  </div>
-
-                  <div className="preparation-step-action">
-                    {check.ready ? (
-                      <button className="btn btn-outline" onClick={() => enter(check.key, true)}>
-                        Consulter {stepConfig?.title.toLocaleLowerCase('fr') || check.label}
-                      </button>
-                    ) : (
-                      <button
-                        className={hasPrefilled || isNext ? 'btn btn-primary' : 'btn btn-outline'}
-                        onClick={() => handleConfigureClick(check.key)}
-                      >
-                        Configurer {stepConfig?.title.toLocaleLowerCase('fr') || check.label}
-                      </button>
-                    )}
-                  </div>
-                </li>
-              );
+              const hasPrefilled = !check.ready && Boolean(previousYear && getStepPreFilledItems(check.key, previousSummary).length);
+              return <li key={check.key} className="year-preparation-row">
+                <span className="year-preparation-index" aria-hidden="true">{index + 1}.</span>
+                <div className="year-preparation-label">
+                  <strong>{stepConfig?.title || check.label}</strong>
+                  <p>{stepConfig?.description}</p>
+                </div>
+                <span className={`year-preparation-state${check.ready ? ' is-ready' : ''}`}>
+                  {check.ready ? 'Prêt' : hasPrefilled ? 'À vérifier' : 'À renseigner'}
+                </span>
+                <button type="button" className="btn btn-outline"
+                  aria-label={`${check.ready ? 'Consulter' : 'Configurer'} ${stepConfig?.title.toLocaleLowerCase('fr') || check.label}`}
+                  onClick={() => check.ready ? enter(check.key, true) : handleConfigureClick(check.key)}>Ouvrir</button>
+              </li>;
             })}
           </ol>
+          {!next && checks.length > 0 && <div className="year-preparation-footer">
+            <p>L’année est prête à être ouverte.</p>
+            {onActivate && <button type="button" className="btn btn-primary" onClick={onActivate}>Ouvrir l’année {yearName}</button>}
+          </div>}
+
         </>
       )}
     </DetailDrawer>

@@ -112,7 +112,16 @@ for (const width of [390, 1440]) {
     expect(saved.find(row => row.id === archivedId)?.archived_at).toBeNull();
     expect(saved.filter(row => row.delivery_mode === 'En ligne')).toHaveLength(1);
     await expect(finance).toContainText('En ligne');
+    await expect(dialog.getByRole('status')).toHaveCount(1);
+    await expect(dialog.getByRole('status')).toHaveText('Finance Digitale : niveaux enregistrés.');
+    await expect(dialog.locator('.annual-offering-footer')).toContainText('1 filière enregistrée');
+    await expect(dialog.locator('.annual-offering-footer')).toContainText('1 proposition non enregistrée');
     await page.screenshot({ path: `tmp/screenshots/annual-offerings/${width}/apres-enregistrement.png` });
+    await dialog.getByRole('button', { name: 'Retour à la préparation', exact: true }).click();
+    await expect(page.getByRole('heading', { name: 'Préparer l’année · 2026-2027', exact: true })).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'Quitter sans enregistrer ?', exact: true })).toHaveCount(0);
+    expect(writes).toHaveLength(4);
+    await page.getByRole('button', { name: 'Consulter formations proposées', exact: true }).click();
 
     await finance.getByRole('button', { name: 'Retirer toute la ligne', exact: true }).click();
     await dialog.getByRole('button', { name: 'Conserver la ligne', exact: true }).click();

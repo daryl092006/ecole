@@ -4,7 +4,7 @@ import IconButton from '@/components/ui/IconButton';
 import LoadingState from '@/components/ui/LoadingState';
 import CatalogTaskDialog from './CatalogTaskDialog';
 import AnnualOfferingList from './AnnualOfferingList';
-import { annualOfferingLabel, annualOfferingProposals, offeringVariantKey, type AnnualOfferingGroup, type AnnualOfferingVariant } from '@/services/annualOfferingService';
+import { annualOfferingLabel, annualOfferingProposals, groupAnnualOfferings, offeringVariantKey, type AnnualOfferingGroup, type AnnualOfferingVariant } from '@/services/annualOfferingService';
 import { useSearchParams } from 'next/navigation';
 import { YEAR_STATUS_LABELS, type YearStatus } from '@/types/academicYearContext';
 import AcademicYearLifecycle from './AcademicYearLifecycle';
@@ -18,7 +18,7 @@ import type { HistoryRecord } from '@/types/history';
 import type { DatabaseRow, CatalogSnapshot } from '@/types/persistence';
 import ResponsiveTable from '@/components/ui/ResponsiveTable';
 import WorkPage from '@/components/ui/WorkPage';
-import { DrawerCloseButton } from '@/components/ui/DetailDrawer';
+import { DrawerCloseButton, useDrawer } from '@/components/ui/DetailDrawer';
 import ReviewedForm from '@/components/ui/ReviewedForm';
 import ActionResult from '@/components/ui/ActionResult';
 import { historyValue } from '@/services/historyDisplayService';
@@ -222,6 +222,7 @@ export default function ReferenceCrudWorkspace(props: {
     createOnLoad?: boolean;
     editId?: string;
     onCancel?: () => void;
+    onDone?: () => void;
     stepKey?: string;
     previousYear?: { id: string; name: string };
     previousSummary?: ReconductConfigSummary;
@@ -247,6 +248,7 @@ function ReferenceCrudContent({
     createOnLoad?: boolean;
     editId?: string;
     onCancel?: () => void;
+    onDone?: () => void;
     stepKey?: string;
     previousYear?: { id: string; name: string };
     previousSummary?: ReconductConfigSummary;
@@ -256,6 +258,7 @@ function ReferenceCrudContent({
   };
 }) {
   const portal = usePortal(); const { activeRole } = portal;
+  const drawer = useDrawer();
   const searchParams = useSearchParams();
   const Editor = setup ? InlineSubView : WorkPage;
   const choices = CRUD_SECTIONS[section].filter(key => !!setup || !['academic_offerings', 'groups', 'group_offerings', 'annual_fee_schedules', 'annual_payment_channels'].includes(key));
@@ -466,6 +469,7 @@ function ReferenceCrudContent({
     const initialGroupOfferings = collection === 'groups' && row && !row.isPrefilled
       ? (data?.tables.group_offerings || []).filter(link => link.group_id === row.id && !link.archived_at).map(link => String(link.offering_id))
       : [];
+    setFeedback('');
     setOfferingIds(initialGroupOfferings); setSourceRowId(undefined); setDialog(mode); setSelected(row); setSaveError('');
     setAnnualVariants([]); setAnnualProposalIds([]);
     let defaultReason = mode === 'create' ? `Création dans ${spec.title.toLocaleLowerCase('fr')}` : '';
@@ -516,7 +520,8 @@ function ReferenceCrudContent({
     }
     const removedKeys = new Set(group.rows.map(offeringVariantKey));
     setExcludedPrefilledIds(current => [...new Set([...current, ...group.rows.filter(row => row.isPrefilled).map(row => row.id), ...allPrefilledRows.filter(row => row.curriculum_id && removedKeys.has(offeringVariantKey(row))).map(row => row.id)])]);
-    setFeedback(`${group.name} : ligne retirée (${group.rows.length} niveaux et modes).`);
+    drawer?.markSaved();
+    setFeedback(`${group.name} : ligne retirée.`);
   };
 
   const handleConfirmSinglePrefilled = async () => {
@@ -583,6 +588,8 @@ function ReferenceCrudContent({
     }
   };
 
+  const savedProgramCount = data && collection === 'academic_offerings' ? groupAnnualOfferings(savedRows, data).filter(group => group.programId).length : 0;
+  const proposedProgramCount = data && collection === 'academic_offerings' ? groupAnnualOfferings(prefilledRows, data).filter(group => group.programId).length : 0;
   const nextCollection = journey?.next && choices.includes(journey.next) ? journey.next : undefined;
   const refreshAfterInline = async (savedId = inlineSavedId) => {
     if (!inlineReference) return;
@@ -628,7 +635,7 @@ function ReferenceCrudContent({
     </div>
     {!setup && choices.length > 1 && <label className="workspace-picker">Rubrique<select className="select-input" value={collection} onChange={event => choose(event.target.value)}>{choices.map(key => <option value={key} key={key}>{catalogSpec(key).title}</option>)}</select></label>}
     {collection === 'academic_years' && data && <AcademicYearLifecycle rows={data.tables.academic_years || []} revision={data.revision} onView={row => open('details', row)} onEdit={canEdit ? row => open('edit', row) : undefined} onSaved={() => { setRetry(value => value + 1); portal.reloadCampus(); portal.history.retry(); }} />}
-    {feedback && <ActionResult title={feedback} nextLabel={setup ? 'Retourner à la préparation de l’année' : (nextCollection ? journey.nextLabel : undefined)} onNext={setup ? () => setup.onSaved() : (nextCollection ? () => choose(nextCollection) : undefined)} onDismiss={() => setFeedback('')}>{journey?.result}</ActionResult>}
+    {feedback && setup && collection === 'academic_offerings' ? <p className="annual-offering-feedback" role="status">{feedback}</p> : feedback && <ActionResult title={feedback} nextLabel={setup ? 'Retourner à la préparation de l’année' : (nextCollection ? journey.nextLabel : undefined)} onNext={setup ? () => setup.onSaved() : (nextCollection ? () => choose(nextCollection) : undefined)} onDismiss={() => setFeedback('')}>{journey?.result}</ActionResult>}
     {canEdit && data && prerequisites.length > 0 && <section className="prerequisite-panel"><p>Cette opération utilise des informations qui restent à enregistrer. Complétez-les dans l’ordre, puis poursuivez ici.</p><button className="btn btn-primary" onClick={() => setGuided(true)}>Compléter dans l’ordre</button></section>}
     {guided && <CatalogTaskDialog root={collection} yearId={setup?.yearId} yearName={setup?.yearName} category={setup?.category} onClose={() => setGuided(false)} onSaved={() => { setGuided(false); setRetry(value => value + 1); if (setup) setup.onSaved(); else { setFeedback(`${spec.title} : enregistrement confirmé`); portal.refreshCampus(); } }} />}
     {error ? <section className="card" role="alert"><p>{error}</p><IconButton className="btn btn-outline" onClick={() => setRetry(value => value + 1)} label="Réessayer" /></section> : !data ? <LoadingState label="Chargement du référentiel…" /> : collection === 'academic_years' ? <>{sources.length > 0 && <details className="card"><summary>Années aux dates à compléter ({sources.length})</summary>{sourceRecords.map(row => <div className="academic-year-row" key={row.id}><strong>{rowTitle(row)}</strong>{canEdit && <button className="btn btn-outline" onClick={() => resume(sourceById.get(row.id)!)}>Compléter les dates</button>}</div>)}</details>}</> : (setup && dialog ? null : <section className="card card-full"><div className="directory-toolbar" hidden={!!setup && !rows.length}><label>Rechercher<input className="input" type="search" value={query} onChange={event => setQuery(event.target.value)} placeholder={`Nom ou code · ${spec.title.toLocaleLowerCase('fr')}`} /></label><label hidden={!!setup}>Afficher<select className="select-input" value={archived ? 'archived' : 'active'} onChange={event => setArchived(event.target.value === 'archived')}><option value="active">Enregistrements disponibles</option><option value="archived">Enregistrements archivés</option></select></label></div>
@@ -640,6 +647,13 @@ function ReferenceCrudContent({
         return <td key={field.key}>{display(field, row)}{Boolean(isPrimary && row.isPrefilled) && <div className="cell-sub"><span className="pill pill-warning">En attente de validation</span>{effectivePreviousYear && <span> · Pré-rempli ({effectivePreviousYear.name})</span>}</div>}{field.key === 'name' && sourceById.has(row.id) && <div className="cell-sub">{collection === 'academic_years' ? 'Dates à confirmer avant utilisation' : 'Informations à compléter avant utilisation'}</div>}</td>;
       })}{collection === 'groups' && <td>{groupFormations(row)}</td>}{collection === 'academic_years' && <td>{sourceById.has(row.id) ? <span className="pill pill-warning">À compléter</span> : portal.academicYearContext?.currentYearId === row.id ? <span className="pill pill-success">Année de travail</span> : <span className="pill pill-default">{YEAR_STATUS_LABELS[row.status as YearStatus] || 'État à vérifier'}</span>}</td>}<td><div className="btn-group"><IconButton className="btn btn-sm btn-outline" onClick={() => open('details', row)} label="Voir" />{Boolean(row.isPrefilled) ? <><IconButton className="btn btn-sm btn-outline" onClick={() => open('edit', row)} label="Modifier" /><button className="btn btn-sm btn-outline btn-danger" onClick={() => removePrefilled(row)}>Retirer</button><button className="btn btn-sm btn-primary" onClick={() => open('validate_prefilled', row)}>Valider</button></> : canEdit && !row.archived_at && <>{sourceById.has(row.id) ? <IconButton className="btn btn-sm btn-outline" onClick={() => resume(sourceById.get(row.id)!)} label="Compléter les informations" /> : <><IconButton className="btn btn-sm btn-outline" onClick={() => open('edit', row)} label="Modifier" /><IconButton className="btn btn-sm btn-outline" onClick={() => open('archive', row)} label="Archiver" /></>}</>}</div></td></tr>)}{!rows.length && <tr><td colSpan={spec.fields.filter(field => field.type !== 'textarea').length + (['academic_years', 'groups'].includes(collection) ? 2 : 1)}>{query ? 'Aucun résultat. Modifiez la recherche ou effacez-la pour retrouver la liste.' : archived ? 'Aucun enregistrement archivé.' : `Aucun enregistrement. ${canEdit && !prerequisites.length ? `Commencez par « Ajouter ${spec.singular} ».` : 'Les références nécessaires sont indiquées au-dessus.'}`}</td></tr>}</tbody></ResponsiveTable>}
     </section>)}
+    {setup?.onDone && collection === 'academic_offerings' && data && !dialog && !error && <footer className="annual-offering-footer">
+      <p>
+        <strong>{savedProgramCount} {savedProgramCount === 1 ? 'filière enregistrée' : 'filières enregistrées'}</strong>
+        {proposedProgramCount > 0 && <span>{proposedProgramCount} {proposedProgramCount === 1 ? 'proposition non enregistrée' : 'propositions non enregistrées'}</span>}
+      </p>
+      <DrawerActions><DrawerCloseButton className="btn btn-primary" onClose={setup.onDone}>Retour à la préparation</DrawerCloseButton></DrawerActions>
+    </footer>}
     {dialog && data && <Editor busy={saving || prefilledBusy || inlineBusy} title={creatingOfferings ? `Choisir une filière et ses niveaux${setup?.yearName ? ` · ${setup.yearName}` : ''}` : dialog === 'validate_prefilled' ? `Valider ${stepTitle.toLocaleLowerCase('fr')} pré-rempli(e)s${setup?.yearName ? ` · ${setup.yearName}` : ''}` : setup ? `${dialog === 'create' ? 'Ajouter' : dialog === 'edit' ? 'Modifier' : dialog === 'archive' ? 'Archiver' : 'Consulter'} ${spec.singular}${setup.yearName ? ` · ${setup.yearName}` : ''}` : sourceRowId ? `Compléter ${spec.singular}` : dialog === 'create' ? `Ajouter ${spec.singular}` : dialog === 'edit' ? `Modifier : ${rowTitle(selected)}` : dialog === 'archive' ? `Archiver : ${rowTitle(selected)}` : rowTitle(selected)} onClose={() => { if (!saving && !prefilledBusy && !inlineBusy) { setInlineReference(null); if (setup?.onCancel) setup.onCancel(); else setDialog(null); } }}>
       {inlineReference && !setup ? (
         <div>
@@ -711,8 +725,9 @@ function ReferenceCrudContent({
             setExcludedPrefilledIds(prev => [...prev, selected.id]);
           }
           if (creatingOfferings) setExcludedPrefilledIds(ids => [...ids, ...annualProposalIds]);
+          drawer?.markSaved();
           setDialog(null);
-          setFeedback(dialog === 'archive' ? `${selected?.name} : archivage enregistré` : `${form.name || spec.title} : enregistrement confirmé`);
+          setFeedback(creatingOfferings ? `${annualPrograms.find(program => program.id === form.program_id)?.name || 'Formation'} : niveaux enregistrés.` : dialog === 'archive' ? `${selected?.name} : archivage enregistré` : `${form.name || spec.title} : enregistrement confirmé`);
           setRetry(value => value + 1);
           portal.refreshCampus();
           if (setup) setup.onSaved(result.id);

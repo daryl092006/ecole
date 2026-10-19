@@ -2492,6 +2492,30 @@ input[type="radio"] {
 .setup-actions { display: flex; justify-content: space-between; align-items: center; gap: 1rem; margin: 16px 0; flex-wrap: wrap; }
 .setup-actions h2 { margin: 0; font-size: 1.25rem; font-weight: 600; color: var(--text-primary); }
 
+.year-preparation-overview { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; flex-wrap: wrap; margin-bottom: 20px; color: var(--text-secondary); font-size: .875rem; }
+.year-preparation-overview p { margin: 0; }
+.year-preparation-overview strong { color: var(--text-primary); }
+.year-preparation-list { list-style: none; margin: 0; padding: 0; border-top: 1px solid var(--border); }
+.year-preparation-row { display: grid; grid-template-columns: 24px minmax(0, 1fr) 100px auto; align-items: center; gap: 16px; padding: 20px 0; border-bottom: 1px solid var(--border); }
+.year-preparation-index { color: var(--text-secondary); font-size: .875rem; }
+.year-preparation-label strong { font-size: .95rem; }
+.year-preparation-label p { margin: 4px 0 0; color: var(--text-secondary); font-size: .825rem; }
+.year-preparation-state { color: var(--text-secondary); font-size: .825rem; }
+.year-preparation-state.is-ready { color: var(--success); }
+.year-preparation-footer, .annual-offering-footer { display: flex; justify-content: space-between; align-items: center; gap: 16px; margin-top: 24px; }
+.year-preparation-footer p, .annual-offering-footer p { margin: 0; font-size: .875rem; }
+.annual-offering-footer p { display: grid; gap: 4px; }
+.annual-offering-footer span { color: var(--text-secondary); }
+.annual-offering-footer .drawer-form-actions { margin: 0; }
+.annual-offering-feedback { margin: 0 0 16px; color: var(--success); font-size: .875rem; }
+@media (max-width: 768px) {
+  .year-preparation-row { grid-template-columns: 18px minmax(0, 1fr) auto; gap: 8px 12px; padding: 16px 0; }
+  .year-preparation-label { grid-column: 2 / 4; }
+  .year-preparation-state { grid-column: 2; }
+  .year-preparation-row > .btn { grid-column: 3; }
+  .year-preparation-footer, .annual-offering-footer { flex-direction: column; align-items: stretch; }
+}
+
 .preparation-summary-card {
   background: var(--surface-alt, #f8fafc);
   border: 1px solid var(--border);

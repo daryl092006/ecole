@@ -79,7 +79,7 @@ test('Préparation : les bases sont enregistrées avant les formations, sans cha
   await page.route('**/api/year-preparation', route => route.fulfill({ json: { checks: [{ key: 'offerings', label: 'Formations', ready: tables.academic_offerings.length > 0, href: '' }] } }));
   await page.goto('/academique/referentiel?collection=academic_years');
   await page.getByRole('button', { name: 'Préparer 2026-2027', exact: true }).click();
-  await page.getByRole('button', { name: 'Continuer : Formations proposées', exact: true }).click();
+  await page.getByRole('button', { name: 'Configurer formations proposées', exact: true }).click();
   for (const step of [
     { title: 'Ajouter une filière', code: 'INFO', name: 'Informatique' },
     { title: 'Ajouter un cycle', code: 'LIC', name: 'Licence' },
