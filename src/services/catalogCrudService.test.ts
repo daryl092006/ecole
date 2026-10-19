@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
-import { catalogSpec, parseCatalogRecord } from './catalogCrudService';
+import { catalogSpec, parseCatalogRecord, programLevelChanges } from './catalogCrudService';
+import type { RelationalSnapshot } from '@/types/persistence';
 
 const uuid = '00000000-0000-4000-8000-000000000035';
 const samples = [
@@ -23,4 +24,35 @@ for (const position of [0, 1.5, 32768]) {
 }
 assert.equal(parseCatalogRecord('curriculum_semesters', { ...samples[0].values, position: 32767 }).position, 32767);
 assert.throws(() => parseCatalogRecord('rooms', { code: 'R', name: 'Salle', capacity: 1.5 }));
+const levelsSnapshot: RelationalSnapshot = { revision: 1, tables: {
+  levels: [{ id: 'L1', name: 'Licence 1' }, { id: 'L2', name: 'Licence 2' }],
+  curricula: [
+    { id: 'C1', program_id: 'P', level_id: 'L1', status: 'DRAFT', version: 1 },
+    { id: 'C2', program_id: 'P', level_id: 'L2', status: 'DRAFT', version: 1 },
+    { id: 'C3', program_id: 'OTHER', level_id: 'L2', status: 'DRAFT', version: 1 },
+  ],
+} };
+const removed = programLevelChanges('P', ['L1'], levelsSnapshot, 'Niveau retiré');
+assert.equal(removed.length, 1);
+assert.equal(removed[0].record.id, 'C2');
+assert.equal(removed[0].operation, 'update');
+assert.ok(removed[0].record.archived_at);
+assert.equal(removed[0].record.reason, 'Niveau retiré');
+assert.equal(programLevelChanges('P', [], levelsSnapshot, 'Retrait des niveaux').length, 2);
+assert.deepEqual(programLevelChanges('P', ['L1', 'L2'], levelsSnapshot, 'Inchangé'), []);
+for (const table of ['academic_offerings', 'curriculum_semesters', 'curriculum_components']) {
+  assert.throws(() => programLevelChanges('P', ['L1'], { ...levelsSnapshot, tables: {
+    ...levelsSnapshot.tables, [table]: [{ id: 'LINK', curriculum_id: 'C2' }],
+  } }, 'Retrait'), /déjà utilisé|encore rattachés/);
+}
+assert.throws(() => programLevelChanges('P', ['L1'], { ...levelsSnapshot, tables: {
+  ...levelsSnapshot.tables, curricula: levelsSnapshot.tables.curricula.map(row => row.id === 'C2' ? { ...row, status: 'APPROVED' } : row),
+} }, 'Retrait'), /approuvé/);
+const restored = programLevelChanges('P', ['L1', 'L2'], { ...levelsSnapshot, tables: {
+  ...levelsSnapshot.tables, curricula: levelsSnapshot.tables.curricula.map(row => row.id === 'C2' ? { ...row, archived_at: '2026-10-19' } : row),
+} }, 'Niveau ajouté de nouveau');
+assert.equal(restored.length, 1);
+assert.equal(restored[0].operation, 'insert');
+assert.equal(restored[0].record.version, 2);
+assert.equal(restored[0].record.level_id, 'L2');
 console.log('Catalogue : crédits au centième, coefficients au millième, bornes SQL et positions entières vérifiés.');

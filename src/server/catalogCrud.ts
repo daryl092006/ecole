@@ -58,7 +58,7 @@ export async function writeCatalog(request: Request, key: string, id?: string) {
     if (response.error) throw new RequestError(409, 'Enregistrement refusé : doublon, relation incompatible ou modification concurrente.');
     return Response.json({ revision: response.data, count: changes.length }, { status: 201, headers: { 'Cache-Control': 'no-store' } });
   }
-  let levelIds: string[] = [];
+  let levelIds: string[] | undefined;
   if (key === 'programs' && !archive && body.values?.level_ids !== undefined) {
     if (body.sourceRowId) throw new RequestError(400, 'Enregistrez la reprise de la filière avant d’ajouter ses niveaux.');
     levelIds = z.array(z.uuid()).max(50).parse(body.values.level_ids);
@@ -102,7 +102,12 @@ export async function writeCatalog(request: Request, key: string, id?: string) {
     if (year.selectedYearId && (record.academic_year_id || target?.academic_year_id) !== year.selectedYearId) throw new RequestError(409, 'La définition doit appartenir à l’année consultée.');
   }
   const changes: PersistentChange[] = [{ table: key, operation: id ? 'update' : 'insert', record }];
-  changes.push(...programLevelChanges(String(record.id), levelIds, snapshot, body.reason));
+  if (key === 'programs' && levelIds !== undefined) {
+    try { changes.push(...programLevelChanges(String(record.id), levelIds, snapshot, body.reason)); }
+    catch (error) { throw new RequestError(409, error instanceof Error ? error.message : 'Modification des niveaux impossible.'); }
+    // La filière et tous ses niveaux doivent être enregistrés dans une seule transaction.
+    if (changes.length > 100) throw new RequestError(400, 'Trop de programmes de cours concernés. Modifiez moins de niveaux à la fois.');
+  }
   if (offeringIds.length > 0) {
     const existingGroupOfferings = (snapshot.tables.group_offerings || []).filter(row => row.group_id === record.id);
     for (const link of existingGroupOfferings) {

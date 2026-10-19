@@ -104,6 +104,49 @@ export async function verifyCurriculumCatalog(db, check) {
   let version = 0;
   const draft = () => insert('curricula', { program_id: program.id, level_id: level.id, version: ++version });
   const curriculum = await draft();
+  await check('Filières : décocher un niveau archive toutes ses versions inutilisées, puis recocher crée une nouvelle version', async () => {
+    const entity = await insert('programs', { code: `LVL-${suffix}`, name: 'Filière des niveaux' });
+    const extraLevel = await insert('levels', { cycle_id: cycle.id, code: `L2-${suffix}`, name: 'Niveau à retirer', position: 2 });
+    const values = { code: entity.code, name: entity.name, description: '' };
+    await save('programs', { ...values, level_ids: [level.id, extraLevel.id] }, { id: entity.id });
+    const candidates = (await db.query('select * from escen.curricula where program_id=$1 and level_id=$2', [entity.id, extraLevel.id])).rows;
+    const second = await insert('curricula', { program_id: entity.id, level_id: extraLevel.id, version: 2 });
+    const before = await revision();
+    await save('programs', { ...values, level_ids: [level.id] }, { id: entity.id, reason: 'Niveau décoché' });
+    assert.equal(await revision(), before + 1);
+    for (const removed of [...candidates, second]) {
+      assert.ok((await row('curricula', removed.id)).archived_at);
+      const events = await audit('curricula', removed.id);
+      assert.equal(events.at(-1).actor_id, actor.id);
+      assert.equal(events.at(-1).reason, 'Niveau décoché');
+      assert.equal(events.at(-1).old_value.archived_at, null);
+      assert.ok(events.at(-1).new_value.archived_at);
+    }
+    assert.equal((await row('levels', extraLevel.id)).archived_at, null);
+    const active = () => db.query('select * from escen.curricula where program_id=$1 and archived_at is null', [entity.id]);
+    assert.equal((await active()).rows.length, 1);
+    await save('programs', { ...values, name: 'Nom seul modifié' }, { id: entity.id });
+    assert.equal((await active()).rows.length, 1);
+    await save('programs', { ...values, level_ids: [level.id, extraLevel.id] }, { id: entity.id });
+    assert.equal((await active()).rows.find(item => item.level_id === extraLevel.id).version, 3);
+    await save('programs', { ...values, level_ids: [] }, { id: entity.id });
+    assert.equal((await active()).rows.length, 0);
+  });
+  await check('Filières : niveau utilisé refusé avant toute modification du nom, des autres niveaux ou de l’audit', async () => {
+    const entity = await insert('programs', { code: `USED-${suffix}`, name: 'Filière utilisée' });
+    const used = await insert('curricula', { program_id: entity.id, level_id: level.id, version: 1 });
+    const unused = await insert('curricula', { program_id: entity.id, level_id: level.id, version: 2 });
+    const year = await insert('academic_years', { code: `USED-${suffix}`, name: '2037-2038', starts_on: '2037-09-01', ends_on: '2038-07-01', status: 'BROUILLON' });
+    const offering = await insert('academic_offerings', { curriculum_id: used.id, level_id: level.id, academic_year_id: year.id });
+    const before = await revision();
+    const auditCount = await value('select count(*)::int as value from escen_private.audit_events');
+    await assert.rejects(save('programs', { code: entity.code, name: 'Ne doit pas changer', description: '', level_ids: [] }, { id: entity.id }), error => error.status === 409 && /2037-2038/.test(error.message));
+    assert.equal(await revision(), before);
+    assert.equal(await value('select count(*)::int as value from escen_private.audit_events'), auditCount);
+    assert.equal((await row('programs', entity.id)).name, entity.name);
+    for (const item of [used, unused]) assert.equal((await row('curricula', item.id)).archived_at, null);
+    assert.equal((await row('academic_offerings', offering.id)).archived_at, null);
+  });
   await check('Formations annuelles : création, modification, réactivation et année isolée via API et RPC', async () => {
     const year = await insert('academic_years', { code: `OFF-${suffix}`, name: 'Année des formations', starts_on: '2039-09-01', ends_on: '2040-07-01', status: 'BROUILLON' });
     const otherYear = await insert('academic_years', { code: `OFF2-${suffix}`, name: 'Autre année des formations', starts_on: '2040-09-01', ends_on: '2041-07-01', status: 'BROUILLON' });

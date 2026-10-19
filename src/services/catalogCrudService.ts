@@ -3,11 +3,29 @@ import { z } from 'zod';
 import { CRUD_CATALOG } from '@/data/crudCatalog';
 import type { DatabaseRow, RelationalSnapshot, PersistentContext, PersistentChange } from '@/types/persistence';
 export function programLevelChanges(programId: string, levelIds: string[], snapshot: RelationalSnapshot, reason: string): PersistentChange[] {
-  return levelIds.flatMap(levelId => {
+  const current = (snapshot.tables.curricula || []).filter(row => row.program_id === programId && !row.archived_at && row.status !== 'ARCHIVED');
+  const removed = current.filter(row => !levelIds.includes(String(row.level_id)));
+  const archivedAt = new Date().toISOString();
+  const removals: PersistentChange[] = removed.map(curriculum => {
+    const level = snapshot.tables.levels?.find(row => row.id === curriculum.level_id);
+    const label = String(level?.name || 'Ce niveau');
+    if (curriculum.status !== 'DRAFT') throw new Error(`${label} : retrait impossible, le programme de cours est approuvé.`);
+    const offering = snapshot.tables.academic_offerings?.find(row => row.curriculum_id === curriculum.id);
+    if (offering) {
+      const year = snapshot.tables.academic_years?.find(row => row.id === offering.academic_year_id);
+      throw new Error(`${label} est déjà utilisé${year?.name ? ` en ${year.name}` : ' dans une formation annuelle'}. Pour le retirer uniquement de cette année, revenez aux formations de l’année.`);
+    }
+    if (Object.entries(snapshot.tables).some(([table, rows]) => table !== 'curricula' && rows.some(row => row.curriculum_id === curriculum.id && !row.archived_at))) {
+      throw new Error(`${label} : retrait impossible, des cours ou des semestres sont encore rattachés à ce niveau.`);
+    }
+    return { table: 'curricula', operation: 'update', record: { id: curriculum.id, archived_at: archivedAt, reason } };
+  });
+  const additions: PersistentChange[] = levelIds.flatMap(levelId => {
     if (snapshot.tables.curricula?.some(row => row.program_id === programId && row.level_id === levelId && !row.archived_at && row.status !== 'ARCHIVED')) return [];
     const previous = (snapshot.tables.curricula || []).filter(row => row.program_id === programId && row.level_id === levelId && !row.track_id);
     return [{ table: 'curricula', operation: 'insert' as const, record: { id: crypto.randomUUID(), program_id: programId, level_id: levelId, version: Math.max(0, ...previous.map(row => Number(row.version) || 0)) + 1, reason } }];
   });
+  return [...removals, ...additions];
 }
 export function catalogSpec(key: string) { const spec = CRUD_CATALOG.find(item => item.key === key); if (!spec) throw new Error('Collection inconnue.'); return spec; }
 export function parseCatalogRecord(key: string, input: unknown): Record<string, unknown> {
