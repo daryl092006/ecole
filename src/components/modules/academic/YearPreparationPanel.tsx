@@ -139,23 +139,30 @@ export default function YearPreparationPanel({
         <>
           {message && <p className="info-box" role="status">{message}</p>}
           <div className="year-preparation-overview">
-            <p><strong>{checks.filter(check => check.ready).length} sur {checks.length}</strong> rubriques prêtes</p>
-            {previousYear && <span>Année précédente : {previousYear.name}</span>}
+            <div className="year-prep-header">
+              <p className="year-prep-count">
+                <strong>{checks.filter(check => check.ready).length} sur {checks.length}</strong> rubriques prêtes
+              </p>
+              {previousYear && <span className="year-prep-source">Année précédente : {previousYear.name}</span>}
+            </div>
+            <div className="year-prep-progress-bar" role="progressbar" aria-valuenow={checks.filter(check => check.ready).length} aria-valuemin={0} aria-valuemax={checks.length}>
+              <div className="year-prep-progress-fill" style={{ width: `${(checks.filter(check => check.ready).length / checks.length) * 100}%` }} />
+            </div>
           </div>
-          <ol className="year-preparation-list" aria-label="Préparation de l’année">
+          <ol role="list" className="year-preparation-list" aria-label="Préparation de l’année">
             {checks.map((check, index) => {
               const stepConfig = steps[check.key];
               const hasPrefilled = !check.ready && Boolean(previousYear && getStepPreFilledItems(check.key, previousSummary).length);
-              return <li key={check.key} className="year-preparation-row">
-                <span className="year-preparation-index" aria-hidden="true">{index + 1}.</span>
+              return <li role="listitem" key={check.key} className={`year-preparation-row${check.ready ? ' is-ready' : ''}`}>
+                <span className="year-preparation-index" aria-hidden="true">{index + 1}</span>
                 <div className="year-preparation-label">
                   <strong>{stepConfig?.title || check.label}</strong>
                   <p>{stepConfig?.description}</p>
                 </div>
-                <span className={`year-preparation-state${check.ready ? ' is-ready' : ''}`}>
+                <span className={`year-preparation-state${check.ready ? ' is-ready' : hasPrefilled ? ' is-pending' : ''}`}>
                   {check.ready ? 'Prêt' : hasPrefilled ? 'À vérifier' : 'À renseigner'}
                 </span>
-                <button type="button" className="btn btn-outline"
+                <button type="button" className={`btn ${check.ready ? 'btn-outline' : 'btn-primary'}`}
                   aria-label={`${check.ready ? 'Consulter' : 'Configurer'} ${stepConfig?.title.toLocaleLowerCase('fr') || check.label}`}
                   onClick={() => check.ready ? enter(check.key, true) : handleConfigureClick(check.key)}>Ouvrir</button>
               </li>;
