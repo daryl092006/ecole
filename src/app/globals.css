@@ -2834,7 +2834,8 @@ input[type="radio"] {
 .annual-offering-actions { display: inline-flex; flex-direction: row; align-items: center; gap: 8px; flex-wrap: nowrap; }
 .annual-offering-actions > .btn.icon-action { flex: 0 0 auto; }
 .annual-fee-workspace .data-table .annual-fee-amount { font-variant-numeric: tabular-nums; font-weight: 600; white-space: nowrap; text-align: right; }
-.annual-fee-workspace .data-table td:last-child .btn-group { flex: 0 0 auto; width: auto; }
+.annual-fee-workspace .data-table td:last-child .btn-group,
+.annual-payment-workspace .data-table td:last-child .btn-group { flex: 0 0 auto; width: auto; }
 .annual-offering-details { margin-top: 0.5rem; border-top: 1px dashed var(--border); padding-top: 0.4rem; }
 .annual-offering-details summary { cursor: pointer; font-size: 0.82rem; font-weight: 600; color: var(--accent); }
 .annual-offering-details-list { display: flex; flex-direction: column; gap: 6px; margin-top: 8px; }
