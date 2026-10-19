@@ -112,6 +112,8 @@ function buildPrefilledRows({
         id: `prefilled:${raw.id || idx}`,
         isPrefilled: true,
         academic_year_id: targetYearId,
+        _associatedOfferings: raw._associatedOfferings || '',
+        _linkedOfferings: raw._linkedOfferings || [],
         _summaryText: summary?.groups?.[idx] || raw.name,
       }));
     }
@@ -466,9 +468,39 @@ function ReferenceCrudContent({
     return String(data?.tables.levels?.find(row => row.id === curriculum?.level_id)?.name || 'Niveau à préciser');
   };
   const open = (mode: typeof dialog, row: DatabaseRow | null = null) => {
-    const initialGroupOfferings = collection === 'groups' && row && !row.isPrefilled
-      ? (data?.tables.group_offerings || []).filter(link => link.group_id === row.id && !link.archived_at).map(link => String(link.offering_id))
-      : [];
+    let initialGroupOfferings: string[] = [];
+    if (collection === 'groups' && row) {
+      if (!row.isPrefilled) {
+        initialGroupOfferings = (data?.tables.group_offerings || [])
+          .filter(link => link.group_id === row.id && !link.archived_at)
+          .map(link => String(link.offering_id));
+      } else {
+        const targetOfferings = (data?.tables.academic_offerings || []).filter(o =>
+          !o.archived_at &&
+          o.academic_year_id === (setupYearId || row.academic_year_id) &&
+          o.level_id === row.level_id
+        );
+        const linkedList = Array.isArray(row._linkedOfferings) ? row._linkedOfferings : [];
+        const linkedCurricula = new Set(linkedList.map((item: { curriculum_id?: string }) => item.curriculum_id).filter(Boolean));
+        const matchedByCurricula = targetOfferings.filter(o => linkedCurricula.has(String(o.curriculum_id))).map(o => o.id);
+
+        const names = String(row._associatedOfferings || '')
+          .split(' ; ')
+          .map(s => s.trim().toLowerCase())
+          .filter(s => s && s !== 'filière');
+        const matchedByName = targetOfferings.filter(o =>
+          names.some(name => String(o.name || '').toLowerCase().includes(name))
+        ).map(o => o.id);
+
+        if (matchedByCurricula.length > 0) {
+          initialGroupOfferings = matchedByCurricula;
+        } else if (matchedByName.length > 0) {
+          initialGroupOfferings = matchedByName;
+        } else {
+          initialGroupOfferings = targetOfferings.map(o => o.id);
+        }
+      }
+    }
     setFeedback('');
     setOfferingIds(initialGroupOfferings); setSourceRowId(undefined); setDialog(mode); setSelected(row); setSaveError('');
     setAnnualVariants([]); setAnnualProposalIds([]);

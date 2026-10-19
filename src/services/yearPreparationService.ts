@@ -149,17 +149,23 @@ export function getPreviousYearConfigSummary(snapshot: RelationalSnapshot, previ
   const rawGroups = prevGroups.map(g => {
     const lvl = levels.get(String(g.level_id));
     const linkedOfferings = prevGroupOfferings.filter(link => link.group_id === g.id);
-    const linkedNames = linkedOfferings.map(link => {
+    const linkedOfferingsData = linkedOfferings.map(link => {
       const off = prevOfferings.find(o => o.id === link.offering_id);
       const curr = off ? curricula.get(String(off.curriculum_id)) : null;
       const prog = curr ? programs.get(String(curr.program_id)) : null;
-      return prog?.name || 'Filière';
-    }).filter(Boolean);
-    const uniqueLinked = [...new Set(linkedNames)];
+      return {
+        offering_id: link.offering_id,
+        curriculum_id: off?.curriculum_id,
+        delivery_mode: off?.delivery_mode,
+        program_name: prog?.name || 'Filière',
+      };
+    }).filter(item => Boolean(item.curriculum_id || item.program_name));
+    const uniqueLinked = [...new Set(linkedOfferingsData.map(item => item.program_name))];
     return {
       ...g,
       _levelName: lvl?.name || 'Niveau',
       _associatedOfferings: uniqueLinked.join(' ; '),
+      _linkedOfferings: linkedOfferingsData,
     };
   });
 
