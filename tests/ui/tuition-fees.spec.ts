@@ -3,7 +3,10 @@ import { authenticateFixture, snapshot } from './persistent-fixture';
 import { getPreviousYearConfigSummary } from '../../src/services/yearPreparationService';
 import type { DatabaseRow } from '../../src/types/persistence';
 
-for (const width of [390, 1440]) test(`Scolarité : valider un tarif, modifier et retrouver le montant à ${width}px`, async ({ page }) => {
+for (const category of ['SCOLARITE', 'INSCRIPTION'] as const) for (const width of [390, 1440]) test(`${category} : valider un tarif, modifier et retrouver le montant à ${width}px`, async ({ page }) => {
+  const step = category === 'SCOLARITE' ? 'tuition' : 'registration';
+  const label = category === 'SCOLARITE' ? 'frais de scolarité' : 'frais d’inscription';
+  const artifactName = category === 'SCOLARITE' ? 'scolarite' : 'inscription';
   await page.setViewportSize({ width, height: 1000 });
   await authenticateFixture(page);
   const yearId = '10000000-0000-4000-8000-000000000001';
@@ -19,9 +22,9 @@ for (const width of [390, 1440]) test(`Scolarité : valider un tarif, modifier e
     annual_fee_schedules: [],
   };
   const previousSummary = getPreviousYearConfigSummary({ revision: 1, tables: { ...tables, annual_fee_schedules: [
-    { id: 'COMMON', academic_year_id: previousYearId, category: 'SCOLARITE', amount: 480000 },
-    { id: 'SPECIFIC', academic_year_id: previousYearId, category: 'SCOLARITE', amount: 700000, program_id: 'FIN', level_id: 'L1', delivery_mode: 'En ligne' },
-    { id: 'REGISTRATION', academic_year_id: previousYearId, category: 'INSCRIPTION', amount: 50000 },
+    { id: 'COMMON', academic_year_id: previousYearId, category, amount: 480000 },
+    { id: 'SPECIFIC', academic_year_id: previousYearId, category, amount: 700000, program_id: 'FIN', level_id: 'L1', delivery_mode: 'En ligne' },
+    { id: 'REGISTRATION', academic_year_id: previousYearId, category: category === 'SCOLARITE' ? 'INSCRIPTION' : 'SCOLARITE', amount: 50000 },
   ] } }, previousYearId)!;
   let revision = 1;
   let bulkWrites = 0;
@@ -30,7 +33,7 @@ for (const width of [390, 1440]) test(`Scolarité : valider un tarif, modifier e
   await page.route('**/api/campus', route => route.fulfill({ json: { ...snapshot, academicContext: { selection: 'current', selectedYearId: yearId, currentYearId: yearId, years } } }));
   await page.route('**/api/year-preparation', route => {
     if (route.request().method() !== 'GET') bulkWrites += 1;
-    return route.fulfill({ json: { checks: [{ key: 'tuition', label: 'Frais de scolarité', ready: false, href: '' }], previousYear: previousSummary.previousYear, previousSummary } });
+    return route.fulfill({ json: { checks: [{ key: step, label, ready: false, href: '' }], previousYear: previousSummary.previousYear, previousSummary } });
   });
   await page.route('**/api/catalog/*', route => route.fulfill({ json: { revision, tables, historyLinks: [] } }));
   await page.route('**/api/catalog/annual_fee_schedules{,/**}', route => {
@@ -54,8 +57,8 @@ for (const width of [390, 1440]) test(`Scolarité : valider un tarif, modifier e
   });
   await page.goto('/academique/referentiel');
   await page.getByRole('button', { name: 'Préparer 2026-2027', exact: true }).click();
-  const openTuition = () => page.getByRole('button', { name: 'Configurer frais de scolarité', exact: true }).click();
-  await openTuition();
+  const openFees = () => page.getByRole('button', { name: `Configurer ${label}`, exact: true }).click();
+  await openFees();
   const dialog = page.getByRole('dialog');
   await expect(dialog.getByRole('columnheader')).toHaveText(['Filière', 'Niveau', 'Mode', 'Montant FCFA', 'État', 'Actions']);
   await expect(dialog.locator('tbody > tr')).toHaveCount(2);
@@ -68,7 +71,7 @@ for (const width of [390, 1440]) test(`Scolarité : valider un tarif, modifier e
   await expect(search).toBeVisible();
   await expect(dialog.getByRole('cell', { name: /Aucun résultat/ })).toHaveAttribute('colspan', '6');
   await search.fill('');
-  await page.screenshot({ path: `tmp/screenshots/annual-offerings/${width}/frais-scolarite-liste.png` });
+  await page.screenshot({ path: `tmp/screenshots/annual-offerings/${width}/frais-${artifactName}-liste.png` });
   const common = dialog.getByRole('row').filter({ hasText: 'Toutes les filières' });
   const actions = await common.getByRole('button').evaluateAll(buttons => buttons.map(button => {
     const rect = button.getBoundingClientRect();
@@ -83,16 +86,16 @@ for (const width of [390, 1440]) test(`Scolarité : valider un tarif, modifier e
   await dialog.getByRole('button', { name: 'Confirmer l’enregistrement', exact: true }).click();
   await expect(page.getByRole('heading', { name: 'Préparer l’année · 2026-2027', exact: true })).toBeVisible();
   expect(writes).toHaveLength(1);
-  expect(writes[0].values).toMatchObject({ academic_year_id: yearId, category: 'SCOLARITE', amount: 480000 });
+  expect(writes[0].values).toMatchObject({ academic_year_id: yearId, category, amount: 480000 });
   expect(tables.annual_fee_schedules).toHaveLength(1);
-  await openTuition();
+  await openFees();
   await expect(dialog.locator('tbody > tr')).toHaveCount(2);
   await expect(dialog.getByText('1 proposition non enregistrée', { exact: true })).toBeVisible();
   await dialog.getByRole('row').filter({ hasText: 'Finance Digitale' }).getByRole('button', { name: 'Modifier', exact: true }).click();
   await expect(dialog.getByLabel('Montant FCFA', { exact: true })).toHaveValue('700000');
   await expect(dialog.getByRole('combobox', { name: 'Filière (facultative)', exact: true })).toHaveValue('FIN');
   await dialog.getByLabel('Montant FCFA', { exact: true }).fill('720000');
-  await page.screenshot({ path: `tmp/screenshots/annual-offerings/${width}/frais-scolarite-formulaire.png` });
+  await page.screenshot({ path: `tmp/screenshots/annual-offerings/${width}/frais-${artifactName}-formulaire.png` });
   await dialog.getByRole('button', { name: 'Enregistrer le tarif', exact: true }).click();
   const review = dialog.getByRole('region', { name: 'Vérification avant enregistrement' });
   await expect(review).toContainText(/Avant : 700\s000 FCFA/);
@@ -105,9 +108,9 @@ for (const width of [390, 1440]) test(`Scolarité : valider un tarif, modifier e
   await dialog.getByRole('button', { name: 'Confirmer l’enregistrement', exact: true }).click();
   await expect(page.getByRole('heading', { name: 'Préparer l’année · 2026-2027', exact: true })).toBeVisible();
   expect(writes).toHaveLength(3);
-  expect(writes[2].values).toMatchObject({ academic_year_id: yearId, category: 'SCOLARITE', amount: 720000, program_id: 'FIN', level_id: 'L1', delivery_mode: 'En ligne' });
+  expect(writes[2].values).toMatchObject({ academic_year_id: yearId, category, amount: 720000, program_id: 'FIN', level_id: 'L1', delivery_mode: 'En ligne' });
   expect(bulkWrites).toBe(0);
-  await openTuition();
+  await openFees();
   await expect(dialog.locator('tbody > tr')).toHaveCount(2);
   await expect(dialog.getByText('proposition non enregistrée')).toHaveCount(0);
   await dialog.getByRole('row').filter({ hasText: 'Finance Digitale' }).getByRole('button', { name: 'Modifier', exact: true }).click();
@@ -119,6 +122,6 @@ for (const width of [390, 1440]) test(`Scolarité : valider un tarif, modifier e
   await expect(dialog.getByRole('region', { name: 'Vérification avant enregistrement' })).toContainText(/Avant : 720\s000 FCFA/);
   await dialog.getByRole('button', { name: 'Confirmer l’enregistrement', exact: true }).click();
   await expect(page.getByRole('heading', { name: 'Préparer l’année · 2026-2027', exact: true })).toBeVisible();
-  expect(writes[3]).toMatchObject({ method: 'PATCH', values: { academic_year_id: yearId, category: 'SCOLARITE', amount: 730000 } });
+  expect(writes[3]).toMatchObject({ method: 'PATCH', values: { academic_year_id: yearId, category, amount: 730000 } });
   expect(tables.annual_fee_schedules).toHaveLength(2);
 });

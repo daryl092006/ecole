@@ -111,7 +111,7 @@ for(const width of [390,1440])test(`Tarifs annuels communs ou par filière à ${
  await expect(page.getByText('Programme des cours',{exact:true})).toHaveCount(0);
  await page.getByRole('button',{name:'Configurer frais d’inscription',exact:true}).click();
  await page.getByLabel('Montant FCFA',{exact:true}).fill('50000');
- await page.getByRole('button',{name:'Vérifier les informations',exact:true}).click();expect(commands).toHaveLength(0);
+ await page.getByRole('button',{name:'Enregistrer le tarif',exact:true}).click();expect(commands).toHaveLength(0);
  await page.getByRole('button',{name:'Confirmer l’enregistrement',exact:true}).click();
  await expect(page.getByRole('heading',{name:'Préparer l’année · 2026-2027',exact:true})).toBeVisible();
  expect(commands[0]).toMatchObject({values:{academic_year_id:yearId,category:'INSCRIPTION',program_id:'',level_id:'',amount:50000}});
