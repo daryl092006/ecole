@@ -1,8 +1,12 @@
 import { expect, test, type Page } from '@playwright/test';
-import { authenticateFixture, snapshot } from './persistent-fixture';
+import { authenticateFixture, fixtureCapabilities, snapshot } from './persistent-fixture';
+import { ROLES } from '../../src/types/permissions';
 
-async function prepare(page: Page, status = 'SAISIES', legacyUnprocessed = false) {
+async function prepare(page: Page, status = 'SAISIES', legacyUnprocessed = false, teacher = false) {
   await authenticateFixture(page);
+  if (teacher) await page.route('**/api/session', route => route.fulfill({ json: {
+    capabilities: fixtureCapabilities, accountId: 'teacher-account', name: 'Enseignant Test', email: 'teacher@example.test', role: ROLES.ENS, availableRoles: [ROLES.ENS], studentId: null, teacherId: 'TEACHER', matricule: null, mustChangePassword: false,
+  } }));
   const campus = structuredClone(snapshot);
   const year = { id: '10000000-0000-4000-8000-000000000001', name: '2026-2027', status: 'OUVERTE' as const, starts_on: '2026-01-01', ends_on: '2027-12-31' };
   campus.academicContext = { currentYearId: year.id, selectedYearId: year.id, selection: 'current', years: [year] };
@@ -53,6 +57,32 @@ async function prepare(page: Page, status = 'SAISIES', legacyUnprocessed = false
   await page.goto('/academique/evaluations');
   return { commands, campus };
 }
+
+for (const width of [390, 1440]) test(`Enseignant : lire la bonne copie sans perdre la note en cours à ${width}px`, async ({ page }) => {
+  await page.setViewportSize({ width, height: 900 });
+  const { campus, commands } = await prepare(page, 'SAISIES', false, true);
+  campus.tables.exam_attempts = [0, 1].map(index => ({ id: `COPY${index}`, candidate_id: `C${index}`, evaluation_id: 'EVAL', paper_id: `PAPER${index}`, status: 'REMISE', completion_status: 'PARTIELLE' }));
+  campus.tables.exam_questions = [0, 1].map(index => ({ id: `QUESTION${index}`, paper_id: `PAPER${index}`, prompt: `Question pour le candidat ${index}` }));
+  campus.tables.exam_answers = [0, 1].map(index => ({ id: `ANSWER${index}`, attempt_id: `COPY${index}`, question_id: `QUESTION${index}`, response: { text: `Réponse du candidat ${index}\nDeuxième ligne`, option_ids: [] } }));
+  await page.reload();
+  await page.getByRole('button', { name: 'Saisir / Gérer', exact: true }).click();
+  const grades = page.getByRole('dialog', { name: 'Notes · Politique des copies', exact: true });
+  const student = grades.getByRole('row', { name: /Boris Copie/ });
+  await student.getByRole('spinbutton').fill('14.5');
+  await student.getByRole('button', { name: /Lire la copie de/ }).click();
+  const copy = page.getByRole('dialog', { name: 'Copies en ligne', exact: true });
+  await expect(copy.getByRole('heading', { name: /Boris Copie/ })).toBeVisible();
+  await expect(copy.getByRole('heading', { name: /Anne Première/ })).toHaveCount(0);
+  await copy.getByRole('button', { name: 'Lire les réponses', exact: true }).click();
+  await expect(copy.getByRole('heading', { name: 'Question pour le candidat 1', exact: true })).toBeVisible();
+  await expect(copy.locator('.online-exam-question p')).toContainText('Réponse du candidat 1');
+  await expect(copy.locator('.online-exam-question p')).toHaveCSS('white-space', 'pre-wrap');
+  await copy.getByRole('button', { name: 'Fermer le détail', exact: true }).click();
+  await expect(student.getByRole('spinbutton')).toHaveValue('14.5');
+  await expect(grades.getByRole('button', { name: 'Soumettre à la direction académique', exact: true })).toBeVisible();
+  await expect(grades.getByRole('button', { name: 'Valider les notes', exact: true })).toHaveCount(0);
+  expect(commands).toEqual([]);
+});
 
 for (const status of ['BROUILLON', 'SAISIES']) {
   test(`NON_TRAITE bloque puis une absence traitée permet la soumission depuis ${status}`, async ({ page }) => {

@@ -14,6 +14,7 @@ import { connectedRecordName } from '@/services/connectedRecordDisplayService';
 import { evaluationGradeIsComplete, evaluationGradeValue } from '@/services/evaluationGradePolicy';
 import type { DatabaseRow } from '@/types/persistence';
 import type { GradeWorkflowStatus } from '@/types/academic';
+import PersistentExamCopies from './PersistentExamCopies';
 
 const STEPS = [
   { id: 'BROUILLON', label: 'Brouillon', owner: 'Enseignant' },
@@ -81,6 +82,8 @@ function EvaluationGrades({ evaluationId, busy, setBusy }: { evaluationId: strin
   const [correctingGradeId, setCorrectingGradeId] = useState<string | null>(null);
   const [correctionValue, setCorrectionValue] = useState('');
   const [correctionReason, setCorrectionReason] = useState('');
+  const [copyCandidateId, setCopyCandidateId] = useState('');
+  const copyCandidateIds = new Set((snapshot.tables.exam_attempts || []).filter(attempt => attempt.evaluation_id === evaluationId).map(attempt => String(attempt.candidate_id)));
 
   const status = evaluation.status as GradeWorkflowStatus;
   const canEnter = portal.perms.permissions.includes('grade.enter') && ['BROUILLON', 'SAISIES'].includes(status) && !evaluation.cancelled_at;
@@ -249,6 +252,7 @@ function EvaluationGrades({ evaluationId, busy, setBusy }: { evaluationId: strin
                 <th>Étudiant</th>
                 <th>Note / 20</th>
                 <th>Présence / Absence</th>
+                {copyCandidateIds.size > 0 && <th>Copie en ligne</th>}
                 {status === 'PUBLIEES' && canApprove && <th>Action</th>}
               </tr>
             </thead>
@@ -321,6 +325,7 @@ function EvaluationGrades({ evaluationId, busy, setBusy }: { evaluationId: strin
                         </span>
                       )}
                     </td>
+                    {copyCandidateIds.size > 0 && <td>{copyCandidateIds.has(String(c.id)) ? <IconButton className="btn btn-outline" label={`Lire la copie de ${studentName}`} disabled={busy} onClick={() => setCopyCandidateId(String(c.id))} /> : 'Aucune copie en ligne'}</td>}
                     {status === 'PUBLIEES' && canApprove && (
                       <td>
                         {grade && gradeValue != null && (
@@ -341,7 +346,7 @@ function EvaluationGrades({ evaluationId, busy, setBusy }: { evaluationId: strin
               })}
               {!candidates.length && (
                 <tr>
-                  <td colSpan={status === 'PUBLIEES' && canApprove ? 4 : 3}>
+                  <td colSpan={3 + (status === 'PUBLIEES' && canApprove ? 1 : 0) + (copyCandidateIds.size > 0 ? 1 : 0)}>
                     Aucun candidat rattaché à cette évaluation.
                   </td>
                 </tr>
@@ -532,6 +537,7 @@ function EvaluationGrades({ evaluationId, busy, setBusy }: { evaluationId: strin
             ))}
           </details>
         )}
+        {copyCandidateId && <PersistentExamCopies evaluationId={evaluationId} candidateId={copyCandidateId} onClose={() => setCopyCandidateId('')} />}
       </div>
   );
 }

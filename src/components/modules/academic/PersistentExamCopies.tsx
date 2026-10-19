@@ -5,11 +5,11 @@ import WorkPage from '@/components/ui/WorkPage';
 import { connectedRecordName } from '@/services/connectedRecordDisplayService';
 import type { OnlineExamAnswer } from '@/types/onlineExam';
 
-export default function PersistentExamCopies({ evaluationId, onClose }: { evaluationId: string; onClose: () => void }) {
+export default function PersistentExamCopies({ evaluationId, candidateId, onClose }: { evaluationId: string; candidateId?: string; onClose: () => void }) {
   const portal = usePortal();
   const tables = portal.relationalSnapshot.tables;
   const [selected, setSelected] = useState('');
-  const attempts = (tables.exam_attempts || []).filter(row => row.evaluation_id === evaluationId);
+  const attempts = (tables.exam_attempts || []).filter(row => row.evaluation_id === evaluationId && (!candidateId || row.candidate_id === candidateId));
   return <WorkPage title="Copies en ligne" onClose={onClose}>
     <button className="btn btn-outline" onClick={() => portal.refreshCampus()}>Actualiser les copies</button>
     {!attempts.length && <p>Aucune copie commencée.</p>}
@@ -26,7 +26,7 @@ export default function PersistentExamCopies({ evaluationId, onClose }: { evalua
         {selected === attempt.id && questions.map(question => {
           const response = answers.find(row => row.question_id === question.id)?.response as OnlineExamAnswer | undefined;
           const choices = response?.option_ids || [];
-          return <section className="online-exam-question" key={question.id}><h3>{String(question.prompt)}</h3><p>{response?.text || (choices.length ? (tables.exam_options || []).filter(row => choices.includes(row.id)).map(row => String(row.label)).join(' ; ') : 'Sans réponse')}</p></section>;
+          return <section className="online-exam-question" key={question.id}><h3 className="subject-text">{String(question.prompt)}</h3><p className="subject-text">{response?.text || (choices.length ? (tables.exam_options || []).filter(row => choices.includes(row.id)).map(row => String(row.label)).join(' ; ') : 'Sans réponse')}</p></section>;
         })}
       </article>;
     })}
