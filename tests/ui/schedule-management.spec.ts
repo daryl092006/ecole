@@ -36,87 +36,75 @@ const selectInitial = (page: Page) => page.locator('.calendar-list-day, .calenda
   .filter({ has: page.locator('time[datetime="2026-10-20"]') })
   .getByRole('button', { name: /08:00–10:00.*Groupe 1/ }).filter({ visible: true }).click();
 
-for (const width of [390, 1440]) test(`Un seul calendrier et filtre des archives par groupe à ${width}px`, async ({ page }) => {
+async function expectSinglePlanning(page: Page) {
+  await expect(page.locator('.calendar-toolbar')).toHaveCount(1);
+  await expect(page.getByRole('navigation', { name: 'Source de l’emploi du temps', exact: true })).toHaveCount(0);
+  await expect(page.getByRole('button', { name: 'Archives importées', exact: true })).toHaveCount(0);
+  await expect(page.getByRole('button', { name: 'Planning de l’année', exact: true })).toHaveCount(0);
+}
+
+for (const width of [390, 1440]) test(`Un seul planning sans accès aux archives à ${width}px`, async ({ page }) => {
   await page.setViewportSize({ width, height: 1000 });
   const fixture = await connectedSchedule(page);
   fixture.snapshot.tables.sessions = [];
   const records = [0, 1].map(index => ({ id: `ARCHIVE-${index}`, sourceId: `A${index}`, batchId: 'batch-fixture', status: 'PENDING', issues: [], values: {
     group_id: `G${index + 1}`, uv_id: 'UV1', debut: `2026-10-20T${index ? '10' : '08'}:00:00Z`, fin: `2026-10-20T${index ? '12' : '10'}:00:00Z`,
   } }));
+  let catalogReads = 0, archiveReads = 0;
   await page.route('**/api/history*', route => {
     const params = new URL(route.request().url()).searchParams;
-    if (params.get('table')) return route.fulfill({ json: { table: 'emploi_du_temps', total: records.length, records, offset: 0, limit: 50 } });
+    if (params.get('table')) {
+      archiveReads += 1;
+      return route.fulfill({ json: { table: 'emploi_du_temps', total: records.length, records, offset: 0, limit: 50 } });
+    }
+    catalogReads += 1;
     return route.fulfill({ json: { ...historyCatalog, datasets: historyCatalog.datasets.map(dataset => dataset.table === 'emploi_du_temps' ? { ...dataset, count: 2 } : dataset) } });
   });
   await page.goto('/academique/emploi-du-temps');
-  await expect(page.getByRole('button', { name: 'Planning de l’année', exact: true })).toHaveAttribute('aria-pressed', 'true');
-  await expect(page.locator('.calendar-session:visible')).toHaveCount(0);
-  await page.getByRole('button', { name: 'Archives importées', exact: true }).click();
-  await expect(page.getByRole('button', { name: 'Archives importées', exact: true })).toHaveAttribute('aria-pressed', 'true');
-  await expect(page.locator('.calendar-toolbar')).toHaveCount(1);
-  const group = page.getByRole('combobox', { name: 'Groupe', exact: true });
-  await expect(group).toBeVisible();
-  await expect(page.locator('.calendar-session:visible')).toHaveCount(2);
-  await group.selectOption('batch-fixture:G1');
-  await expect(page.locator('.calendar-session:visible')).toHaveCount(1);
-  await expect(page.locator('.calendar-session:visible')).toContainText('08:00');
-  await group.selectOption('batch-fixture:G2');
-  await expect(page.locator('.calendar-session:visible')).toHaveCount(1);
-  await expect(page.locator('.calendar-session:visible')).toContainText('10:00');
-  await page.getByRole('button', { name: 'Planning de l’année', exact: true }).click();
-  await expect(page.locator('.calendar-toolbar')).toHaveCount(1);
+  await expect.poll(() => catalogReads).toBeGreaterThan(0);
+  await expectSinglePlanning(page);
   await expect(page.locator('.calendar-session:visible')).toHaveCount(0);
   await expect(page.getByText('Aucune séance datée pour ces filtres.', { exact: true })).toBeVisible();
-  await page.getByRole('button', { name: 'Archives importées', exact: true }).click();
-  await expect(page.locator('.calendar-toolbar')).toHaveCount(1);
   await expect(page.getByRole('combobox', { name: 'Groupe', exact: true })).toBeVisible();
+  expect(archiveReads).toBe(0);
   expect(fixture.transactions).toEqual([]);
 });
 
-for (const readOnly of [false, true]) for (const width of [390, 1440]) test(`Changer d’année conserve le planning par défaut, consultation seule=${readOnly}, à ${width}px`, async ({ page }) => {
+for (const readOnly of [false, true]) for (const width of [390, 1440]) test(`Changer d’année conserve un seul planning sans archives, consultation seule=${readOnly}, à ${width}px`, async ({ page }) => {
   await page.setViewportSize({ width, height: 1000 });
   const fixture = await connectedSchedule(page);
   fixture.snapshot.tables.sessions = [];
-  let archiveReads = 0;
+  let catalogReads = 0, archiveReads = 0;
   if (readOnly) await page.route('**/api/session', route => route.fulfill({ json: {
     capabilities: { ...fixtureCapabilities, [ROLES.IT]: { permissions: ['schedule.view', 'system.audit.view'], globalAccess: true } },
     accountId: ACCOUNT_IDS[1], name: 'Jean Technique', email: 'it@example.test', role: ROLES.IT, availableRoles: [ROLES.IT], studentId: null, teacherId: null, matricule: null, mustChangePassword: false,
   } }));
   await page.route('**/api/history*', route => {
     const table = new URL(route.request().url()).searchParams.get('table');
-    if (!table) return route.fulfill({ json: historyCatalog });
+    if (!table) {
+      catalogReads += 1;
+      return route.fulfill({ json: historyCatalog });
+    }
     archiveReads += 1;
     return route.fulfill({ json: { table, total: 1, offset: 0, limit: 50, records: [{ id: 'ARCHIVE', sourceId: 'A1', batchId: 'batch-fixture', status: 'PENDING', issues: [], values: { group_id: 'G1', uv_id: 'UV1', debut: '2026-10-20T08:00:00Z', fin: '2026-10-20T10:00:00Z' } }] } });
   });
   const year = page.getByRole('combobox', { name: 'Année consultée', exact: true });
-  const planning = page.getByRole('button', { name: 'Planning de l’année', exact: true });
-  const archives = page.getByRole('button', { name: 'Archives importées', exact: true });
   const changeYear = async (value: string, month: string) => {
     const loaded = page.waitForResponse(response => new URL(response.url()).pathname === '/api/campus' && response.request().headers()['x-escen-year'] === value);
     await year.selectOption(value);
     await loaded;
-    await expect(planning).toHaveAttribute('aria-pressed', 'true');
-    await expect(archives).toHaveAttribute('aria-pressed', 'false');
     await expect(page.getByLabel('Mois', { exact: true })).toHaveAttribute('min', month);
-    await expect(page.locator('.calendar-toolbar')).toHaveCount(1);
+    await expectSinglePlanning(page);
     await expect(page.locator('.calendar-session:visible')).toHaveCount(0);
+    expect(archiveReads).toBe(0);
   };
   await page.goto('/academique/emploi-du-temps');
-  await expect(planning).toHaveAttribute('aria-pressed', 'true');
+  await expect.poll(() => catalogReads).toBeGreaterThan(0);
+  await expectSinglePlanning(page);
   expect(archiveReads).toBe(0);
   await changeYear(id.otherYear, '2026-10');
-  expect(archiveReads).toBe(0);
-  await archives.click();
-  await expect(page.locator('.calendar-session:visible')).toHaveCount(1);
-  await expect(archives).toHaveAttribute('aria-pressed', 'true');
-  expect(archiveReads).toBe(1);
   await changeYear('current', '2026-01');
-  expect(archiveReads).toBe(1);
-  await archives.click();
-  await expect(page.locator('.calendar-session:visible')).toHaveCount(1);
-  expect(archiveReads).toBe(2);
   await changeYear(id.otherYear, '2026-10');
-  expect(archiveReads).toBe(2);
   expect(fixture.transactions).toEqual([]);
 });
 
@@ -152,7 +140,7 @@ for (const readOnly of [false, true]) for (const width of [390, 1440]) test(`Pla
     await group.selectOption(id.otherSiteGroup);
     await expect(page.locator('.calendar-session:visible')).toHaveCount(0);
     await expect(page.locator('.calendar-toolbar')).toHaveCount(1);
-    await expect(page.getByRole('button', { name: 'Planning de l’année', exact: true })).toHaveAttribute('aria-pressed', 'true');
+    await expectSinglePlanning(page);
   }
   await page.getByRole('button', { name: 'Afficher tous les groupes', exact: true }).click();
   await expect(group).toHaveValue('');
