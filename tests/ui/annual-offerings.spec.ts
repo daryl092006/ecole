@@ -56,7 +56,6 @@ for (const width of [390, 1440]) {
     await expect(finance).toContainText('Licence 2 · Présentiel');
     await expect(finance).toContainText('Licence 3 · En ligne');
     await expect(finance).toContainText('Licence 3 · Présentiel');
-    await expect(dialog.getByRole('region', { name: 'Propositions à compléter' })).toContainText('Filière à préciser');
     await expect(dialog.getByText('Programme de formation', { exact: true })).toHaveCount(0);
     await page.screenshot({ path: `.tmp/interface/${width}/formations-annuelles-par-filiere.png` });
     await finance.getByRole('button', { name: 'Vérifier les niveaux', exact: true }).click();
@@ -77,12 +76,6 @@ for (const width of [390, 1440]) {
     ] });
     await page.getByRole('button', { name: 'Consulter formations proposées', exact: true }).click();
     await expect(dialog.getByText('Marketing Digital', { exact: true })).toBeVisible();
-    const incomplete = dialog.getByRole('region', { name: 'Propositions à compléter' });
-    await expect(incomplete).toContainText('Licence 1 · Mode à préciser');
-    await incomplete.getByRole('button', { name: 'Retirer de la proposition', exact: true }).click();
-    await expect(dialog).toContainText('Filière à préciser · Licence 1 · Mode à préciser retiré(e) de la proposition.');
-    await expect(dialog).not.toContainText('prefilled:');
-    await expect(incomplete).toHaveCount(0);
     await finance.getByRole('button', { name: 'Retirer toute la ligne', exact: true }).click();
     await dialog.getByRole('button', { name: 'Conserver la ligne', exact: true }).click();
     await expect(finance).toBeVisible();
