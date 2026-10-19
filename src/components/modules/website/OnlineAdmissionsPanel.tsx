@@ -10,12 +10,13 @@ import { DOCUMENT_LABELS } from '@/services/websiteService';
 import type { OnlineApplication, WebsiteIntake, WebsiteManagement } from '@/types/website';
 import WorkPage from '@/components/ui/WorkPage';
 import FormFeedback from '@/components/ui/FormFeedback';
+import Link from 'next/link';
+import ResponsiveTable from '@/components/ui/ResponsiveTable';
 
 function AdmissionsFrame({ title, onClose, children }: { title: string; onClose?: () => void; children: ReactNode }) {
-  return onClose ? <WorkPage title={title} onClose={onClose}>{children}</WorkPage> : <section><div className="module-header"><h1>{title}</h1></div>{children}</section>;
+  return onClose ? <WorkPage title={title} onClose={onClose}>{children}</WorkPage> : <div className="domain-workspace"><div className="page-intro"><div><span className="page-eyebrow">SITE WEB</span><h1>{title}</h1></div></div>{children}</div>;
 }
 
-const empty = { academic_year_id: '', level_id: '', program_id: '', label: '', active: false, required_documents: [] as string[] };
 export default function OnlineAdmissionsPanel({ onClose, mode = 'applications' }: { onClose?: () => void; mode?: 'applications' | 'configuration' }) {
   const state = usePortal(); const role = state.activeRole;
   const canManage = (!state.academicYearContext || !!state.academicYearContext.selectedYearId) && state.perms.permissions.includes('student.lifecycle.manage') && state.session?.capabilities?.[role]?.globalAccess;
@@ -25,7 +26,7 @@ export default function OnlineAdmissionsPanel({ onClose, mode = 'applications' }
   const [message, setMessage] = useState(''); const [busy, setBusy] = useState(false); const [revision, setRevision] = useState(0);
   const [success, setSuccess] = useState('');
   const [selected, setSelected] = useState<OnlineApplication | null>(null);
-  const [intake, setIntake] = useState<(typeof empty & Partial<WebsiteIntake>) | null>(null);
+  const [intake, setIntake] = useState<WebsiteIntake | null>(null);
   const [reason, setReason] = useState(''); const [status, setStatus] = useState('EN_ANALYSE');
   const [confirm, setConfirm] = useState(false); const [filter, setFilter] = useState('');
   useEffect(() => {
@@ -44,14 +45,17 @@ export default function OnlineAdmissionsPanel({ onClose, mode = 'applications' }
     try { const url = await downloadApplicationDocument(id, role); window.location.assign(url); }
     catch (error) { setMessage(error instanceof Error ? error.message : 'Téléchargement impossible.'); }
   }
+  const selectedYear = state.academicYearContext?.years.find(year => year.id === state.academicYearContext?.selectedYearId);
+  const yearLabel = selectedYear?.name || (state.academicYearSelection === 'all' ? 'toutes les années' : 'l’année consultée');
+  const applications = data?.applications.filter(item => `${item.reference} ${item.identity.nom} ${item.identity.prenom} ${item.identity.email}`.toLocaleLowerCase('fr').includes(filter.trim().toLocaleLowerCase('fr'))) || [];
+  const statusLabels = { BROUILLON: 'Brouillon', RECU: 'Reçu', EN_ANALYSE: 'En analyse', CLASSE: 'Classé' };
   return <><FormFeedback message={success} error={false} />{baseTask && <CatalogTaskDialog root={baseTask} onClose={() => setBaseTask(null)} onSaved={() => { setBaseTask(null); void loadWebsiteData<WebsiteManagement>('admissions', role).then(setData).catch(error => setMessage(error.message)); }} />}{!selected && !intake && <AdmissionsFrame title={mode === 'configuration' ? 'Formations et pièces' : 'Demandes en ligne'} onClose={onClose}>
-    <p>{mode === 'configuration' ? 'Pièces obligatoires par niveau et filière pour l’année consultée.' : 'Demandes reçues du site, distinctes des inscriptions étudiantes.'}</p>
+    <p>{mode === 'configuration' ? 'Pièces obligatoires par niveau et filière pour l’année consultée.' : `Candidatures reçues pour ${yearLabel}.`}</p>
     {message && !selected && !intake && <p role="alert" className="auth-error">{message}</p>}
     <IconButton className="btn btn-outline mb-2" onClick={() => setRevision(value => value + 1)} label="Actualiser les dossiers" />
-    {!data ? message ? <section className="card" role="alert"><p>Le chargement des inscriptions a échoué.</p><IconButton className="btn btn-outline" onClick={() => setRevision(value => value + 1)} label="Réessayer" /></section> : <LoadingState label="Chargement des inscriptions…" /> : <>
-      {mode === 'applications' && <div className="card mb-2"><div className="card-header"><h2>Dossiers reçus du site</h2></div><label className="form-group">Rechercher un dossier<input className="input" value={filter} onChange={event => setFilter(event.target.value)} placeholder="Nom, email ou référence" /></label>
-        {data.applications.length === 0 && <p>Aucun dossier reçu.</p>}
-        {data.applications.filter(item => `${item.reference} ${item.identity.nom} ${item.identity.prenom} ${item.identity.email}`.toLowerCase().includes(filter.toLowerCase())).map(item => <article key={item.id} className="card mb-2"><h3>{item.identity.prenom} {item.identity.nom}</h3><p>{item.reference} · {item.intake_label} · {(data.years || []).find(year => year.id === item.academic_year_id)?.name || 'Année à rattacher'}</p><p>{item.status} · {item.identity.email}</p><button className="btn btn-outline" onClick={() => { setSuccess(''); setSelected(item); setIntake(null); setReason(''); setStatus(item.status === 'BROUILLON' ? 'RECU' : item.status); setConfirm(false); }}>Ouvrir le dossier</button></article>)}
+    {!data ? message ? <section className="card" role="alert"><p>Le chargement des demandes a échoué.</p><IconButton className="btn btn-outline" onClick={() => setRevision(value => value + 1)} label="Réessayer" /></section> : <LoadingState label="Chargement des demandes…" /> : <>
+      {mode === 'applications' && <div className="card card-full"><div className="card-header"><h2>Dossiers reçus du site</h2><span className="pill pill-default">{data.applications.length} dossier(s)</span></div><div className="browser-toolbar"><label className="form-group">Rechercher un dossier<input className="input" type="search" value={filter} onChange={event => setFilter(event.target.value)} placeholder="Nom, email ou référence" /></label>{filter && <button type="button" className="btn btn-outline" onClick={() => setFilter('')}>Effacer la recherche</button>}</div>
+        {!data.applications.length ? <div className="empty-state"><strong>Aucune demande pour {yearLabel}</strong><span>Les dossiers apparaissent ici après leur envoi final depuis le formulaire du site.</span>{canManage && <Link className="btn btn-outline" href="/site-web/documents">Vérifier les formations ouvertes</Link>}</div> : <div className="table-wrap"><ResponsiveTable className="data-table"><thead><tr><th>Candidat</th><th>Référence</th><th>Formation</th><th>Année</th><th>État</th><th>Actions</th></tr></thead><tbody>{applications.map(item => <tr key={item.id}><td><strong>{item.identity.prenom} {item.identity.nom}</strong><div className="cell-sub">{item.identity.email}</div></td><td>{item.reference}</td><td>{item.intake_label || 'Formation non renseignée'}</td><td>{(data.years || []).find(year => year.id === item.academic_year_id)?.name || 'Année à rattacher'}</td><td><span className={`pill ${item.status === 'RECU' ? 'pill-warning' : 'pill-default'}`}>{statusLabels[item.status]}</span></td><td><IconButton className="btn btn-outline" label="Ouvrir le dossier" onClick={() => { setSuccess(''); setSelected(item); setIntake(null); setReason(''); setStatus(item.status === 'BROUILLON' ? 'RECU' : item.status); setConfirm(false); }} /></td></tr>)}{!applications.length && <tr><td colSpan={6}>Aucun dossier ne correspond à votre recherche.</td></tr>}</tbody></ResponsiveTable></div>}
       </div>}
       {mode === 'configuration' && <div className="card"><div className="card-header"><h2>Formations proposées à l’inscription</h2></div><p>Les formations proviennent de la préparation annuelle. Configurez ici leur ouverture et les pièces demandées.</p><label className="form-group">Filtrer par niveau<select className="select-input" value={levelFilter} onChange={event => setLevelFilter(event.target.value)}><option value="">Tous les niveaux</option>{data.levels.filter(level => data.intakes.some(item => item.level_id === level.id)).map(level => <option key={level.id} value={level.id}>{level.name}</option>)}</select></label>{!data.intakes.length && <p>Aucune formation disponible pour cette année. Préparez les formations dans « Année scolaire ».</p>}{data.intakes.filter(item => !levelFilter || item.level_id === levelFilter).map(item => <div key={item.id} className="mb-2"><strong>{item.label}</strong><p>{(data.years || []).find(year => year.id === item.academic_year_id)?.name || 'Année à renseigner'} · {item.level_name} · {item.program_name} · {item.active ? 'Ouverte sur le site' : 'Fermée'}</p><p>Pièces obligatoires : {item.required_documents.length ? item.required_documents.map(key => DOCUMENT_LABELS[key] || key).join(', ') : 'Aucune'}</p>{canManage && <button className="btn btn-outline" onClick={() => { setSuccess(''); setIntake({ ...item, academic_year_id: item.academic_year_id || '' }); setSelected(null); setReason(''); setConfirm(false); }}>Configurer : {item.label}</button>}</div>)}</div>}
     </>}

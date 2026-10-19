@@ -35,6 +35,6 @@ for (const width of [390, 1440]) {
     const nav = page.locator('#application-navigation');
     await expect(nav.getByRole('button', { name: /Site web/ })).toBeVisible();
     for (const label of ['Demandes en ligne', 'Formations et pièces', 'Brochures', 'Articles']) await expect(nav.getByRole('link', { name: label, exact: true })).toHaveCount(1);
-    await page.screenshot({ path: `.tmp/interface/${width}/site-web-menu.png`, fullPage: true });
+    await page.screenshot({ path: `tmp/screenshots/annual-offerings/${width}/site-web-menu.png`, fullPage: true });
   });
 }

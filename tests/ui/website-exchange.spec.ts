@@ -57,7 +57,7 @@ for (const width of [390, 1440]) {
     await expect(page.getByText('RETIRE · Version 2', { exact: false })).toBeVisible();
     expect(fixture.commands[1]).toMatchObject({ action: 'article-save', id: articleId, version: 1, status: 'RETIRE' });
     await expect.poll(() => page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
-    await page.screenshot({ path: `.tmp/interface/${width}/articles-site.png`, fullPage: true });
+    await page.screenshot({ path: `tmp/screenshots/annual-offerings/${width}/articles-site.png`, fullPage: true });
   });
   test(`Dossiers du site : lecture, pièces, suivi confirmé et erreurs à ${width}px`, async ({ page }) => {
     await page.setViewportSize({ width, height: 950 }); const fixture = await manageFixture(page);
@@ -77,7 +77,7 @@ for (const width of [390, 1440]) {
     await page.getByRole('button', { name: 'Confirmer le suivi', exact: true }).click();
     await expect(page.getByRole('alert').filter({ hasText: 'Version concurrente' })).toBeVisible();
     await expect(page.getByLabel('Motif du suivi', { exact: true })).toHaveValue('Autre contrôle conservé');
-    await page.screenshot({ path: `.tmp/interface/${width}/inscriptions-site.png`, fullPage: true });
+    await page.screenshot({ path: `tmp/screenshots/annual-offerings/${width}/demandes-en-ligne.png`, fullPage: true });
   });
 }
 test('Les API de gestion du site refusent un appel sans session', async ({ request }) => {
@@ -142,7 +142,7 @@ for (const width of [390, 1440]) {
     expect(JSON.parse(submitted[0].body!)).toMatchObject({academic_year_id:yearId});
     expect(submitted[2].body).toContain(yearId);
     expect(await page.evaluate(() => localStorage.getItem('candidature_draft_token'))).toBeNull();
-    await page.screenshot({ path: `.tmp/interface/${width}/inscription-site-envoyee.png`, fullPage: true });
+    await page.screenshot({ path: `tmp/screenshots/annual-offerings/${width}/inscription-site-envoyee.png`, fullPage: true });
     await page.goto(`${website}/blogs/`);
     await expect(page.getByRole('heading', { name: 'Publication envoyée depuis la plateforme', exact: true })).toBeVisible();
     await page.getByRole('link', { name: /Lire/ }).first().click();
