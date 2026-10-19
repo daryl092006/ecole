@@ -1,5 +1,6 @@
 import { test, expect } from '@playwright/test';
 import { authenticateFixture, snapshot } from './persistent-fixture';
+import { programLevelChanges } from '../../src/services/catalogCrudService';
 import type { DatabaseRow } from '../../src/types/persistence';
 
 for (const width of [390, 1440]) {
@@ -12,7 +13,7 @@ for (const width of [390, 1440]) {
       academic_years: years, cycles: [{ id: 'LIC', name: 'Licence' }],
       programs: [{ id: 'P1', code: 'INFO', name: 'Informatique', description: '', level_ids: ['L1'] }],
       levels: [{ id: 'L1', name: 'Licence 1', cycle_id: 'LIC', position: 1 }],
-      curricula: [{ id: 'C1', program_id: 'P1', level_id: 'L1', name: 'Informatique · Licence 1' }], academic_offerings: [],
+      curricula: [{ id: 'C1', status: 'DRAFT', version: 1, program_id: 'P1', level_id: 'L1', name: 'Informatique · Licence 1' }], academic_offerings: [],
     };
     let revision = 1;
     let failNextOfferingsRead = false;
@@ -35,7 +36,10 @@ for (const width of [390, 1440]) {
         const existing = tables.programs.find(row => row.id === path[4]);
         if (existing) Object.assign(existing, body.values);
         else { tables.programs.push({ id, ...body.values }); failNextOfferingsRead = true; }
-        for (const levelId of body.values.level_ids) if (!tables.curricula.some(row => row.program_id === id && row.level_id === levelId)) tables.curricula.push({ id: `C-${id}-${levelId}`, program_id: id, level_id: levelId, name: `${body.values.name} · ${tables.levels.find(row => row.id === levelId)?.name}` });
+        for (const change of programLevelChanges(id, body.values.level_ids, { revision, tables }, body.reason)) {
+          if (change.operation === 'insert') tables.curricula.push({ ...change.record, status: 'DRAFT' } as unknown as DatabaseRow);
+          else Object.assign(tables.curricula.find(row => row.id === change.record.id)!, change.record);
+        }
       } else tables[collection].push({ id, ...body.values });
       return route.fulfill({ status: 201, json: { id, revision } });
     });
@@ -76,24 +80,40 @@ for (const width of [390, 1440]) {
     await expect(dialog.getByRole('checkbox', { name: 'Licence 2 · En ligne', exact: true })).not.toBeChecked();
     await dialog.getByRole('button', { name: 'Définir ses niveaux ici', exact: true }).click();
     await expect(dialog.getByRole('checkbox', { name: 'Licence 2', exact: true })).toBeChecked();
-    await expect(dialog.getByRole('checkbox', { name: 'Licence 2', exact: true })).toBeDisabled();
+    await expect(dialog.getByRole('checkbox', { name: 'Licence 2', exact: true })).toBeEnabled();
+    await expect(dialog.getByText('Catalogue général · toutes les années', { exact: true })).toBeVisible();
+    await expect(dialog.getByText('Année : 2026-2027', { exact: true })).toHaveCount(0);
     await dialog.getByRole('checkbox', { name: 'Licence 1', exact: true }).check();
     await dialog.getByRole('button', { name: 'Vérifier les informations', exact: true }).click();
     expect(writes).toHaveLength(2);
     await dialog.getByRole('button', { name: 'Confirmer l’enregistrement', exact: true }).click();
     await expect(dialog.getByRole('combobox', { name: 'Filière', exact: true })).toHaveValue('P2');
     await expect(dialog.getByRole('checkbox', { name: 'Licence 1 · Présentiel', exact: true })).toBeVisible();
+    await dialog.getByRole('checkbox', { name: 'Licence 1 · Présentiel', exact: true }).check();
+    await dialog.getByRole('button', { name: 'Définir ses niveaux ici', exact: true }).click();
+    await dialog.getByRole('checkbox', { name: 'Licence 1', exact: true }).uncheck();
+    await dialog.getByRole('button', { name: 'Vérifier les informations', exact: true }).click();
+    expect(writes).toHaveLength(3);
+    await expect(dialog.getByRole('region', { name: 'Vérification avant enregistrement' })).toContainText('Avant : Licence 1, Licence 2');
+    await dialog.getByRole('button', { name: 'Confirmer l’enregistrement', exact: true }).click();
+    await expect(dialog.getByRole('checkbox', { name: 'Licence 1 · Présentiel', exact: true })).toHaveCount(0);
+    await dialog.getByRole('button', { name: 'Définir ses niveaux ici', exact: true }).click();
+    await expect(dialog.getByRole('checkbox', { name: 'Licence 1', exact: true })).not.toBeChecked();
+    await expect(dialog.getByRole('checkbox', { name: 'Licence 2', exact: true })).toBeChecked();
+    await dialog.getByRole('button', { name: 'Revenir aux formations de l’année', exact: true }).click();
+
     await dialog.getByRole('checkbox', { name: 'Licence 2 · En ligne', exact: true }).check();
     await expect(dialog.getByRole('combobox', { name: 'Année universitaire', exact: true })).toHaveCount(0);
     await expect(page).toHaveURL(/\/academique\/referentiel\?collection=academic_years$/);
     await page.screenshot({ path: `tmp/screenshots/annual-offerings/${width}/preparation-filiere-sur-place.png` });
     await dialog.getByRole('button', { name: 'Enregistrer les niveaux', exact: true }).click();
-    expect(writes).toHaveLength(3);
+    expect(writes).toHaveLength(4);
     await dialog.getByRole('button', { name: 'Confirmer l’enregistrement', exact: true }).click();
     await expect(page.getByRole('heading', { name: 'Préparer l’année · 2026-2027', exact: true })).toBeVisible();
-    expect(writes.map(write => write.collection)).toEqual(['levels', 'programs', 'programs', 'academic_offerings']);
+    expect(writes.map(write => write.collection)).toEqual(['levels', 'programs', 'programs', 'programs', 'academic_offerings']);
     expect(writes[1].values).toMatchObject({ name: 'Finance Digitale', level_ids: ['L2'] });
     expect(writes[2].values).toMatchObject({ name: 'Finance Digitale', level_ids: ['L2', 'L1'] });
-    expect(writes[3].values).toMatchObject({ academic_year_id: yearId, program_id: 'P2', variants: [{ curriculum_id: 'C-P2-L2', delivery_mode: 'En ligne' }] });
+    expect(writes[3].values).toMatchObject({ level_ids: ['L2'] });
+    expect(writes[4].values).toMatchObject({ academic_year_id: yearId, program_id: 'P2', variants: [{ curriculum_id: tables.curricula.find(row => row.program_id === 'P2' && row.level_id === 'L2' && !row.archived_at)?.id, delivery_mode: 'En ligne' }] });
   });
 }
