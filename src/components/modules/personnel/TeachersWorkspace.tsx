@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { useEffect, useState } from 'react';
 import { usePortal } from '@/hooks/usePortal';
 import { loadTeachers, manageTeacher } from '@/services/remoteCampusService';
+import { evaluationGradeIsComplete } from '@/services/evaluationGradePolicy';
 import type { TeacherCommand, TeacherDirectory, TeacherProfile, TeachingAssignmentRecord } from '@/types/teachers';
 import LoadingState from '@/components/ui/LoadingState';
 import ResponsiveTable from '@/components/ui/ResponsiveTable';
@@ -87,10 +88,10 @@ export default function TeachersWorkspace() {
         const teacherAssignments = directory.assignments.filter(a => a.teacherId === teacher.id);
         const teacherAssignmentIds = new Set(teacherAssignments.map(a => a.id));
         const sessionCount = (portal.relationalSnapshot.tables.sessions || []).filter(
-          s => s.teacher_id === teacher.id || s.replacement_teacher_id === teacher.id,
+          s => (s.replacement_teacher_id || s.teacher_id) === teacher.id && s.status !== 'ANNULE',
         ).length;
         const teacherEvals = (portal.relationalSnapshot.tables.evaluations || []).filter(e =>
-          teacherAssignmentIds.has(String(e.assignment_id)),
+          teacherAssignmentIds.has(String(e.assignment_id)) && !e.cancelled_at,
         );
         const teacherEvalIds = new Set(teacherEvals.map(e => String(e.id)));
         const teacherCandidates = (portal.relationalSnapshot.tables.evaluation_candidates || []).filter(c =>
@@ -99,10 +100,20 @@ export default function TeachersWorkspace() {
         const gradesByCand = new Map(
           (portal.relationalSnapshot.tables.grades || []).map(g => [String(g.candidate_id), g]),
         );
-        const pendingCopiesCount = teacherCandidates.filter(c => {
-          const g = gradesByCand.get(String(c.id));
-          return !g || (g.value === null && !['ABSENT', 'JUSTIFIE'].includes(String(g.absence_status || '')));
-        }).length;
+        const pendingCandidates = teacherCandidates.filter(c =>
+          c.eligibility === 'ELIGIBLE' && !evaluationGradeIsComplete(gradesByCand.get(String(c.id))),
+        );
+        const latestAttempts = new Map<string, { attemptNumber: number; status: string }>();
+        for (const attempt of portal.relationalSnapshot.tables.exam_attempts || []) {
+          const candidateId = String(attempt.candidate_id);
+          const attemptNumber = Number(attempt.attempt_number || 1);
+          if (!latestAttempts.has(candidateId) || attemptNumber > latestAttempts.get(candidateId)!.attemptNumber) {
+            latestAttempts.set(candidateId, { attemptNumber, status: String(attempt.status) });
+          }
+        }
+        const pendingCopiesCount = pendingCandidates.filter(c =>
+          ['REMISE', 'EXPIREE'].includes(latestAttempts.get(String(c.id))?.status || ''),
+        ).length;
 
         return <tr key={teacher.id}>
           <td>
@@ -114,9 +125,10 @@ export default function TeachersWorkspace() {
               {teacherEvals.length > 0 && <span>· {teacherEvals.length} épreuve{teacherEvals.length > 1 ? 's' : ''}</span>}
               {pendingCopiesCount > 0 && (
                 <span className="pill pill-warning" style={{ fontSize: '0.75rem', padding: '1px 6px' }}>
-                  {pendingCopiesCount} copie{pendingCopiesCount > 1 ? 's' : ''} à corriger
+                  {pendingCopiesCount} copie{pendingCopiesCount > 1 ? 's' : ''} en ligne à corriger
                 </span>
               )}
+              {pendingCandidates.length > pendingCopiesCount && <span>{pendingCandidates.length - pendingCopiesCount} résultat(s) à renseigner</span>}
             </div>
           </td><td>{teacher.specialty || 'Non renseignée'}</td><td>{teacher.active ? 'Actif' : 'Inactif'}</td><td><div className="btn-group">
             {directory.canManageProfiles && <><button className="btn btn-sm btn-outline" onClick={() => open({ kind: 'update_profile', teacher })}>Modifier le profil</button><button className="btn btn-sm btn-outline" onClick={() => open({ kind: 'set_active', teacher })}>{teacher.active ? 'Désactiver' : 'Activer'}</button></>}

@@ -30,6 +30,35 @@ async function confirm(dialog: Locator) {
   await expect(dialog).not.toBeVisible();
 }
 
+test('Suivi enseignant : distinguer les copies remises des résultats manquants et les remplacements', async ({ page }) => {
+  const { snapshot } = await connectedTeachers(page);
+  const tables = snapshot.tables;
+  const assignment = tables.teaching_assignments.find(row => row.teacher_id === uuid(20))!;
+  tables.evaluations = [{ id: uuid(6001), assignment_id: assignment.id, offering_id: assignment.offering_id, status: 'SAISIES' }];
+  tables.evaluation_candidates = [0, 1, 2, 3].map(index => ({
+    id: uuid(6100 + index), evaluation_id: uuid(6001), eligibility: 'ELIGIBLE',
+  }));
+  tables.grades = [
+    { id: uuid(6200), candidate_id: uuid(6100), value: 0, absence_status: null },
+    { id: uuid(6201), candidate_id: uuid(6101), value: 0, absence_status: 'NON_TRAITE' },
+  ];
+  tables.exam_attempts = [
+    { id: uuid(6301), candidate_id: uuid(6101), attempt_number: 1, status: 'REMISE' },
+    { id: uuid(6302), candidate_id: uuid(6103), attempt_number: 1, status: 'REMISE' },
+    { id: uuid(6303), candidate_id: uuid(6103), attempt_number: 2, status: 'EN_COURS' },
+  ];
+  tables.sessions = [
+    { id: uuid(6400), teacher_id: uuid(20), replacement_teacher_id: uuid(21), status: 'PLANIFIE' },
+    { id: uuid(6401), teacher_id: uuid(20), status: 'ANNULE' },
+  ];
+  await page.goto('/personnel/enseignants');
+  const alice = page.getByRole('row').filter({ hasText: 'Alice Enseignant' });
+  await expect(alice).toContainText('1 copie en ligne à corriger');
+  await expect(alice).toContainText('2 résultat(s) à renseigner');
+  await expect(alice).toContainText('0 séance');
+  await expect(page.getByRole('row').filter({ hasText: 'Benoît Enseignant' })).toContainText('1 séance');
+});
+
 for (const width of [390, 1440]) {
   test(`Personnel : case enseignant, récapitulatif et transaction unique à ${width}px`, async ({ page }) => {
     await page.setViewportSize({ width, height: 900 });

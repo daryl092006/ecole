@@ -17,6 +17,7 @@ import {
   evaluationCandidateStatusLabel,
   evaluationGradeNoteLabel,
   evaluationGradeValue,
+  evaluationGradeIsComplete,
 } from '@/services/evaluationGradePolicy';
 import type { Student } from '@/types/student';
 import { useEffect, useState } from 'react';
@@ -99,6 +100,7 @@ export default function StudentRecordPanel({ studentId, embedded = false }: { st
       evaluationKind: ev ? String(ev.kind || '') : '',
       evaluationStatus: ev ? String(ev.status || '') : '',
       gradeVal,
+      gradeComplete: evaluationGradeIsComplete(grade),
       noteLabel: evaluationGradeNoteLabel(grade, lastAttempt?.status),
       statusLabel: evaluationCandidateStatusLabel(grade, lastAttempt?.status),
       absenceStatus: grade?.absence_status ? String(grade.absence_status) : null,
@@ -107,10 +109,11 @@ export default function StudentRecordPanel({ studentId, embedded = false }: { st
     };
   });
   const numericStudentGrades = studentEvaluationsSummary
+    .filter(item => item.gradeComplete)
     .map(item => item.gradeVal)
     .filter((v): v is number => v !== null);
   const pendingCorrectionStudentCount = studentEvaluationsSummary.filter(
-    item => item.gradeVal === null && !['ABSENT', 'JUSTIFIE'].includes(String(item.absenceStatus || '')),
+    item => !item.gradeComplete,
   ).length;
 
   const annualEnrollments = state.campus.data.enrollments.filter(item => item.studentId === student.matricule);
@@ -202,9 +205,6 @@ export default function StudentRecordPanel({ studentId, embedded = false }: { st
               <dd>
                 {numericStudentGrades.length} notée(s)
                 {pendingCorrectionStudentCount > 0 ? ` · ${pendingCorrectionStudentCount} à corriger` : ''}
-                {numericStudentGrades.length > 0
-                  ? ` · Moy. ${(numericStudentGrades.reduce((a, b) => a + b, 0) / numericStudentGrades.length).toLocaleString('fr-FR', { maximumFractionDigits: 2 })}/20`
-                  : ''}
               </dd>
             </div>
           )}
