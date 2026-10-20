@@ -7,12 +7,22 @@ import type { DatabaseRow, RelationalSnapshot } from '@/types/persistence';
 import { usePortal } from '@/hooks/usePortal';
 import EvaluationGradeDialog from './EvaluationGradeDialog';
 import EvaluationCreateDialog from './EvaluationCreateDialog';
-import { evaluationGradeValue } from '@/services/evaluationGradePolicy';
+import { evaluationGradeIsComplete, evaluationGradeValue } from '@/services/evaluationGradePolicy';
 
 interface Props {
   snapshot: RelationalSnapshot;
   canViewStudents: boolean;
   onSelectStudent?: (matricule: string) => void;
+}
+
+function evalTypeLabel(ev: DatabaseRow): string {
+  if (ev.session_type === 'RATTRAPAGE' || ev.kind === 'RATTRAPAGE') return 'Rattrapage';
+  if (ev.kind === 'DEVOIR') return 'Devoir';
+  if (ev.kind === 'INTERROGATION') return 'Interrogation';
+  if (ev.kind === 'TP') return 'TP';
+  if (ev.kind === 'PROJET') return 'Projet';
+  if (ev.kind === 'SOUTENANCE') return 'Soutenance';
+  return 'Examen';
 }
 
 export default function GroupSubjectGradesPanel({ snapshot, canViewStudents, onSelectStudent }: Props) {
@@ -38,7 +48,6 @@ export default function GroupSubjectGradesPanel({ snapshot, canViewStudents, onS
   const [selectedGroupId, setSelectedGroupId] = useState<string>('');
   const [selectedSubjectId, setSelectedSubjectId] = useState<string>('');
   const [search, setSearch] = useState('');
-
 
   if (!evaluations.length || !groups.length) return null;
 
@@ -67,9 +76,7 @@ export default function GroupSubjectGradesPanel({ snapshot, canViewStudents, onS
     const groupEvals = evaluations.filter(ev => evalGroupId(ev) === gId);
     const groupEvalIds = new Set(groupEvals.map(ev => String(ev.id)));
     const groupCands = candidates.filter(c => groupEvalIds.has(String(c.evaluation_id)));
-    const numericGrades = groupCands
-      .map(c => evaluationGradeValue(gradeByCandidate.get(String(c.id))))
-      .filter((value): value is number => value !== null);
+    const completedCands = groupCands.filter(c => evaluationGradeIsComplete(gradeByCandidate.get(String(c.id))));
     const subjectMap = new Map<string, { id: string; code: string; name: string; evals: DatabaseRow[] }>();
     for (const ev of groupEvals) {
       const subj = evalSubject(ev);
@@ -79,8 +86,6 @@ export default function GroupSubjectGradesPanel({ snapshot, canViewStudents, onS
     const memberEnrollmentIds = new Set(enrollmentGroups.filter(eg => eg.group_id === gId).map(eg => String(eg.enrollment_id)));
     for (const c of groupCands) memberEnrollmentIds.add(String(c.enrollment_id));
     const level = levels.find(l => l.id === group.level_id);
-    const avg = numericGrades.length ? numericGrades.reduce((a, b) => a + b, 0) / numericGrades.length : null;
-    const passCount = numericGrades.filter(v => v >= 10).length;
     return {
       group,
       id: gId,
@@ -88,13 +93,13 @@ export default function GroupSubjectGradesPanel({ snapshot, canViewStudents, onS
       levelName: String(level?.name || ''),
       studentCount: memberEnrollmentIds.size,
       subjects: [...subjectMap.values()].sort((a, b) => a.name.localeCompare(b.name, 'fr')),
-      gradeCount: numericGrades.length,
-      average: avg,
-      passRate: numericGrades.length ? Math.round((passCount / numericGrades.length) * 100) : null,
+      evaluationsCount: groupEvals.length,
+      completedCount: completedCands.length,
+      expectedCount: groupCands.length,
       memberEnrollmentIds,
     };
   }).filter(item => item.subjects.length > 0 || item.studentCount > 0)
-    .sort((a, b) => b.gradeCount - a.gradeCount || a.name.localeCompare(b.name, 'fr'));
+    .sort((a, b) => b.completedCount - a.completedCount || a.name.localeCompare(b.name, 'fr'));
 
   if (!groupsWithData.length) return null;
 
@@ -108,25 +113,30 @@ export default function GroupSubjectGradesPanel({ snapshot, canViewStudents, onS
     const vals = subjCands
       .map(c => evaluationGradeValue(gradeByCandidate.get(String(c.id))))
       .filter((value): value is number => value !== null);
-    const avg = vals.length ? vals.reduce((a, b) => a + b, 0) / vals.length : null;
+    const absenceCount = subjCands.filter(c => {
+      const status = gradeByCandidate.get(String(c.id))?.absence_status;
+      return status === 'ABSENT' || status === 'JUSTIFIE';
+    }).length;
     const min = vals.length ? Math.min(...vals) : null;
     const max = vals.length ? Math.max(...vals) : null;
-    const pass = vals.filter(v => v >= 10).length;
-    const kinds = [...new Set(subj.evals.map(e => e.session_type === 'RATTRAPAGE' || e.kind === 'RATTRAPAGE' ? 'Rattrapage' : e.kind === 'DEVOIR' ? 'Contrôle continu' : 'Examen'))];
+    const kinds = [...new Set(subj.evals.map(evalTypeLabel))];
     return {
       ...subj,
       kinds,
+      expectedCount: subjCands.length,
       notesCount: vals.length,
-      average: avg,
+      absenceCount,
       min,
       max,
-      passRate: vals.length ? Math.round((pass / vals.length) * 100) : null,
     };
   });
 
   const activeSubjectSummary = subjectSummaries.find(s => s.id === activeSubject?.id) || null;
+  const orderedSubjectEvals = [...(activeSubjectSummary?.evals || [])].sort((a, b) =>
+    String(a.scheduled_at || '').localeCompare(String(b.scheduled_at || '')) ||
+    String(a.name || '').localeCompare(String(b.name || ''), 'fr'),
+  );
 
-  // Build student rows for activeGroup & activeSubject
   const studentRows = [...activeGroup.memberEnrollmentIds].flatMap(enrollmentId => {
     const enrollment = enrollments.find(e => String(e.id) === enrollmentId);
     if (!enrollment) return [];
@@ -140,36 +150,32 @@ export default function GroupSubjectGradesPanel({ snapshot, canViewStudents, onS
     const matricule = String(stud.matricule || '');
     const filiere = String(prog?.name || 'Tronc commun / Non renseignée');
 
-    const evalIds = new Set((activeSubject?.evals || []).map(e => String(e.id)));
-    const studCands = candidates.filter(c => String(c.enrollment_id) === enrollmentId && evalIds.has(String(c.evaluation_id)));
+    const evalCells = orderedSubjectEvals.map(ev => {
+      const cand = candidates.find(
+        c => String(c.enrollment_id) === enrollmentId && String(c.evaluation_id) === String(ev.id),
+      );
+      if (!cand) {
+        return { evalId: String(ev.id), candidate: false, complete: false, value: null as number | null, absenceStatus: '' };
+      }
+      const grade = gradeByCandidate.get(String(cand.id));
+      const val = evaluationGradeValue(grade);
+      const complete = evaluationGradeIsComplete(grade);
+      const absenceStatus = String(grade?.absence_status || '');
+      return { evalId: String(ev.id), candidate: true, complete, value: val, absenceStatus };
+    });
 
-    let controlGrade: number | null = null;
-    let examGrade: number | null = null;
-    let resitGrade: number | null = null;
-
-    for (const c of studCands) {
-      const ev = activeSubject?.evals.find(e => String(e.id) === String(c.evaluation_id));
-      const g = gradeByCandidate.get(String(c.id));
-      const val = evaluationGradeValue(g);
-      if (!ev || val === null) continue;
-      if (ev.session_type === 'RATTRAPAGE' || ev.kind === 'RATTRAPAGE') resitGrade = val;
-      else if (ev.kind === 'DEVOIR' || ev.kind === 'INTERROGATION' || ev.kind === 'TP' || ev.kind === 'PROJET') controlGrade = val;
-      else examGrade = val;
-    }
-
-    const availableGrades = [controlGrade, resitGrade ?? examGrade].filter((v): v is number => v !== null);
-    const finalAverage = availableGrades.length ? availableGrades.reduce((a, b) => a + b, 0) / availableGrades.length : null;
+    const candidateCells = evalCells.filter(cell => cell.candidate);
+    const completedCells = candidateCells.filter(cell => cell.complete);
 
     return [{
       enrollmentId,
       matricule,
       fullName,
       filiere,
-      controlGrade,
-      examGrade,
-      resitGrade,
-      finalAverage,
-      hasAnyGrade: controlGrade !== null || examGrade !== null || resitGrade !== null,
+      evalCells,
+      candidateCount: candidateCells.length,
+      completedCount: completedCells.length,
+      hasAnyGrade: completedCells.length > 0,
     }];
   }).filter(row => {
     if (!search.trim()) return true;
@@ -203,7 +209,7 @@ export default function GroupSubjectGradesPanel({ snapshot, canViewStudents, onS
           >
             {groupsWithData.map(g => (
               <option key={g.id} value={g.id}>
-                {g.name} ({g.subjects.length} mat. · {g.gradeCount} notes)
+                {g.name} ({g.subjects.length} mat. · {g.completedCount}/{g.expectedCount} saisies)
               </option>
             ))}
           </select>
@@ -246,11 +252,11 @@ export default function GroupSubjectGradesPanel({ snapshot, canViewStudents, onS
         </div>
         <div className="kpi-stat-tile">
           <strong>{activeGroup.subjects.length}</strong>
-          <span>Matières ({activeGroup.gradeCount} notes)</span>
+          <span>Matières ({activeGroup.evaluationsCount} éval.)</span>
         </div>
         <div className="kpi-stat-tile">
-          <strong>{activeGroup.average !== null ? fmtGrade(activeGroup.average) : '—'}</strong>
-          <span>Moyenne ({activeGroup.passRate !== null ? `${activeGroup.passRate} % réussite` : '—'})</span>
+          <strong>{activeGroup.completedCount} / {activeGroup.expectedCount}</strong>
+          <span>Copies traitées dans le groupe</span>
         </div>
       </div>
 
@@ -262,24 +268,29 @@ export default function GroupSubjectGradesPanel({ snapshot, canViewStudents, onS
               <tr>
                 <th>Matière</th>
                 <th>Épreuves</th>
-                <th>Notes saisies</th>
-                <th>Moyenne</th>
-                <th>Min / Max</th>
-                <th>Réussite (≥ 10)</th>
+                <th>Copies attendues</th>
+                <th>Notes chiffrées</th>
+                <th>Absents / Justifiés</th>
+                <th>Min / Max observés</th>
               </tr>
             </thead>
             <tbody>
               {subjectSummaries.map(item => (
-                <tr key={item.id} className={item.id === activeSubject?.id ? 'selected-row' : ''}>
+                <tr
+                  key={item.id}
+                  className={item.id === activeSubject?.id ? 'selected-row' : ''}
+                  onClick={() => setSelectedSubjectId(item.id)}
+                  style={{ cursor: 'pointer' }}
+                >
                   <td>
                     <strong>{item.name}</strong>
                     {item.code && <div className="cell-sub">{item.code}</div>}
                   </td>
-                  <td>{item.kinds.join(' + ')}</td>
-                  <td>{item.notesCount}</td>
-                  <td><strong>{item.average !== null ? fmtGrade(item.average) : '—'}</strong></td>
+                  <td>{item.kinds.join(' + ')} ({item.evals.length})</td>
+                  <td>{item.expectedCount}</td>
+                  <td><strong>{item.notesCount}</strong></td>
+                  <td>{item.absenceCount}</td>
                   <td>{item.min !== null && item.max !== null ? `${item.min.toLocaleString('fr-FR')} – ${item.max.toLocaleString('fr-FR')} / 20` : '—'}</td>
-                  <td>{item.passRate !== null ? `${item.passRate} %` : '—'}</td>
                 </tr>
               ))}
             </tbody>
@@ -289,17 +300,17 @@ export default function GroupSubjectGradesPanel({ snapshot, canViewStudents, onS
 
       {activeSubjectSummary && (
         <div>
-          {activeSubjectSummary.evals.length > 0 && (
+          {orderedSubjectEvals.length > 0 && (
             <div className="mb-2">
               <div className="card-header">
-                <h4>Évaluations de la matière ({activeSubjectSummary.evals.length})</h4>
+                <h4>Évaluations de la matière ({orderedSubjectEvals.length})</h4>
               </div>
               <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap' }}>
-                {activeSubjectSummary.evals.map(ev => (
+                {orderedSubjectEvals.map(ev => (
                   <div key={ev.id} className="card p-2" style={{ display: 'flex', alignItems: 'center', gap: '1rem', border: '1px solid var(--border)' }}>
                     <div>
                       <strong>{String(ev.name)}</strong>
-                      <div className="cell-sub">{String(ev.kind)} · État : <span className="pill pill-default">{String(ev.status)}</span></div>
+                      <div className="cell-sub">{evalTypeLabel(ev)} · État : <span className="pill pill-default">{String(ev.status)}</span></div>
                     </div>
                     {(portal.perms.permissions.includes('grade.enter') || portal.perms.permissions.includes('grade.review') || portal.perms.permissions.includes('grade.approve') || portal.perms.permissions.includes('grade.publish')) && (
                       <button className="btn btn-sm btn-primary" onClick={() => setManagingEvalId(String(ev.id))}>
@@ -313,73 +324,90 @@ export default function GroupSubjectGradesPanel({ snapshot, canViewStudents, onS
           )}
 
           <h3>
-            Notes de {activeSubjectSummary.name} — {activeGroup.name} ({studentRows.filter(r => r.hasAnyGrade).length} noté(s) sur {studentRows.length})
+            Notes de {activeSubjectSummary.name} — {activeGroup.name} ({studentRows.filter(r => r.hasAnyGrade).length} traité(s) sur {studentRows.length})
           </h3>
           <div className="table-wrap">
             <ResponsiveTable className="data-table">
-            <thead>
-              <tr>
-                <th>Étudiant</th>
-                <th>Filière</th>
-                <th>Contrôle continu</th>
-                <th>Examen</th>
-                <th>Rattrapage</th>
-                <th>Moyenne matière</th>
-                <th>Appréciation</th>
-                {canViewStudents && <th>Dossier</th>}
-              </tr>
-            </thead>
-            <tbody>
-              {studentRows.map(row => (
-                <tr key={row.enrollmentId}>
-                  <td>
-                    <strong>{row.fullName}</strong>
-                    <div className="cell-sub">{row.matricule}</div>
-                  </td>
-                  <td>{row.filiere}</td>
-                  <td>{fmtGrade(row.controlGrade)}</td>
-                  <td>{fmtGrade(row.examGrade)}</td>
-                  <td>{fmtGrade(row.resitGrade)}</td>
-                  <td><strong>{fmtGrade(row.finalAverage)}</strong></td>
-                  <td>
-                    {row.finalAverage === null ? (
-                      <span className="pill pill-default">Sans note</span>
-                    ) : row.finalAverage >= 10 ? (
-                      <span className="pill pill-success">Validé ({row.finalAverage.toLocaleString('fr-FR', { maximumFractionDigits: 2 })}/20)</span>
-                    ) : (
-                      <span className="pill pill-warning">Ajourné ({row.finalAverage.toLocaleString('fr-FR', { maximumFractionDigits: 2 })}/20)</span>
-                    )}
-                  </td>
-                  {canViewStudents && (
+              <thead>
+                <tr>
+                  <th>Étudiant</th>
+                  <th>Filière</th>
+                  {orderedSubjectEvals.map(ev => (
+                    <th key={ev.id}>
+                      <div>{evalTypeLabel(ev)}</div>
+                      <div className="cell-sub">{String(ev.name)}</div>
+                    </th>
+                  ))}
+                  <th>État de saisie</th>
+                  {canViewStudents && <th>Dossier</th>}
+                </tr>
+              </thead>
+              <tbody>
+                {studentRows.map(row => (
+                  <tr key={row.enrollmentId}>
                     <td>
-                      {onSelectStudent ? (
-                        <Link
-                          className="btn btn-sm btn-outline"
-                          href={studentPath(row.matricule)}
-                          onClick={e => {
-                            if (onSelectStudent) {
-                              e.preventDefault();
-                              onSelectStudent(row.matricule);
-                            }
-                          }}
-                        >
-                          Voir les notes
-                        </Link>
+                      <strong>{row.fullName}</strong>
+                      <div className="cell-sub">{row.matricule}</div>
+                    </td>
+                    <td>{row.filiere}</td>
+                    {row.evalCells.map(cell => (
+                      <td key={cell.evalId}>
+                        {!cell.candidate ? (
+                          '—'
+                        ) : cell.absenceStatus === 'ABSENT' ? (
+                          <span className="pill pill-warning">Absent</span>
+                        ) : cell.absenceStatus === 'JUSTIFIE' ? (
+                          <span className="pill pill-default">Justifié</span>
+                        ) : cell.value !== null ? (
+                          <strong>{fmtGrade(cell.value)}</strong>
+                        ) : (
+                          <span className="cell-sub">En attente</span>
+                        )}
+                      </td>
+                    ))}
+                    <td>
+                      {row.candidateCount === 0 ? (
+                        <span className="pill pill-default">Non inscrit à l&apos;épreuve</span>
+                      ) : row.completedCount === row.candidateCount ? (
+                        <span className="pill pill-success">Complet ({row.completedCount}/{row.candidateCount})</span>
+                      ) : row.completedCount > 0 ? (
+                        <span className="pill pill-warning">Partiel ({row.completedCount}/{row.candidateCount})</span>
                       ) : (
-                        <Link className="btn btn-sm btn-outline" href={studentPath(row.matricule)}>
-                          Fiche & Dossier
-                        </Link>
+                        <span className="pill pill-default">En attente (0/{row.candidateCount})</span>
                       )}
                     </td>
-                  )}
-                </tr>
-              ))}
-              {!studentRows.length && (
-                <tr>
-                  <td colSpan={canViewStudents ? 8 : 7}>Aucun étudiant pour ce filtre dans ce groupe.</td>
-                </tr>
-              )}
-            </tbody>
+                    {canViewStudents && (
+                      <td>
+                        {onSelectStudent ? (
+                          <Link
+                            className="btn btn-sm btn-outline"
+                            href={studentPath(row.matricule)}
+                            onClick={e => {
+                              if (onSelectStudent) {
+                                e.preventDefault();
+                                onSelectStudent(row.matricule);
+                              }
+                            }}
+                          >
+                            Voir les notes
+                          </Link>
+                        ) : (
+                          <Link className="btn btn-sm btn-outline" href={studentPath(row.matricule)}>
+                            Fiche & Dossier
+                          </Link>
+                        )}
+                      </td>
+                    )}
+                  </tr>
+                ))}
+                {!studentRows.length && (
+                  <tr>
+                    <td colSpan={orderedSubjectEvals.length + (canViewStudents ? 4 : 3)}>
+                      Aucun étudiant pour ce filtre dans ce groupe.
+                    </td>
+                  </tr>
+                )}
+              </tbody>
             </ResponsiveTable>
           </div>
         </div>
