@@ -62,6 +62,7 @@ export default function WorkspaceHome({ mode = 'home' }: { mode?: 'home' | 'over
     .map(([name, cnt]) => ({ name, count: cnt, pct: totalStudents > 0 ? Math.round((cnt / totalStudents) * 100) : 0 }))
     .sort((a, b) => b.count - a.count || a.name.localeCompare(b.name, 'fr'));
 
+
   const niveauMap = new Map<string, number>();
   for (const s of state.students) {
     const nName = String(s.niveau || 'Non renseigné').trim() || 'Non renseigné';
@@ -70,6 +71,7 @@ export default function WorkspaceHome({ mode = 'home' }: { mode?: 'home' | 'over
   const niveauBreakdown = [...niveauMap.entries()]
     .map(([name, cnt]) => ({ name, count: cnt, pct: totalStudents > 0 ? Math.round((cnt / totalStudents) * 100) : 0 }))
     .sort((a, b) => b.count - a.count || a.name.localeCompare(b.name, 'fr'));
+
 
   const groupeMap = new Map<string, number>();
   for (const s of state.students) {
@@ -80,6 +82,9 @@ export default function WorkspaceHome({ mode = 'home' }: { mode?: 'home' | 'over
     .map(([name, cnt]) => ({ name, count: cnt, pct: totalStudents > 0 ? Math.round((cnt / totalStudents) * 100) : 0 }))
     .sort((a, b) => b.count - a.count || a.name.localeCompare(b.name, 'fr'));
 
+
+
+  const programsCount = count('programs') || filiereBreakdown.filter(f => f.name !== 'Non renseignée').length;
   const activeEvals = activeRows('evaluations').filter(e => !e.cancelled_at);
   const settledStudents = knownFinancialStudents.filter(s => (s.financials?.remaining ?? 0) <= 0 && (s.financials?.available === true || (s.financials?.expected ?? 0) > 0)).length;
   const debtorStudents = knownFinancialStudents.filter(s => (s.financials?.remaining ?? 0) > 0).length;
@@ -100,7 +105,7 @@ export default function WorkspaceHome({ mode = 'home' }: { mode?: 'home' | 'over
             { label: 'Comptes actifs', value: `${activeUsers}/${state.users.length}` },
             { label: 'Enseignants', value: `${count('teachers')}` },
             { label: 'Support ouvert', value: `${openTickets}` },
-            { label: 'Journal d’activité', value: `${count('audit_logs')}` },
+            { label: 'Personnel', value: `${count('staff')}` },
             { label: 'Dossiers étudiants', value: `${totalStudents}` },
           ],
         },
@@ -109,7 +114,7 @@ export default function WorkspaceHome({ mode = 'home' }: { mode?: 'home' | 'over
           href: '/finance',
           icon: TrendingUp,
           items: [
-            { label: 'Filières', value: `${filiereBreakdown.length}` },
+            { label: 'Filières', value: `${programsCount}` },
             { label: 'Groupes', value: `${count('groups')}` },
             { label: 'Épreuves', value: `${activeEvals.length}` },
             { label: 'Encaissé', value: fmtCompactFcfa(collectedAmount) },
@@ -127,7 +132,7 @@ export default function WorkspaceHome({ mode = 'home' }: { mode?: 'home' | 'over
           icon: GraduationCap,
           items: [
             { label: 'Dossiers', value: `${totalStudents}` },
-            { label: 'Filières', value: `${filiereBreakdown.length}` },
+            { label: 'Filières', value: `${programsCount}` },
             { label: 'Groupes', value: `${count('groups')}` },
             { label: 'Enseignants', value: `${count('teachers')}` },
           ],
@@ -155,7 +160,7 @@ export default function WorkspaceHome({ mode = 'home' }: { mode?: 'home' | 'over
           href: '/academique/referentiel',
           icon: BookOpen,
           items: [
-            { label: 'Filières', value: `${count('programs')}` },
+            { label: 'Filières', value: `${programsCount}` },
             { label: 'Groupes', value: `${count('groups')}` },
             { label: 'Matières', value: `${count('subjects')}` },
             { label: 'Enseignants', value: `${count('teachers')}` },
@@ -327,8 +332,10 @@ export default function WorkspaceHome({ mode = 'home' }: { mode?: 'home' | 'over
           items: [
             { label: 'Publications', value: `${count('communications')}` },
             { label: 'En ligne', value: `${publishedComms}` },
-            { label: 'Candidatures web', value: `${count('online_applications')}` },
-            { label: 'Filières', value: `${count('programs')}` },
+            { label: 'Articles web', value: `${count('annual_website_articles')}` },
+            { label: 'Concours & rentrées', value: `${count('annual_website_intakes')}` },
+            { label: 'Brochures', value: `${count('annual_website_brochures')}` },
+            { label: 'Filières', value: `${programsCount}` },
           ],
         },
       ];
