@@ -6,6 +6,7 @@ import { PaymentAllocationError, paymentAllocationDirectory, planPaymentAllocati
 import { PaymentAdjustmentError, assertPaymentAdjustment, paymentAdjustmentDirectory } from '@/services/paymentAdjustmentService';
 import { paymentReceiptDocument } from '@/services/paymentReceiptService';
 import { netContractAmount, netPaymentTotal } from '@/services/financialProjectionService';
+import { availableEnrollmentGroupLinks } from '@/services/enrollmentGroupReferenceService';
 import type { PersistentChange, RelationalSnapshot } from '@/types/persistence';
 export const dynamic='force-dynamic';
 async function scope(request: Request, matricule: string) {
@@ -46,7 +47,28 @@ export async function GET(request:Request,{params}:Params){try{
     const amount=netContractAmount(scoped,activeVersion.id);
     return [{id:contract.id,versionId:activeVersion.id,enrollmentId:enrollment.id,reference:String(contract.reference || contract.id),status:String(activeVersion.status),amount}];
   }):[];
-  return Response.json({revision:snapshot.revision,adjustmentDirectory:context.permissions.includes('finance.view')?paymentAdjustmentDirectory(scoped,ids):{payments:[],lines:[]},allocationDirectory:context.permissions.includes('finance.view')?paymentAllocationDirectory(scoped,ids):{payments:[],installments:[]},channels:context.permissions.includes('finance.view')?(snapshot.tables.annual_payment_channels || []).filter(row=>row.academic_year_id=== (enrollments[0] ? snapshot.tables.academic_offerings.find(offering=>offering.id===enrollments[0].offering_id)?.academic_year_id : null) && !row.archived_at).map(row=>({name:row.name,method:row.method})):[],enrollments:enrollments.map(row=>({id:row.id,status:row.status,enrolledOn:row.enrolled_on})),contracts,payments:payments.map(row=>({id:row.id,reference:row.reference,amount:row.amount,paidOn:row.paid_on,cancelled:reversals.has(row.id),pending:row.status==='PENDING'})),paid:context.permissions.includes('finance.view')?netPaymentTotal(scoped,ids):0},{headers:{'Cache-Control':'no-store'}});
+  const enrichedEnrollments=enrollments.map(row=>{
+    const activeGroupRows=(scoped.tables.enrollment_groups || [])
+      .filter(eg=>eg.enrollment_id===row.id && !eg.valid_until)
+      .sort((a,b)=>String(b.valid_from || '').localeCompare(String(a.valid_from || '')));
+    const currentGroupRow=activeGroupRows[0];
+    const currentGroup=currentGroupRow ? (snapshot.tables.groups || []).find(g=>g.id===currentGroupRow.group_id) : undefined;
+    const offeringLinks=availableEnrollmentGroupLinks(snapshot,(snapshot.tables.academic_offerings || []).filter(o=>o.id===row.offering_id));
+    const availableGroups=offeringLinks.map(link=>{
+      const grp=(snapshot.tables.groups || []).find(g=>g.id===link.group_id);
+      return {id:String(link.group_id),name:String(grp?.name || link.group_id)};
+    });
+    return {
+      id:row.id,
+      status:row.status,
+      enrolledOn:row.enrolled_on,
+      currentGroupId:currentGroupRow ? String(currentGroupRow.group_id) : null,
+      currentGroupName:currentGroup ? String(currentGroup.name || currentGroup.id) : null,
+      currentGroupValidFrom:currentGroupRow?.valid_from ? String(currentGroupRow.valid_from) : null,
+      availableGroups,
+    };
+  });
+  return Response.json({revision:snapshot.revision,adjustmentDirectory:context.permissions.includes('finance.view')?paymentAdjustmentDirectory(scoped,ids):{payments:[],lines:[]},allocationDirectory:context.permissions.includes('finance.view')?paymentAllocationDirectory(scoped,ids):{payments:[],installments:[]},channels:context.permissions.includes('finance.view')?(snapshot.tables.annual_payment_channels || []).filter(row=>row.academic_year_id=== (enrollments[0] ? snapshot.tables.academic_offerings.find(offering=>offering.id===enrollments[0].offering_id)?.academic_year_id : null) && !row.archived_at).map(row=>({name:row.name,method:row.method})):[],enrollments:enrichedEnrollments,contracts,payments:payments.map(row=>({id:row.id,reference:row.reference,amount:row.amount,paidOn:row.paid_on,cancelled:reversals.has(row.id),pending:row.status==='PENDING'})),paid:context.permissions.includes('finance.view')?netPaymentTotal(scoped,ids):0},{headers:{'Cache-Control':'no-store'}});
 }catch(error){return errorResponse(error);}}
 const common={revision:z.number().int().nonnegative(),enrollmentId:z.uuid(),reason:z.string().trim().min(3).max(1000)};
 const schema=z.discriminatedUnion('action',[
@@ -56,12 +78,13 @@ const schema=z.discriminatedUnion('action',[
   z.object({...common,action:z.literal('refund_payment'),paymentId:z.uuid(),amount:z.number().int().positive().max(Number.MAX_SAFE_INTEGER),reference:z.string().trim().min(2).max(160)}).strict(),
   z.object({...common,action:z.literal('credit_note'),lineId:z.uuid(),amount:z.number().int().positive().max(Number.MAX_SAFE_INTEGER)}).strict(),
   z.object({...common,action:z.literal('status'),status:z.enum(['SUSPENDU','ABANDON','INSCRIT'])}).strict(),
+  z.object({...common,action:z.literal('change_group'),groupId:z.uuid(),effectiveOn:z.iso.date()}).strict(),
   z.object({...common,action:z.literal('approve_contract'),dueOn:z.iso.date().optional()}).strict(),
 ]);
 export async function POST(request:Request,{params}:Params){try{
   const data=await scope(request,(await params).matricule);
   const body=schema.parse(await request.json());
-  requirePermission(data.context,body.action==='status'?'student.lifecycle.manage':body.action==='cancel_payment'?'payment.cancel':'payment.record');
+  requirePermission(data.context,(body.action==='status' || body.action==='change_group')?'student.lifecycle.manage':body.action==='cancel_payment'?'payment.cancel':'payment.record');
   const enrollment=data.enrollments.find(row=>row.id===body.enrollmentId);
   if(!enrollment)throw new RequestError(409,'L’inscription officielle doit être enregistrée dans cette année avant cette opération.');
   if(body.action==='cancel_payment' || body.action==='refund_payment' || body.action==='credit_note'){
@@ -85,7 +108,7 @@ export async function POST(request:Request,{params}:Params){try{
     if(selected?.status!=='CLOTUREE' && !data.snapshot.tables.annual_payment_channels?.some(channel=>channel.academic_year_id===data.year.selectedYearId && !channel.archived_at && channel.method===body.method && channel.name===body.provider)) throw new RequestError(409,'Choisissez une caisse et un mode configurés pour cette année.');
     const id=crypto.randomUUID();
     changes.push({table:'payments',operation:'insert',record:{id,enrollment_id:enrollment.id,payer_name:body.payer,amount:body.amount,method:body.method,provider:body.provider,reference:body.reference,paid_on:body.paidOn,recorded_by:data.context.accountId,comment:body.reason}});
-    changes.push({table:'receipts',operation:'insert',record:{id:crypto.randomUUID(),payment_id:id,reference:`REC-${id}`,snapshot:{matricule:data.student.matricule,academicYearId:data.year.selectedYearId,amount:body.amount,reference:body.reference,payer:body.payer,method:body.method,paidOn:body.paidOn},issued_by:data.context.accountId}});
+    changes.push({table:'receipts',operation:'insert',record:{id:crypto.randomUUID(),payment_id:id,reference:`REC-${id}`,snapshot:{matricule:data.student.matricule,academicYearId:data.year.selectedYearId,amount:body.amount,reference:body.reference,payer:payerName(body.payer),method:body.method,paidOn:body.paidOn},issued_by:data.context.accountId}});
     paymentId=id;
     const plan=planPaymentAllocations(data.scoped,{paymentId:id,enrollmentId:enrollment.id,amount:body.amount,actorId:data.context.accountId});
     changes.push(...plan.changes);
@@ -113,12 +136,30 @@ export async function POST(request:Request,{params}:Params){try{
       }
     }
     changes.push({table:'contract_versions',operation:'update',record:{id:version.id,status:'APPROVED',approved_by:data.context.accountId,approved_at:new Date().toISOString(),reason:body.reason}});
+  }else if(body.action==='change_group'){
+    if(!['INSCRIT','REINSCRIT'].includes(String(enrollment.status)))throw new RequestError(409,'Seul un étudiant inscrit ou réinscrit peut changer de groupe.');
+    const selected=data.year.years.find(year=>year.id===data.year.selectedYearId);
+    if(!selected || selected.status==='CLOTUREE')throw new RequestError(409,'L’année scolaire est clôturée : le changement de groupe n’est plus autorisé.');
+    if(body.effectiveOn<selected.starts_on || body.effectiveOn>selected.ends_on)throw new RequestError(400,'La date d’effet doit appartenir à l’année scolaire sélectionnée.');
+    const offeringLinks=availableEnrollmentGroupLinks(data.snapshot,(data.snapshot.tables.academic_offerings || []).filter(o=>o.id===enrollment.offering_id));
+    if(!offeringLinks.some(link=>link.group_id===body.groupId))throw new RequestError(409,'Choisissez un groupe actif rattaché à la même formation et au même niveau.');
+    const activeGroupRows=(data.snapshot.tables.enrollment_groups || [])
+      .filter(eg=>eg.enrollment_id===enrollment.id && !eg.valid_until)
+      .sort((a,b)=>String(b.valid_from || '').localeCompare(String(a.valid_from || '')));
+    const currentGroupRow=activeGroupRows[0];
+    if(currentGroupRow?.group_id===body.groupId)throw new RequestError(409,'L’étudiant est déjà affecté à ce groupe.');
+    if(currentGroupRow){
+      if(currentGroupRow.valid_from && body.effectiveOn<=String(currentGroupRow.valid_from))throw new RequestError(400,'La date d’effet doit être postérieure au début de l’affectation de groupe actuelle.');
+      changes.push({table:'enrollment_groups',operation:'update',record:{id:currentGroupRow.id,valid_until:body.effectiveOn,changed_by:data.context.accountId,reason:body.reason}});
+    }
+    changes.push({table:'enrollment_groups',operation:'insert',record:{id:crypto.randomUUID(),enrollment_id:enrollment.id,offering_id:enrollment.offering_id,group_id:body.groupId,valid_from:body.effectiveOn,changed_by:data.context.accountId,reason:body.reason}});
   }else{
     if(['DIPLOME','ABANDON'].includes(String(enrollment.status)) || body.status===enrollment.status)throw new RequestError(409,'Ce changement de statut nécessite une décision académique distincte.');
     changes.push({table:'enrollments',operation:'update',record:{id:enrollment.id,status:body.status}});
     changes.push({table:'enrollment_events',operation:'insert',record:{id:crypto.randomUUID(),enrollment_id:enrollment.id,old_status:enrollment.status,new_status:body.status,actor_id:data.context.accountId,reason:body.reason}});
   }
   const saved=await data.client.rpc(paymentId?'escen_payment_transaction':'escen_backend_transaction',{p_actor_id:data.context.accountId,p_expected_revision:body.revision,p_changes:changes,...(paymentId?{p_action:body.action==='payment'?'record':'reallocate',p_payment_id:paymentId}:{})});
-  if(saved.error)throw new RequestError(409,'Enregistrement refusé : actualisez le dossier et vérifiez les références. Aucune opération partielle n’a été enregistrée.');
+  if(saved.error)throw new RequestError(409,'Enregistrement refusé : actualisez le dossier et vérifiez les références. Aucune opération partielle n’a été conservée.');
   return Response.json({revision:saved.data,...allocationResult},{status:201});
 }catch(error){return errorResponse(error instanceof PaymentAllocationError || error instanceof PaymentAdjustmentError?new RequestError(409,error.message):error);}}
+function payerName(value:string){return value;}
