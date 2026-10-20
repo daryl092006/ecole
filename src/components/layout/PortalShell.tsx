@@ -73,7 +73,19 @@ export default function PortalShell({ children }: { children: ReactNode }) {
     if (destination.studentId) state.navigateToStudent(destination.studentId); else state.navigateTo(destination.tab, destination.subTab);
     setMenuOpen(false);
   };
-  if (!state.session || !state.authReady) return <div className="route-loading" role="status"><SchoolLogo /><p>Ouverture de la connexion…</p></div>;
+  if (!state.session || !state.authReady) {
+    return (
+      <div className="route-loading" role="status" aria-live="polite">
+        <div className="route-loading-card">
+          <SchoolLogo className="header-school-logo" priority />
+          <div className="route-loading-bar" aria-hidden="true">
+            <div className="route-loading-bar-fill" />
+          </div>
+          <p>Ouverture de la connexion…</p>
+        </div>
+      </div>
+    );
+  }
   return <><a href="#main-content" className="skip-link">Aller au contenu</a><div className={`app-wrapper ${menuOpen ? 'navigation-open' : ''}`}>
     <TopBar userName={state.session.name} destinations={destinations} onDestination={openDestination} menuOpen={menuOpen} onToggleMenu={() => setMenuOpen(open => !open)} activeRole={activeRole} availableRoles={state.session.availableRoles} searchQuery={state.searchQuery} onSearchChange={state.setSearchQuery} onRoleChange={state.handleRoleChange} notifications={state.notifications} onLogout={state.logout} />
     <div className="app-body">{menuOpen && <button className="navigation-backdrop" aria-label="Fermer la navigation" onClick={() => setMenuOpen(false)} />}
@@ -93,7 +105,7 @@ export default function PortalShell({ children }: { children: ReactNode }) {
         )}
         {!allowed ? <section className="card route-denied"><h1>Accès refusé</h1><p>Cette page n’est pas disponible pour votre rôle.</p><Link className="btn btn-primary" href={HOME_PATH}>Revenir à mon espace</Link></section> : <>
           {state.actionFeedback && <div className="restricted-box action-feedback" role="alert"><span>{state.actionFeedback}</span><IconButton className="btn btn-sm btn-outline" onClick={state.clearActionFeedback} label="Fermer" /></div>}
-          {state.campusLoad.status === 'loading' || state.campusLoad.status === 'idle' ? <LoadingState label="Chargement des dossiers…" />
+          {state.campusLoad.status === 'loading' || state.campusLoad.status === 'idle' ? <LoadingState label="Chargement des dossiers…" variant={currentTab === 'dashboard_global' || currentTab === 'espace' ? 'cards' : 'table'} />
             : state.campusLoad.status === 'error' ? <section className="card" role="alert"><h1>Chargement impossible</h1><p>{state.campusLoad.error}</p><IconButton className="btn btn-primary" onClick={state.reloadCampus} label="Réessayer le chargement" /></section>
               : <>
                 {state.actionOutcome && <ActionResult title={state.actionOutcome.title} href={state.actionOutcome.href && isRouteAllowed(state.actionOutcome.href.split('?')[0], activeRole) ? state.actionOutcome.href : undefined} nextLabel={state.actionOutcome.nextLabel} onDismiss={state.clearActionOutcome}>{state.actionOutcome.detail}</ActionResult>}
