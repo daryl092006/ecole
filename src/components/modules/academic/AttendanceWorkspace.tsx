@@ -10,6 +10,7 @@ import WorkPage from '@/components/ui/WorkPage';
 import ReviewedForm from '@/components/ui/ReviewedForm';
 import DrawerActions from '@/components/ui/DrawerActions';
 import HistoricalWorkspace from '@/components/modules/history/HistoricalWorkspace';
+import StudentRecordDialog from '../StudentRecordDialog';
 
 type Draft = { status: AttendanceStatus | ''; arrivedAt: string; leftAt: string; lateMinutes: string; comment: string };
 type Operation = { kind: 'students' } | { kind: 'teacher' } | { kind: 'review'; justification: AttendanceJustification; decision: 'VALIDE' | 'REFUSE' };
@@ -36,6 +37,7 @@ export default function AttendanceWorkspace() {
   const [success, setSuccess] = useState('');
   const [fileError, setFileError] = useState('');
   const [archives, setArchives] = useState(false);
+  const [selectedStudentMatricule, setSelectedStudentMatricule] = useState<string | null>(null);
   useEffect(() => {
     const controller = new AbortController();
     setLoading(true); setError(''); setOperation(null); setArchives(false);
@@ -100,7 +102,19 @@ export default function AttendanceWorkspace() {
         {session.canRecordStudents && <button className="btn btn-primary" onClick={() => open({ kind: 'students' })}>Saisir ou corriger les présences</button>}
         <ResponsiveTable className="data-table"><thead><tr><th>Étudiant</th><th>Présence</th><th>Horaires</th><th>Commentaire</th></tr></thead><tbody>{session.students.map(student => {
           const attendance = session.attendances.find(row => row.enrollmentId === student.enrollmentId);
-          return <tr key={student.enrollmentId}><td>{student.name}<div className="cell-sub">{student.matricule}</div></td><td>{attendance ? ATTENDANCE_LABELS[attendance.status] : 'Non renseignée'}</td><td>{date(attendance?.arrivedAt || null)} → {date(attendance?.leftAt || null)}{attendance?.lateMinutes != null && <div>{attendance.lateMinutes} min de retard</div>}</td><td>{attendance?.comment || '—'}{attendance?.reason && <div className="cell-sub">Motif : {attendance.reason}</div>}</td></tr>;
+          return <tr key={student.enrollmentId}><td>
+            <strong>{student.name}</strong>
+            <div className="cell-sub">{student.matricule}</div>
+            {portal.perms.permissions.includes('student.view') && !portal.perms.scope.ownDataOnly && student.matricule && (
+              <button
+                type="button"
+                className="btn btn-sm btn-outline mt-1"
+                onClick={() => setSelectedStudentMatricule(student.matricule)}
+              >
+                Dossier étudiant
+              </button>
+            )}
+          </td><td>{attendance ? ATTENDANCE_LABELS[attendance.status] : 'Non renseignée'}</td><td>{date(attendance?.arrivedAt || null)} → {date(attendance?.leftAt || null)}{attendance?.lateMinutes != null && <div>{attendance.lateMinutes} min de retard</div>}</td><td>{attendance?.comment || '—'}{attendance?.reason && <div className="cell-sub">Motif : {attendance.reason}</div>}</td></tr>;
         })}{!session.students.length && <tr><td colSpan={4}>Aucun étudiant rattaché à ce groupe à la date de la séance.</td></tr>}</tbody></ResponsiveTable>
       </section>
       <section className="card"><h2>Présence enseignante</h2>{session.canRecordTeacher && <button className="btn btn-outline" onClick={() => open({ kind: 'teacher' })}>Enregistrer la présence enseignante</button>}
@@ -146,5 +160,11 @@ export default function AttendanceWorkspace() {
         </fieldset>
       </ReviewedForm></WorkPage>}
     </>}
+    {selectedStudentMatricule && (
+      <StudentRecordDialog
+        matricule={selectedStudentMatricule}
+        onClose={() => setSelectedStudentMatricule(null)}
+      />
+    )}
   </div>;
 }

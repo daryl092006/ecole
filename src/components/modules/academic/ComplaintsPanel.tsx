@@ -12,6 +12,9 @@ import { getSupabaseBrowserClient } from '@/lib/supabase/client';
 import LoadingState from '@/components/ui/LoadingState';
 import WorkPage from '@/components/ui/WorkPage';
 import ReviewedForm from '@/components/ui/ReviewedForm';
+import PersistentExamCopies from './PersistentExamCopies';
+import EvaluationGradeDialog from './EvaluationGradeDialog';
+import StudentRecordDialog from '../StudentRecordDialog';
 
 interface ComplaintDirectory { revision: number; complaints: DatabaseRow[]; events: DatabaseRow[]; revisions: DatabaseRow[]; }
 interface TransitionAction { complaint: DatabaseRow; target: ComplaintWorkflowStatus; label: string; correction?: boolean; }
@@ -32,6 +35,9 @@ export default function ComplaintsPanel() {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
   const [message, setMessage] = useState('');
+  const [viewingCopy, setViewingCopy] = useState<{ evaluationId: string; candidateId: string } | null>(null);
+  const [viewingEvaluationId, setViewingEvaluationId] = useState<string | null>(null);
+  const [viewingStudentMatricule, setViewingStudentMatricule] = useState<string | null>(null);
   const preciseYear = !!portal.academicYearContext?.selectedYearId;
   const canDeposit = permissions.includes('complaint.view') && [ROLES.STUD, ROLES.DEL, ROLES.IT].includes(portal.activeRole as typeof ROLES.STUD);
   const canReview = permissions.includes('complaint.review');
@@ -113,16 +119,59 @@ export default function ComplaintsPanel() {
     {message && <p role="status">{message}</p>}
     {loadError ? <section className="card" role="alert"><p>{loadError}</p><button className="btn btn-outline" onClick={() => setRetry(value => value + 1)}>Réessayer</button></section> : !directory ? <LoadingState label="Chargement des réclamations…" /> : <section className="card card-full">
       <div className="card-header"><h2>Réclamations ({records.length})</h2><label className="form-group">État du traitement<select className="select-input" value={filter} onChange={event => setFilter(event.target.value)}><option value="">Toutes</option><option value="EN_COURS">En cours</option><option value="CLOTUREE">Clôturées</option></select></label></div>
-      {records.map(complaint => <article className="ledger-item" key={complaint.id}>
-        <div className="catalog-item"><strong>{complaintLabel(complaint)}</strong><span className="pill pill-default">{connectedRecordValue('complaints', 'status', complaint.status, snapshot)}</span></div>
-        <p>{String(complaint.reason || '')}</p>
-        {controls(complaint)}
-        <details><summary>Historique du traitement</summary>
-          <p>Motif du dépôt : {String(complaint.reason || 'Non renseigné')}</p>
-          {directory.events.filter(row => row.complaint_id === complaint.id).sort((a, b) => String(a.happened_at || '').localeCompare(String(b.happened_at || ''))).map(event => <p key={event.id}>{connectedRecordValue('complaint_events', 'happened_at', event.happened_at, snapshot)} · {connectedRecordValue('complaint_events', 'from_status', event.from_status, snapshot)} → {connectedRecordValue('complaint_events', 'to_status', event.to_status, snapshot)} · {String(event.reason || '')} · Auteur : {String(event.actor_id || 'Non renseigné')}</p>)}
-          {directory.revisions.filter(row => row.complaint_id === complaint.id).map(revision => <p key={revision.id}>Correction : {String(revision.old_value)} → {String(revision.new_value)}/20 · {String(revision.reason || '')}</p>)}
-        </details>
-      </article>)}
+      {records.map(complaint => {
+        const candidate = candidates.find(row => row.id === complaint.candidate_id);
+        const evalId = String(complaint.evaluation_id || candidate?.evaluation_id || '');
+        const hasOnlineCopy = Boolean(complaint.has_online_copy || (snapshot.tables.exam_attempts || []).some(a => a.candidate_id === complaint.candidate_id));
+        const studentMat = typeof complaint.student_matricule === 'string' && complaint.student_matricule
+          ? complaint.student_matricule
+          : (() => {
+              const enr = candidate ? snapshot.tables.enrollments?.find(e => e.id === candidate.enrollment_id) : undefined;
+              const stud = enr ? snapshot.tables.students?.find(s => s.id === enr.student_id) : undefined;
+              return stud?.matricule ? String(stud.matricule) : '';
+            })();
+        const gradeRow = grades.find(g => g.id === complaint.grade_id);
+        const displayGrade = complaint.grade_value !== undefined && complaint.grade_value !== null
+          ? `${Number(complaint.grade_value)} / 20`
+          : gradeRow?.value != null
+          ? `${Number(gradeRow.value)} / 20`
+          : (complaint.absence_status || gradeRow?.absence_status)
+          ? connectedRecordValue('grades', 'absence_status', complaint.absence_status || gradeRow?.absence_status, snapshot)
+          : null;
+        return <article className="ledger-item" key={complaint.id}>
+          <div className="catalog-item">
+            <div>
+              <strong>{complaintLabel(complaint)}</strong>
+              {displayGrade && <span className="cell-sub" style={{ marginLeft: 8 }}>· Note actuelle : <strong>{displayGrade}</strong></span>}
+            </div>
+            <span className="pill pill-default">{connectedRecordValue('complaints', 'status', complaint.status, snapshot)}</span>
+          </div>
+          <p>{String(complaint.reason || '')}</p>
+          <div className="btn-group" style={{ flexWrap: 'wrap', gap: 8 }}>
+            {controls(complaint)}
+            {hasOnlineCopy && evalId && (
+              <button type="button" className="btn btn-sm btn-outline" onClick={() => setViewingCopy({ evaluationId: evalId, candidateId: String(complaint.candidate_id) })}>
+                Consulter la copie en ligne
+              </button>
+            )}
+            {evalId && (permissions.includes('grade.review') || permissions.includes('grade.enter') || permissions.includes('grade.approve')) && (
+              <button type="button" className="btn btn-sm btn-outline" onClick={() => setViewingEvaluationId(evalId)}>
+                Grille de l’évaluation
+              </button>
+            )}
+            {studentMat && permissions.includes('student.view') && !portal.perms.scope.ownDataOnly && (
+              <button type="button" className="btn btn-sm btn-outline" onClick={() => setViewingStudentMatricule(studentMat)}>
+                Dossier étudiant ({studentMat})
+              </button>
+            )}
+          </div>
+          <details><summary>Historique du traitement</summary>
+            <p>Motif du dépôt : {String(complaint.reason || 'Non renseigné')}</p>
+            {directory.events.filter(row => row.complaint_id === complaint.id).sort((a, b) => String(a.happened_at || '').localeCompare(String(b.happened_at || ''))).map(event => <p key={event.id}>{connectedRecordValue('complaint_events', 'happened_at', event.happened_at, snapshot)} · {connectedRecordValue('complaint_events', 'from_status', event.from_status, snapshot)} → {connectedRecordValue('complaint_events', 'to_status', event.to_status, snapshot)} · {String(event.reason || '')} · Auteur : {String(event.actor_id || 'Non renseigné')}</p>)}
+            {directory.revisions.filter(row => row.complaint_id === complaint.id).map(revision => <p key={revision.id}>Correction : {String(revision.old_value)} → {String(revision.new_value)}/20 · {String(revision.reason || '')}</p>)}
+          </details>
+        </article>;
+      })}
       {!records.length && <p>Aucune réclamation pour ce filtre dans votre périmètre.</p>}
     </section>}
     {(creating || selected) && <WorkPage title={creating ? 'Déposer une réclamation' : selected!.label} busy={busy} onClose={() => { setCreating(false); setSelected(null); }}>
@@ -137,5 +186,8 @@ export default function ComplaintsPanel() {
         <DrawerActions><button className="btn btn-primary" disabled={creating && !eligibleGrades.length}>Vérifier les informations</button></DrawerActions>
       </ReviewedForm>
     </WorkPage>}
+    {viewingCopy && <PersistentExamCopies evaluationId={viewingCopy.evaluationId} candidateId={viewingCopy.candidateId} onClose={() => setViewingCopy(null)} />}
+    {viewingEvaluationId && <EvaluationGradeDialog evaluationId={viewingEvaluationId} onClose={() => { setViewingEvaluationId(null); setRetry(v => v + 1); }} />}
+    {viewingStudentMatricule && <StudentRecordDialog matricule={viewingStudentMatricule} onClose={() => setViewingStudentMatricule(null)} />}
   </div>;
 }

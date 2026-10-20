@@ -320,11 +320,43 @@ function EvaluationGrades({ evaluationId, busy, setBusy }: { evaluationId: strin
                 const hasSubmittedOnlineCopy = lastAttempt && ['REMISE', 'EXPIREE'].includes(String(lastAttempt.status));
                 const statusLabel = evaluationCandidateStatusLabel(grade, lastAttempt?.status);
                 const noteLabel = evaluationGradeNoteLabel(grade, lastAttempt?.status);
+                const candidateComplaint = (snapshot.tables.complaints || []).find(comp => comp.candidate_id === c.id || (grade && comp.grade_id === grade.id));
+                const assignmentSessionIds = new Set(
+                  (snapshot.tables.sessions || [])
+                    .filter(s => s.assignment_id === evaluation.assignment_id)
+                    .map(s => String(s.id)),
+                );
+                const candidateAttendances = (snapshot.tables.attendances || []).filter(
+                  att => att.enrollment_id === c.enrollment_id && assignmentSessionIds.has(String(att.session_id)),
+                );
+                const candidateAttendanceIds = new Set(candidateAttendances.map(att => String(att.id)));
+                const candidateJustifications = (snapshot.tables.absence_justifications || []).filter(j =>
+                  candidateAttendanceIds.has(String(j.attendance_id)),
+                );
+                const hasValidatedJustification =
+                  candidateAttendances.some(att => att.status === 'ABSENT_JUSTIFIE') ||
+                  candidateJustifications.some(j => j.status === 'VALIDE');
+                const hasPendingJustification = candidateJustifications.some(j => j.status === 'EN_ATTENTE');
 
                 return (
                   <tr key={c.id}>
                     <td>
                       <strong>{studentName}</strong>
+                      {(candidateComplaint || hasValidatedJustification || hasPendingJustification) && (
+                        <div className="cell-sub" style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginTop: 4 }}>
+                          {hasValidatedJustification && (
+                            <span className="pill pill-success">Justificatif d’absence validé en séance</span>
+                          )}
+                          {!hasValidatedJustification && hasPendingJustification && (
+                            <span className="pill pill-warning">Justificatif d’absence en attente</span>
+                          )}
+                          {candidateComplaint && (
+                            <span className={`pill ${candidateComplaint.status === 'CLOTUREE' ? 'pill-default' : 'pill-warning'}`}>
+                              Réclamation : {String(candidateComplaint.status)}
+                            </span>
+                          )}
+                        </div>
+                      )}
                     </td>
                     <td>
                       {canEnter ? (

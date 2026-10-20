@@ -42,6 +42,7 @@ export default function ConnectedDomainWorkspace({ section, studentMatricule }: 
   const nativeStudent = snapshot.tables.students?.find(item => item.matricule === dossier);
   const ids = (table: string, key: string, parents: Set<unknown>) => new Set<unknown>((snapshot.tables[table] || []).filter(row => parents.has(row[key])).map(row => row.id));
   const enrollments = ids('enrollments', 'student_id', new Set(nativeStudent ? [nativeStudent.id] : []));
+  const attendances = ids('attendances', 'enrollment_id', enrollments);
   const candidates = ids('evaluation_candidates', 'enrollment_id', enrollments);
   const grades = ids('grades', 'candidate_id', candidates);
   const decisions = ids('jury_decisions', 'enrollment_id', enrollments);
@@ -53,18 +54,20 @@ export default function ConnectedDomainWorkspace({ section, studentMatricule }: 
   const inDossier = (row: DatabaseRow) => {
     if (!nativeStudent) return false;
     if (collection === 'enrollments') return enrollments.has(row.id);
-    if (['enrollment_groups', 'enrollment_events', 'financial_contracts', 'payments', 'scholarship_awards'].includes(collection)) return enrollments.has(row.enrollment_id);
+    if (['enrollment_groups', 'enrollment_events', 'financial_contracts', 'payments', 'scholarship_awards', 'attendances'].includes(collection)) return enrollments.has(row.enrollment_id);
+    if (collection === 'absence_justifications') return attendances.has(row.attendance_id);
     if (['receipts', 'payment_reversals'].includes(collection)) return payments.has(row.payment_id);
     if (collection === 'installments') return versions.has(row.version_id);
     if (['student_documents', 'generated_documents'].includes(collection)) return row.student_id === nativeStudent.id;
     if (collection === 'grades') return candidates.has(row.candidate_id);
+    if (collection === 'complaints') return candidates.has(row.candidate_id) || grades.has(row.grade_id);
     if (collection === 'grade_revisions') return grades.has(row.grade_id);
     if (collection === 'evaluation_transitions') return evaluations.has(row.evaluation_id);
     if (collection === 'jury_decisions') return decisions.has(row.id);
     if (collection === 'juries') return juries.has(row.id);
     return false;
   };
-  const collections = contextual ? definition.collections.filter(item => !['document_types', 'document_requirements'].includes(item.table)) : definition.collections;
+  const collections = contextual ? definition.collections.filter(item => !['document_types', 'document_requirements', 'teacher_attendances'].includes(item.table)) : definition.collections;
   const originalConfig = definition.collections.find(item => item.table === collection);
   const config = originalConfig && collection === 'receipts' ? { ...originalConfig, columns: [...originalConfig.columns, 'status'] } : originalConfig;
   const dateKey = ({ payments: 'paid_on', installments: 'due_on', financial_contracts: 'created_at', receipts: 'issued_at', payment_reversals: 'reversed_at' } as Record<string, string>)[collection];

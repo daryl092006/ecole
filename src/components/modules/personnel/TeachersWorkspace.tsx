@@ -83,16 +83,71 @@ export default function TeachersWorkspace() {
     {!directory.selectedYearId && <p className="restricted-box">Choisissez une année scolaire précise pour consulter et gérer ses affectations.</p>}
     <nav className="record-sections" aria-label="Données enseignants"><button className={section === 'teachers' ? 'selected' : ''} aria-pressed={section === 'teachers'} onClick={() => setSection('teachers')}>Enseignants ({directory.teachers.length})</button><button className={section === 'assignments' ? 'selected' : ''} aria-pressed={section === 'assignments'} onClick={() => setSection('assignments')}>Affectations ({directory.assignments.length})</button></nav>
     {section === 'teachers' ? <section className="card card-full"><label className="form-group">Rechercher un enseignant<input className="input" type="search" value={query} onChange={event => setQuery(event.target.value)} /></label>
-      <ResponsiveTable className="data-table"><thead><tr><th>Enseignant</th><th>Spécialité</th><th>Statut</th><th>Actions</th></tr></thead><tbody>{filtered.map(teacher => <tr key={teacher.id}>
-        <td>{teacher.name}<div className="cell-sub">{teacher.employeeNumber}</div></td><td>{teacher.specialty || 'Non renseignée'}</td><td>{teacher.active ? 'Actif' : 'Inactif'}</td><td><div className="btn-group">
-          {directory.canManageProfiles && <><button className="btn btn-sm btn-outline" onClick={() => open({ kind: 'update_profile', teacher })}>Modifier le profil</button><button className="btn btn-sm btn-outline" onClick={() => open({ kind: 'set_active', teacher })}>{teacher.active ? 'Désactiver' : 'Activer'}</button></>}
-          {directory.canManageAssignments && teacher.active && <button className="btn btn-sm btn-outline" onClick={() => open({ kind: 'create_assignment' }, teacher.id)}>Affecter</button>}
-        </div></td></tr>)}{!filtered.length && <tr><td colSpan={4}>Aucun enseignant pour cette recherche.</td></tr>}</tbody></ResponsiveTable>
+      <ResponsiveTable className="data-table"><thead><tr><th>Enseignant</th><th>Spécialité</th><th>Statut</th><th>Actions</th></tr></thead><tbody>{filtered.map(teacher => {
+        const teacherAssignments = directory.assignments.filter(a => a.teacherId === teacher.id);
+        const teacherAssignmentIds = new Set(teacherAssignments.map(a => a.id));
+        const sessionCount = (portal.relationalSnapshot.tables.sessions || []).filter(
+          s => s.teacher_id === teacher.id || s.replacement_teacher_id === teacher.id,
+        ).length;
+        const teacherEvals = (portal.relationalSnapshot.tables.evaluations || []).filter(e =>
+          teacherAssignmentIds.has(String(e.assignment_id)),
+        );
+        const teacherEvalIds = new Set(teacherEvals.map(e => String(e.id)));
+        const teacherCandidates = (portal.relationalSnapshot.tables.evaluation_candidates || []).filter(c =>
+          teacherEvalIds.has(String(c.evaluation_id)),
+        );
+        const gradesByCand = new Map(
+          (portal.relationalSnapshot.tables.grades || []).map(g => [String(g.candidate_id), g]),
+        );
+        const pendingCopiesCount = teacherCandidates.filter(c => {
+          const g = gradesByCand.get(String(c.id));
+          return !g || (g.value === null && !['ABSENT', 'JUSTIFIE'].includes(String(g.absence_status || '')));
+        }).length;
+
+        return <tr key={teacher.id}>
+          <td>
+            <strong>{teacher.name}</strong>
+            <div className="cell-sub">{teacher.employeeNumber}</div>
+            <div className="cell-sub" style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginTop: 4 }}>
+              <span>{teacherAssignments.length} affectation{teacherAssignments.length > 1 ? 's' : ''}</span>
+              <span>· {sessionCount} séance{sessionCount > 1 ? 's' : ''}</span>
+              {teacherEvals.length > 0 && <span>· {teacherEvals.length} épreuve{teacherEvals.length > 1 ? 's' : ''}</span>}
+              {pendingCopiesCount > 0 && (
+                <span className="pill pill-warning" style={{ fontSize: '0.75rem', padding: '1px 6px' }}>
+                  {pendingCopiesCount} copie{pendingCopiesCount > 1 ? 's' : ''} à corriger
+                </span>
+              )}
+            </div>
+          </td><td>{teacher.specialty || 'Non renseignée'}</td><td>{teacher.active ? 'Actif' : 'Inactif'}</td><td><div className="btn-group">
+            {directory.canManageProfiles && <><button className="btn btn-sm btn-outline" onClick={() => open({ kind: 'update_profile', teacher })}>Modifier le profil</button><button className="btn btn-sm btn-outline" onClick={() => open({ kind: 'set_active', teacher })}>{teacher.active ? 'Désactiver' : 'Activer'}</button></>}
+            {directory.canManageAssignments && teacher.active && <button className="btn btn-sm btn-outline" onClick={() => open({ kind: 'create_assignment' }, teacher.id)}>Affecter</button>}
+          </div></td></tr>;
+      })}{!filtered.length && <tr><td colSpan={4}>Aucun enseignant pour cette recherche.</td></tr>}</tbody></ResponsiveTable>
       {directory.canManageProfiles && <p><Link href="/personnel">Ouvrir les dossiers du personnel pour créer ou modifier une identité</Link></p>}
-    </section> : <section className="card card-full"><ResponsiveTable className="data-table"><thead><tr><th>Enseignant</th><th>Groupe et formation</th><th>Matière</th><th>Dates</th><th>Actions</th></tr></thead><tbody>{directory.assignments.map(assignment => <tr key={assignment.id}>
-      <td>{teacherName(assignment.teacherId)}</td><td>{groupName(assignment.groupId)}<div className="cell-sub">{offeringName(assignment.offeringId)}</div></td><td>{componentName(assignment.componentId)}</td><td>{assignment.validFrom} → {assignment.validUntil || 'Sans date de fin'}</td>
-      <td>{directory.canManageAssignments && <button className="btn btn-sm btn-outline" onClick={() => open({ kind: 'end_assignment', assignment })}>Terminer l’affectation</button>}</td>
-    </tr>)}{!directory.assignments.length && <tr><td colSpan={5}>Aucune affectation dans cette année et ce périmètre.</td></tr>}</tbody></ResponsiveTable></section>}
+    </section> : <section className="card card-full"><ResponsiveTable className="data-table"><thead><tr><th>Enseignant</th><th>Groupe et formation</th><th>Matière</th><th>Dates</th><th>Actions</th></tr></thead><tbody>{directory.assignments.map(assignment => {
+      const assignmentSessions = (portal.relationalSnapshot.tables.sessions || []).filter(
+        s => s.assignment_id === assignment.id,
+      ).length;
+      const assignmentEvals = (portal.relationalSnapshot.tables.evaluations || []).filter(
+        e => e.assignment_id === assignment.id && !e.cancelled_at,
+      ).length;
+
+      return <tr key={assignment.id}>
+        <td>{teacherName(assignment.teacherId)}</td>
+        <td>
+          <strong>{groupName(assignment.groupId)}</strong>
+          <div className="cell-sub">{offeringName(assignment.offeringId)}</div>
+          <div className="cell-sub" style={{ display: 'flex', gap: 6, marginTop: 4 }}>
+            <Link href="/academique/emploi-du-temps" style={{ fontSize: '0.8rem' }}>{assignmentSessions} séance{assignmentSessions > 1 ? 's' : ''} →</Link>
+            <span>·</span>
+            <Link href="/academique/evaluations" style={{ fontSize: '0.8rem' }}>{assignmentEvals} épreuve{assignmentEvals > 1 ? 's' : ''} →</Link>
+          </div>
+        </td>
+        <td>{componentName(assignment.componentId)}</td>
+        <td>{assignment.validFrom} → {assignment.validUntil || 'Sans date de fin'}</td>
+        <td>{directory.canManageAssignments && <button className="btn btn-sm btn-outline" onClick={() => open({ kind: 'end_assignment', assignment })}>Terminer l’affectation</button>}</td>
+      </tr>;
+    })}{!directory.assignments.length && <tr><td colSpan={5}>Aucune affectation dans cette année et ce périmètre.</td></tr>}</tbody></ResponsiveTable></section>}
     {operation && <WorkPage busy={saving} title={title} onClose={() => setOperation(null)}><ReviewedForm busy={saving} error={saveError}
       confirmLabel={`Confirmer : ${title.toLocaleLowerCase('fr')}`} fields={[...fields, { label: 'Motif', value: form.reason }]} consequence={consequence}
       validate={() => operation.kind === 'create_assignment' && form.validUntil && form.validUntil < form.validFrom ? 'La date de fin ne peut pas précéder la date de début.' : null}
