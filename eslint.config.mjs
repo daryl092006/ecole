@@ -24,7 +24,7 @@ const eslintConfig = defineConfig([
     '.next-responsive-audit/**',
     '.tmp/**',
     'test-results/**',
-    'tmp/next-annual-offerings/**',
+    'tmp/**',
     'out/**',
     'build/**',
     'next-env.d.ts',
