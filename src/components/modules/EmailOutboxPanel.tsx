@@ -6,6 +6,7 @@ import type { EmailPage, EmailRecord, EmailStatus } from '@/types/email';
 import { getSupabaseBrowserClient } from '@/lib/supabase/client';
 import { academicYearRequestHeaders } from '@/services/academicYearSelection';
 import LoadingState from '@/components/ui/LoadingState';
+import ErrorState from '@/components/ui/ErrorState';
 import ResponsiveTable from '@/components/ui/ResponsiveTable';
 import IconButton from '@/components/ui/IconButton';
 import WorkPage from '@/components/ui/WorkPage';
@@ -67,7 +68,7 @@ export default function EmailOutboxPanel() {
   return <section className="card card-full">
     <div className="setup-actions"><div><h1>Suivi des mails</h1><p>Notifications liées aux actions de l’année consultée.</p></div><button className="btn btn-outline" onClick={() => setRevision(value => value + 1)}>Actualiser</button></div>
     {message && <p role="status">{message}</p>}
-    {error ? <div role="alert"><p>{error}</p><button className="btn btn-outline" onClick={() => setRevision(value => value + 1)}>Réessayer</button></div> : !page ? <LoadingState label="Chargement des mails…" /> : <>
+    {error ? <ErrorState title="Mails indisponibles" message={error} onRetry={() => setRevision(value => value + 1)} /> : !page ? <LoadingState label="Chargement des mails…" variant="table" /> : <>
       {!page.configuration.ready && <p className="info-box" role="status">Envoi non configuré. Les messages restent en attente.</p>}
       <p className="cell-sub">« Accepté par le service » ne confirme pas la réception dans la boîte mail.</p>
       <ResponsiveTable className="data-table"><thead><tr><th>Date</th><th>Destinataire</th><th>Objet</th><th>État</th><th>Actions</th></tr></thead><tbody>

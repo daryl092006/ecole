@@ -7,6 +7,7 @@ import { loadTeachers, manageTeacher } from '@/services/remoteCampusService';
 import { evaluationGradeIsComplete } from '@/services/evaluationGradePolicy';
 import type { TeacherCommand, TeacherDirectory, TeacherProfile, TeachingAssignmentRecord } from '@/types/teachers';
 import LoadingState from '@/components/ui/LoadingState';
+import ErrorState from '@/components/ui/ErrorState';
 import ResponsiveTable from '@/components/ui/ResponsiveTable';
 import WorkPage from '@/components/ui/WorkPage';
 import ReviewedForm, { type ReviewField } from '@/components/ui/ReviewedForm';
@@ -45,8 +46,8 @@ export default function TeachersWorkspace() {
     setForm({ ...blank(), teacherId, ...('teacher' in next ? { specialty: next.teacher.specialty } : {}),
       ...(next.kind === 'end_assignment' ? { endOn: next.assignment.validUntil || new Date().toISOString().slice(0, 10) } : {}) });
   };
-  if (loading) return <LoadingState label="Chargement des enseignants et affectations…" />;
-  if (error || !directory) return <section className="card" role="alert"><p>{error || 'Annuaire indisponible.'}</p><button className="btn btn-outline" onClick={() => setReload(value => value + 1)}>Réessayer</button></section>;
+  if (loading) return <LoadingState label="Chargement des enseignants et affectations…" variant="table" />;
+  if (error || !directory) return <ErrorState title="Annuaire indisponible" message={error || 'Les enseignants et leurs affectations n’ont pas pu être chargés.'} onRetry={() => setReload(value => value + 1)} />;
   const offering = directory.offerings.find(row => row.id === form.offeringId);
   const teacherName = (id: string) => directory.teachers.find(row => row.id === id)?.name || 'Enseignant indisponible';
   const offeringName = (id: string) => directory.offerings.find(row => row.id === id)?.label || 'Formation indisponible';

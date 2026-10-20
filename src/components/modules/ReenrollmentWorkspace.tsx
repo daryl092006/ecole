@@ -2,6 +2,7 @@
 import IconButton from '@/components/ui/IconButton';
 import EnrollmentDialog from './EnrollmentDialog';
 import LoadingState from '@/components/ui/LoadingState';
+import ErrorState from '@/components/ui/ErrorState';
 import { useEffect, useState } from 'react';
 import StudentRecordDialog from './StudentRecordDialog';
 import ConnectedDomainWorkspace from './ConnectedDomainWorkspace';
@@ -52,12 +53,9 @@ export default function ReenrollmentWorkspace() {
       {view === 'status' ? (
         <ConnectedDomainWorkspace section="stud_status" />
       ) : error ? (
-        <section className="card" role="alert">
-          <p>{error}</p>
-          <IconButton className="btn btn-outline" onClick={() => setRetry(value => value + 1)} label="Réessayer" />
-        </section>
+        <ErrorState title="Réinscriptions indisponibles" message={error} onRetry={() => setRetry(value => value + 1)} />
       ) : !data ? (
-        <LoadingState label="Vérification des inscriptions annuelles…" />
+        <LoadingState label="Vérification des inscriptions annuelles…" variant="table" />
       ) : (
         <section className="card card-full">
           <h2>À réinscrire en {data.target.name}</h2>

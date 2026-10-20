@@ -1,5 +1,6 @@
 'use client';
 import Link from 'next/link';
+import ErrorState from '@/components/ui/ErrorState';
 export default function PortalError({ reset }: { reset: () => void }) {
-  return <section className="card route-denied"><h1>La page n’a pas pu s’ouvrir</h1><p>Réessayez ou revenez à votre espace.</p><div className="btn-group"><button className="btn btn-primary" onClick={reset}>Réessayer</button><Link className="btn btn-outline" href="/mon-espace">Mon espace</Link></div></section>;
+  return <ErrorState title="La page n’a pas pu s’ouvrir" message="Réessayez ou revenez à votre espace." onRetry={reset}><Link className="btn btn-outline" href="/mon-espace">Mon espace</Link></ErrorState>;
 }

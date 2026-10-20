@@ -32,6 +32,7 @@
     "**/*.mts",
     "**/*.ts",
     "**/*.tsx",
+    ".next-responsive-audit/types/**/*.ts",
     ".next-ui-tests/types/**/*.ts",
     ".next-verification/types/**/*.ts",
     ".next/dev/types/**/*.ts",
@@ -43,7 +44,7 @@
     ".tmp/next-development/types/**/*.ts",
     ".tmp/next-ui-development/types/**/*.ts",
     "next-env.d.ts",
-    ".next-responsive-audit/types/**/*.ts"
+    "tmp/next-visual-refresh/types/**/*.ts"
   ],
   "exclude": [
     "node_modules",

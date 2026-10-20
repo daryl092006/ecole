@@ -7,6 +7,7 @@ import { usePortal } from '@/hooks/usePortal';
 import { getPortalRoute, HOME_PATH, MODULE_PATHS } from '@/constants/portalRoutes';
 import { isRouteAllowed } from '@/permissions/navigation';
 import LoadingState from '@/components/ui/LoadingState';
+import ErrorState from '@/components/ui/ErrorState';
 import AcademicYearControl from '@/components/layout/AcademicYearControl';
 import TopBar, { type SearchDestination } from '@/components/layout/TopBar';
 import { getWorkspaceNavigation } from '@/constants/workspaceNavigation';
@@ -106,7 +107,7 @@ export default function PortalShell({ children }: { children: ReactNode }) {
         {!allowed ? <section className="card route-denied"><h1>Accès refusé</h1><p>Cette page n’est pas disponible pour votre rôle.</p><Link className="btn btn-primary" href={HOME_PATH}>Revenir à mon espace</Link></section> : <>
           {state.actionFeedback && <div className="restricted-box action-feedback" role="alert"><span>{state.actionFeedback}</span><IconButton className="btn btn-sm btn-outline" onClick={state.clearActionFeedback} label="Fermer" /></div>}
           {state.campusLoad.status === 'loading' || state.campusLoad.status === 'idle' ? <LoadingState label="Chargement des dossiers…" variant={currentTab === 'dashboard_global' || currentTab === 'espace' ? 'cards' : 'table'} />
-            : state.campusLoad.status === 'error' ? <section className="card" role="alert"><h1>Chargement impossible</h1><p>{state.campusLoad.error}</p><IconButton className="btn btn-primary" onClick={state.reloadCampus} label="Réessayer le chargement" /></section>
+            : state.campusLoad.status === 'error' ? <ErrorState message={state.campusLoad.error || 'Les dossiers n’ont pas pu être chargés.'} onRetry={state.reloadCampus} retryLabel="Réessayer le chargement" />
               : <>
                 {state.actionOutcome && <ActionResult title={state.actionOutcome.title} href={state.actionOutcome.href && isRouteAllowed(state.actionOutcome.href.split('?')[0], activeRole) ? state.actionOutcome.href : undefined} nextLabel={state.actionOutcome.nextLabel} onDismiss={state.clearActionOutcome}>{state.actionOutcome.detail}</ActionResult>}
                 <div key={`${state.academicYearSelection}:${state.academicYearContext?.selectedYearId || ''}`}>{state.academicYearContext && !state.academicYearContext.selectedYearId && state.academicYearSelection !== 'all' && !['acad_reference', 'acad_program', 'staff_records', 'staff_list', 'staff_permissions', 'staff_roles', 'espace_profile', 'sys_roles', 'sys_permissions', 'sys_data', 'sys_logs', 'sys_backups', 'sys_settings', 'log_assets', 'log_suppliers'].includes(currentSubTab) ? <section className="card card-full"><h1>Choisir une année scolaire</h1><p>Sélectionnez une année dans le champ Année pour consulter les activités, dossiers et résultats correspondants. Aucune donnée sans rattachement confirmé ne sera ajoutée à cette année.</p>{state.globalAccess && (perms.permissions.includes('academic.year.open') || perms.permissions.includes('academic.structure.manage')) && <Link className="btn btn-primary" href="/academique/referentiel?collection=academic_years">Configurer les années scolaires</Link>}</section> : children}</div>

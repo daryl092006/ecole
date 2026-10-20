@@ -134,7 +134,7 @@ export default function YearPreparationPanel({
           <IconButton className="btn btn-outline" onClick={() => setRetry(value => value + 1)} label="Réessayer" />
         </section>
       ) : !checks ? (
-        <LoadingState label="Vérification de l’année…" />
+        <LoadingState label="Vérification de l’année…" variant="cards" />
       ) : (
         <>
           {message && <p className="info-box" role="status">{message}</p>}

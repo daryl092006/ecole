@@ -1,6 +1,7 @@
 'use client';
 import IconButton from '@/components/ui/IconButton';
 import LoadingState from '@/components/ui/LoadingState';
+import ErrorState from '@/components/ui/ErrorState';
 import { useEffect, useState } from 'react';
 import { usePortal } from '@/hooks/usePortal';
 import { loadPreparedSubjects,savePreparedSubject } from '@/services/remoteCampusService';
@@ -28,8 +29,8 @@ export default function SubjectStudio(){
   const open=(record?:PreparedSubject)=>{setPrevious(record || null);setConnectedEvalId('');setSubject(record?{title:record.title,instructions:record.instructions,durationMinutes:record.durationMinutes,purpose:record.purpose,sourceEvaluationRowId:record.sourceEvaluationRowId,parts:structuredClone(record.parts)}:blank());setEditing(true);setPartIndex(0);setQuestionIndex(0);setTab('compose');setSaveError('');setFeedback('');};
   const leave=()=>{setEditing(false);const url=new URL(window.location.href);url.searchParams.delete('nouveau');url.searchParams.delete('source');url.searchParams.delete('nature');url.searchParams.delete('evalId');url.searchParams.delete('titre');window.history.replaceState(window.history.state,'',url);};
   const print=()=>printDocument(subject.title || 'Sujet',`<div class="document-heading"><h1>ESCEN</h1><h2>${h(subject.title)}</h2></div><p>Brouillon de ${h(purposes[subject.purpose].toLowerCase())} · ${subject.durationMinutes} minutes · ${subjectPoints(subject)} points</p><p>${h(subject.instructions).replace(/\n/g,'<br>')}</p>${subject.parts.map(part=>`<h3>${h(part.title)}</h3><p>${h(part.instructions).replace(/\n/g,'<br>')}</p>${part.questions.map((q,index)=>`<h4>Question ${index+1} · ${q.points} point(s)</h4><p>${h(q.prompt).replace(/\n/g,'<br>')}</p>${q.options.length?`<ol>${q.options.map(option=>`<li>${h(option.label)}</li>`).join('')}</ol>`:'<p>Réponse : __________________________________________________</p>'}`).join('')}`).join('')}`);
-  if(error)return <section className="card" role="alert"><p>{error}</p><IconButton className="btn btn-primary" onClick={()=>setRetry(value=>value+1)} label="Réessayer" /></section>;
-  if(!directory)return <LoadingState label="Chargement des sujets…" />;
+  if(error)return <ErrorState title="Bibliothèque des sujets indisponible" message={error} onRetry={()=>setRetry(value=>value+1)} />;
+  if(!directory)return <LoadingState label="Chargement des sujets…" variant="table" />;
   const connectedEvaluations=(portal.relationalSnapshot.tables.evaluations || []).filter(row=>{
     if(row.cancelled_at || row.archived_at)return false;
     const isResit=row.kind==='RATTRAPAGE' || row.session_type==='RATTRAPAGE';

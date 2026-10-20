@@ -5,6 +5,7 @@ import { usePortal } from '@/hooks/usePortal';
 import { loadAttendances, manageAttendance, loadAttendanceJustification } from '@/services/remoteCampusService';
 import { ATTENDANCE_LABELS, ATTENDANCE_STATUSES, type AttendanceDirectory, type AttendanceEntry, type AttendanceJustification, type AttendanceStatus, type AttendanceCommand } from '@/types/attendanceManagement';
 import LoadingState from '@/components/ui/LoadingState';
+import ErrorState from '@/components/ui/ErrorState';
 import ResponsiveTable from '@/components/ui/ResponsiveTable';
 import WorkPage from '@/components/ui/WorkPage';
 import ReviewedForm from '@/components/ui/ReviewedForm';
@@ -46,8 +47,8 @@ export default function AttendanceWorkspace() {
       .finally(() => { if (!controller.signal.aborted) setLoading(false); });
     return () => controller.abort();
   }, [activeRole, academicYearSelection, reload]);
-  if (loading) return <LoadingState label="Chargement des feuilles de présence…" />;
-  if (error || !directory) return <section className="card" role="alert"><p>{error || 'Présences indisponibles.'}</p><button className="btn btn-outline" onClick={() => setReload(value => value + 1)}>Réessayer</button></section>;
+  if (loading) return <LoadingState label="Chargement des feuilles de présence…" variant="table" />;
+  if (error || !directory) return <ErrorState title="Présences indisponibles" message={error || 'Les feuilles de présence n’ont pas pu être chargées.'} onRetry={() => setReload(value => value + 1)} />;
   if (archives) return <div><button className="btn btn-outline" onClick={() => setArchives(false)}>Revenir aux feuilles de présence</button><HistoricalWorkspace section="acad_attendance" /></div>;
   const session = directory.sessions.find(row => row.id === selectedId) || directory.sessions[0];
   const previous = (enrollmentId: string): Draft => {

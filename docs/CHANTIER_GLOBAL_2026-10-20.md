@@ -43,7 +43,18 @@ Ne pas changer silencieusement cette convention dans une seule vue.
 6. Inventaire des fonctions consultatives et opérations encore absentes : documents,
    support, achats, annonces, admission et accès Auth. Ne pas les annoncer terminées.
 
-## Mode de livraison
+## Étape 2 : Harmonisation des chargements et des reprises sur erreur
+
+- Création du composant commun `src/components/ui/ErrorState.tsx` avec titre, message d'erreur clair,
+  icône sémantique et bouton « Réessayer » sécurisé.
+- Généralisation des variantes de `LoadingState` (`table`, `cards`, `compact`) sur l'ensemble
+  des modules métier : présences, planning, sujets d'examen, enseignants, dossiers personnel,
+  journal d'audit, suivi des mails, archives historiques, admissions web, actualités, brochures,
+  réinscriptions, opérations de scolarité, référentiel académique et préparation annuelle.
+- Prise en compte du mobile (390px) et des animations réduites (`prefers-reduced-motion`).
+- Contrôles automatisés dans `tests/ui/loading-feedback.spec.ts` validés à 390px et 1440px
+  (8/8 tests Playwright réussis).
+
 
 Une étape cohérente par commit local, aucun push. Préserver les travaux préexistants.
 Vérifier TypeScript, ESLint, les tests navigateur pertinents et les tests métier/SQL
