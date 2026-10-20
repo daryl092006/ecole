@@ -11,7 +11,12 @@ import ReviewedForm from '@/components/ui/ReviewedForm';
 import DrawerActions from '@/components/ui/DrawerActions';
 import { manageEvaluation } from '@/services/remoteCampusService';
 import { connectedRecordName } from '@/services/connectedRecordDisplayService';
-import { evaluationGradeIsComplete, evaluationGradeValue } from '@/services/evaluationGradePolicy';
+import {
+  evaluationCandidateStatusLabel,
+  evaluationGradeIsComplete,
+  evaluationGradeNoteLabel,
+  evaluationGradeValue,
+} from '@/services/evaluationGradePolicy';
 import type { DatabaseRow } from '@/types/persistence';
 import type { GradeWorkflowStatus } from '@/types/academic';
 import PersistentExamCopies from './PersistentExamCopies';
@@ -27,16 +32,46 @@ const STEPS = [
 
 export default function EvaluationGradeDialog({
   evaluationId,
+  evaluationIds,
   onClose,
 }: {
   evaluationId: string;
+  evaluationIds?: string[];
   onClose: () => void;
 }) {
   const portal = usePortal();
-  const evaluation = portal.relationalSnapshot.tables.evaluations?.find(row => row.id === evaluationId);
+  const availableIds = evaluationIds?.length ? evaluationIds : [evaluationId];
+  const [selectedEvaluationId, setSelectedEvaluationId] = useState(evaluationId);
+  const evaluation = portal.relationalSnapshot.tables.evaluations?.find(row => row.id === selectedEvaluationId);
   const [busy, setBusy] = useState(false);
   return <WorkPage title={evaluation ? `Notes · ${String(evaluation.name)}` : 'Évaluation introuvable'} onClose={onClose} busy={busy}>
-    {evaluation ? <EvaluationGrades evaluationId={evaluationId} busy={busy} setBusy={setBusy} /> : <p>L’évaluation demandée est introuvable.</p>}
+    {availableIds.length > 1 && (
+      <div className="filter-bar mb-2">
+        <label className="form-group">
+          Offre de formation à corriger
+          <select
+            aria-label="Offre de formation à corriger"
+            className="select-input"
+            disabled={busy}
+            value={selectedEvaluationId}
+            onChange={e => setSelectedEvaluationId(e.target.value)}
+          >
+            {availableIds.map(id => {
+              const ev = portal.relationalSnapshot.tables.evaluations?.find(row => row.id === id);
+              const off = portal.relationalSnapshot.tables.academic_offerings?.find(row => row.id === ev?.offering_id);
+              const offLabel = off ? connectedRecordName('academic_offerings', off, portal.relationalSnapshot) : id;
+              const candCount = (portal.relationalSnapshot.tables.evaluation_candidates || []).filter(c => c.evaluation_id === id).length;
+              return (
+                <option key={id} value={id}>
+                  {offLabel} ({candCount} candidat{candCount > 1 ? 's' : ''} · {String(ev?.status || '')})
+                </option>
+              );
+            })}
+          </select>
+        </label>
+      </div>
+    )}
+    {evaluation ? <EvaluationGrades key={selectedEvaluationId} evaluationId={selectedEvaluationId} busy={busy} setBusy={setBusy} /> : <p>L’évaluation demandée est introuvable.</p>}
   </WorkPage>;
 }
 
@@ -113,13 +148,14 @@ function EvaluationGrades({ evaluationId, busy, setBusy }: { evaluationId: strin
   const numericGrades = summaryRows.map(item => evaluationGradeValue(item ? { value: item.value, absence_status: item.absence } : null)).filter((value): value is number => value !== null);
   const absenceCount = summaryRows.filter(item => item && ['ABSENT', 'JUSTIFIE'].includes(item.absence)).length;
   const unprocessedCount = summaryRows.filter(item => item?.absence === 'NON_TRAITE').length;
+  const pendingCorrectionCount = candidates.length - numericGrades.length - absenceCount;
   const validCorrection = correctionValue.trim() !== '' && Number.isFinite(Number(correctionValue)) && Number(correctionValue) >= 0 && Number(correctionValue) <= 20;
   const transitionLabels: Partial<Record<GradeWorkflowStatus, string>> = {
     SOUMISES: 'Confirmer la soumission des notes', A_CONTROLER: 'Confirmer la prise en contrôle',
     VALIDEES: 'Confirmer la validation des notes', PUBLIEES: 'Confirmer la publication des résultats',
   };
   const transitionConsequences: Partial<Record<GradeWorkflowStatus, string>> = {
-    SOUMISES: 'Les notes saisies seront enregistrées puis transmises à la direction académique. ABSENT et JUSTIFIE comptent comme traités ; toute copie NON_TRAITE bloque la soumission. La saisie sera verrouillée jusqu’à un éventuel retour à l’enseignant.',
+    SOUMISES: 'Les notes saisies seront enregistrées puis transmises à la direction académique. ABSENT et JUSTIFIE comptent comme traités ; toute copie NON_TRAITE ou en attente de correction bloque la soumission. La saisie sera verrouillée jusqu’à un éventuel retour à l’enseignant.',
     A_CONTROLER: 'Les notes passeront en contrôle académique. Elles ne seront pas encore publiées.',
     VALIDEES: 'Les notes seront validées par la direction académique. Leur publication reste une étape distincte.',
     PUBLIEES: 'Les résultats deviendront officiels et visibles par les étudiants autorisés. Toute correction ultérieure devra être motivée et tracée.',
@@ -227,6 +263,21 @@ function EvaluationGrades({ evaluationId, busy, setBusy }: { evaluationId: strin
           <WorkflowStepper steps={STEPS} currentStep={status} title="Cycle d’évaluation" />
         </details>
 
+        <div className="kpi-grid kpi-grid-3 mb-2">
+          <div className="kpi-card">
+            <span className="kpi-label">Copies corrigées (notées)</span>
+            <strong className="kpi-value">{numericGrades.length - unprocessedCount} / {candidates.length}</strong>
+          </div>
+          <div className="kpi-card">
+            <span className="kpi-label">En attente de correction</span>
+            <strong className="kpi-value">{pendingCorrectionCount + unprocessedCount}</strong>
+          </div>
+          <div className="kpi-card">
+            <span className="kpi-label">Absents (injustifiés / justifiés)</span>
+            <strong className="kpi-value">{absenceCount}</strong>
+          </div>
+        </div>
+
         {error && !pendingTransition && !correctingGradeId && <div className="restricted-box mb-2" role="alert">{error}</div>}
         {success && <div role="status" className="mb-2" style={{ color: 'var(--success)', fontWeight: 600 }}>{success}</div>}
 
@@ -238,7 +289,7 @@ function EvaluationGrades({ evaluationId, busy, setBusy }: { evaluationId: strin
               <h3>Candidats ({candidates.length})</h3>
               <p className="cell-sub">
                 {canEnter
-                  ? 'Saisissez les notes (sur 20) ou sélectionnez un statut d’absence. Enregistrez avant la soumission.'
+                  ? 'Saisissez les notes (sur 20) pour les copies corrigées ou indiquez une absence. Une case vide sans motif d’absence correspond à une copie en attente de correction par l’enseignant (l’étudiant n’est pas compté absent).'
                   : status === 'PUBLIEES'
                   ? 'Résultats officiels publiés. Les corrections nécessitent une décision motivée.'
                   : 'Notes en cours de contrôle ou validation.'}
@@ -251,7 +302,7 @@ function EvaluationGrades({ evaluationId, busy, setBusy }: { evaluationId: strin
               <tr>
                 <th>Étudiant</th>
                 <th>Note / 20</th>
-                <th>Présence / Absence</th>
+                <th>Présence & État de correction</th>
                 {copyCandidateIds.size > 0 && <th>Copie en ligne</th>}
                 {status === 'PUBLIEES' && canApprove && <th>Action</th>}
               </tr>
@@ -263,6 +314,12 @@ function EvaluationGrades({ evaluationId, busy, setBusy }: { evaluationId: strin
                 const grade = gradeMap.get(String(c.id));
                 const gradeValue = evaluationGradeValue(grade);
                 const item = inputGrades[String(c.id)] || { value: '', absence: '' };
+                const lastAttempt = snapshot.tables.exam_attempts
+                  ?.filter(attempt => attempt.candidate_id === c.id)
+                  .sort((a, b) => Number(b.attempt_number) - Number(a.attempt_number))[0];
+                const hasSubmittedOnlineCopy = lastAttempt && ['REMISE', 'EXPIREE'].includes(String(lastAttempt.status));
+                const statusLabel = evaluationCandidateStatusLabel(grade, lastAttempt?.status);
+                const noteLabel = evaluationGradeNoteLabel(grade, lastAttempt?.status);
 
                 return (
                   <tr key={c.id}>
@@ -284,11 +341,11 @@ function EvaluationGrades({ evaluationId, busy, setBusy }: { evaluationId: strin
                             const val = e.target.value;
                             setInputGrades(prev => ({ ...prev, [String(c.id)]: { ...prev[String(c.id)], value: val } }));
                           }}
-                          placeholder={item.absence ? '—' : '0.00'}
-                          style={{ width: '100px' }}
+                          placeholder={item.absence ? '—' : 'À corriger'}
+                          style={{ width: '110px' }}
                         />
                       ) : (
-                        <span>{gradeValue != null ? `${gradeValue.toLocaleString('fr-FR', { maximumFractionDigits: 2 })} / 20` : '—'}</span>
+                        <span>{noteLabel}</span>
                       )}
                     </td>
                     <td>
@@ -306,22 +363,20 @@ function EvaluationGrades({ evaluationId, busy, setBusy }: { evaluationId: strin
                             }));
                           }}
                         >
-                          <option value="">Présent (note chiffrée)</option>
+                          <option value="">
+                            {item.value.trim() !== ''
+                              ? 'Présent · Copie corrigée (note chiffrée)'
+                              : hasSubmittedOnlineCopy
+                              ? 'Présent · Copie remise — en attente de correction'
+                              : 'Présent / En attente de correction par l’enseignant'}
+                          </option>
                           <option value="ABSENT">Absent injustifié</option>
                           <option value="JUSTIFIE">Absent justifié</option>
                           <option value="NON_TRAITE">Copie non traitée — soumission bloquée</option>
                         </select>
                       ) : (
-                        <span className={`pill ${grade?.absence_status ? 'pill-warning' : 'pill-default'}`}>
-                          {grade?.absence_status === 'ABSENT'
-                            ? 'Absent'
-                            : grade?.absence_status === 'JUSTIFIE'
-                            ? 'Absent justifié'
-                            : grade?.absence_status === 'NON_TRAITE'
-                            ? 'Copie non traitée'
-                            : grade?.value != null
-                            ? 'Présent'
-                            : 'Non renseignée'}
+                        <span className={`pill ${grade?.absence_status ? 'pill-warning' : gradeValue != null ? 'pill-success' : 'pill-default'}`}>
+                          {statusLabel}
                         </span>
                       )}
                     </td>
@@ -481,7 +536,7 @@ function EvaluationGrades({ evaluationId, busy, setBusy }: { evaluationId: strin
           confirmLabel={transitionLabels[pendingTransition]!} consequence={transitionConsequences[pendingTransition]!}
           fields={[{ label: 'Évaluation', value: String(evaluation.name) }, { label: 'Notes chiffrées', value: String(numericGrades.length) },
             { label: 'Copies non traitées (soumission bloquée)', value: String(unprocessedCount) },
-            { label: 'Absences', value: String(absenceCount) }, { label: 'Sans note', value: String(candidates.length - numericGrades.length - absenceCount) },
+            { label: 'Absences', value: String(absenceCount) }, { label: 'Sans note', value: String(pendingCorrectionCount) },
             { label: 'Moyenne /20', value: numericGrades.length ? (numericGrades.reduce((sum, value) => sum + value, 0) / numericGrades.length).toLocaleString('fr-FR', { maximumFractionDigits: 2 }) : 'Aucune note chiffrée' }]}
           onCancelReview={() => setPendingTransition(null)} onConfirm={() => { void handleTransition(pendingTransition); }} />}
 

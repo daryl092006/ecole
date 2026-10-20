@@ -12,6 +12,8 @@ assert.equal(connectedRecordValue('sessions', 'group_id', 'EN1', source), 'Ce gr
 assert.equal(connectedRecordValue('payments', 'enrollment_id', 'ABSENT', source), 'Référence non accessible ou non retrouvée');
 assert.match(connectedRecordValue('payments', 'amount', 0, source), /0.*FCFA/);
 assert.equal(connectedRecordValue('payments', 'amount', null, source), 'Non renseigné');
+assert.equal(connectedRecordValue('grades', 'value', null, source), 'En attente de correction ou absence');
+assert.equal(connectedRecordValue('grades', 'absence_status', null, source), 'Présent / En attente de correction');
 assert.equal(connectedRecordValue('evaluations', 'status', 'PUBLIEES', source), 'Publiées');
 assert.equal(connectedRecordValue('payments', 'paid_on', '2026-10-01', source), '01/10/2026');
 

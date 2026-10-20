@@ -33,6 +33,7 @@ export default function GroupSubjectGradesPanel({ snapshot, canViewStudents, onS
   const evaluations = (snapshot.tables.evaluations || []).filter(row => !row.cancelled_at && !row.archived_at);
   const candidates = snapshot.tables.evaluation_candidates || [];
   const grades = snapshot.tables.grades || [];
+  const attempts = snapshot.tables.exam_attempts || [];
   const components = snapshot.tables.curriculum_components || [];
   const subjects = snapshot.tables.subjects || [];
   const enrollments = snapshot.tables.enrollments || [];
@@ -70,6 +71,15 @@ export default function GroupSubjectGradesPanel({ snapshot, canViewStudents, onS
 
   const gradeByCandidate = new Map<string, DatabaseRow>();
   for (const g of grades) gradeByCandidate.set(String(g.candidate_id), g);
+
+  const attemptByCandidate = new Map<string, DatabaseRow>();
+  for (const att of attempts) {
+    const cId = String(att.candidate_id);
+    const prev = attemptByCandidate.get(cId);
+    if (!prev || Number(att.attempt_number || 0) >= Number(prev.attempt_number || 0)) {
+      attemptByCandidate.set(cId, att);
+    }
+  }
 
   const groupsWithData = groups.map(group => {
     const gId = String(group.id);
@@ -111,12 +121,14 @@ export default function GroupSubjectGradesPanel({ snapshot, canViewStudents, onS
     const evalIds = new Set(subj.evals.map(e => String(e.id)));
     const subjCands = candidates.filter(c => evalIds.has(String(c.evaluation_id)));
     const vals = subjCands
+      .filter(c => gradeByCandidate.get(String(c.id))?.absence_status !== 'NON_TRAITE')
       .map(c => evaluationGradeValue(gradeByCandidate.get(String(c.id))))
       .filter((value): value is number => value !== null);
     const absenceCount = subjCands.filter(c => {
       const status = gradeByCandidate.get(String(c.id))?.absence_status;
       return status === 'ABSENT' || status === 'JUSTIFIE';
     }).length;
+    const pendingCount = subjCands.filter(c => !evaluationGradeIsComplete(gradeByCandidate.get(String(c.id)))).length;
     const min = vals.length ? Math.min(...vals) : null;
     const max = vals.length ? Math.max(...vals) : null;
     const kinds = [...new Set(subj.evals.map(evalTypeLabel))];
@@ -126,6 +138,7 @@ export default function GroupSubjectGradesPanel({ snapshot, canViewStudents, onS
       expectedCount: subjCands.length,
       notesCount: vals.length,
       absenceCount,
+      pendingCount,
       min,
       max,
     };
@@ -155,13 +168,14 @@ export default function GroupSubjectGradesPanel({ snapshot, canViewStudents, onS
         c => String(c.enrollment_id) === enrollmentId && String(c.evaluation_id) === String(ev.id),
       );
       if (!cand) {
-        return { evalId: String(ev.id), candidate: false, complete: false, value: null as number | null, absenceStatus: '' };
+        return { evalId: String(ev.id), candidate: false, complete: false, value: null as number | null, absenceStatus: '', attemptStatus: '' };
       }
       const grade = gradeByCandidate.get(String(cand.id));
+      const attempt = attemptByCandidate.get(String(cand.id));
       const val = evaluationGradeValue(grade);
       const complete = evaluationGradeIsComplete(grade);
       const absenceStatus = String(grade?.absence_status || '');
-      return { evalId: String(ev.id), candidate: true, complete, value: val, absenceStatus };
+      return { evalId: String(ev.id), candidate: true, complete, value: val, absenceStatus, attemptStatus: String(attempt?.status || '') };
     });
 
     const candidateCells = evalCells.filter(cell => cell.candidate);
@@ -190,6 +204,9 @@ export default function GroupSubjectGradesPanel({ snapshot, canViewStudents, onS
       <div className="card-header">
         <div>
           <h2>Par groupe et matière</h2>
+          <p className="cell-sub">
+            L’état « En attente de correction » indique que le professeur n’a pas encore saisi la note (et non que l’étudiant était absent).
+          </p>
         </div>
         {portal.perms.permissions.includes('evaluation.create') && (
           <button className="btn btn-sm btn-primary" onClick={() => setCreatingEval(true)}>
@@ -209,7 +226,7 @@ export default function GroupSubjectGradesPanel({ snapshot, canViewStudents, onS
           >
             {groupsWithData.map(g => (
               <option key={g.id} value={g.id}>
-                {g.name} ({g.subjects.length} mat. · {g.completedCount}/{g.expectedCount} saisies)
+                {g.name} ({g.subjects.length} mat. · {g.completedCount}/{g.expectedCount} corrigées)
               </option>
             ))}
           </select>
@@ -256,7 +273,7 @@ export default function GroupSubjectGradesPanel({ snapshot, canViewStudents, onS
         </div>
         <div className="kpi-stat-tile">
           <strong>{activeGroup.completedCount} / {activeGroup.expectedCount}</strong>
-          <span>Copies traitées dans le groupe</span>
+          <span>Copies traitées ({Math.max(0, activeGroup.expectedCount - activeGroup.completedCount)} à corriger)</span>
         </div>
       </div>
 
@@ -270,6 +287,7 @@ export default function GroupSubjectGradesPanel({ snapshot, canViewStudents, onS
                 <th>Épreuves</th>
                 <th>Copies attendues</th>
                 <th>Notes chiffrées</th>
+                <th>À corriger par l’enseignant</th>
                 <th>Absents / Justifiés</th>
                 <th>Min / Max observés</th>
               </tr>
@@ -289,6 +307,7 @@ export default function GroupSubjectGradesPanel({ snapshot, canViewStudents, onS
                   <td>{item.kinds.join(' + ')} ({item.evals.length})</td>
                   <td>{item.expectedCount}</td>
                   <td><strong>{item.notesCount}</strong></td>
+                  <td>{item.pendingCount > 0 ? <span className="pill pill-default">{item.pendingCount} en attente</span> : '0'}</td>
                   <td>{item.absenceCount}</td>
                   <td>{item.min !== null && item.max !== null ? `${item.min.toLocaleString('fr-FR')} – ${item.max.toLocaleString('fr-FR')} / 20` : '—'}</td>
                 </tr>
@@ -338,7 +357,7 @@ export default function GroupSubjectGradesPanel({ snapshot, canViewStudents, onS
                       <div className="cell-sub">{String(ev.name)}</div>
                     </th>
                   ))}
-                  <th>État de saisie</th>
+                  <th>Avancement des corrections</th>
                   {canViewStudents && <th>Dossier</th>}
                 </tr>
               </thead>
@@ -355,13 +374,17 @@ export default function GroupSubjectGradesPanel({ snapshot, canViewStudents, onS
                         {!cell.candidate ? (
                           '—'
                         ) : cell.absenceStatus === 'ABSENT' ? (
-                          <span className="pill pill-warning">Absent</span>
+                          <span className="pill pill-warning">Absent injustifié</span>
                         ) : cell.absenceStatus === 'JUSTIFIE' ? (
-                          <span className="pill pill-default">Justifié</span>
+                          <span className="pill pill-default">Absent justifié</span>
+                        ) : cell.absenceStatus === 'NON_TRAITE' ? (
+                          <span className="pill pill-warning">Copie non traitée (0/20 prov.)</span>
                         ) : cell.value !== null ? (
                           <strong>{fmtGrade(cell.value)}</strong>
+                        ) : cell.attemptStatus === 'REMISE' || cell.attemptStatus === 'EXPIREE' ? (
+                          <span className="cell-sub">Copie remise · À corriger</span>
                         ) : (
-                          <span className="cell-sub">En attente</span>
+                          <span className="cell-sub">En attente de correction</span>
                         )}
                       </td>
                     ))}
@@ -369,11 +392,11 @@ export default function GroupSubjectGradesPanel({ snapshot, canViewStudents, onS
                       {row.candidateCount === 0 ? (
                         <span className="pill pill-default">Non inscrit à l&apos;épreuve</span>
                       ) : row.completedCount === row.candidateCount ? (
-                        <span className="pill pill-success">Complet ({row.completedCount}/{row.candidateCount})</span>
+                        <span className="pill pill-success">Corrigé ({row.completedCount}/{row.candidateCount})</span>
                       ) : row.completedCount > 0 ? (
-                        <span className="pill pill-warning">Partiel ({row.completedCount}/{row.candidateCount})</span>
+                        <span className="pill pill-warning">Correction partielle ({row.completedCount}/{row.candidateCount})</span>
                       ) : (
-                        <span className="pill pill-default">En attente (0/{row.candidateCount})</span>
+                        <span className="pill pill-default">En attente de correction (0/{row.candidateCount})</span>
                       )}
                     </td>
                     {canViewStudents && (
