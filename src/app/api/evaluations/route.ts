@@ -53,11 +53,23 @@ const correctGradeSchema = z.object({
   complaintId: z.string().uuid().nullable().optional(),
 }).strict();
 
+const scheduleDeliverySchema = z.object({
+  ...commonSchema,
+  action: z.literal('schedule_delivery'),
+  evaluationId: z.string().uuid(),
+  sessionId: z.string().uuid(),
+  accessOpensAt: z.string().datetime(),
+  accessClosesAt: z.string().datetime(),
+  durationMinutes: z.number().int().min(1).max(1440),
+  reason: z.string().trim().min(3).max(1000),
+}).strict();
+
 const requestSchema = z.discriminatedUnion('action', [
   createEvaluationSchema,
   enterGradesSchema,
   transitionSchema,
   correctGradeSchema,
+  scheduleDeliverySchema,
 ]);
 
 async function loadContext(request: Request) {
@@ -350,6 +362,86 @@ export async function POST(request: Request) {
 
       if (saved.error) {
         throw new RequestError(409, 'Correction refusée : vérifiez les valeurs et l’état de la publication.');
+      }
+      return Response.json({ ok: true, revision: saved.data });
+    }
+
+    if (body.action === 'schedule_delivery') {
+      requirePermission(data.context, 'evaluation.create');
+      const evaluation = (data.scoped.tables.evaluations || []).find(row => row.id === body.evaluationId);
+      if (!evaluation) throw new RequestError(404, 'Évaluation introuvable.');
+
+      const assignment = (data.scoped.tables.teaching_assignments || []).find(row => row.id === evaluation.assignment_id);
+      if (!assignment) throw new RequestError(404, 'Affectation pédagogique introuvable.');
+
+      if (data.context.role === ROLES.ENS) {
+        if (!data.context.teacherId || assignment.teacher_id !== data.context.teacherId) {
+          throw new RequestError(403, 'Cette épreuve ne relève pas de vos enseignements affectés.');
+        }
+      }
+
+      const session = (data.scoped.tables.sessions || []).find(row => row.id === body.sessionId);
+      if (!session) throw new RequestError(404, 'Séance introuvable.');
+
+      if (session.assignment_id !== assignment.id) {
+        throw new RequestError(400, 'La séance choisie ne correspond pas à l’enseignement de l’épreuve.');
+      }
+
+      if (session.mode === 'COURS') {
+        throw new RequestError(400, 'Une diffusion d’épreuve ne peut pas être programmée sur une séance ordinaire de cours.');
+      }
+
+      const opens = new Date(body.accessOpensAt).getTime();
+      const closes = new Date(body.accessClosesAt).getTime();
+      const sessionStart = new Date(String(session.starts_at)).getTime();
+      const sessionEnd = new Date(String(session.ends_at)).getTime();
+
+      if (isNaN(opens) || isNaN(closes) || opens >= closes) {
+        throw new RequestError(400, 'La fenêtre d’accès est invalide : l’ouverture doit précéder la fermeture.');
+      }
+
+      if (opens < sessionStart || closes > sessionEnd) {
+        throw new RequestError(400, 'La fenêtre d’accès à l’épreuve doit être comprise dans les limites de la séance.');
+      }
+
+      const existingDelivery = (data.scoped.tables.exam_deliveries || []).find(d => d.evaluation_id === body.evaluationId);
+      if (existingDelivery) {
+        changes.push({
+          table: 'exam_deliveries',
+          operation: 'update',
+          record: {
+            id: existingDelivery.id,
+            session_id: body.sessionId,
+            access_opens_at: body.accessOpensAt,
+            access_closes_at: body.accessClosesAt,
+            duration_minutes: body.durationMinutes,
+            reason: body.reason.trim(),
+          },
+        });
+      } else {
+        changes.push({
+          table: 'exam_deliveries',
+          operation: 'insert',
+          record: {
+            id: crypto.randomUUID(),
+            evaluation_id: body.evaluationId,
+            session_id: body.sessionId,
+            access_opens_at: body.accessOpensAt,
+            access_closes_at: body.accessClosesAt,
+            duration_minutes: body.durationMinutes,
+            reason: body.reason.trim(),
+          },
+        });
+      }
+
+      const saved = await data.client.rpc('escen_backend_transaction', {
+        p_actor_id: data.context.accountId,
+        p_expected_revision: body.revision,
+        p_changes: changes,
+      });
+
+      if (saved.error) {
+        throw new RequestError(409, 'Programmation refusée : vérifiez les dates, la séance et le motif.');
       }
       return Response.json({ ok: true, revision: saved.data });
     }

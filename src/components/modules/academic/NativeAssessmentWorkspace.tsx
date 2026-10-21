@@ -14,6 +14,7 @@ import { downloadCsv } from '@/utils/csv';
 import EvaluationGradeDialog from './EvaluationGradeDialog';
 import EvaluationCreateDialog from './EvaluationCreateDialog';
 import PersistentExamCopies from './PersistentExamCopies';
+import ExamDeliveryScheduleDialog from './ExamDeliveryScheduleDialog';
 import {
   evaluationCandidateStatusLabel,
   evaluationGradeIsComplete,
@@ -35,6 +36,7 @@ export default function NativeAssessmentWorkspace({ category }: { category: Asse
   const [creatingEval, setCreatingEval] = useState(false);
   const [managingEvalIds, setManagingEvalIds] = useState<string[]>([]);
   const [onlineCopiesId, setOnlineCopiesId] = useState('');
+  const [schedulingDelivery, setSchedulingDelivery] = useState<DatabaseRow | null>(null);
 
   const groupName = (row: DatabaseRow) => {
     const assignment = data.tables.teaching_assignments?.find(item => item.id === row.assignment_id);
@@ -159,7 +161,104 @@ export default function NativeAssessmentWorkspace({ category }: { category: Asse
       {exported && <p role="status">{rows.length} épreuve(s) exportée(s).</p>}
       <ResponsiveTable className="data-table"><thead><tr><th>Épreuve</th><th>Matière</th><th>Groupe</th><th>Formation</th><th>Notes et moyenne</th><th>État de l’épreuve</th><th>Actions</th></tr></thead><tbody>{rows.map(item => <tr key={item.primary.id}><td>{String(item.primary.name)}</td><td>{item.subjectLabel}</td><td>{item.groupLabel}</td><td>{item.formationLabel}</td><td>{item.statsLabel}</td><td>{item.statusLabel}</td><td><div className="btn-group"><IconButton className="btn btn-outline" label="Ouvrir le détail" onClick={() => { setSelectedId(item.primary.id); setCopies(false); }} />{(perms.permissions.includes('grade.enter') || perms.permissions.includes('grade.review') || perms.permissions.includes('grade.approve') || perms.permissions.includes('grade.publish')) && <IconButton className="btn btn-primary" label="Saisir / Gérer" onClick={() => setManagingEvalIds(item.members.map(m => String(m.id)))} />}</div></td></tr>)}{!rows.length && <tr><td colSpan={7}>Aucune épreuve pour cette catégorie et ces filtres.</td></tr>}</tbody></ResponsiveTable>
     </section>
-    {selected && selectedMembers && <WorkPage title={String(selected.name)} onClose={() => setSelectedId('')}><dl className="record-details-grid"><div><dt>Matière</dt><dd>{subjectName(selected)}</dd></div><div><dt>Groupe</dt><dd>{groupName(selected)}</dd></div><div><dt>Formation</dt><dd>{formatOfferings(selectedMembers.map(m => m.offering_id))}</dd></div><div><dt>État des notes</dt><dd>{connectedRecordValue('evaluations', 'status', selected.status, data)}</dd></div></dl><div className="btn-group mb-2">{(perms.permissions.includes('grade.enter') || perms.permissions.includes('grade.review') || perms.permissions.includes('grade.approve') || perms.permissions.includes('grade.publish')) && <button className="btn btn-primary" onClick={() => setManagingEvalIds(selectedMembers.map(m => String(m.id)))}>Saisir / Gérer les notes</button>}{perms.permissions.includes('evaluation.create') && <Link className="btn btn-outline" href={`/academique/sujets?nouveau=1&nature=${category}&evalId=${encodeURIComponent(String(selected.id))}&titre=${encodeURIComponent(String(selected.name || ''))}`}>Composer le sujet</Link>}{perms.permissions.includes('grade.enter') && data.tables.exam_deliveries?.some(row => row.evaluation_id === selected.id) && <button className="btn btn-outline" onClick={() => setOnlineCopiesId(selected.id)}>Copies en ligne</button>}{source && <button className="btn btn-outline" onClick={() => setCopies(true)}>Consulter les copies et le sujet</button>}</div><h3>Résultats ({candidates.length})</h3><p className="cell-sub mb-2">Une copie sans note signifie qu’elle est en attente de correction par l’enseignant. Seuls les statuts « Absent injustifié » et « Absent justifié » indiquent une absence de l’étudiant à l’épreuve.</p><ResponsiveTable className="data-table"><thead><tr><th>Étudiant</th><th>Note</th><th>Statut de correction &amp; présence</th></tr></thead><tbody>{candidates.map(candidate => { const grade = gradeByCand.get(String(candidate.id)); const attempt = lastAttemptByCand.get(String(candidate.id)); return <tr key={candidate.id}><td>{connectedRecordName('enrollments', data.tables.enrollments?.find(row => row.id === candidate.enrollment_id) || { id: String(candidate.enrollment_id) }, data)}</td><td>{evaluationGradeNoteLabel(grade, attempt?.status)}</td><td>{evaluationCandidateStatusLabel(grade, attempt?.status)}</td></tr>; })}{!candidates.length && <tr><td colSpan={3}>Aucun candidat rattaché à cette épreuve.</td></tr>}</tbody></ResponsiveTable></WorkPage>}
+    {selected && selectedMembers && (() => {
+      const selectedPaper = (data.tables.exam_papers || [])
+        .filter(row => row.evaluation_id === selected.id && !row.archived_at)
+        .sort((a, b) => Number(b.version) - Number(a.version))[0];
+      const selectedDelivery = (data.tables.exam_deliveries || []).find(row => row.evaluation_id === selected.id);
+      return (
+        <WorkPage title={String(selected.name)} onClose={() => setSelectedId('')}>
+          <dl className="record-details-grid">
+            <div><dt>Matière</dt><dd>{subjectName(selected)}</dd></div>
+            <div><dt>Groupe</dt><dd>{groupName(selected)}</dd></div>
+            <div><dt>Formation</dt><dd>{formatOfferings(selectedMembers.map(m => m.offering_id))}</dd></div>
+            <div><dt>État des notes</dt><dd>{connectedRecordValue('evaluations', 'status', selected.status, data)}</dd></div>
+            <div>
+              <dt>Sujet d’examen</dt>
+              <dd>
+                {selectedPaper ? (
+                  <span>
+                    <span className={`pill ${selectedPaper.status === 'AUTORISE' ? 'pill-success' : 'pill-warning'}`}>
+                      {selectedPaper.status === 'AUTORISE' ? 'Autorisé' : 'Brouillon'} (v{String(selectedPaper.version)})
+                    </span>{' '}
+                    {String(selectedPaper.title || '')} · {String(selectedPaper.duration_minutes)} min
+                  </span>
+                ) : (
+                  <span className="cell-sub">Aucun sujet composé</span>
+                )}
+              </dd>
+            </div>
+            <div>
+              <dt>Diffusion en ligne</dt>
+              <dd>
+                {selectedDelivery ? (
+                  <span>
+                    Du {new Intl.DateTimeFormat('fr-FR', { dateStyle: 'short', timeStyle: 'short', timeZone: 'Africa/Lome' }).format(new Date(String(selectedDelivery.access_opens_at)))} au {new Intl.DateTimeFormat('fr-FR', { dateStyle: 'short', timeStyle: 'short', timeZone: 'Africa/Lome' }).format(new Date(String(selectedDelivery.access_closes_at)))} ({String(selectedDelivery.duration_minutes)} min)
+                  </span>
+                ) : (
+                  <span className="cell-sub">Non programmée</span>
+                )}
+              </dd>
+            </div>
+          </dl>
+          <div className="btn-group mb-2">
+            {(perms.permissions.includes('grade.enter') || perms.permissions.includes('grade.review') || perms.permissions.includes('grade.approve') || perms.permissions.includes('grade.publish')) && (
+              <button className="btn btn-primary" onClick={() => setManagingEvalIds(selectedMembers.map(m => String(m.id)))}>
+                Saisir / Gérer les notes
+              </button>
+            )}
+            {perms.permissions.includes('evaluation.create') && (
+              <Link className="btn btn-outline" href={`/academique/sujets?nouveau=1&nature=${category}&evalId=${encodeURIComponent(String(selected.id))}&titre=${encodeURIComponent(String(selected.name || ''))}`}>
+                {selectedPaper ? 'Modifier le sujet' : 'Composer le sujet'}
+              </Link>
+            )}
+            {perms.permissions.includes('evaluation.create') && (
+              <button className="btn btn-outline" onClick={() => setSchedulingDelivery(selected)}>
+                {selectedDelivery ? 'Modifier la diffusion' : 'Programmer la diffusion'}
+              </button>
+            )}
+            {perms.permissions.includes('grade.enter') && selectedDelivery && (
+              <button className="btn btn-outline" onClick={() => setOnlineCopiesId(selected.id)}>
+                Copies en ligne
+              </button>
+            )}
+            {source && (
+              <button className="btn btn-outline" onClick={() => setCopies(true)}>
+                Consulter les copies et le sujet
+              </button>
+            )}
+          </div>
+          <h3>Résultats ({candidates.length})</h3>
+          <p className="cell-sub mb-2">Une copie sans note signifie qu’elle est en attente de correction par l’enseignant. Seuls les statuts « Absent injustifié » et « Absent justifié » indiquent une absence de l’étudiant à l’épreuve.</p>
+          <ResponsiveTable className="data-table">
+            <thead>
+              <tr><th>Étudiant</th><th>Note</th><th>Statut de correction &amp; présence</th></tr>
+            </thead>
+            <tbody>
+              {candidates.map(candidate => {
+                const grade = gradeByCand.get(String(candidate.id));
+                const attempt = lastAttemptByCand.get(String(candidate.id));
+                return (
+                  <tr key={candidate.id}>
+                    <td>{connectedRecordName('enrollments', data.tables.enrollments?.find(row => row.id === candidate.enrollment_id) || { id: String(candidate.enrollment_id) }, data)}</td>
+                    <td>{evaluationGradeNoteLabel(grade, attempt?.status)}</td>
+                    <td>{evaluationCandidateStatusLabel(grade, attempt?.status)}</td>
+                  </tr>
+                );
+              })}
+              {!candidates.length && <tr><td colSpan={3}>Aucun candidat rattaché à cette épreuve.</td></tr>}
+            </tbody>
+          </ResponsiveTable>
+        </WorkPage>
+      );
+    })()}
+    {schedulingDelivery && (
+      <ExamDeliveryScheduleDialog
+        evaluation={schedulingDelivery}
+        onClose={() => setSchedulingDelivery(null)}
+        onScheduled={() => setSchedulingDelivery(null)}
+      />
+    )}
     {onlineCopiesId && <PersistentExamCopies evaluationId={onlineCopiesId} onClose={() => setOnlineCopiesId('')} />}
     {creatingEval && <EvaluationCreateDialog onClose={() => setCreatingEval(false)} onCreated={id => { setCreatingEval(false); setManagingEvalIds([id]); }} />}
     {managingEvalIds.length > 0 && <EvaluationGradeDialog evaluationId={managingEvalIds[0]} evaluationIds={managingEvalIds} onClose={() => setManagingEvalIds([])} />}
