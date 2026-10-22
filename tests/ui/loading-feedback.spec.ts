@@ -7,6 +7,11 @@ for(const width of [390,1440]) test(`Chargement visible puis erreur et reprise Ã
   await page.goto('/communication/actualites');
   await expect(page.getByRole('status').filter({hasText:'Chargement des dossiers'})).toBeVisible();
   await expect(page.locator('.loading-skeleton')).toBeVisible();
+  await expect(page.locator('.loading-skeleton-title')).toBeVisible();
+  await expect(page.locator('.loading-spinner')).toHaveCount(0);
+  const label = page.getByRole('status').locator('.sr-only');
+  await expect(label).toContainText('Chargement des dossiers');
+  expect(await label.evaluate(element => element.getBoundingClientRect().width)).toBe(1);
   let fail=true;
   await page.route('**/api/website-management*',route=>fail?route.fulfill({status:503,json:{error:'Service indisponible pour la recette'}}):route.fulfill({json:[]}));
   release();

@@ -1698,19 +1698,20 @@ form { scroll-margin-top: 1rem; }
 
 
 
-/* Shared feedback for remote reads and persistent writes. */
-.loading-state { padding: 1.5rem; margin: 1rem 0; border: 1px solid var(--border, #dce4ed); border-radius: 14px; background: var(--surface, #fff); }
-.loading-state-heading { display: flex; align-items: center; gap: .75rem; color: var(--primary, #087b90); }
-.loading-state p { margin: .75rem 0 1rem; color: var(--text-secondary, #526176); }
-.loading-spinner { flex-shrink: 0; animation: loading-rotation 1s linear infinite; }
-.loading-skeleton { display: grid; gap: .65rem; }
-.loading-skeleton span { display: block; height: .9rem; border-radius: 6px; background: #e6edf3; animation: loading-pulse 1.4s ease-in-out infinite; }
+/* Shared skeleton for remote reads and feedback for persistent writes. */
+.loading-state { padding: 1.5rem; margin: 1rem 0; border: 1px solid var(--border, #dce4ed); border-radius: 14px; background: var(--surface, #fff); min-width: 0; }
+.loading-state-label { display: block; margin-bottom: .65rem; color: var(--primary, #087b90); font-weight: 600; }
+.loading-skeleton { display: grid; gap: .85rem; }
+.loading-skeleton span { display: block; height: 1rem; border-radius: 6px; background: #e6edf3; animation: loading-pulse 1.4s ease-in-out infinite; }
+.loading-skeleton .loading-skeleton-title { width: 38%; height: 1.4rem; margin-bottom: .5rem; }
 .loading-skeleton span:last-child { width: 65%; }
 .loading-state-compact { padding: .85rem 1rem; margin: .75rem 0; background: #edf8fa; }
+.loading-state-compact .loading-skeleton { grid-template-columns: 2fr 2fr 1fr; gap: .5rem; }
+.loading-state-compact .loading-skeleton span { height: .5rem; }
+.loading-state-compact .loading-skeleton span:last-child { width: 100%; }
 .reviewed-form-fields { border: 0; padding: 0; margin: 0; min-width: 0; }
-@keyframes loading-rotation { to { transform: rotate(360deg); } }
 @keyframes loading-pulse { 50% { opacity: .4; } }
-@media (prefers-reduced-motion: reduce) { .loading-spinner, .loading-skeleton span { animation: none; } }
+@media (prefers-reduced-motion: reduce) { .loading-skeleton span { animation: none; } }
 
 /* ============================================
    DESIGN SYSTEM ENRICHI & HARMONISATION GLOBALE
