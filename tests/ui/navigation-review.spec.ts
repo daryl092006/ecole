@@ -63,7 +63,7 @@ for (const width of [390, 1440]) {
     await expect(page.getByRole('heading', { name: 'Notes et résultats', exact: true })).toBeVisible();
     await expect(page.getByText(/Aller à une page de/)).toHaveCount(0);
     if (width < 800) await page.getByRole('button', { name: 'Ouvrir la navigation', exact: true }).click();
-    await navigation.getByRole('link', { name: 'Examens', exact: true }).click();
+    await navigation.getByRole('link', { name: 'Examens et rattrapages', exact: true }).click();
     await expect(page).toHaveURL(/\/academique\/examens$/);
     await expect(page.getByRole('heading', { name: 'Examens', exact: true })).toBeVisible();
     await expectWorkspaceFits(page);

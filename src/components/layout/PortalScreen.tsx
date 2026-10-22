@@ -13,6 +13,7 @@ import HistoricalExamsWorkspace from '@/components/modules/history/HistoricalExa
 import ReferenceCrudWorkspace from '@/components/modules/academic/ReferenceCrudWorkspace';
 import { CRUD_SECTIONS } from '@/data/crudCatalog';
 import NativeAssessmentWorkspace from '@/components/modules/academic/NativeAssessmentWorkspace';
+import ExamsWorkspace from '@/components/modules/academic/ExamsWorkspace';
 import SubjectStudio from '@/components/modules/academic/SubjectStudio';
 import ComplaintsPanel from '@/components/modules/academic/ComplaintsPanel';
 import { ROLES } from '@/types/permissions';
@@ -71,6 +72,7 @@ export default function PortalScreen({ tab: _tab, section }: { tab: string; sect
   if (state.session && section === 'acad_schedule') return <ScheduleWorkspace />;
   if (state.session && section === 'acad_attendance') return <AttendanceWorkspace />;
   if (state.session && section === 'acad_subjects') return <SubjectStudio />;
+  if (state.session && section === 'acad_exams') return <ExamsWorkspace />;
   if (state.history.enabled && !state.relationalSnapshot.tables.evaluations?.length && ['acad_exams', 'acad_resits', 'acad_assessments'].includes(section)) {
     return <HistoricalExamsWorkspace key={section} category={section === 'acad_resits' ? 'resit' : section === 'acad_assessments' ? 'control' : 'exam'} />;
   }

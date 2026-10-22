@@ -35,11 +35,10 @@ export const ALL_TABS = [
       { id: 'acad_schedule', name: 'Emploi du temps' },
       { id: 'acad_attendance', name: 'Feuilles de présence' },
       {id:'acad_assessments',name:'Contrôles continus'},
-      {id:'acad_resits',name:'Rattrapages'},
       {id:'acad_subjects',name:'Composition des épreuves'},
       { id: 'acad_grades', name: 'Notes et résultats' },
       { id: 'acad_complaints', name: 'Réclamations' },
-      { id: 'acad_exams', name: 'Examens' },
+      { id: 'acad_exams', name: 'Examens et rattrapages' },
       { id: 'acad_jury', name: 'Délibérations & Relevés' },
       { id: 'acad_settings', name: 'Paramètres académiques' },
     ],
@@ -194,8 +193,9 @@ export function getAvailableTabs(role: RoleName, permissions?: Permission[], glo
 
 export function isRouteAllowed(pathname: string, role: RoleName): boolean {
   const route = getPortalRoute(pathname);
+  const sectionId = route?.section === 'acad_resits' ? 'acad_exams' : route?.section;
   return getAvailableTabs(role).some(tab => route
-    ? tab.id === route.tab && tab.subTabs?.some(section => section.id === route.section)
+    ? tab.id === route.tab && tab.subTabs?.some(section => section.id === sectionId)
     : MODULE_PATHS[tab.id] === pathname && !!tab.subTabs?.length);
 }
 export function postLoginPath(requested: string | undefined, role: RoleName): string {
