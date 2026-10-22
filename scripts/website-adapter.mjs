@@ -1,6 +1,7 @@
 import { readFile, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import os from 'node:os';
+import { protectRegistrationDocuments } from './website-registration-resilience.mjs';
 
 export async function adaptWebsite(root, portal) {
   for (const [template, destination] of [
@@ -66,6 +67,7 @@ onMounted(async () => {`);
           <div v-if="prepLoading"`);
   registration = registration.replaceAll(':disabled="!prepNiveauId"', ':disabled="!prepNiveauId || catalogLoading || !!catalogError"');
   registration = registration.replaceAll('isSubmitting || !registrationYearId || campaignChanged', 'isSubmitting || catalogLoading || !!catalogError || !niveaux.length || !registrationYearId || campaignChanged');
+  registration = protectRegistrationDocuments(registration);
   await writeFile(path.join(root, 'app/pages/inscription/index.vue'), registration);
   let store = await readFile(path.join(sourceRoot, 'app/stores/candidature.ts'), 'utf8');
   store = store.replace('return response.data?.candidat || null', 'return response.data || null');

@@ -22,7 +22,7 @@ for (const width of [390, 1440]) {
     await expect.poll(() => page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
     await page.evaluate(() => document.fonts.ready);
     await expect(page.getByRole('button', { name: 'Se connecter', exact: true })).toBeVisible();
-    await page.screenshot({ animations: 'disabled', path: `.tmp/interface/${width}/interconnexion-portail.png`, fullPage: true });
+    await page.screenshot({ animations: 'disabled', path: `tmp/screenshots/website-review/${width}/interconnexion-portail.png`, fullPage: true });
     await page.getByRole('link', { name: 'Site ESCEN', exact: true }).click();
     await expect(page).toHaveURL(`${website}/`);
     if (width < 1024) await page.getByRole('button', { name: 'Ouvrir le menu', exact: true }).click();

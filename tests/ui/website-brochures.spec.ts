@@ -45,22 +45,22 @@ for (const width of [390, 1440]) {
     await page.getByRole('button', { name: 'Confirmer l’enregistrement' }).click();
     await expect(page.getByText('Retirée · licence.pdf', { exact: false })).toBeVisible();
     await expect.poll(() => page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
-    await page.screenshot({ path: `.tmp/interface/${width}/brochures.png`, fullPage: true });
+    await page.screenshot({ path: `tmp/screenshots/website-review/${width}/brochures.png`, fullPage: true });
   });
   test(`Site : catalogue des brochures et téléchargement à ${width}px`, async ({ page }) => {
     const website = process.env.ESCEN_TEST_WEBSITE_URL;
     test.skip(!website, 'La copie du site doit être lancée.');
     await page.setViewportSize({ width, height: 950 });
     await page.route('**/api/website/public/brochures', route => route.fulfill({ json: [{ id: brochureId, title: 'Brochure licence', slug: 'brochure-licence', description: 'Formations ESCEN' }] }));
-    await page.route('**/api/website/public/brochures/brochure-licence/download', route => route.fulfill({ contentType: 'application/pdf', headers: { 'Content-Disposition': 'attachment; filename="brochure-licence.pdf"' }, body: '%PDF-1.7\n%%EOF' }));
+    await page.context().route('**/api/website/public/brochures/brochure-licence/download', route => route.fulfill({ contentType: 'application/pdf', headers: { 'Content-Disposition': 'attachment; filename="brochure-licence.pdf"' }, body: '%PDF-1.7\n%%EOF' }));
     await page.goto(`${website}/brochures`);
     await expect(page.getByRole('heading', { name: 'Brochures ESCEN', exact: true })).toBeVisible();
-    await expect(page.getByRole('link', { name: 'Télécharger le PDF — Brochure licence' })).toHaveAttribute('href', /\/api\/website\/public\/brochures\/brochure-licence\/download$/);
+    await expect(page.getByRole('article').filter({ has: page.getByRole('heading', { name: 'Brochure licence', exact: true }) }).getByRole('link')).toHaveAttribute('href', /\/api\/website\/public\/brochures\/brochure-licence\/download$/);
     await expect(page.getByRole('textbox')).toHaveCount(0);
     const download = page.waitForEvent('download');
-    await page.getByRole('link', { name: 'Télécharger le PDF — Brochure licence' }).click();
+    await page.getByRole('article').filter({ has: page.getByRole('heading', { name: 'Brochure licence', exact: true }) }).getByRole('link').click();
     expect((await download).suggestedFilename()).toBe('brochure-licence.pdf');
-    await page.screenshot({ path: `.tmp/interface/${width}/brochures-site.png`, fullPage: true });
+    await page.screenshot({ path: `tmp/screenshots/website-review/${width}/brochures-site.png`, fullPage: true });
   });
 }
 test('Gestion des brochures inaccessible sans session', async ({ request }) => {

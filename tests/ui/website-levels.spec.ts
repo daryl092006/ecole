@@ -29,7 +29,7 @@ for (const width of [390, 1440]) {
     await page.reload();
     await expect(page.getByText('Année scolaire : 2026-2027')).toBeVisible();
     await expect(select.locator('option')).toHaveText(['Veuillez sélectionner un niveau...', 'Master 1']);
-    await page.screenshot({ path: `.tmp/interface/${width}/website-levels.png`, fullPage: true });
+    await page.screenshot({ path: `tmp/screenshots/website-review/${width}/website-levels.png`, fullPage: true });
   });
 }
 test('Site : niveaux réels de l’année active, sans envoi de dossier', async ({ page, request }) => {
