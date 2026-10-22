@@ -35,6 +35,11 @@ export async function repairWebsiteNavigation(root) {
   await writeFile(path.join(root, 'app/assets/css/website-header.css'), await readFile(new URL('./website-templates/website-header.css', import.meta.url), 'utf8'));
   await writeFile(headerFile, header);
 
+  const flagsFile = path.join(root, 'app/components/PartenairesFlag.vue');
+  let flags = await readFile(flagsFile, 'utf8');
+  flags = flags.replace('class="w-28 h-20 rounded-xl overflow-hidden', 'class="website-country-flag overflow-hidden');
+  await writeFile(flagsFile, flags);
+
   const catalogFile = path.join(root, 'app/pages/formations/index.vue');
   let catalog = await readFile(catalogFile, 'utf8');
   // Public content must be visible before any observer or animation runs.
