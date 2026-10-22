@@ -170,7 +170,7 @@ for (const width of [360, 390]) {
     await reducedViewport(page, dialog, reason, width);
     await dialog.getByRole('button', { name: 'Relire avant enregistrement', exact: true }).click(); expect(fixture.commands).toHaveLength(0);
     await visibleActions(page, dialog); await dialog.getByRole('button', { name: 'Confirmer l’enregistrement', exact: true }).click();
-    await expect(dialog).toHaveCount(0); await expect(page.getByRole('status')).toContainText('Brouillon de l’article enregistré.');
+    await expect(dialog).toHaveCount(0); await expect(page.getByRole('status').filter({ hasText: 'Brouillon de l’article enregistré.' })).toBeVisible();
   });
 }
 

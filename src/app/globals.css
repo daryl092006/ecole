@@ -1698,6 +1698,24 @@ form { scroll-margin-top: 1rem; }
 
 
 
+/* Filters keep usable widths instead of leaving unused space on phones. */
+.browser-toolbar > .form-group { flex: 1 1 200px; min-width: 0; }
+.browser-toolbar > .form-group > .input,
+.browser-toolbar > .form-group > .select-input { width: 100%; }
+.detail-drawer-header > .btn { flex-shrink: 0; }
+@media (max-width: 768px) {
+  .browser-toolbar { align-items: stretch; }
+  .browser-toolbar > .form-group { flex-basis: 100%; }
+  .directory-toolbar { flex-direction: column; align-items: stretch; }
+  .directory-toolbar > label { flex: none; min-width: 0; }
+  .academic-year-control { flex-wrap: wrap; }
+  .academic-year-control > label,
+  .academic-year-control > .cell-sub { flex-basis: 100%; }
+  .academic-year-control .select-input { font-size: 16px; }
+  .account-summary { padding: 5px; }
+  .navigation-open .sidebar { overscroll-behavior: contain; }
+}
+
 /* Shared skeleton for remote reads and feedback for persistent writes. */
 .loading-state { padding: 1.5rem; margin: 1rem 0; border: 1px solid var(--border, #dce4ed); border-radius: 14px; background: var(--surface, #fff); min-width: 0; }
 .loading-state-label { display: block; margin-bottom: .65rem; color: var(--primary, #087b90); font-weight: 600; }

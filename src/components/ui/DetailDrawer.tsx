@@ -56,7 +56,7 @@ export default function DetailDrawer({ title, onClose, children, busy = false }:
   }, []);
   useEffect(() => {
     const previous = document.activeElement as HTMLElement | null;
-    const underlying = Array.from(document.querySelectorAll<HTMLElement>('.detail-overlay')).filter(element => !element.contains(panel.current)).map(element => ({ element, inert: element.inert, hidden: element.getAttribute('aria-hidden') }));
+    const underlying = Array.from(document.querySelectorAll<HTMLElement>('.app-wrapper, .skip-link, .detail-overlay')).filter(element => !element.contains(panel.current)).map(element => ({ element, inert: element.inert, hidden: element.getAttribute('aria-hidden') }));
     for (const { element } of underlying) { element.inert = true; element.setAttribute('aria-hidden', 'true'); }
     openDialogs.push(titleId);
     const overflow = document.body.style.overflow;

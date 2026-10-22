@@ -58,6 +58,7 @@ export async function installResponsiveAudit(page: Page, account: AuditAccount) 
   const problems: string[] = [];
   const client = { async rpc(name: string) {
     if (name === 'escen_backend_snapshot') return { data: campus, error: null };
+    if (name === 'escen_email_page') return { data: { yearId: id.year, records: [], total: 0, offset: 0, limit: 50 }, error: null };
     if (name === 'escen_academic_year_context') return { data: { currentYearId: id.year }, error: null };
     if (['escen_catalog_history_links', 'escen_history_student_ids_year'].includes(name)) return { data: [], error: null };
     if (['escen_history_catalog', 'escen_history_catalog_year'].includes(name)) return { data: { totalSourceRows: 0, datasets: [], references: {} }, error: null };

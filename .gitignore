@@ -58,3 +58,6 @@ next-env.d.ts
 # Local Supabase CLI connection metadata
 /supabase/.temp/
 /supabase/.branches/
+
+# Responsive review captures
+/tmp/screenshots/responsive-review/

@@ -62,7 +62,8 @@ export default function PortalShell({ children }: { children: ReactNode }) {
     return () => {
       document.removeEventListener('keydown', containFocus);
       window.removeEventListener('resize', resize);
-      previousFocus?.focus();
+      if (previousFocus?.isConnected && previousFocus !== document.body) previousFocus.focus();
+      else document.querySelector<HTMLButtonElement>('.mobile-menu-toggle')?.focus();
     };
   }, [menuOpen]);
   const destinations: SearchDestination[] = navigationGroups.flatMap(group => group.pages.map(page => ({
