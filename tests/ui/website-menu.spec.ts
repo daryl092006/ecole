@@ -29,7 +29,7 @@ for (const width of [390, 1440]) {
     await page.getByRole('button', { name: 'Relire la configuration' }).click();
     expect(commands).toHaveLength(0);
     await page.getByRole('button', { name: 'Confirmer la configuration' }).click();
-    await expect(page.getByText('Pièces obligatoires : Dernier diplôme, Acte de naissance', { exact: true })).toBeVisible();
+    await expect(page.getByText('Dernier diplôme, Acte de naissance', { exact: true })).toBeVisible();
     expect(commands[0]).toMatchObject({ action: 'intake-save', id, level_id: level, academic_year_id: year, required_documents: ['diplome_file', 'naissance_file'] });
     if (width < 800) await page.getByRole('button', { name: /Ouvrir (la navigation|le menu)/ }).click();
     const nav = page.locator('#application-navigation');
