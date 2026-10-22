@@ -74,9 +74,9 @@ for (const count of [7, 30]) test(`Le PDF avec ${count * 2} matières et des lib
   const structure = await page.evaluate(() => {
     const rect = (selector: string) => document.querySelector(selector)!.getBoundingClientRect();
     const title = rect('.transcript-title-band'), program = rect('.transcript-program'), identity = rect('.transcript-identity'), table = rect('.transcript-table');
-    return { formationRight: program.left > identity.right, identityBelowFormation: identity.top > program.bottom, tableBelowIdentity: table.top > identity.bottom, yearBesideTitle: rect('.transcript-title-band p').left > title.left };
+    return { formationRight: program.left > identity.right, identityAlignedWithFormation: Math.abs(identity.top - program.top) < 1, tableBelowIdentity: table.top > identity.bottom, yearBesideTitle: rect('.transcript-title-band p').left > title.left };
   });
-  expect(structure).toEqual({ formationRight: true, identityBelowFormation: true, tableBelowIdentity: true, yearBesideTitle: true });
+  expect(structure).toEqual({ formationRight: true, identityAlignedWithFormation: true, tableBelowIdentity: true, yearBesideTitle: true });
   const pdf = await page.pdf({ preferCSSPageSize: true, printBackground: true });
   expect(pdf.toString('latin1').match(/\/Type\s*\/Page\b/g)).toHaveLength(1);
   await fs.mkdir('tmp/screenshots/transcripts', { recursive: true });
@@ -142,7 +142,7 @@ test('Comparaison visuelle Master FD avec les treize matières du modèle', asyn
   expect(proportions.title).toBeCloseTo(120 / 151, 2);
   expect(proportions.table).toBeCloseTo(145 / 151, 2);
   expect(proportions.identity).toBeCloseTo(51 / 151, 2);
-  expect(proportions.tableTop).toBeCloseTo(122 / 151, 2);
+  expect(proportions.tableTop).toBeCloseTo(102 / 151, 2);
   const pdf = await page.pdf({ preferCSSPageSize: true, printBackground: true });
   expect(pdf.toString('latin1').match(/\/Type\s*\/Page\b/g)).toHaveLength(1);
   await fs.mkdir('tmp/screenshots/transcripts', { recursive: true });
