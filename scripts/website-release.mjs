@@ -44,10 +44,12 @@ export async function prepareWebsiteRelease(root, origins) {
   await writeFile(path.join(root, 'app/components/WebsiteActions.vue'), await readFile(new URL('./website-templates/WebsiteActions.vue', import.meta.url), 'utf8'));
   const sliderFile = path.join(root, 'app/components/Slider.vue');
   let slider = await readFile(sliderFile, 'utf8');
-  if (!slider.includes('<WebsiteActions inline')) {
-    slider = slider.replace(/(\r?\n)([ \t]*)<\/div>\r?\n([ \t]*)<\/Transition>/, '$1$2  <WebsiteActions inline />$1$2</div>$1$3</Transition>');
-    await writeFile(sliderFile, slider);
-  }
+  // Two stable actions across slides; brochures remain in the catalogue/footer
+  // and on formation pages instead of adding a second row of competing links.
+  slider = slider.replace(/^[ \t]*<WebsiteActions inline\s*\/>\r?\n/gm, '');
+  slider = slider.replace(/primaryButton: \{ text: '[^']*', link: '\/formations' \}/g, "primaryButton: { text: 'Nos formations', link: '/formations' }");
+  slider = slider.replace(/secondaryButton: \{ text: '(?:Nous contacter|Candidater|En savoir plus)', link: '\/(?:contact|inscription)' \}/g, "secondaryButton: { text: 'Candidater', link: '/inscription' }");
+  await writeFile(sliderFile, slider);
   for (const name of ['AboutUS.vue', 'Temoignage.vue']) {
     const file = path.join(root, 'app/components', name);
     let source = await readFile(file, 'utf8');

@@ -34,7 +34,7 @@ test('La régénération conserve les titres des composants, reste idempotente e
   const workflow = await readFile(path.join(root, '.github/workflows/deploy.yml'), 'utf8');
   assert.equal(workflow.split('Vérifier l’interconnexion').length, 2);
   assert.ok(workflow.includes('local-dir: ./dist/'));
-  assert.ok((await readFile(path.join(root, 'app/components/Slider.vue'), 'utf8')).includes('<WebsiteActions inline />'));
+  assert.ok(!(await readFile(path.join(root, 'app/components/Slider.vue'), 'utf8')).includes('<WebsiteActions inline />'));
   const apache = await readFile(path.join(root, 'public/.htaccess'), 'utf8');
   assert.ok(!apache.includes(' /index.html'));
 });

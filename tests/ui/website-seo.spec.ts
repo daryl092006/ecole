@@ -50,12 +50,21 @@ test('Une formation sans brochure publiée ne propose pas le PDF d’un autre cy
 });
 
 for (const width of [390, 1440]) {
-  test(`Accueil : accès directs aux brochures, candidatures et conseiller à ${width}px`, async ({ page }) => {
+  test(`Accueil : actions claires sans doublon et conseiller à ${width}px`, async ({ page }) => {
     await page.setViewportSize({ width, height: 900 });
     await page.goto(site + '/');
-    const actions = page.getByRole('navigation', { name: 'Préparer sa candidature' });
-    await expect(actions.getByRole('link', { name: 'Télécharger une brochure' })).toHaveAttribute('href', '/brochures');
-    await expect(actions.getByRole('link', { name: 'Postuler en ligne' })).toHaveAttribute('href', '/inscription');
+    const hero = page.locator('section').filter({ has: page.getByRole('heading', { level: 1 }) }).first();
+    await expect(hero.getByRole('link', { name: 'Nos formations', exact: true })).toHaveAttribute('href', '/formations');
+    await expect(hero.getByRole('link', { name: 'Candidater', exact: true })).toHaveAttribute('href', '/inscription');
+    await expect(hero.locator('a')).toHaveCount(2);
+    for (const slide of [1, 2, 0]) {
+      await hero.locator('button').nth(slide).click();
+      await expect(hero.getByRole('link', { name: 'Nos formations', exact: true })).toHaveAttribute('href', '/formations');
+      await expect(hero.getByRole('link', { name: 'Candidater', exact: true })).toHaveAttribute('href', '/inscription');
+      await expect(hero.locator('a')).toHaveCount(2);
+    }
+    await expect(page.getByRole('link', { name: 'Postuler en ligne', exact: true })).toHaveCount(0);
+    await expect(page.getByRole('link', { name: 'Brochures ESCEN', exact: true })).toHaveAttribute('href', '/brochures');
     await expect(page.getByRole('link', { name: 'Échanger avec ESCEN sur WhatsApp' })).toHaveAttribute('href', 'https://api.whatsapp.com/send?phone=22898012727');
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
     await page.screenshot({ path: `tmp/screenshots/website-review/${width}/accueil-corrige.png`, fullPage: true });
