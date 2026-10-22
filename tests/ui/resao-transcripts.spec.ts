@@ -52,7 +52,7 @@ test('Création : code automatique, récapitulatif puis enregistrement avec le s
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
 });
 
-for (const count of [7, 30]) test(`Le PDF avec ${count * 2} matières et des libellés longs tient sur une page A4`, async ({ page }) => {
+for (const count of [7, 20, 30]) test(`Le PDF avec ${count * 2} matières et des libellés longs tient sur une page A4`, async ({ page }) => {
   await page.goto('/connexion');
   const styles = await page.locator('link[rel="stylesheet"]').evaluateAll(links => links.map(link => (link as HTMLLinkElement).href));
   const origin = new URL(page.url()).origin;
@@ -90,6 +90,7 @@ for (const count of [7, 30]) test(`Le PDF avec ${count * 2} matières et des lib
   await fs.mkdir('tmp/screenshots/transcripts', { recursive: true });
   await fs.writeFile(`tmp/screenshots/transcripts/releve-${count * 2}-matieres.pdf`, pdf);
   if (count === 7) await page.screenshot({ path: 'tmp/screenshots/transcripts/releve-master.png', fullPage: true });
+  if (count === 20) await page.screenshot({ path: 'tmp/screenshots/transcripts/releve-40-matieres.png', fullPage: true });
 });
 
 test('Impression connectée : un relevé incomplet reste bloqué sans inventer les résultats', async ({ page }) => {
