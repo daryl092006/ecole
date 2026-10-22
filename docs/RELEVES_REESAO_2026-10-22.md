@@ -45,3 +45,7 @@ Une donnée absente ne devient jamais zéro. Aucun nom de directeur ni date de s
 - Comparaison avec le Word : `tmp/screenshots/transcripts/releve-master-fd.pdf`, capture du PDF complet `releve-master-fd-page-a4.png` et copie Word de recette dans `model-source/master-fd-rempli.docx`. Cette copie et ses notes sont des données de test, jamais des relevés étudiants émis.
 
 Aucune migration créée, aucune modification des migrations existantes et aucune application distante.
+
+## Largeur validée du relevé
+
+Le relevé utilise les 190 mm disponibles d’une page A4 entre des marges latérales de 10 mm. L’en-tête, le bandeau titre/année et le tableau occupent cette même largeur. L’identité à gauche et la formation à droite occupent deux colonnes égales séparées de 6 mm, alignées en haut et sur les bords extérieurs du document. La synthèse et le cadre de signature utilisent également toute la largeur disponible. Si un document très long doit être réduit pour tenir sur une page, le contenu réduit reste centré horizontalement. Ces choix remplacent les largeurs et décalages fixes cités plus haut.

@@ -3015,30 +3015,30 @@ input[type="radio"] {
 @font-face { font-family: 'Transcript Book Antiqua'; src: url('/fonts/transcript/BookAntiqua-bold.ttf') format('truetype'); font-weight: 700; font-style: normal; font-display: block; }
 @font-face { font-family: 'Transcript Book Antiqua'; src: url('/fonts/transcript/BookAntiqua-italic.ttf') format('truetype'); font-weight: 400; font-style: italic; font-display: block; }
 @font-face { font-family: 'Transcript Book Antiqua'; src: url('/fonts/transcript/BookAntiqua-boldItalic.ttf') format('truetype'); font-weight: 700; font-style: italic; font-display: block; }
-@page transcript { size: A4 portrait; margin: 13mm 25mm 8mm; }
-html.transcript-print-root { width: 160mm; height: auto; min-height: 0; overflow: visible; }
+@page transcript { size: A4 portrait; margin: 13mm 10mm 8mm; }
+html.transcript-print-root { width: 190mm; height: auto; min-height: 0; overflow: visible; }
 .transcript-print-frame { position: fixed; width: 800px; height: 1120px; opacity: 0; pointer-events: none; border: 0; }
-body.transcript-print-body { page: transcript; display: block; width: 160mm; height: auto; min-width: 0; min-height: 0; overflow: visible; margin: 0; padding: 0; background: #fff; color: #000; font: 9pt/1.15 "Times New Roman", serif; }
+body.transcript-print-body { page: transcript; display: block; width: 190mm; height: auto; min-width: 0; min-height: 0; overflow: visible; margin: 0; padding: 0; background: #fff; color: #000; font: 9pt/1.15 "Times New Roman", serif; }
 .transcript-print-body *, .transcript-print-body *::before, .transcript-print-body *::after { box-sizing: border-box; font-family: inherit; }
-.transcript-sheet { overflow: hidden; position: relative; width: 160mm; height: 276mm; margin: 0; padding: 0; break-inside: avoid; }
-.transcript-content { position: absolute; top: 0; left: 0; width: 160mm; transform-origin: top left; }
+.transcript-sheet { overflow: hidden; position: relative; width: 190mm; height: 276mm; margin: 0; padding: 0; break-inside: avoid; }
+.transcript-content { position: absolute; top: 0; left: 0; width: 190mm; transform-origin: top left; }
 .transcript-heading-layout { position: relative; height: 102mm; }
 .transcript-watermark { position: absolute; z-index: 0; top: 8mm; left: 0; width: 100%; text-align: center; color: #eee; font: bold 45pt/1.2 "Times New Roman", serif; letter-spacing: 3mm; white-space: nowrap; }
-.transcript-header { position: absolute; top: 0; left: 0; width: 151mm; z-index: 1; display: grid; grid-template-columns: 53% 47%; border: .3mm solid #000; font-size: 10pt; line-height: 1.2; }
+.transcript-header { position: absolute; top: 0; left: 0; width: 100%; z-index: 1; display: grid; grid-template-columns: 53% 47%; border: .3mm solid #000; font-size: 10pt; line-height: 1.2; }
 .transcript-header > div { padding: 1mm 1.5mm; }
 .transcript-ministry { border-right: .3mm solid #000; text-align: left; font-size: 8pt; font-weight: bold; }
 .transcript-republic { text-align: right; }
 .transcript-republic strong { display: inline-block; margin-bottom: 1.5mm; }
-.transcript-brand { position: absolute; top: 14mm; left: 0; width: 160mm; height: 48mm; text-align: center; margin: 0; }
+.transcript-brand { position: absolute; top: 14mm; left: 0; width: 190mm; height: 48mm; text-align: center; margin: 0; }
 .transcript-logo { display: block; width: 54mm; height: auto; margin: 0 auto; }
 .transcript-brand p { position: absolute; top: 41mm; width: 100%; margin: 0; font-size: 9pt; font-weight: bold; }
-.transcript-title-band { position: absolute; top: 64mm; left: 0; display: grid; grid-template-columns: 50% 50%; width: 120mm; min-height: 11.5mm; border: .3mm solid #000; align-items: stretch; }
+.transcript-title-band { position: absolute; top: 64mm; left: 0; display: grid; grid-template-columns: 50% 50%; width: 100%; min-height: 11.5mm; border: .3mm solid #000; align-items: stretch; }
 .transcript-sheet h1 { font: bold 17pt/1.2 'Transcript Book Antiqua', 'Book Antiqua', serif; text-align: left; margin: 0; padding: 1mm; border-right: .3mm solid #000; white-space: nowrap; }
 .transcript-title-band p { margin: 0; padding: 1mm; font-size: 12pt; line-height: 1.2; }
-.transcript-details { position: absolute; top: 76mm; left: 0; width: 125mm; height: 25mm; margin: 0; line-height: 1.2; font-weight: bold; }
-.transcript-program { position: absolute; top: 0; left: 77mm; width: max-content; min-width: 46mm; max-width: 80mm; min-height: 16mm; border: .3mm solid #000; padding: .5mm; font: bold 12pt/1.15 'Transcript Book Antiqua', 'Book Antiqua', serif; }
-.transcript-identity { position: absolute; top: 0; left: 0; width: max-content; min-width: 51mm; max-width: 75mm; min-height: 18mm; border: .3mm solid #000; padding: 1mm; font-size: 10pt; }
-.transcript-table { width: 145mm; table-layout: fixed; border-collapse: collapse; margin: 0; font-size: 9pt; }
+.transcript-details { position: absolute; top: 76mm; left: 0; width: 100%; margin: 0; line-height: 1.2; font-weight: bold; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); min-height: 18mm; display: grid; gap: 6mm; }
+.transcript-program { min-width: 0; border: .3mm solid #000; padding: 1mm; font: bold 12pt/1.15 'Transcript Book Antiqua', 'Book Antiqua', serif; grid-row: 1; grid-column: 2; overflow-wrap: anywhere; }
+.transcript-identity { min-width: 0; border: .3mm solid #000; padding: 1mm; font-size: 10pt; grid-row: 1; grid-column: 1; overflow-wrap: anywhere; }
+.transcript-table { width: 100%; table-layout: fixed; border-collapse: collapse; margin: 0; font-size: 9pt; }
 .transcript-table th, .transcript-table td { border: .3mm solid #000; padding: .35mm .3mm; vertical-align: middle; color: #000; overflow-wrap: anywhere; }
 .transcript-table thead th { background: #fff; font-size: 8pt; text-align: center; padding: .6mm .3mm; white-space: nowrap; }
 .transcript-table td:nth-child(2) { font-style: italic; }
@@ -3050,8 +3050,8 @@ body.transcript-print-body { page: transcript; display: block; width: 160mm; hei
 .transcript-total th { text-align: left; font-size: 9pt; }
 .transcript-total th:nth-last-child(2) { text-align: center; }
 .transcript-total .transcript-total-spacer { border-left-color: transparent; border-bottom-color: transparent; }
-.transcript-bottom { display: grid; grid-template-columns: 52mm 101mm; gap: 5mm; margin-top: 3mm; align-items: start; }
-.transcript-summary { width: 52mm; border-collapse: collapse; margin: 0; font-size: 9pt; }
+.transcript-bottom { display: grid; grid-template-columns: 65mm minmax(0, 1fr); gap: 6mm; margin-top: 3mm; align-items: start; }
+.transcript-summary { width: 100%; border-collapse: collapse; margin: 0; font-size: 9pt; }
 .transcript-summary th, .transcript-summary td { border: .3mm solid #000; padding: 1mm; }
 .transcript-summary th { text-align: left; font-style: italic; }
 .transcript-summary td { background: #d9d9d9; text-align: center; min-width: 18mm; }

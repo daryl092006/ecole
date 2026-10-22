@@ -68,7 +68,7 @@ for (const count of [7, 30]) test(`Le PDF avec ${count * 2} matières et des lib
   const contained = await page.evaluate(() => {
     const page = document.querySelector('.transcript-sheet')!.getBoundingClientRect();
     const content = document.querySelector('.transcript-content')!.getBoundingClientRect();
-    return content.bottom <= page.bottom && content.right <= page.right;
+    return content.bottom <= page.bottom && content.right <= page.right && Math.abs((content.left + content.right) / 2 - (page.left + page.right) / 2) < 1;
   });
   expect(contained).toBe(true);
   const structure = await page.evaluate(() => {
@@ -133,16 +133,26 @@ test('Comparaison visuelle Master FD avec les treize matières du modèle', asyn
   await page.evaluate(async () => { document.body.getBoundingClientRect(); await document.fonts.ready; await Promise.all(Array.from(document.images).map(img => img.decode())); });
   await page.evaluate(`(${fitTranscriptToPage.toString()})(document)`);
   await expect(page.locator('.transcript-sheet h1')).toHaveCSS('font-family', /Transcript Book Antiqua/);
-  const proportions = await page.evaluate(() => {
+  const alignment = await page.evaluate(() => {
     const rect = (selector: string) => document.querySelector(selector)!.getBoundingClientRect();
-    const header = rect('.transcript-header');
-    return { title: rect('.transcript-title-band').width / header.width, table: rect('.transcript-table').width / header.width, identity: rect('.transcript-identity').width / header.width, tableTop: (rect('.transcript-table').top - header.top) / header.width };
+    const sheet = rect('.transcript-sheet'), header = rect('.transcript-header');
+    return {
+      headerWidth: header.width / sheet.width,
+      titleWidth: rect('.transcript-title-band').width / header.width,
+      tableWidth: rect('.transcript-table').width / header.width,
+      identityLeft: Math.abs(rect('.transcript-identity').left - header.left),
+      programRight: Math.abs(rect('.transcript-program').right - header.right),
+      sameTop: Math.abs(rect('.transcript-identity').top - rect('.transcript-program').top),
+      centered: Math.abs((header.left + header.right) / 2 - (sheet.left + sheet.right) / 2),
+    };
   });
-  // Ratios measured from the supplied Word, rather than a full-width redesign.
-  expect(proportions.title).toBeCloseTo(120 / 151, 2);
-  expect(proportions.table).toBeCloseTo(145 / 151, 2);
-  expect(proportions.identity).toBeCloseTo(51 / 151, 2);
-  expect(proportions.tableTop).toBeCloseTo(102 / 151, 2);
+  expect(alignment.headerWidth).toBeGreaterThan(0.99);
+  expect(alignment.titleWidth).toBeCloseTo(1, 2);
+  expect(alignment.tableWidth).toBeCloseTo(1, 2);
+  expect(alignment.identityLeft).toBeLessThan(1);
+  expect(alignment.programRight).toBeLessThan(1);
+  expect(alignment.sameTop).toBeLessThan(1);
+  expect(alignment.centered).toBeLessThan(1);
   const pdf = await page.pdf({ preferCSSPageSize: true, printBackground: true });
   expect(pdf.toString('latin1').match(/\/Type\s*\/Page\b/g)).toHaveLength(1);
   await fs.mkdir('tmp/screenshots/transcripts', { recursive: true });

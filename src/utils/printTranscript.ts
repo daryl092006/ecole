@@ -11,8 +11,10 @@ export function fitTranscriptToPage(document: Document): void {
   const content = document.querySelector<HTMLElement>('.transcript-content');
   if (!sheet || !content || !sheet.clientHeight || !sheet.clientWidth) throw new Error('La mise en page du relevé n’a pas pu être chargée.');
   content.style.transform = '';
+  content.style.left = '0';
   const scale = Math.min(1, (sheet.clientHeight - 2) / content.scrollHeight, (sheet.clientWidth - 2) / content.scrollWidth);
   content.style.transform = `scale(${scale})`;
+  content.style.left = `${Math.max(0, (sheet.clientWidth - content.offsetWidth * scale) / 2)}px`;
 }
 
 export async function printTranscript(documentContent: TranscriptDocument): Promise<void> {
