@@ -4,6 +4,7 @@ import { adaptWebsite } from './website-adapter.mjs';
 import { websiteOrigins, prepareWebsiteRelease } from './website-release.mjs';
 import { applyWebsiteBranding } from './website-branding.mjs';
 import { prepareWebsiteArticles } from './website-articles.mjs';
+import { repairWebsiteNavigation } from './website-navigation.mjs';
 
 // Run only against the private working copy, never the source in Downloads.
 const projectRoot = await realpath('.');
@@ -47,4 +48,5 @@ await adaptWebsite(root, portal);
 await prepareWebsiteRelease(root, origins);
 await applyWebsiteBranding(root);
 await prepareWebsiteArticles(root, origins);
+await repairWebsiteNavigation(root);
 console.log(`Copie interconnectée : ${root}\nPortail : ${loginUrl}\nAPI : ${portal.origin}/api/website`);
