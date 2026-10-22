@@ -7,6 +7,7 @@ import { getSupabaseBrowserClient } from '@/lib/supabase/client';
 import { academicYearRequestHeaders } from '@/services/academicYearSelection';
 import { connectedFieldLabel } from '@/services/connectedRecordDisplayService';
 import LoadingState from '@/components/ui/LoadingState';
+import ErrorState from '@/components/ui/ErrorState';
 import ResponsiveTable from '@/components/ui/ResponsiveTable';
 import WorkPage from '@/components/ui/WorkPage';
 import IconButton from '@/components/ui/IconButton';
@@ -116,7 +117,7 @@ export default function AuditJournalPanel({ exportMode = false }: { exportMode?:
       </div>
       <div className="btn-group"><button className="btn btn-primary">Appliquer les filtres</button><button className="btn btn-outline" type="button" onClick={() => { setDraft(emptyFilters); setFilters({ ...emptyFilters }); resetPage(); }}>Effacer les filtres</button><button className="btn btn-outline" type="button" onClick={() => { setPage(null); setRetry(value => value + 1); }}>Actualiser le journal</button></div>
     </form>
-    {error ? <section className="card" role="alert"><h2>Journal indisponible</h2><p>{error}</p><button className="btn btn-outline" onClick={() => setRetry(value => value + 1)}>Réessayer</button></section> : !page ? <LoadingState label="Chargement du journal…" /> : <section className="card card-full">
+    {error ? <ErrorState title="Journal indisponible" message={error} onRetry={() => setRetry(value => value + 1)} /> : !page ? <LoadingState label="Chargement du journal…" variant="table" /> : <section className="card card-full">
       <h2>{source === 'current' ? 'Opérations actuelles' : 'Journal historique'} ({page.total})</h2>
       <ResponsiveTable className="data-table"><thead><tr><th>Date et heure</th><th>Auteur</th><th>Action</th><th>Entité</th><th>Détail</th></tr></thead><tbody>{page.records.map(record => <tr key={record.id}><td>{date(record.date)}</td><td>{actor(record)}</td><td>{record.action || 'Action non trouvée'}</td><td>{record.table || 'Type non trouvé'}<div className="cell-sub audit-values">{record.entityId || 'Référence non trouvée'}</div></td><td><IconButton className="btn btn-outline" label="Consulter l’événement" onClick={() => setSelected(record)} /></td></tr>)}{!page.records.length && <tr><td colSpan={5}>{source === 'history' && page.yearId ? 'Choisissez Toutes les années pour consulter les événements historiques sans rattachement annuel confirmé.' : 'Aucun événement pour cette source et ces filtres.'}</td></tr>}</tbody></ResponsiveTable>
       {page.total > page.limit && <div className="browser-pagination"><span>{offset + 1}–{Math.min(offset + page.limit, page.total)} sur {page.total}</span><div className="btn-group"><button className="btn btn-outline" disabled={!offset} onClick={() => { setPage(null); setOffset(value => Math.max(0, value - page.limit)); }}>Précédent</button><button className="btn btn-outline" disabled={offset + page.limit >= page.total} onClick={() => { setPage(null); setOffset(value => value + page.limit); }}>Suivant</button></div></div>}

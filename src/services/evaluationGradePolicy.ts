@@ -26,3 +26,32 @@ export function evaluationGradeIsComplete(grade: EvaluationGradeValue | null | u
   if (grade.absence_status === 'ABSENT' || grade.absence_status === 'JUSTIFIE') return grade.value == null;
   return evaluationGradeValue(grade) !== null;
 }
+
+export function evaluationGradeNoteLabel(
+  grade: EvaluationGradeValue | null | undefined,
+  attemptStatus?: unknown
+): string {
+  if (grade?.absence_status === 'ABSENT') return '— (Absent)';
+  if (grade?.absence_status === 'JUSTIFIE') return '— (Justifié)';
+  const val = evaluationGradeValue(grade);
+  if (grade?.absence_status === 'NON_TRAITE') return '0 / 20 (provisoire)';
+  if (val !== null) return `${val.toLocaleString('fr-FR', { maximumFractionDigits: 2 })} / 20`;
+  if (attemptStatus === 'EN_COURS') return 'Composition en cours';
+  if (attemptStatus === 'REMISE' || attemptStatus === 'EXPIREE') return 'Copie remise · À corriger';
+  return 'En attente de correction';
+}
+
+export function evaluationCandidateStatusLabel(
+  grade: EvaluationGradeValue | null | undefined,
+  attemptStatus?: unknown
+): string {
+  if (grade?.absence_status === 'ABSENT') return 'Absent injustifié';
+  if (grade?.absence_status === 'JUSTIFIE') return 'Absent justifié';
+  if (grade?.absence_status === 'NON_TRAITE') return 'Copie non traitée';
+  if (evaluationGradeValue(grade) !== null) return 'Présent · Copie corrigée';
+  if (attemptStatus === 'EN_COURS') return 'Présent · Composition en ligne en cours';
+  if (attemptStatus === 'REMISE' || attemptStatus === 'EXPIREE') {
+    return 'Présent · Copie remise (en attente de correction par l’enseignant)';
+  }
+  return 'En attente de correction par l’enseignant';
+}

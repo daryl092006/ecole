@@ -2,7 +2,7 @@ import referenceMap from '@/data/relationalReferences.json';
 import { NATIVE_FIELD_LABELS } from '@/data/domainWorkspaces';
 import type { DatabaseRow, RelationalSnapshot } from '@/types/persistence';
 const references: Record<string, Record<string, string>> = referenceMap;
-export const connectedFieldLabel = (key: string) => NATIVE_FIELD_LABELS[key] || ({ candidate_id: 'Candidat à l’évaluation', component_id: 'Composante pédagogique', version_id: 'Version du contrat', offering_semester_id: 'Semestre de l’offre', file_id: 'Pièce jointe', body: 'Message', currency: 'Devise', paid_on: 'Date du versement', payer_name: 'Payeur', terms_snapshot: 'Conditions de la bourse', happened_at: 'Date de l’opération', reversed_at: 'Date d’annulation', old_status: 'État précédent', new_status: 'Nouvel état', unit_amount: 'Montant unitaire FCFA', average: 'Moyenne', held_at: 'Date du jury', minutes: 'Compte rendu', absence_status: 'État d’absence', comment: 'Commentaire', recorded_at: 'Enregistré le', arrived_at: 'Arrivée', left_at: 'Départ', withdrawn_at: 'Retiré le', expires_at: 'Expire le', withdrawal_reason: 'Motif du retrait' } as Record<string, string>)[key] || key.replace(/_/g, ' ');
+export const connectedFieldLabel = (key: string) => NATIVE_FIELD_LABELS[key] || ({ candidate_id: 'Candidat à l’évaluation', component_id: 'Composante pédagogique', version_id: 'Version du contrat', offering_semester_id: 'Semestre de l’offre', file_id: 'Pièce jointe', body: 'Message', currency: 'Devise', paid_on: 'Date du versement', payer_name: 'Payeur', terms_snapshot: 'Conditions de la bourse', happened_at: 'Date de l’opération', reversed_at: 'Date d’annulation', old_status: 'État précédent', new_status: 'Nouvel état', unit_amount: 'Montant unitaire FCFA', average: 'Moyenne', held_at: 'Date du jury', minutes: 'Compte rendu', absence_status: 'Présence et état de correction', comment: 'Commentaire', recorded_at: 'Enregistré le', arrived_at: 'Arrivée', left_at: 'Départ', withdrawn_at: 'Retiré le', expires_at: 'Expire le', withdrawal_reason: 'Motif du retrait' } as Record<string, string>)[key] || key.replace(/_/g, ' ');
 
 export function connectedRecordName(table: string, row: DatabaseRow, snapshot: RelationalSnapshot, depth = 0): string {
   if (table === 'evaluation_candidates' && depth < 4) {
@@ -33,7 +33,11 @@ export function connectedRecordName(table: string, row: DatabaseRow, snapshot: R
 }
 
 export function connectedRecordValue(table: string, key: string, value: unknown, snapshot: RelationalSnapshot): string {
-  if (value === null || value === undefined || value === '') return 'Non renseigné';
+  if (value === null || value === undefined || value === '') {
+    if (table === 'grades' && key === 'value') return 'En attente de correction ou absence';
+    if (table === 'grades' && key === 'absence_status') return 'Présent / En attente de correction';
+    return 'Non renseigné';
+  }
   const target = references[table]?.[key];
   if (target) {
     const row = snapshot.tables[target]?.find(item => item.id === value);

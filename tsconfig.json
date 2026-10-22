@@ -46,11 +46,16 @@
     ".tmp/next-ui-development/types/**/*.ts",
     "next-env.d.ts",
     "tmp/next-annual-offerings/types/**/*.ts",
+    "tmp/next-business-review/types/**/*.ts",
+    "tmp/next-github-sync/types/**/*.ts",
     "tmp/next-manual-review/types/**/*.ts",
+    "tmp/next-visual-refresh/types/**/*.ts",
     "tmp/next-website-preview/types/**/*.ts",
-    "tmp/next-business-review/types/**/*.ts"
+    "tmp/next-github-build/types/**/*.ts"
   ],
   "exclude": [
-    "node_modules"
+    "node_modules",
+    "tmp",
+    ".tmp"
   ]
 }

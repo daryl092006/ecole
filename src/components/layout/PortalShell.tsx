@@ -8,6 +8,7 @@ import { getPortalRoute, HOME_PATH, MODULE_PATHS } from '@/constants/portalRoute
 import { isRouteAllowed } from '@/permissions/navigation';
 import LoadingState from '@/components/ui/LoadingState';
 import SessionRecovery from '@/components/auth/SessionRecovery';
+import ErrorState from '@/components/ui/ErrorState';
 import AcademicYearControl from '@/components/layout/AcademicYearControl';
 import TopBar, { type SearchDestination } from '@/components/layout/TopBar';
 import { getWorkspaceNavigation } from '@/constants/workspaceNavigation';
@@ -77,7 +78,19 @@ export default function PortalShell({ children }: { children: ReactNode }) {
     setMenuOpen(false);
   };
   if (state.authError) return <main className="route-loading"><SchoolLogo /><SessionRecovery message={state.authError} onRetry={state.retryAuthentication} onExit={state.logout} /></main>;
-  if (!state.session || !state.authReady) return <div className="route-loading"><SchoolLogo /><div className="auth-form-card"><LoadingState label="Vérification de votre connexion…" /></div></div>;
+  if (!state.session || !state.authReady) {
+    return (
+      <div className="route-loading" role="status" aria-live="polite">
+        <div className="route-loading-card">
+          <SchoolLogo className="header-school-logo" priority />
+          <div className="route-loading-bar" aria-hidden="true">
+            <div className="route-loading-bar-fill" />
+          </div>
+          <p>Ouverture de la connexion…</p>
+        </div>
+      </div>
+    );
+  }
   return <><a href="#main-content" className="skip-link">Aller au contenu</a><div className={`app-wrapper ${menuOpen ? 'navigation-open' : ''}`}>
     <TopBar userName={state.session.name} destinations={destinations} onDestination={openDestination} menuOpen={menuOpen} onToggleMenu={() => setMenuOpen(open => !open)} activeRole={activeRole} availableRoles={state.session.availableRoles} searchQuery={state.searchQuery} onSearchChange={state.setSearchQuery} onRoleChange={state.handleRoleChange} notifications={state.notifications} onLogout={state.logout} />
     <div className="app-body">{menuOpen && <button className="navigation-backdrop" aria-label="Fermer la navigation" onClick={() => setMenuOpen(false)} />}
@@ -97,8 +110,8 @@ export default function PortalShell({ children }: { children: ReactNode }) {
         )}
         {!allowed ? <section className="card route-denied"><h1>Accès refusé</h1><p>Cette page n’est pas disponible pour votre rôle.</p><Link className="btn btn-primary" href={HOME_PATH}>Revenir à mon espace</Link></section> : <>
           {state.actionFeedback && <div className="restricted-box action-feedback" role="alert"><span>{state.actionFeedback}</span><IconButton className="btn btn-sm btn-outline" onClick={state.clearActionFeedback} label="Fermer" /></div>}
-          {state.campusLoad.status === 'loading' || state.campusLoad.status === 'idle' ? <LoadingState label="Chargement des dossiers…" />
-            : state.campusLoad.status === 'error' ? <section className="card" role="alert"><h1>Chargement impossible</h1><p>{state.campusLoad.error}</p><IconButton className="btn btn-primary" onClick={state.reloadCampus} label="Réessayer le chargement" /></section>
+          {state.campusLoad.status === 'loading' || state.campusLoad.status === 'idle' ? <LoadingState label="Chargement des dossiers…" variant={currentTab === 'dashboard_global' || currentTab === 'espace' ? 'cards' : 'table'} />
+            : state.campusLoad.status === 'error' ? <ErrorState message={state.campusLoad.error || 'Les dossiers n’ont pas pu être chargés.'} onRetry={state.reloadCampus} retryLabel="Réessayer le chargement" />
               : <>
                 {state.actionOutcome && <ActionResult title={state.actionOutcome.title} href={state.actionOutcome.href && isRouteAllowed(state.actionOutcome.href.split('?')[0], activeRole) ? state.actionOutcome.href : undefined} nextLabel={state.actionOutcome.nextLabel} onDismiss={state.clearActionOutcome}>{state.actionOutcome.detail}</ActionResult>}
                 <div key={`${state.academicYearSelection}:${state.academicYearContext?.selectedYearId || ''}`}>{state.academicYearContext && !state.academicYearContext.selectedYearId && state.academicYearSelection !== 'all' && !['acad_reference', 'acad_program', 'staff_records', 'staff_list', 'staff_permissions', 'staff_roles', 'espace_profile', 'sys_roles', 'sys_permissions', 'sys_data', 'sys_logs', 'sys_backups', 'sys_settings', 'log_assets', 'log_suppliers'].includes(currentSubTab) ? <section className="card card-full"><h1>Choisir une année scolaire</h1><p>Sélectionnez une année dans le champ Année pour consulter les activités, dossiers et résultats correspondants. Aucune donnée sans rattachement confirmé ne sera ajoutée à cette année.</p>{state.globalAccess && (perms.permissions.includes('academic.year.open') || perms.permissions.includes('academic.structure.manage')) && <Link className="btn btn-primary" href="/academique/referentiel?collection=academic_years">Configurer les années scolaires</Link>}</section> : children}</div>

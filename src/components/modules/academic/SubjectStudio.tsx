@@ -1,46 +1,651 @@
 'use client';
 import IconButton from '@/components/ui/IconButton';
 import LoadingState from '@/components/ui/LoadingState';
+import ErrorState from '@/components/ui/ErrorState';
 import { useEffect, useState } from 'react';
 import { usePortal } from '@/hooks/usePortal';
-import { loadPreparedSubjects,savePreparedSubject } from '@/services/remoteCampusService';
-import { subjectPoints,subjectSchema } from '@/services/subjectCompositionService';
+import { loadPreparedSubjects, savePreparedSubject } from '@/services/remoteCampusService';
+import { subjectPoints, subjectSchema } from '@/services/subjectCompositionService';
 import { assessmentCategory } from '@/services/assessmentDisplayService';
 import { historyValue } from '@/services/historyDisplayService';
-import type {SubjectDirectory,SubjectInput,SubjectPart,SubjectQuestion,SubjectPurpose,PreparedSubject} from '@/types/subject';
+import type { SubjectDirectory, SubjectInput, SubjectPart, SubjectQuestion, SubjectPurpose, PreparedSubject } from '@/types/subject';
 import ResponsiveTable from '@/components/ui/ResponsiveTable';
 import ReviewedForm from '@/components/ui/ReviewedForm';
 import Link from 'next/link';
-import {printDocument,escapeHtml as h} from '@/utils/printDocument';
-const purposes:Record<SubjectPurpose,string>={CONTROLE_CONTINU:'Contrôle continu',EXAMEN:'Examen',RATTRAPAGE:'Rattrapage'};
-const categoryFor={CONTROLE_CONTINU:'control',EXAMEN:'exam',RATTRAPAGE:'resit'};
-const blank=(purpose:SubjectPurpose='EXAMEN'):SubjectInput=>({title:'',instructions:'',durationMinutes:60,purpose,sourceEvaluationRowId:null,parts:[]});
-const blankQuestion=():SubjectQuestion=>({prompt:'',kind:'TEXTE',points:1,options:[],correction:''});
-export default function SubjectStudio(){
-  const portal=usePortal();const {activeRole,history}=portal;const [directory,setDirectory]=useState<SubjectDirectory|null>(null);const [error,setError]=useState('');const [retry,setRetry]=useState(0);
-  const [editing,setEditing]=useState(false);const [previous,setPrevious]=useState<PreparedSubject|null>(null);const [subject,setSubject]=useState<SubjectInput>(blank);const [partIndex,setPartIndex]=useState(0);const [questionIndex,setQuestionIndex]=useState(0);
-  const [removal,setRemoval]=useState<'part'|'question'|null>(null);
-  const [tab,setTab]=useState<'compose'|'preview'|'correction'>('compose');const [query,setQuery]=useState('');const [saving,setSaving]=useState(false);const [feedback,setFeedback]=useState('');const [saveError,setSaveError]=useState('');
-  useEffect(()=>{const controller=new AbortController();setDirectory(null);setError('');setEditing(false);void loadPreparedSubjects(activeRole,controller.signal).then(result=>{if(controller.signal.aborted)return;setDirectory(result);const params=new URL(window.location.href).searchParams;if(params.get('nouveau')==='1'){const purpose=params.get('nature')==='control'?'CONTROLE_CONTINU':params.get('nature')==='resit'?'RATTRAPAGE':'EXAMEN';setSubject({...blank(purpose),sourceEvaluationRowId:params.get('source')});setPrevious(null);setEditing(true);}}).catch(cause=>{if(!controller.signal.aborted)setError(cause instanceof Error?cause.message:'Chargement impossible.');});return()=>controller.abort();},[activeRole,retry]);
-  const updatePart=(values:Partial<SubjectPart>)=>setSubject(current=>({...current,parts:current.parts.map((part,index)=>index===partIndex?{...part,...values}:part)}));
-  const updateQuestion=(values:Partial<SubjectQuestion>)=>setSubject(current=>({...current,parts:current.parts.map((part,index)=>index===partIndex?{...part,questions:part.questions.map((question,qIndex)=>qIndex===questionIndex?{...question,...values}:question)}:part)}));
-  const open=(record?:PreparedSubject)=>{setPrevious(record || null);setSubject(record?{title:record.title,instructions:record.instructions,durationMinutes:record.durationMinutes,purpose:record.purpose,sourceEvaluationRowId:record.sourceEvaluationRowId,parts:structuredClone(record.parts)}:blank());setEditing(true);setPartIndex(0);setQuestionIndex(0);setTab('compose');setSaveError('');setFeedback('');};
-  const leave=()=>{setEditing(false);const url=new URL(window.location.href);url.searchParams.delete('nouveau');url.searchParams.delete('source');url.searchParams.delete('nature');window.history.replaceState(window.history.state,'',url);};
-  const print=()=>printDocument(subject.title || 'Sujet',`<div class="document-heading"><h1>ESCEN</h1><h2>${h(subject.title)}</h2></div><p>Brouillon de ${h(purposes[subject.purpose].toLowerCase())} · ${subject.durationMinutes} minutes · ${subjectPoints(subject)} points</p><p>${h(subject.instructions).replace(/\n/g,'<br>')}</p>${subject.parts.map(part=>`<h3>${h(part.title)}</h3><p>${h(part.instructions).replace(/\n/g,'<br>')}</p>${part.questions.map((q,index)=>`<h4>Question ${index+1} · ${q.points} point(s)</h4><p>${h(q.prompt).replace(/\n/g,'<br>')}</p>${q.options.length?`<ol>${q.options.map(option=>`<li>${h(option.label)}</li>`).join('')}</ol>`:'<p>Réponse : __________________________________________________</p>'}`).join('')}`).join('')}`);
-  if(error)return <section className="card" role="alert"><p>{error}</p><IconButton className="btn btn-primary" onClick={()=>setRetry(value=>value+1)} label="Réessayer" /></section>;
-  if(!directory)return <LoadingState label="Chargement des sujets…" />;
-  const currentPart=subject.parts[partIndex];const currentQuestion=currentPart?.questions[questionIndex];
-  if(editing)return <div className="subject-studio"><header className="subject-heading"><button className="btn btn-outline" onClick={leave} disabled={saving}>← Bibliothèque des sujets</button><h1>{previous?'Modifier l’épreuve':'Composer une épreuve'}</h1><p>Préparez le sujet, son barème et son corrigé. Chaque sauvegarde conserve une version.</p></header><div className="subject-tabs" role="tablist" aria-label="Préparation du sujet">{([['compose','Composition'],['preview','Aperçu étudiant'],['correction','Corrigé']] as const).map(([key,label])=><button role="tab" aria-selected={tab===key} className={tab===key?'selected':''} key={key} onClick={()=>setTab(key)}>{label}</button>)}</div>
-    {tab==='compose'?<ReviewedForm className="card subject-editor" completionKey={previous?.id} validate={()=>{const checked=subjectSchema.safeParse(subject);return checked.success?null:checked.error.issues[0]?.message || 'Vérifiez les champs du sujet.';}} busy={saving} error={saveError} confirmLabel="Confirmer la sauvegarde du brouillon" fields={[{label:'Titre',value:subject.title},{label:'Nature',value:purposes[subject.purpose]},{label:'Durée',value:subject.durationMinutes+' minutes'},{label:'Contenu',value:subject.parts.length+' partie(s) · '+subject.parts.reduce((sum,part)=>sum+part.questions.length,0)+' question(s)'},{label:'Barème',value:subjectPoints(subject)+' points'},{label:'Version',value:previous?'Nouvelle version ; la précédente reste conservée':'Premier brouillon'}]} consequence="Le sujet, le barème et le corrigé seront enregistrés comme brouillon versionné. Aucune épreuve ne sera programmée et aucun sujet ne sera diffusé aux étudiants. Après la sauvegarde, vérifiez l’aperçu étudiant et le corrigé." onConfirm={event=>{event.preventDefault();const parsed=subjectSchema.safeParse(subject);if(!parsed.success){setSaveError(parsed.error.issues[0]?.message || 'Vérifiez les champs du sujet.');return;}setSaving(true);setSaveError('');void savePreparedSubject(parsed.data,directory.revision,previous?'Nouvelle version du sujet':'Composition du sujet',activeRole,previous?.id).then(async result=>{setFeedback('Brouillon enregistré. Vérifiez maintenant l’aperçu étudiant et le corrigé.');portal.reportActionOutcome({title:'Brouillon du sujet enregistré',detail:subject.title+' : nouvelle version conservée. Le sujet n’a pas été diffusé. Consultez l’aperçu étudiant et le corrigé avant toute utilisation.'});try{const fresh=await loadPreparedSubjects(activeRole);setDirectory(fresh);const saved=fresh.subjects.find(row=>row.id===result.id);if(saved)setPrevious(saved);}catch{setError('Le brouillon a bien été enregistré, mais sa version actualisée n’a pas pu être chargée. Réessayez le chargement avant une nouvelle modification.');}}).catch(cause=>setSaveError(cause instanceof Error?cause.message:'Enregistrement impossible.')).finally(()=>setSaving(false));}}><fieldset disabled={saving} className="permission-fieldset">
-      <div className="form-grid"><label className="form-group">Titre de l’épreuve<input className="input" required maxLength={160} value={subject.title} onChange={event=>setSubject({...subject,title:event.target.value})} /></label><label className="form-group">Nature<select className="select-input" value={subject.purpose} onChange={event=>setSubject({...subject,purpose:event.target.value as SubjectPurpose,sourceEvaluationRowId:null})}>{Object.entries(purposes).map(([value,label])=><option key={value} value={value}>{label}</option>)}</select></label><label className="form-group">Durée en minutes<input className="input" required type="number" min={1} max={2147483647} value={subject.durationMinutes} onChange={event=>setSubject({...subject,durationMinutes:Number(event.target.value)})} /></label>{history.catalog && <label className="form-group">Épreuve historique associée<select className="select-input" value={subject.sourceEvaluationRowId || ''} onChange={event=>setSubject({...subject,sourceEvaluationRowId:event.target.value || null})}><option value="">Sujet préparatoire sans rattachement</option>{(history.catalog.references.evaluations || []).filter(row=>assessmentCategory(row)===categoryFor[subject.purpose] && !row.values.deleted_at).map(row=><option key={row.id} value={row.id}>{historyValue('unite_valeur_id',row.values.unite_valeur_id,row,history.catalog!)} · {row.values.date?String(row.values.date):'Date non renseignée'} · {historyValue('group_id',row.values.group_id,row,history.catalog!)}</option>)}</select></label>}</div><label className="form-group">Consignes générales<textarea className="input" maxLength={8000} value={subject.instructions} onChange={event=>setSubject({...subject,instructions:event.target.value})} /></label>
-      <div className="subject-structure">{removal && <section className="prerequisite-panel" role="alert"><h3>{removal==='part'?'Retirer la partie et ses questions ?':'Retirer cette question ?'}</h3><p>Le contenu sera retiré du brouillon en cours. La version déjà enregistrée restera conservée.</p><div className="btn-group"><button type="button" className="btn btn-outline" onClick={()=>setRemoval(null)}>Conserver le contenu</button><button type="button" className="btn btn-danger" onClick={()=>{if(removal==='part'){setSubject({...subject,parts:subject.parts.filter((_,index)=>index!==partIndex)});setPartIndex(0);}else updatePart({questions:currentPart.questions.filter((_,index)=>index!==questionIndex)});setQuestionIndex(0);setRemoval(null);}}>Confirmer le retrait du contenu</button></div></section>}<div className="card-header"><h2>Structure de l’épreuve</h2><button type="button" className="btn btn-outline" disabled={subject.parts.length>=20} onClick={()=>{setSubject({...subject,parts:[...subject.parts,{title:`Partie ${subject.parts.length+1}`,instructions:'',questions:[]}]});setPartIndex(subject.parts.length);setQuestionIndex(0);}}>Ajouter une partie</button></div><div className="subject-part-tabs">{subject.parts.map((part,index)=><button className={index===partIndex?'selected':''} type="button" key={index} onClick={()=>{setPartIndex(index);setQuestionIndex(0);}}>{part.title || `Partie ${index+1}`} <span>{part.questions.length} question(s)</span></button>)}</div>
-      {currentPart?<section><div className="form-grid"><label className="form-group">Titre de la partie<input className="input" required value={currentPart.title} onChange={event=>updatePart({title:event.target.value})} /></label><label className="form-group">Consignes de la partie<textarea className="input" value={currentPart.instructions} onChange={event=>updatePart({instructions:event.target.value})} /></label></div><div className="btn-group"><button className="btn btn-outline" type="button" onClick={()=>{updatePart({questions:[...currentPart.questions,blankQuestion()]});setQuestionIndex(currentPart.questions.length);}}>Ajouter une question</button><button className="btn btn-outline" type="button" onClick={()=>setRemoval('part')}>Retirer cette partie</button></div><div className="subject-question-tabs">{currentPart.questions.map((q,index)=><button type="button" className={index===questionIndex?'selected':''} key={index} onClick={()=>setQuestionIndex(index)}>Question {index+1} · {q.points} pts</button>)}</div>
-      {currentQuestion && <article className="subject-question-editor"><div className="card-header"><h3>Question {questionIndex+1}</h3><button type="button" className="btn btn-outline" onClick={()=>setRemoval('question')}>Retirer la question</button></div><label className="form-group">Énoncé<textarea className="input subject-prompt" required maxLength={8000} value={currentQuestion.prompt} onChange={event=>updateQuestion({prompt:event.target.value})} /></label><div className="form-grid"><label className="form-group">Type de réponse<select className="select-input" value={currentQuestion.kind} onChange={event=>updateQuestion({kind:event.target.value as SubjectQuestion['kind'],options:event.target.value==='TEXTE'?[]:[{label:'',correct:false},{label:'',correct:false}]})}><option value="TEXTE">Réponse ouverte</option><option value="QCM_SIMPLE">QCM — un seul choix</option><option value="QCM_MULTIPLE">QCM — plusieurs choix</option></select></label><label className="form-group">Points<input className="input" type="number" required min={0.001} max={99999.999} step={0.001} value={currentQuestion.points} onChange={event=>updateQuestion({points:Number(event.target.value)})} /></label></div>
-      {currentQuestion.kind!=='TEXTE' && <section><h4>Choix et bonnes réponses</h4>{currentQuestion.options.map((option,index)=><div className="subject-option-edit" key={index}><label className="form-group">Choix {index+1}<input className="input" required maxLength={1000} value={option.label} onChange={event=>updateQuestion({options:currentQuestion.options.map((item,i)=>i===index?{...item,label:event.target.value}:item)})} /></label><label className="checkbox-field"><input type="checkbox" checked={option.correct} onChange={event=>updateQuestion({options:currentQuestion.options.map((item,i)=>({...item,correct:i===index?event.target.checked:currentQuestion.kind==='QCM_SIMPLE'?false:item.correct}))})} /> Bonne réponse {index+1}</label><button className="btn btn-outline" type="button" disabled={currentQuestion.options.length<=2} onClick={()=>updateQuestion({options:currentQuestion.options.filter((_,i)=>i!==index)})}>Retirer le choix {index+1}</button></div>)}<button className="btn btn-outline" type="button" disabled={currentQuestion.options.length>=8} onClick={()=>updateQuestion({options:[...currentQuestion.options,{label:'',correct:false}]})}>Ajouter un choix</button></section>}
-      <label className="form-group mt-2">Corrigé et indications de correction<textarea className="input" maxLength={8000} value={currentQuestion.correction} onChange={event=>updateQuestion({correction:event.target.value})} /></label></article>}
-      </section>:<p>Ajoutez une première partie, puis rédigez ses questions.</p>}</div>
-      <footer className="subject-save"><strong>Barème total : {subjectPoints(subject)} points</strong><button className="btn btn-primary" disabled={saving}>{saving?'Enregistrement…':'Enregistrer le brouillon'}</button></footer>{saveError && <p role="alert">{saveError}</p>}{feedback && <section role="status"><p>{feedback}</p><div className="btn-group"><button className="btn btn-outline" type="button" onClick={()=>setTab('preview')}>Vérifier l’aperçu étudiant</button><button className="btn btn-outline" type="button" onClick={()=>setTab('correction')}>Vérifier le corrigé</button>{subject.sourceEvaluationRowId && <Link className="btn btn-outline" href={(subject.purpose==='RATTRAPAGE'?'/academique/rattrapages':subject.purpose==='CONTROLE_CONTINU'?'/academique/evaluations':'/academique/examens')+'?epreuve='+encodeURIComponent(subject.sourceEvaluationRowId)}>Revenir à l’épreuve associée</Link>}</div></section>}</fieldset></ReviewedForm>:<section className="card subject-preview"><div className="card-header"><span className="source-badge">{tab==='preview'?'Version étudiant':'Corrigé enseignant'}</span><button className="btn btn-outline" onClick={print}>Imprimer le sujet</button></div><h2>{subject.title || 'Épreuve sans titre'}</h2><p className="cell-sub">Brouillon — non diffusé</p><p>{purposes[subject.purpose]} · {subject.durationMinutes} minutes · {subjectPoints(subject)} points</p><p className="subject-text">{subject.instructions}</p>{subject.parts.map((part,index)=><section key={index}><h3>{part.title}</h3><p className="subject-text">{part.instructions}</p>{part.questions.map((q,qIndex)=><article key={qIndex}><h4>Question {qIndex+1} · {q.points} points</h4><p className="subject-text">{q.prompt}</p>{q.options.length>0 && <ol>{q.options.map((option,oIndex)=><li key={oIndex}>{option.label}{tab==='correction' && option.correct && <strong> — Bonne réponse</strong>}</li>)}</ol>}{tab==='correction' && <div className="exam-correction"><p className="subject-text">{q.correction || 'Indications de correction à compléter.'}</p></div>}</article>)}</section>)}</section>}
-  </div>;
-  const rows=directory.subjects.filter(row=>!row.archived && row.title.toLocaleLowerCase('fr').includes(query.toLocaleLowerCase('fr')));
-  return <div><div className="page-intro"><div><span className="page-eyebrow">PRÉPARATION DES ÉPREUVES</span><h1>Bibliothèque des sujets</h1><p>Composez les épreuves ici. La programmation des sessions, les copies et les notes sont consultables séparément.</p></div><button className="btn btn-primary" onClick={()=>open()}>Composer une épreuve</button></div><section className="card card-full"><label className="form-group">Rechercher un sujet<input className="input" type="search" value={query} onChange={event=>setQuery(event.target.value)} /></label><ResponsiveTable className="data-table"><thead><tr><th>Sujet</th><th>Nature</th><th>Durée</th><th>Barème</th><th>Actions</th></tr></thead><tbody>{rows.map(row=><tr key={row.id}><td><strong>{row.title}</strong><div className="cell-sub">Brouillon · version {row.version}</div></td><td>{purposes[row.purpose]}</td><td>{row.durationMinutes} min</td><td>{subjectPoints(row)} points</td><td><div className="btn-group"><IconButton className="btn btn-outline" onClick={()=>open(row)} label="Modifier" /><IconButton className="btn btn-outline" onClick={()=>{open(row);setTab('preview');}} label="Voir le sujet" /></div></td></tr>)}{!rows.length && <tr><td colSpan={5}>Aucun sujet préparé. Commencez avec « Composer une épreuve ».</td></tr>}</tbody></ResponsiveTable></section></div>;
+import { printDocument, escapeHtml as h } from '@/utils/printDocument';
+
+const purposes: Record<SubjectPurpose, string> = { CONTROLE_CONTINU: 'Contrôle continu', EXAMEN: 'Examen', RATTRAPAGE: 'Rattrapage' };
+const categoryFor = { CONTROLE_CONTINU: 'control', EXAMEN: 'exam', RATTRAPAGE: 'resit' };
+const blank = (purpose: SubjectPurpose = 'EXAMEN'): SubjectInput => ({
+  title: '',
+  instructions: '',
+  durationMinutes: 60,
+  purpose,
+  evaluationId: null,
+  sourceEvaluationRowId: null,
+  authorize: false,
+  parts: [],
+});
+const blankQuestion = (): SubjectQuestion => ({ prompt: '', kind: 'TEXTE', points: 1, options: [], correction: '' });
+
+export default function SubjectStudio() {
+  const portal = usePortal();
+  const { activeRole, history } = portal;
+  const [directory, setDirectory] = useState<SubjectDirectory | null>(null);
+  const [error, setError] = useState('');
+  const [retry, setRetry] = useState(0);
+  const [editing, setEditing] = useState(false);
+  const [previous, setPrevious] = useState<PreparedSubject | null>(null);
+  const [subject, setSubject] = useState<SubjectInput>(blank);
+  const [partIndex, setPartIndex] = useState(0);
+  const [questionIndex, setQuestionIndex] = useState(0);
+  const [connectedEvalId, setConnectedEvalId] = useState('');
+  const [removal, setRemoval] = useState<'part' | 'question' | null>(null);
+  const [tab, setTab] = useState<'compose' | 'preview' | 'correction'>('compose');
+  const [query, setQuery] = useState('');
+  const [saving, setSaving] = useState(false);
+  const [feedback, setFeedback] = useState('');
+  const [saveError, setSaveError] = useState('');
+
+  useEffect(() => {
+    const controller = new AbortController();
+    setDirectory(null);
+    setError('');
+    setEditing(false);
+    void loadPreparedSubjects(activeRole, controller.signal)
+      .then(result => {
+        if (controller.signal.aborted) return;
+        setDirectory(result);
+        const params = new URL(window.location.href).searchParams;
+        if (params.get('nouveau') === '1') {
+          const purpose = params.get('nature') === 'control' ? 'CONTROLE_CONTINU' : params.get('nature') === 'resit' ? 'RATTRAPAGE' : 'EXAMEN';
+          const initialTitle = params.get('titre') || '';
+          const evalId = params.get('evalId') || '';
+          setConnectedEvalId(evalId);
+          setSubject({
+            ...blank(purpose),
+            title: initialTitle,
+            evaluationId: evalId || null,
+            sourceEvaluationRowId: evalId ? null : params.get('source'),
+          });
+          setPrevious(null);
+          setEditing(true);
+        }
+      })
+      .catch(cause => {
+        if (!controller.signal.aborted) setError(cause instanceof Error ? cause.message : 'Chargement impossible.');
+      });
+    return () => controller.abort();
+  }, [activeRole, retry]);
+
+  const updatePart = (values: Partial<SubjectPart>) =>
+    setSubject(current => ({ ...current, parts: current.parts.map((part, index) => (index === partIndex ? { ...part, ...values } : part)) }));
+
+  const updateQuestion = (values: Partial<SubjectQuestion>) =>
+    setSubject(current => ({
+      ...current,
+      parts: current.parts.map((part, index) =>
+        index === partIndex
+          ? { ...part, questions: part.questions.map((question, qIndex) => (qIndex === questionIndex ? { ...question, ...values } : question)) }
+          : part
+      ),
+    }));
+
+  const open = (record?: PreparedSubject) => {
+    setPrevious(record || null);
+    const evalId = record?.evaluationId || '';
+    setConnectedEvalId(evalId);
+    setSubject(
+      record
+        ? {
+            title: record.title,
+            instructions: record.instructions,
+            durationMinutes: record.durationMinutes,
+            purpose: record.purpose,
+            evaluationId: record.evaluationId || null,
+            sourceEvaluationRowId: record.sourceEvaluationRowId,
+            authorize: record.status === 'AUTORISE',
+            parts: structuredClone(record.parts),
+          }
+        : blank()
+    );
+    setEditing(true);
+    setPartIndex(0);
+    setQuestionIndex(0);
+    setTab('compose');
+    setSaveError('');
+    setFeedback('');
+  };
+
+  const leave = () => {
+    setEditing(false);
+    const url = new URL(window.location.href);
+    url.searchParams.delete('nouveau');
+    url.searchParams.delete('source');
+    url.searchParams.delete('nature');
+    url.searchParams.delete('evalId');
+    url.searchParams.delete('titre');
+    window.history.replaceState(window.history.state, '', url);
+  };
+
+  const print = () =>
+    printDocument(
+      subject.title || 'Sujet',
+      `<div class="document-heading"><h1>ESCEN</h1><h2>${h(subject.title)}</h2></div><p>${subject.authorize ? 'Épreuve autorisée' : 'Brouillon de'} ${h(purposes[subject.purpose].toLowerCase())} · ${subject.durationMinutes} minutes · ${subjectPoints(subject)} points</p><p>${h(subject.instructions).replace(/\n/g, '<br>')}</p>${subject.parts.map(part => `<h3>${h(part.title)}</h3><p>${h(part.instructions).replace(/\n/g, '<br>')}</p>${part.questions.map((q, index) => `<h4>Question ${index + 1} · ${q.points} point(s)</h4><p>${h(q.prompt).replace(/\n/g, '<br>')}</p>${q.options.length ? `<ol>${q.options.map(option => `<li>${h(option.label)}</li>`).join('')}</ol>` : '<p>Réponse : __________________________________________________</p>'}`).join('')}`).join('')}`
+    );
+
+  if (error) return <ErrorState title="Bibliothèque des sujets indisponible" message={error} onRetry={() => setRetry(value => value + 1)} />;
+  if (!directory) return <LoadingState label="Chargement des sujets…" variant="table" />;
+
+  const connectedEvaluations = (portal.relationalSnapshot.tables.evaluations || []).filter(row => {
+    if (row.cancelled_at || row.archived_at) return false;
+    const isResit = row.kind === 'RATTRAPAGE' || row.session_type === 'RATTRAPAGE';
+    if (subject.purpose === 'RATTRAPAGE') return isResit;
+    if (subject.purpose === 'EXAMEN') return row.kind === 'EXAMEN' && !isResit;
+    return !isResit && ['DEVOIR', 'INTERROGATION', 'TP', 'EXPOSE', 'PROJET'].includes(String(row.kind));
+  });
+
+  const returnEvalId = connectedEvalId || subject.sourceEvaluationRowId;
+  const currentPart = subject.parts[partIndex];
+  const currentQuestion = currentPart?.questions[questionIndex];
+
+  if (editing)
+    return (
+      <div className="subject-studio">
+        <header className="subject-heading">
+          <button className="btn btn-outline" onClick={leave} disabled={saving}>
+            ← Bibliothèque des sujets
+          </button>
+          <h1>{previous ? 'Modifier l’épreuve' : 'Composer une épreuve'}</h1>
+          <p>Préparez le sujet, son barème et son corrigé. Chaque sauvegarde conserve une version.</p>
+        </header>
+        <div className="subject-tabs" role="tablist" aria-label="Préparation du sujet">
+          {([['compose', 'Composition'], ['preview', 'Aperçu étudiant'], ['correction', 'Corrigé']] as const).map(([key, label]) => (
+            <button role="tab" aria-selected={tab === key} className={tab === key ? 'selected' : ''} key={key} onClick={() => setTab(key)}>
+              {label}
+            </button>
+          ))}
+        </div>
+        {tab === 'compose' ? (
+          <ReviewedForm
+            className="card subject-editor"
+            completionKey={previous?.id}
+            validate={() => {
+              const checked = subjectSchema.safeParse(subject);
+              return checked.success ? null : checked.error.issues[0]?.message || 'Vérifiez les champs du sujet.';
+            }}
+            busy={saving}
+            error={saveError}
+            confirmLabel={subject.authorize ? 'Confirmer l’enregistrement et l’autorisation' : 'Confirmer la sauvegarde du brouillon'}
+            fields={[
+              { label: 'Titre', value: subject.title },
+              { label: 'Nature', value: purposes[subject.purpose] },
+              { label: 'Durée', value: subject.durationMinutes + ' minutes' },
+              { label: 'Rattachement', value: connectedEvalId ? String(connectedEvaluations.find(e => String(e.id) === connectedEvalId)?.name || 'Évaluation connectée') : 'Sujet libre' },
+              { label: 'Diffusion', value: subject.authorize ? 'Autorisé pour l’épreuve en ligne' : 'Brouillon privé non diffusé' },
+              { label: 'Contenu', value: subject.parts.length + ' partie(s) · ' + subject.parts.reduce((sum, part) => sum + part.questions.length, 0) + ' question(s)' },
+              { label: 'Barème', value: subjectPoints(subject) + ' points' },
+              { label: 'Version', value: previous ? 'Nouvelle version ; la précédente reste conservée' : 'Premier sujet' },
+            ]}
+            consequence={
+              subject.authorize
+                ? 'Le sujet, son barème et son corrigé seront enregistrés et AUTORISÉS pour l’épreuve rattachée. Les étudiants admissibles pourront y accéder selon la séance programmée.'
+                : 'Le sujet, le barème et le corrigé seront enregistrés comme brouillon versionné. Aucune diffusion ne sera ouverte aux étudiants tant que le sujet n’est pas autorisé.'
+            }
+            onConfirm={event => {
+              event.preventDefault();
+              const parsed = subjectSchema.safeParse(subject);
+              if (!parsed.success) {
+                setSaveError(parsed.error.issues[0]?.message || 'Vérifiez les champs du sujet.');
+                return;
+              }
+              setSaving(true);
+              setSaveError('');
+              void savePreparedSubject(
+                parsed.data,
+                directory.revision,
+                previous ? (subject.authorize ? 'Mise à jour et autorisation du sujet' : 'Nouvelle version du sujet') : (subject.authorize ? 'Composition et autorisation du sujet' : 'Composition du sujet'),
+                activeRole,
+                previous?.id
+              )
+                .then(async result => {
+                  setFeedback(subject.authorize ? 'Sujet enregistré et autorisé pour l’épreuve en ligne.' : 'Brouillon enregistré. Vérifiez maintenant l’aperçu étudiant et le corrigé.');
+                  portal.reportActionOutcome({
+                    title: subject.authorize ? 'Sujet enregistré et autorisé' : 'Brouillon du sujet enregistré',
+                    detail: `${subject.title} : version conservée. ${subject.authorize ? 'Le sujet est autorisé pour diffusion.' : 'Consultez l’aperçu étudiant et le corrigé avant toute utilisation.'}`,
+                  });
+                  portal.refreshCampus();
+                  try {
+                    const fresh = await loadPreparedSubjects(activeRole);
+                    setDirectory(fresh);
+                    const saved = fresh.subjects.find(row => row.id === result.id);
+                    if (saved) setPrevious(saved);
+                  } catch {
+                    setError('Le sujet a bien été enregistré, mais sa version actualisée n’a pas pu être chargée.');
+                  }
+                })
+                .catch(cause => setSaveError(cause instanceof Error ? cause.message : 'Enregistrement impossible.'))
+                .finally(() => setSaving(false));
+            }}
+          >
+            <fieldset disabled={saving} className="permission-fieldset">
+              <div className="form-grid">
+                <label className="form-group">
+                  Titre de l’épreuve
+                  <input className="input" required maxLength={160} value={subject.title} onChange={event => setSubject({ ...subject, title: event.target.value })} />
+                </label>
+                <label className="form-group">
+                  Nature
+                  <select
+                    className="select-input"
+                    value={subject.purpose}
+                    onChange={event => {
+                      setConnectedEvalId('');
+                      setSubject({ ...subject, purpose: event.target.value as SubjectPurpose, evaluationId: null, sourceEvaluationRowId: null, authorize: false });
+                    }}
+                  >
+                    {Object.entries(purposes).map(([value, label]) => (
+                      <option key={value} value={value}>
+                        {label}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+                <label className="form-group">
+                  Durée en minutes
+                  <input className="input" required type="number" min={1} max={2147483647} value={subject.durationMinutes} onChange={event => setSubject({ ...subject, durationMinutes: Number(event.target.value) })} />
+                </label>
+                {connectedEvaluations.length > 0 && (
+                  <label className="form-group">
+                    Évaluation de l’année
+                    <select
+                      className="select-input"
+                      value={connectedEvalId}
+                      onChange={event => {
+                        const id = event.target.value;
+                        setConnectedEvalId(id);
+                        const ev = connectedEvaluations.find(row => String(row.id) === id);
+                        setSubject(current => ({
+                          ...current,
+                          evaluationId: id || null,
+                          sourceEvaluationRowId: id ? null : current.sourceEvaluationRowId,
+                          title: ev && !current.title.trim() ? String(ev.name || '') : current.title,
+                        }));
+                      }}
+                    >
+                      <option value="">Sujet libre ou toutes formations</option>
+                      {connectedEvaluations.map(row => (
+                        <option key={row.id} value={String(row.id)}>
+                          {String(row.name || row.id)}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                )}
+                {history.catalog && (
+                  <label className="form-group">
+                    Épreuve historique associée
+                    <select
+                      className="select-input"
+                      disabled={!!connectedEvalId}
+                      value={subject.sourceEvaluationRowId || ''}
+                      onChange={event => setSubject({ ...subject, sourceEvaluationRowId: event.target.value || null, evaluationId: null })}
+                    >
+                      <option value="">Sujet préparatoire sans rattachement</option>
+                      {(history.catalog.references.evaluations || [])
+                        .filter(row => assessmentCategory(row) === categoryFor[subject.purpose] && !row.values.deleted_at)
+                        .map(row => (
+                          <option key={row.id} value={row.id}>
+                            {historyValue('unite_valeur_id', row.values.unite_valeur_id, row, history.catalog!)} · {row.values.date ? String(row.values.date) : 'Date non renseignée'} · {historyValue('group_id', row.values.group_id, row, history.catalog!)}
+                          </option>
+                        ))}
+                    </select>
+                  </label>
+                )}
+              </div>
+
+              {connectedEvalId && (
+                <div className="card mb-2" style={{ backgroundColor: 'var(--surface-sunken)' }}>
+                  <label className="checkbox-field">
+                    <input
+                      type="checkbox"
+                      checked={!!subject.authorize}
+                      onChange={event => setSubject({ ...subject, authorize: event.target.checked })}
+                    />
+                    <strong>Autoriser immédiatement ce sujet pour l’épreuve en ligne</strong>
+                  </label>
+                  <p className="cell-sub" style={{ marginTop: 4 }}>
+                    {subject.authorize
+                      ? 'Le sujet sera validé pour diffusion. Les étudiants du groupe pourront composer dès l’ouverture de la séance en ligne.'
+                      : 'Le sujet restera à l’état de brouillon. Vous pourrez l’autoriser ultérieurement.'}
+                  </p>
+                </div>
+              )}
+
+              <label className="form-group">
+                Consignes générales
+                <textarea className="input" maxLength={8000} value={subject.instructions} onChange={event => setSubject({ ...subject, instructions: event.target.value })} />
+              </label>
+
+              <div className="subject-structure">
+                {removal && (
+                  <section className="prerequisite-panel" role="alert">
+                    <h3>{removal === 'part' ? 'Retirer la partie et ses questions ?' : 'Retirer cette question ?'}</h3>
+                    <p>Le contenu sera retiré du brouillon en cours. La version déjà enregistrée restera conservée.</p>
+                    <div className="btn-group">
+                      <button type="button" className="btn btn-outline" onClick={() => setRemoval(null)}>
+                        Conserver le contenu
+                      </button>
+                      <button
+                        type="button"
+                        className="btn btn-danger"
+                        onClick={() => {
+                          if (removal === 'part') {
+                            setSubject({ ...subject, parts: subject.parts.filter((_, index) => index !== partIndex) });
+                            setPartIndex(0);
+                          } else {
+                            updatePart({ questions: currentPart.questions.filter((_, index) => index !== questionIndex) });
+                          }
+                          setQuestionIndex(0);
+                          setRemoval(null);
+                        }}
+                      >
+                        Confirmer le retrait du contenu
+                      </button>
+                    </div>
+                  </section>
+                )}
+                <div className="card-header">
+                  <h2>Structure de l’épreuve</h2>
+                  <button
+                    type="button"
+                    className="btn btn-outline"
+                    disabled={subject.parts.length >= 20}
+                    onClick={() => {
+                      setSubject({ ...subject, parts: [...subject.parts, { title: `Partie ${subject.parts.length + 1}`, instructions: '', questions: [] }] });
+                      setPartIndex(subject.parts.length);
+                      setQuestionIndex(0);
+                    }}
+                  >
+                    Ajouter une partie
+                  </button>
+                </div>
+                <div className="subject-part-tabs">
+                  {subject.parts.map((part, index) => (
+                    <button className={index === partIndex ? 'selected' : ''} type="button" key={index} onClick={() => { setPartIndex(index); setQuestionIndex(0); }}>
+                      {part.title || `Partie ${index + 1}`} <span>{part.questions.length} question(s)</span>
+                    </button>
+                  ))}
+                </div>
+                {currentPart ? (
+                  <section>
+                    <div className="form-grid">
+                      <label className="form-group">
+                        Titre de la partie
+                        <input className="input" required value={currentPart.title} onChange={event => updatePart({ title: event.target.value })} />
+                      </label>
+                      <label className="form-group">
+                        Consignes de la partie
+                        <textarea className="input" value={currentPart.instructions} onChange={event => updatePart({ instructions: event.target.value })} />
+                      </label>
+                    </div>
+                    <div className="btn-group">
+                      <button className="btn btn-outline" type="button" onClick={() => { updatePart({ questions: [...currentPart.questions, blankQuestion()] }); setQuestionIndex(currentPart.questions.length); }}>
+                        Ajouter une question
+                      </button>
+                      <button className="btn btn-outline" type="button" onClick={() => setRemoval('part')}>
+                        Retirer cette partie
+                      </button>
+                    </div>
+                    <div className="subject-question-tabs">
+                      {currentPart.questions.map((q, index) => (
+                        <button type="button" className={index === questionIndex ? 'selected' : ''} key={index} onClick={() => setQuestionIndex(index)}>
+                          Question {index + 1} · {q.points} pts
+                        </button>
+                      ))}
+                    </div>
+                    {currentQuestion && (
+                      <article className="subject-question-editor">
+                        <div className="card-header">
+                          <h3>Question {questionIndex + 1}</h3>
+                          <button type="button" className="btn btn-outline" onClick={() => setRemoval('question')}>
+                            Retirer la question
+                          </button>
+                        </div>
+                        <label className="form-group">
+                          Énoncé
+                          <textarea className="input subject-prompt" required maxLength={8000} value={currentQuestion.prompt} onChange={event => updateQuestion({ prompt: event.target.value })} />
+                        </label>
+                        <div className="form-grid">
+                          <label className="form-group">
+                            Type de réponse
+                            <select
+                              className="select-input"
+                              value={currentQuestion.kind}
+                              onChange={event =>
+                                updateQuestion({
+                                  kind: event.target.value as SubjectQuestion['kind'],
+                                  options: event.target.value === 'TEXTE' ? [] : [{ label: '', correct: false }, { label: '', correct: false }],
+                                })
+                              }
+                            >
+                              <option value="TEXTE">Réponse ouverte</option>
+                              <option value="QCM_SIMPLE">QCM — un seul choix</option>
+                              <option value="QCM_MULTIPLE">QCM — plusieurs choix</option>
+                            </select>
+                          </label>
+                          <label className="form-group">
+                            Points
+                            <input className="input" type="number" required min={0.001} max={99999.999} step={0.001} value={currentQuestion.points} onChange={event => updateQuestion({ points: Number(event.target.value) })} />
+                          </label>
+                        </div>
+                        {currentQuestion.kind !== 'TEXTE' && (
+                          <section>
+                            <h4>Choix et bonnes réponses</h4>
+                            {currentQuestion.options.map((opt, index) => (
+                              <div className="subject-option-edit" key={index}>
+                                <label className="form-group">
+                                  Choix {index + 1}
+                                  <input
+                                    className="input"
+                                    required
+                                    maxLength={1000}
+                                    value={opt.label}
+                                    onChange={event => updateQuestion({ options: currentQuestion.options.map((item, i) => (i === index ? { ...item, label: event.target.value } : item)) })}
+                                  />
+                                </label>
+                                <label className="checkbox-field">
+                                  <input
+                                    type="checkbox"
+                                    checked={opt.correct}
+                                    onChange={event =>
+                                      updateQuestion({
+                                        options: currentQuestion.options.map((item, i) => ({
+                                          ...item,
+                                          correct: i === index ? event.target.checked : currentQuestion.kind === 'QCM_SIMPLE' ? false : item.correct,
+                                        })),
+                                      })
+                                    }
+                                  />{' '}
+                                  Bonne réponse {index + 1}
+                                </label>
+                                <button className="btn btn-outline" type="button" disabled={currentQuestion.options.length <= 2} onClick={() => updateQuestion({ options: currentQuestion.options.filter((_, i) => i !== index) })}>
+                                  Retirer le choix {index + 1}
+                                </button>
+                              </div>
+                            ))}
+                            <button className="btn btn-outline" type="button" disabled={currentQuestion.options.length >= 8} onClick={() => updateQuestion({ options: [...currentQuestion.options, { label: '', correct: false }] })}>
+                              Ajouter un choix
+                            </button>
+                          </section>
+                        )}
+                        <label className="form-group mt-2">
+                          Corrigé et indications de correction
+                          <textarea className="input" maxLength={8000} value={currentQuestion.correction} onChange={event => updateQuestion({ correction: event.target.value })} />
+                        </label>
+                      </article>
+                    )}
+                  </section>
+                ) : (
+                  <p>Ajoutez une première partie, puis rédigez ses questions.</p>
+                )}
+              </div>
+              <footer className="subject-save">
+                <strong>Barème total : {subjectPoints(subject)} points</strong>
+                <button className="btn btn-primary" disabled={saving}>
+                  {saving ? 'Enregistrement…' : subject.authorize ? 'Enregistrer et autoriser le sujet' : 'Enregistrer le brouillon'}
+                </button>
+              </footer>
+              {saveError && <p role="alert">{saveError}</p>}
+              {feedback && (
+                <section role="status">
+                  <p>{feedback}</p>
+                  <div className="btn-group">
+                    <button className="btn btn-outline" type="button" onClick={() => setTab('preview')}>
+                      Vérifier l’aperçu étudiant
+                    </button>
+                    <button className="btn btn-outline" type="button" onClick={() => setTab('correction')}>
+                      Vérifier le corrigé
+                    </button>
+                    {returnEvalId && (
+                      <Link
+                        className="btn btn-outline"
+                        href={(subject.purpose === 'RATTRAPAGE' ? '/academique/rattrapages' : subject.purpose === 'CONTROLE_CONTINU' ? '/academique/evaluations' : '/academique/examens') + '?epreuve=' + encodeURIComponent(returnEvalId)}
+                      >
+                        Revenir à l’épreuve associée
+                      </Link>
+                    )}
+                  </div>
+                </section>
+              )}
+            </fieldset>
+          </ReviewedForm>
+        ) : (
+          <section className="card subject-preview">
+            <div className="card-header">
+              <span className="source-badge">{tab === 'preview' ? 'Version étudiant' : 'Corrigé enseignant'}</span>
+              <button className="btn btn-outline" onClick={print}>
+                Imprimer le sujet
+              </button>
+            </div>
+            <h2>{subject.title || 'Épreuve sans titre'}</h2>
+            <p className="cell-sub">{subject.authorize ? 'Sujet autorisé pour diffusion' : 'Brouillon — non diffusé'}</p>
+            <p>
+              {purposes[subject.purpose]} · {subject.durationMinutes} minutes · {subjectPoints(subject)} points
+            </p>
+            <p className="subject-text">{subject.instructions}</p>
+            {subject.parts.map((part, index) => (
+              <section key={index}>
+                <h3>{part.title}</h3>
+                <p className="subject-text">{part.instructions}</p>
+                {part.questions.map((q, qIndex) => (
+                  <article key={qIndex}>
+                    <h4>
+                      Question {qIndex + 1} · {q.points} points
+                    </h4>
+                    <p className="subject-text">{q.prompt}</p>
+                    {q.options.length > 0 && (
+                      <ol>
+                        {q.options.map((opt, oIndex) => (
+                          <li key={oIndex}>
+                            {opt.label}
+                            {tab === 'correction' && opt.correct && <strong> — Bonne réponse</strong>}
+                          </li>
+                        ))}
+                      </ol>
+                    )}
+                    {tab === 'correction' && (
+                      <div className="exam-correction">
+                        <p className="subject-text">{q.correction || 'Indications de correction à compléter.'}</p>
+                      </div>
+                    )}
+                  </article>
+                ))}
+              </section>
+            ))}
+          </section>
+        )}
+      </div>
+    );
+
+  const rows = directory.subjects.filter(row => !row.archived && row.title.toLocaleLowerCase('fr').includes(query.toLocaleLowerCase('fr')));
+
+  return (
+    <div>
+      <div className="page-intro">
+        <div>
+          <span className="page-eyebrow">PRÉPARATION DES ÉPREUVES</span>
+          <h1>Bibliothèque des sujets</h1>
+          <p>Composez les épreuves ici. Les diffusions en ligne, les copies et les notes sont consultables dans le module académique.</p>
+        </div>
+        <button className="btn btn-primary" onClick={() => open()}>
+          Composer une épreuve
+        </button>
+      </div>
+      <section className="card card-full">
+        <label className="form-group">
+          Rechercher un sujet
+          <input className="input" type="search" value={query} onChange={event => setQuery(event.target.value)} />
+        </label>
+        <ResponsiveTable className="data-table">
+          <thead>
+            <tr>
+              <th>Sujet</th>
+              <th>Statut &amp; Rattachement</th>
+              <th>Nature</th>
+              <th>Durée</th>
+              <th>Barème</th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            {rows.map(row => {
+              const connectedEval = row.evaluationId ? portal.relationalSnapshot.tables.evaluations?.find(e => e.id === row.evaluationId) : null;
+              return (
+                <tr key={row.id}>
+                  <td>
+                    <strong>{row.title}</strong>
+                    <div className="cell-sub">Version {row.version}</div>
+                  </td>
+                  <td>
+                    <span className={`pill ${row.status === 'AUTORISE' ? 'pill-success' : 'pill-warning'}`}>
+                      {row.status === 'AUTORISE' ? 'Autorisé' : 'Brouillon'}
+                    </span>
+                    {connectedEval ? (
+                      <div className="cell-sub">Épreuve : {String(connectedEval.name || '')}</div>
+                    ) : row.evaluationId ? (
+                      <div className="cell-sub">Épreuve connectée</div>
+                    ) : (
+                      <div className="cell-sub">Sujet libre</div>
+                    )}
+                  </td>
+                  <td>{purposes[row.purpose]}</td>
+                  <td>{row.durationMinutes} min</td>
+                  <td>{subjectPoints(row)} points</td>
+                  <td>
+                    <div className="btn-group">
+                      <IconButton className="btn btn-outline" onClick={() => open(row)} label="Modifier" />
+                      <IconButton
+                        className="btn btn-outline"
+                        onClick={() => {
+                          open(row);
+                          setTab('preview');
+                        }}
+                        label="Voir le sujet"
+                      />
+                    </div>
+                  </td>
+                </tr>
+              );
+            })}
+            {!rows.length && (
+              <tr>
+                <td colSpan={6}>Aucun sujet préparé. Commencez avec « Composer une épreuve ».</td>
+              </tr>
+            )}
+          </tbody>
+        </ResponsiveTable>
+      </section>
+    </div>
+  );
 }

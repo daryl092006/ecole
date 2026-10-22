@@ -38,3 +38,21 @@ test('Contrat en brouillon : approbation et continuité dans Frais et versements
  expect(operations).toHaveLength(1);
  expect(operations[0]).toMatchObject({action:'approve_contract',enrollmentId:'00000000-0000-4000-8000-000000000101',dueOn:'2026-10-15'});
 });
+test('Changement de groupe relu et enregistré une seule fois',async({page})=>{
+ await authenticateFixture(page);await page.route('**/api/campus',route=>route.fulfill({json:snapshot}));
+ const operations:Record<string,unknown>[]=[];
+ const groupA='00000000-0000-4000-8000-000000000201',groupB='00000000-0000-4000-8000-000000000202';
+ await page.route('**/api/students/*/operations',route=>{
+  if(route.request().method()==='POST'){const body=route.request().postDataJSON();operations.push(body);return route.fulfill({status:201,json:{revision:2}});}
+  return route.fulfill({json:{revision:1,enrollments:[{id:'00000000-0000-4000-8000-000000000101',status:'INSCRIT',enrolledOn:'2026-10-12',currentGroupId:groupA,currentGroupName:'Groupe A',currentGroupValidFrom:'2026-10-12',availableGroups:[{id:groupA,name:'Groupe A'},{id:groupB,name:'Groupe B'}]}],payments:[],paid:0}});
+ });
+ await page.goto('/etudiants/ESCEN-TEST-001');
+ await page.getByRole('button',{name:'Changer de groupe',exact:true}).click();
+ await page.getByLabel('Date d’effet',{exact:true}).fill('2026-11-02');
+ await page.getByLabel('Motif',{exact:true}).fill('Rééquilibrage des effectifs');
+ await page.getByRole('button',{name:'Vérifier l’opération'}).click();expect(operations).toHaveLength(0);
+ await page.getByRole('button',{name:'Confirmer le changement de groupe',exact:true}).click();
+ await expect(page.getByText('Changement de groupe enregistré.',{exact:true})).toBeVisible();
+ expect(operations).toHaveLength(1);
+ expect(operations[0]).toMatchObject({action:'change_group',enrollmentId:'00000000-0000-4000-8000-000000000101',groupId:groupB,effectiveOn:'2026-11-02'});
+});

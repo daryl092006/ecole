@@ -4,6 +4,7 @@ import { resolveAcademicYear } from '@/server/academicYearContext';
 import { filterRelationalSnapshot } from '@/services/persistentPermissionsService';
 import { filterSnapshotForAcademicYear } from '@/services/academicYearScopeService';
 import { connectedRecordName } from '@/services/connectedRecordDisplayService';
+import { evaluationGradeValue } from '@/services/evaluationGradePolicy';
 import type { PersistentChange, RelationalSnapshot } from '@/types/persistence';
 import { ROLES } from '@/types/permissions';
 
@@ -59,7 +60,21 @@ export async function GET(request: Request) {
       revision: data.snapshot.revision,
       complaints: complaints.map(complaint => {
         const candidate = data.scoped.tables.evaluation_candidates?.find(row => row.id === complaint.candidate_id);
-        return { ...complaint, label: candidate ? connectedRecordName('evaluation_candidates', candidate, data.annual) : 'Dossier ou évaluation non retrouvé' };
+        const grade = data.scoped.tables.grades?.find(row => row.id === complaint.grade_id);
+        const enrollment = candidate ? data.annual.tables.enrollments?.find(row => row.id === candidate.enrollment_id) : undefined;
+        const student = enrollment && data.context.permissions.includes('student.view')
+          ? data.annual.tables.students?.find(row => row.id === enrollment.student_id)
+          : undefined;
+        const hasOnlineCopy = Boolean((data.scoped.tables.exam_attempts || []).some(row => row.candidate_id === complaint.candidate_id));
+        return {
+          ...complaint,
+          label: candidate ? connectedRecordName('evaluation_candidates', candidate, data.annual) : 'Dossier ou évaluation non retrouvé',
+          evaluation_id: candidate?.evaluation_id || null,
+          grade_value: evaluationGradeValue(grade),
+          absence_status: grade?.absence_status || null,
+          student_matricule: student?.matricule ? String(student.matricule) : null,
+          has_online_copy: hasOnlineCopy,
+        };
       }),
       events: (data.snapshot.tables.complaint_events || []).filter(row => ids.has(String(row.complaint_id))),
       revisions: (data.scoped.tables.grade_revisions || []).filter(row => ids.has(String(row.complaint_id))),
@@ -158,15 +173,16 @@ export async function POST(request: Request) {
         const grade = data.scoped.tables.grades?.find(g => g.id === complaint.grade_id);
         const candidate = data.scoped.tables.evaluation_candidates?.find(row => row.id === complaint.candidate_id);
         const evaluation = data.scoped.tables.evaluations?.find(row => row.id === candidate?.evaluation_id);
-        if (!grade || typeof grade.value !== 'number' || evaluation?.status !== 'PUBLIEES') throw new RequestError(409, 'Une note numérique publiée est nécessaire pour cette correction.');
-        if (grade.value === body.correctedGrade) throw new RequestError(400, 'La nouvelle note doit être différente de la note actuelle.');
+        const currentGradeValue = evaluationGradeValue(grade);
+        if (!grade || currentGradeValue === null || evaluation?.status !== 'PUBLIEES') throw new RequestError(409, 'Une note numérique publiée est nécessaire pour cette correction.');
+        if (currentGradeValue === body.correctedGrade) throw new RequestError(400, 'La nouvelle note doit être différente de la note actuelle.');
         changes.push({
           table: 'grade_revisions',
           operation: 'insert',
           record: {
             id: crypto.randomUUID(),
             grade_id: grade.id,
-            old_value: grade.value,
+            old_value: currentGradeValue,
             new_value: body.correctedGrade,
             actor_id: data.context.accountId,
             actor_role: data.context.role,

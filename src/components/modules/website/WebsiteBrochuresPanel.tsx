@@ -5,6 +5,7 @@ import { usePortal } from '@/hooks/usePortal';
 import { loadWebsiteBrochures, loadWebsiteData, saveWebsiteBrochure } from '@/services/remoteCampusService';
 import type { WebsiteBrochure } from '@/types/website';
 import LoadingState from '@/components/ui/LoadingState';
+import ErrorState from '@/components/ui/ErrorState';
 import WorkPage from '@/components/ui/WorkPage';
 import FormFeedback from '@/components/ui/FormFeedback';
 
@@ -68,7 +69,7 @@ export default function WebsiteBrochuresPanel({ onBack }: { onBack?: () => void 
   return <section>
     <FormFeedback message={success} error={false} />
     <div className="module-header"><div><h1>Brochures du site</h1><p>Documents PDF à télécharger par filière et cycle</p></div><div className="btn-group">{onBack && <button className="btn btn-outline" onClick={onBack}>Articles du site</button>}{canManage && <button className="btn btn-primary" onClick={() => edit({ ...empty })}>Ajouter une brochure</button>}</div></div>
-    {loading ? <LoadingState label="Chargement des brochures…" /> : error ? <div className="card" role="alert"><p>{error}</p><button className="btn btn-outline" onClick={() => setRevision(value => value + 1)}>Réessayer</button></div> : <div className="brochure-catalogue">{!rows.length && <p className="card">Aucune brochure pour cette année.</p>}{cycles.map(cycle => {
+    {loading ? <LoadingState label="Chargement des brochures…" variant="cards" /> : error ? <ErrorState title="Brochures indisponibles" message={error} onRetry={() => setRevision(value => value + 1)} /> : <div className="brochure-catalogue">{!rows.length && <p className="card">Aucune brochure pour cette année.</p>}{cycles.map(cycle => {
       const documents = rows.filter(row => (row.cycle || 'GENERAL') === cycle).sort((a, b) => (a.program_name || a.title).localeCompare(b.program_name || b.title, 'fr'));
       if (!documents.length) return null;
       return <section className="card brochure-cycle" key={cycle} aria-label={cycleLabels[cycle] || 'Brochures générales'}>

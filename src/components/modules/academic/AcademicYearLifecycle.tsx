@@ -2,6 +2,8 @@
 import DrawerActions from '@/components/ui/DrawerActions';
 import { DrawerCloseButton } from '@/components/ui/DetailDrawer';
 import IconButton from '@/components/ui/IconButton';
+import ReviewedForm from '@/components/ui/ReviewedForm';
+import YearClosurePanel from './YearClosurePanel';
 import YearPreparationPanel from './YearPreparationPanel';
 import WorkPage from '@/components/ui/WorkPage';
 import { useState } from 'react';
@@ -9,6 +11,14 @@ import { usePortal } from '@/hooks/usePortal';
 import { changeAcademicYear, loadYearPreparation } from '@/services/remoteCampusService';
 import { YEAR_STATUS_LABELS, type YearStatus } from '@/types/academicYearContext';
 import type { DatabaseRow } from '@/types/persistence';
+
+interface ClosureCommand {
+  yearId: string;
+  yearName: string;
+  status: 'EN_CLOTURE' | 'CLOTUREE';
+  title: string;
+  revision: number;
+}
 
 export default function AcademicYearLifecycle({
   rows,
@@ -29,10 +39,19 @@ export default function AcademicYearLifecycle({
   const canManage = portal.globalAccess && portal.perms.permissions.includes('academic.year.open');
   const [preparing, setPreparing] = useState<string | null>(null);
   const [pendingYear, setPendingYear] = useState<DatabaseRow | null>(null);
+  const [reviewing, setReviewing] = useState<DatabaseRow | null>(null);
+  const [closureCommand, setClosureCommand] = useState<ClosureCommand | null>(null);
+  const [closureReason, setClosureReason] = useState('');
 
   const opened = rows.filter(year => year.status === 'OUVERTE');
   const currentId = portal.academicYearContext?.currentYearId;
   const current = rows.find(row => row.id === currentId);
+
+  function openClosureCommand(next: ClosureCommand) {
+    setClosureCommand(next);
+    setClosureReason('');
+    setError('');
+  }
 
   async function handleToggle(year: DatabaseRow) {
     const isCurrent = year.id === currentId;
@@ -210,9 +229,32 @@ export default function AcademicYearLifecycle({
                   {onView && <IconButton className="btn btn-outline" onClick={() => onView(year)} label="Voir" />}
                   {onEdit && <IconButton className="btn btn-outline" onClick={() => onEdit(year)} label="Modifier" />}
                   {canManage && (
-                    <button className="btn btn-outline" onClick={() => setPreparing(year.id)}>
-                      {status === 'BROUILLON' ? 'Préparer' : 'Configurer'} {String(year.name)}
-                    </button>
+                    <>
+                      <button className="btn btn-outline" onClick={() => setPreparing(year.id)}>
+                        {status === 'BROUILLON' ? 'Préparer' : 'Configurer'} {String(year.name)}
+                      </button>
+                      {status === 'OUVERTE' && !isCurrent && (
+                        <button
+                          className="btn btn-outline"
+                          onClick={() =>
+                            openClosureCommand({
+                              yearId: year.id,
+                              yearName: String(year.name),
+                              status: 'EN_CLOTURE',
+                              title: `Préparer la clôture de ${year.name}`,
+                              revision,
+                            })
+                          }
+                        >
+                          Préparer la clôture de {String(year.name)}
+                        </button>
+                      )}
+                      {['OUVERTE', 'EN_CLOTURE'].includes(status) && (
+                        <button className="btn btn-outline" onClick={() => setReviewing(year)}>
+                          Bilan avant clôture de {String(year.name)}
+                        </button>
+                      )}
+                    </>
                   )}
                 </div>
               </div>
@@ -249,6 +291,79 @@ export default function AcademicYearLifecycle({
             }
           }}
         />
+      )}
+      {reviewing && (
+        <YearClosurePanel
+          yearId={reviewing.id}
+          yearName={String(reviewing.name)}
+          canClose={reviewing.status === 'EN_CLOTURE'}
+          onClose={() => setReviewing(null)}
+          onConfirm={reviewRevision => {
+            openClosureCommand({
+              yearId: reviewing.id,
+              yearName: String(reviewing.name),
+              status: 'CLOTUREE',
+              title: `Clôturer ${reviewing.name}`,
+              revision: reviewRevision,
+            });
+            setReviewing(null);
+          }}
+        />
+      )}
+      {closureCommand && (
+        <WorkPage title={closureCommand.title} busy={busy} onClose={() => setClosureCommand(null)}>
+          <ReviewedForm
+            busy={busy}
+            error={error}
+            confirmLabel="Confirmer le changement d’année"
+            fields={[
+              { label: 'Opération', value: closureCommand.title },
+              { label: 'Motif', value: closureReason },
+            ]}
+            consequence={
+              closureCommand.status === 'CLOTUREE'
+                ? 'La clôture protège les écritures académiques de cette année. Les évaluations et réclamations doivent être terminées. Les dettes et leurs règlements restent rattachés à leur année d’origine.'
+                : 'Les nouvelles inscriptions et programmations seront bloquées. La finalisation des notes et réclamations restera possible.'
+            }
+            onConfirm={() => {
+              setBusy(true);
+              setError('');
+              void changeAcademicYear(
+                {
+                  action: 'transition',
+                  yearId: closureCommand.yearId,
+                  status: closureCommand.status,
+                  revision: closureCommand.revision,
+                  reason: closureReason,
+                },
+                portal.activeRole
+              )
+                .then(() => {
+                  setClosureCommand(null);
+                  portal.reloadCampus();
+                  onSaved();
+                })
+                .catch(cause => setError(cause instanceof Error ? cause.message : 'Changement refusé.'))
+                .finally(() => setBusy(false));
+            }}
+          >
+            <label className="form-group">
+              Motif du changement
+              <textarea
+                aria-label="Motif du changement"
+                className="input"
+                required
+                minLength={3}
+                maxLength={1000}
+                value={closureReason}
+                onChange={event => setClosureReason(event.target.value)}
+              />
+            </label>
+            <button className="btn btn-primary" disabled={busy}>
+              Vérifier les conséquences
+            </button>
+          </ReviewedForm>
+        </WorkPage>
       )}
     </section>
   );

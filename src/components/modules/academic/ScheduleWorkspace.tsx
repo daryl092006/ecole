@@ -7,6 +7,7 @@ import { shiftExamAccess } from '@/services/scheduleManagementService';
 import type { ManagedSession, ScheduleCommand, ScheduleDirectory, SessionMode } from '@/types/scheduleManagement';
 import ConnectedDomainWorkspace from '../ConnectedDomainWorkspace';
 import LoadingState from '@/components/ui/LoadingState';
+import ErrorState from '@/components/ui/ErrorState';
 import ScheduleCalendar from '@/components/ui/ScheduleCalendar';
 import ScheduleGroupFilter from '@/components/ui/ScheduleGroupFilter';
 import WorkPage from '@/components/ui/WorkPage';
@@ -58,8 +59,8 @@ function ScheduleManager() {
     if (!directory?.canCreate || !requestedComponent || openedRequest.current === request || !directory.components.some(row => row.id === requestedComponent)) return;
     openedRequest.current = request; setDetail(null); setSaveError(''); setForm(blank()); setOperation({ action: 'create_session' });
   }, [directory, requestedComponent, activeRole, academicYearSelection]);
-  if (loading) return <LoadingState label="Chargement du planning…" />;
-  if (error || !directory) return <section className="card" role="alert"><p>{error || 'Planning indisponible.'}</p><button className="btn btn-outline" onClick={() => setReload(value => value + 1)}>Réessayer</button></section>;
+  if (loading) return <LoadingState label="Chargement du planning…" variant="cards" />;
+  if (error || !directory) return <ErrorState title="Planning indisponible" message={error || 'Les séances n’ont pas pu être chargées.'} onRetry={() => setReload(value => value + 1)} />;
   const teacherName = (id: string | null) => directory.teachers.find(teacher => teacher.id === id)?.name || 'Enseignant indisponible';
   const groupName = (id: string) => directory.groups.find(group => group.id === id)?.label || String(portal.relationalSnapshot.tables.groups?.find(group => group.id === id)?.name || 'Groupe indisponible');
   const componentName = (assignmentId: string) => directory.components.find(component => component.id === directory.assignments.find(assignment => assignment.id === assignmentId)?.componentId)?.label || 'Matière';

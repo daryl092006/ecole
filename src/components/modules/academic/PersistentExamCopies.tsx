@@ -3,6 +3,7 @@ import { useState } from 'react';
 import { usePortal } from '@/hooks/usePortal';
 import WorkPage from '@/components/ui/WorkPage';
 import { connectedRecordName } from '@/services/connectedRecordDisplayService';
+import { evaluationCandidateStatusLabel, evaluationGradeNoteLabel } from '@/services/evaluationGradePolicy';
 import type { OnlineExamAnswer } from '@/types/onlineExam';
 
 export default function PersistentExamCopies({ evaluationId, candidateId, onClose }: { evaluationId: string; candidateId?: string; onClose: () => void }) {
@@ -16,11 +17,13 @@ export default function PersistentExamCopies({ evaluationId, candidateId, onClos
     {attempts.map(attempt => {
       const candidate = tables.evaluation_candidates?.find(row => row.id === attempt.candidate_id);
       const enrollment = tables.enrollments?.find(row => row.id === candidate?.enrollment_id);
+      const grade = tables.grades?.find(row => row.candidate_id === attempt.candidate_id);
       const answers = (tables.exam_answers || []).filter(row => row.attempt_id === attempt.id);
       const questions = (tables.exam_questions || []).filter(row => row.paper_id === attempt.paper_id);
       return <article className="online-exam-entry" key={attempt.id}>
         <h2>{enrollment ? connectedRecordName('enrollments', enrollment, portal.relationalSnapshot) : 'Candidat'}</h2>
-        <p>{attempt.status === 'EN_COURS' ? 'En cours' : attempt.status === 'EXPIREE' ? 'Remise automatique à l’échéance' : attempt.status === 'INTERROMPUE' ? 'Interrompue' : 'Remise volontaire'} · {attempt.completion_status === 'NON_TRAITE' ? 'Non traitée · 0/20 à enregistrer' : attempt.completion_status === 'PARTIELLE' ? 'Partielle' : attempt.completion_status === 'COMPLETE' ? 'Complète' : 'Traitement en cours'}</p>
+        <p>{attempt.status === 'EN_COURS' ? 'En cours' : attempt.status === 'EXPIREE' ? 'Remise automatique à l’échéance' : attempt.status === 'INTERROMPUE' ? 'Interrompue' : 'Remise volontaire'} · {attempt.completion_status === 'NON_TRAITE' ? 'Non traitée · 0/20 à enregistrer' : attempt.completion_status === 'PARTIELLE' ? 'Réponses partielles' : attempt.completion_status === 'COMPLETE' ? 'Toutes les questions répondues' : 'Composition en cours'}</p>
+        <p className="cell-sub">Correction enseignant : <strong>{evaluationCandidateStatusLabel(grade, attempt.status)}</strong> · Note : <strong>{evaluationGradeNoteLabel(grade, attempt.status)}</strong></p>
         {!!attempt.submitted_at && <p>Remise : {new Date(String(attempt.submitted_at)).toLocaleString('fr-FR')}</p>}
         <button className="btn btn-outline" onClick={() => setSelected(selected === attempt.id ? '' : attempt.id)}>{selected === attempt.id ? 'Masquer les réponses' : 'Lire les réponses'}</button>
         {selected === attempt.id && questions.map(question => {
