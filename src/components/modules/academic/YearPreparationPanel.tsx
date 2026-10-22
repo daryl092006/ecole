@@ -114,9 +114,13 @@ export default function YearPreparationPanel({
         prefilledItems={prefilledItems.length ? prefilledItems : undefined}
         onClose={leaveStep}
         onSaved={() => {
+          if (collection === 'groups') {
+            setRetry(value => value + 1);
+            return;
+          }
           const nextCollection = selected.collections[selected.collections.indexOf(collection) + 1];
           setMessage(`${selected.title} : enregistré.`);
-          if (nextCollection && collection !== 'groups') setCollection(nextCollection);
+          if (nextCollection) setCollection(nextCollection);
           else { setStep(null); setCollection(''); }
           setRetry(value => value + 1);
         }}

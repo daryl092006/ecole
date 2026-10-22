@@ -47,7 +47,7 @@ for (const width of [390, 1440]) test(`Les filières du groupe sont pré-cochée
     ready: false, checks: [{ key: 'groups', label: 'Groupes', ready: tables.groups.length > 0, href: '' }],
     previousYear: previousSummary.previousYear, previousSummary,
   } }));
-  await page.route('**/api/catalog/groups', route => {
+  await page.route('**/api/catalog/groups{,/**}', route => {
     if (route.request().method() === 'GET') return route.fulfill({ json: { revision, tables, historyLinks: [] } });
     const body = route.request().postDataJSON();
     expect(body.revision).toBe(revision);
@@ -55,9 +55,10 @@ for (const width of [390, 1440]) test(`Les filières du groupe sont pré-cochée
     commands.push(body);
     revision += 1;
     const { offering_ids: ids, ...group } = body.values;
-    tables.groups = [{ id: 'SAVED-GROUP', ...group }];
-    tables.group_offerings = ids.map((id: string, index: number) => ({ id: `SAVED-LINK-${index}`, group_id: 'SAVED-GROUP', offering_id: id, academic_year_id: yearId }));
-    return route.fulfill({ status: 201, json: { id: 'SAVED-GROUP', revision } });
+    const groupId = route.request().method() === 'PATCH' ? 'SAVED-GROUP' : commands.length === 1 ? 'SAVED-GROUP' : 'SECOND-GROUP';
+    tables.groups = [...tables.groups.filter(row => row.id !== groupId), { id: groupId, ...group }];
+    tables.group_offerings = [...tables.group_offerings.filter(row => row.group_id !== groupId), ...ids.map((id: string, index: number) => ({ id: `${groupId}-LINK-${index}`, group_id: groupId, offering_id: id, academic_year_id: yearId }))];
+    return route.fulfill({ status: 201, json: { id: groupId, revision } });
   });
   await page.goto('/academique/referentiel');
   await page.getByRole('button', { name: 'Préparer 2026-2027', exact: true }).click();
@@ -82,16 +83,45 @@ for (const width of [390, 1440]) test(`Les filières du groupe sont pré-cochée
   expect(commands).toHaveLength(0);
   const readsBeforeSave = campusReads;
   await page.getByRole('button', { name: 'Confirmer l’enregistrement', exact: true }).click();
-  await expect(page.getByRole('heading', { name: 'Préparer l’année · 2026-2027', exact: true })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Préparer : Groupes · 2026-2027', exact: true })).toBeVisible();
+  await expect(page.getByRole('list', { name: 'Préparation de l’année' })).toHaveCount(0);
+  await expect(page.getByRole('button', { name: 'Ajouter un groupe', exact: true })).toBeVisible();
   expect(commands).toHaveLength(1);
   expect(commands[0]).toMatchObject({ values: { name: 'L1 TRONC COMMUN', academic_year_id: yearId, level_id: 'L1', offering_ids: ['ONLINE'] } });
   await expect.poll(() => campusReads).toBeGreaterThan(readsBeforeSave);
-  await page.getByRole('button', { name: 'Consulter groupes', exact: true }).click();
   await page.getByRole('row').filter({ hasText: 'L1 TRONC COMMUN' }).getByRole('button', { name: 'Modifier', exact: true }).click();
   await expect(online).toBeChecked();
   await expect(marketing).not.toBeChecked();
   await expect(finance).not.toBeChecked();
   await expect(page.getByRole('checkbox', { checked: true })).toHaveCount(1);
+  await page.getByLabel('Nom', { exact: true }).fill('L1 GROUPE MODIFIÉ');
+  await page.getByLabel('Motif', { exact: true }).fill('Correction du nom du groupe');
+  await page.getByRole('button', { name: 'Enregistrer', exact: true }).click();
+  await page.getByRole('button', { name: 'Confirmer l’enregistrement', exact: true }).click();
+  await expect(page.getByRole('heading', { name: 'Préparer : Groupes · 2026-2027', exact: true })).toBeVisible();
+  await expect(page.getByRole('row').filter({ hasText: 'L1 GROUPE MODIFIÉ' })).toBeVisible();
+  expect(commands).toHaveLength(2);
+  await page.getByRole('button', { name: 'Ajouter un groupe', exact: true }).click();
+  await page.getByLabel('Nom', { exact: true }).fill('L1 SECOND GROUPE');
+  await online.check();
+  await page.getByRole('button', { name: 'Enregistrer', exact: true }).click();
+  await page.getByRole('button', { name: 'Confirmer l’enregistrement', exact: true }).click();
+  await expect(page.getByRole('row').filter({ hasText: 'L1 SECOND GROUPE' })).toBeVisible();
+  await expect(page.getByRole('row').filter({ hasText: 'L1 GROUPE MODIFIÉ' })).toBeVisible();
+  await expect(page.getByRole('list', { name: 'Préparation de l’année' })).toHaveCount(0);
+  expect(commands).toHaveLength(3);
+  await page.getByRole('button', { name: 'Retourner à la préparation de l’année', exact: true }).click();
+  await expect(page.getByRole('list', { name: 'Préparation de l’année' })).toBeVisible();
+  await page.getByRole('button', { name: 'Consulter groupes', exact: true }).click();
+  await expect(page.getByRole('row').filter({ hasText: 'L1 SECOND GROUPE' })).toBeVisible();
+  await page.getByRole('row').filter({ hasText: 'L1 GROUPE MODIFIÉ' }).getByRole('button', { name: 'Modifier', exact: true }).click();
+  await page.getByLabel('Nom', { exact: true }).fill('L1 GROUPE FINAL');
+  await page.getByLabel('Motif', { exact: true }).fill('Ajustement après consultation');
+  await page.getByRole('button', { name: 'Enregistrer', exact: true }).click();
+  await page.getByRole('button', { name: 'Confirmer l’enregistrement', exact: true }).click();
+  await expect(page.getByRole('row').filter({ hasText: 'L1 GROUPE FINAL' })).toBeVisible();
+  await expect(page.getByRole('list', { name: 'Préparation de l’année' })).toHaveCount(0);
+  expect(commands).toHaveLength(4);
 });
 for(const width of [390,1440])test(`Tarifs annuels communs ou par filière à ${width}px`,async({page})=>{
  await page.setViewportSize({width,height:1000});await authenticateFixture(page);

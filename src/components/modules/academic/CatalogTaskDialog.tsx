@@ -40,6 +40,7 @@ export default function CatalogTaskDialog({
   const [yearsLoading, setYearsLoading] = useState(false);
   const [tasks, setTasks] = useState<CatalogTask[] | null>(null);
   const [error, setError] = useState(''); const [revision, setRevision] = useState(0); const [saved, setSaved] = useState<string[]>([]);
+  const [rootSaved, setRootSaved] = useState(false);
   const needsYear = catalogTaskNeedsYear(root);
   useEffect(() => {
     const controller = new AbortController(); setTasks(null); setError('');
@@ -69,7 +70,7 @@ export default function CatalogTaskDialog({
           yearId,
           yearName,
           category: task.collection === root ? category : undefined,
-          createOnLoad: true,
+          createOnLoad: task.collection !== root || !rootSaved,
           stepKey: task.collection === root ? stepKey : undefined,
           previousYear: task.collection === root ? previousYear : undefined,
           previousSummary: task.collection === root ? previousSummary : undefined,
@@ -77,8 +78,10 @@ export default function CatalogTaskDialog({
           onChoose: () => {},
           onDone: task.collection === root ? onClose : undefined,
           onSaved: () => {
-            if (task.collection === root) onSaved();
-            else {
+            if (task.collection === root) {
+              setRootSaved(true);
+              onSaved();
+            } else {
               setSaved(value => [...value, catalogSpec(task.collection).title]);
               setRevision(value => value + 1);
             }
