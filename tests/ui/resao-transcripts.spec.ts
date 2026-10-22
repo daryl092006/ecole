@@ -176,3 +176,38 @@ test('Comparaison visuelle Master FD avec les treize matières du modèle', asyn
   await fs.writeFile('tmp/screenshots/transcripts/releve-master-fd.pdf', pdf);
   await page.screenshot({ path: 'tmp/screenshots/transcripts/releve-master-fd.png', fullPage: true });
 });
+
+
+test('40 matières sans réduction : vérifier la pagination naturelle', async ({ page }) => {
+  await page.goto('/connexion');
+  const styles = await page.locator('link[rel="stylesheet"]').evaluateAll(links => links.map(link => (link as HTMLLinkElement).href));
+  await page.setContent(transcriptPrintHtml(documentContent(20), styles, new URL(page.url()).origin));
+  await page.evaluate(async () => {
+    document.body.getBoundingClientRect();
+    await document.fonts.ready;
+    await Promise.all(Array.from(document.images).map(img => img.decode()));
+  });
+  // No fitTranscriptToPage: preserve the actual type size and page width.
+  // Extend the sheet over enough A4 pages so overflow cannot be hidden or clipped.
+  const natural = await page.evaluate(() => {
+    const sheet = document.querySelector<HTMLElement>('.transcript-sheet')!;
+    const content = document.querySelector<HTMLElement>('.transcript-content')!;
+    const footer = document.querySelector<HTMLElement>('.transcript-page-footer')!;
+    const availableHeight = sheet.clientHeight - footer.offsetHeight - 12;
+    const contentHeight = content.scrollHeight;
+    const pages = Math.ceil((contentHeight + footer.offsetHeight + 12) / sheet.clientHeight);
+    const result = { fitsOnOnePage: contentHeight <= availableHeight, contentHeight, availableHeight, pages, transform: getComputedStyle(content).transform, fontSize: getComputedStyle(document.querySelector('.transcript-table td')!).fontSize };
+    sheet.style.height = `${pages * 276 - 1}mm`;
+    sheet.style.breakInside = 'auto';
+    return result;
+  });
+  expect(natural.transform).toBe('none');
+  expect(natural.fontSize).toBe('12px');
+  expect(await page.locator('.transcript-table tbody tr:not(.transcript-semester):not(.transcript-total)').count()).toBe(40);
+  const pdf = await page.pdf({ preferCSSPageSize: true, printBackground: true });
+  const pdfPages = pdf.toString('latin1').match(/\/Type\s*\/Page\b/g)?.length || 0;
+  expect(pdfPages).toBe(natural.pages);
+  await fs.mkdir('tmp/screenshots/transcripts', { recursive: true });
+  await fs.writeFile('tmp/screenshots/transcripts/releve-40-matieres-sans-reduction.pdf', pdf);
+  await fs.writeFile('tmp/screenshots/transcripts/releve-40-matieres-sans-reduction.json', JSON.stringify({ ...natural, pdfPages }, null, 2));
+});
