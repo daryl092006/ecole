@@ -2,6 +2,7 @@ import { readFile, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import os from 'node:os';
 import { protectRegistrationDocuments } from './website-registration-resilience.mjs';
+import { adaptDiplomaForm } from './website-diploma.mjs';
 
 export async function adaptWebsite(root, portal) {
   // The former checklist URL belongs to the registration flow.
@@ -19,7 +20,6 @@ export async function adaptWebsite(root, portal) {
   // Always derive from the untouched source so that rerunning is deterministic.
   const sourceRoot = process.env.ESCEN_WEBSITE_SOURCE || path.join(os.homedir(), 'Downloads/escen-website');
   let registration = await readFile(path.join(sourceRoot, 'app/pages/inscription/index.vue'), 'utf8');
-  registration = registration.replace(/<select v-model="formData.type_diplome_id"[\s\S]*?<\/select>/, '<input v-model="formData.type_diplome_id" required maxlength="200" class="field-input" placeholder="Intitulé de votre dernier diplôme">');
   registration = registration.replace(/const champsParcoursConfig = computed\(\(\) => \{[\s\S]*?\n\}\)/, "const champsParcoursConfig = computed(() => ({ annee_bac: false, serie: false, mention_bac: false, etablissement_diplome: false }))");
   // Required attachments are set explicitly by the platform per formation.
   registration = registration.replace(/if \(!prepDocs.value.length\) \{[\s\S]*?\n    \}/, '');
@@ -81,7 +81,7 @@ onMounted(async () => {`);
   .step-label { max-width: 100%; font-size: 9px; letter-spacing: 0.04em; overflow-wrap: anywhere; }
 }
 </style>`);
-  await writeFile(path.join(root, 'app/pages/inscription/index.vue'), registration);
+  await writeFile(path.join(root, 'app/pages/inscription/index.vue'), adaptDiplomaForm(registration));
   let store = await readFile(path.join(sourceRoot, 'app/stores/candidature.ts'), 'utf8');
   store = store.replace('return response.data?.candidat || null', 'return response.data || null');
   await writeFile(path.join(root, 'app/stores/candidature.ts'), store);

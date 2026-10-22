@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { brochureSchema, articleSchema, identitySchema, guardianSchema, websiteAccess, escapeArticleContent, sniffDocument } from './websiteService';
+import { diplomaSchema, brochureSchema, articleSchema, identitySchema, guardianSchema, websiteAccess, escapeArticleContent, sniffDocument } from './websiteService';
 import { ROLES } from '@/types/permissions';
 import type { PersistentContext } from '@/types/persistence';
 
@@ -11,6 +11,12 @@ assert.equal(articleSchema.safeParse({ title: 'Titre', slug: '../danger', excerp
 assert.equal(articleSchema.safeParse({ title: 'Titre', slug: 'titre', excerpt: 'Résumé', content: 'Texte', image: 'javascript:alert(1)', status: 'PUBLIE' }).success, false);
 assert.equal(identitySchema.safeParse({ nom: 'Test', prenom: 'Alice', genre: 'Féminin', date_naissance: '2000-01-01', lieu_naissance: 'Lomé', nationalite: 'Togolaise', email: 'alice@example.test', tel: '+22890000000', active: true }).success, false);
 assert.equal(guardianSchema.safeParse({ nom: 'Test', prenom: 'Parent', tel: '+22890000000', responsable_des_frais: '1' }).success, true);
+const masterDiploma = diplomaSchema.parse({ type_diplome_id: 'Master', annee_diplome: '2024', specialite_diplome: 'Finance' });
+assert.equal(masterDiploma.annee_diplome, 2024);
+assert.equal(masterDiploma.specialite_diplome, 'Finance');
+assert.equal(diplomaSchema.safeParse({ type_diplome_id: 'Master', annee_diplome: new Date().getFullYear() + 1 }).success, false);
+assert.equal(diplomaSchema.safeParse({ type_diplome_id: 'Master', annee_diplome: 2024.5 }).success, false);
+assert.equal(diplomaSchema.safeParse({ type_diplome_id: 'BAC', annee_bac: 2020, serie: 'D' }).success, true);
 const context = { role: ROLES.IT, permissions: ['student.view', 'student.lifecycle.manage', 'communication.view', 'communication.manage'], grants: [{ site_id: null, group_id: null, academic_year_id: null }] } as PersistentContext;
 assert.deepEqual(websiteAccess(context), { admissions: true, manageAdmissions: true, articles: true, manageArticles: true });
 assert.equal(websiteAccess({ ...context, grants: [{ ...context.grants[0], site_id: 'SITE' }] }).admissions, false);

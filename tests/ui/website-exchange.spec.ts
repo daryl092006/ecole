@@ -124,8 +124,17 @@ for (const width of [390, 1440]) {
     await page.locator('input[type="email"]').first().fill('alice@example.test');
     await page.locator('input[type="tel"]').first().fill('90000000');
     await page.getByRole('button', { name: 'Continuer', exact: false }).click();
-    await expect(page.getByPlaceholder('Intitulé de votre dernier diplôme')).toBeVisible();
-    await page.getByPlaceholder('Intitulé de votre dernier diplôme').fill('Baccalauréat déclaré');
+    await expect(page.getByLabel('Dernier diplôme obtenu')).toBeVisible();
+    await page.getByLabel('Dernier diplôme obtenu').selectOption('Master');
+    await expect(page.getByLabel('Série du BAC', { exact: false })).toHaveCount(0);
+    await page.getByLabel('Année d’obtention du diplôme', { exact: false }).fill('2024');
+    await page.getByLabel('Spécialité du diplôme', { exact: false }).fill('Finance');
+    await page.getByLabel('Dernier diplôme obtenu').selectOption('BAC');
+    await expect(page.getByLabel('Année d’obtention du diplôme', { exact: false })).toHaveCount(0);
+    await page.getByLabel('Année d’obtention du BAC', { exact: false }).fill('2020');
+    await page.getByLabel('Dernier diplôme obtenu').selectOption('Master');
+    await page.getByLabel('Année d’obtention du diplôme', { exact: false }).fill('2024');
+    await page.getByLabel('Spécialité du diplôme', { exact: false }).fill('Finance');
     await page.getByRole('button', { name: 'Continuer', exact: false }).click();
     await page.locator('form select').first().selectOption(intakeId);
     await page.locator('form select').nth(1).selectOption(articleId);
@@ -146,6 +155,7 @@ for (const width of [390, 1440]) {
     expect(submitted.map(item => item.action.split('/').at(-1))).toEqual(['etape1', 'etape2-bac', 'etape3-documents', 'etape4-finaliser']);
     expect(submitted[2].body).toContain('diplome.pdf');
     expect(JSON.parse(submitted[0].body!)).toMatchObject({academic_year_id:yearId});
+    expect(JSON.parse(submitted[1].body!)).toMatchObject({ type_diplome_id: 'Master', annee_diplome: 2024, specialite_diplome: 'Finance', annee_bac: '', serie: '' });
     expect(submitted[2].body).toContain(yearId);
     expect(await page.evaluate(() => localStorage.getItem('candidature_draft_token'))).toBeNull();
     await page.screenshot({ path: `tmp/screenshots/annual-offerings/${width}/inscription-site-envoyee.png`, fullPage: true });

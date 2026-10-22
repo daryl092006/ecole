@@ -21,6 +21,8 @@ export const identitySchema = z.object({
 export const diplomaSchema = z.object({
   type_diplome_id: short.min(1), numero_table: optional, annee_bac: z.union([short, z.number()]).optional(),
   serie: optional, mention_bac: optional, etablissement_diplome: optional,
+  annee_diplome: z.union([z.literal(''), z.coerce.number().int().min(1900).max(new Date().getFullYear())]).optional(),
+  intitule_diplome: optional, specialite_diplome: optional, mention_diplome: optional,
 }).strict();
 export const guardianSchema = z.object({
   nom: short.min(1), prenom: short.min(1), profession: optional, employeur: optional,

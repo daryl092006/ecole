@@ -58,7 +58,12 @@ export async function verifyWebsiteDatabase({ db, check, account, level, program
     assert.equal(JSON.stringify(snapshot).includes(token), false);
   });
   await check('Site : envoi complet, consentement, pièces requises et finalisation idempotente', async () => {
-    await pub('diploma', { type_diplome_id: 'Diplôme déclaré pour la recette' });
+    await pub('diploma', { type_diplome_id: 'Master', annee_diplome: 2024, specialite_diplome: 'Finance', etablissement_diplome: 'Université de recette' });
+    const savedDiploma = await value('select diploma as value from escen.online_applications where id=$1', [draft.id]);
+    assert.equal(savedDiploma.type_diplome_id, 'Master');
+    assert.equal(savedDiploma.annee_diplome, 2024);
+    assert.equal(savedDiploma.specialite_diplome, 'Finance');
+    assert.equal(savedDiploma.annee_bac, undefined);
     await pub('documents', { niveau_id: level.id, filiere_id: program.id, documents: [] });
     await assert.rejects(pub('submit', { accept_cgu: '1', tuteurs: [{ nom: 'Parent' }] }), /Pièces/i);
     const documentId = randomUUID();
