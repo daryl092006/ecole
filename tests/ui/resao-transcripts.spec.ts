@@ -71,6 +71,14 @@ for (const count of [7, 30]) test(`Le PDF avec ${count * 2} matières et des lib
     return content.bottom <= page.bottom && content.right <= page.right && Math.abs((content.left + content.right) / 2 - (page.left + page.right) / 2) < 1;
   });
   expect(contained).toBe(true);
+  const footerPosition = await page.evaluate(() => {
+    const sheet = document.querySelector('.transcript-sheet')!.getBoundingClientRect();
+    const footer = document.querySelector('.transcript-page-footer')!.getBoundingClientRect();
+    const content = document.querySelector('.transcript-content')!.getBoundingClientRect();
+    return { bottomGap: Math.abs(sheet.bottom - footer.bottom), separated: content.bottom < footer.top };
+  });
+  expect(footerPosition.bottomGap).toBeLessThan(1);
+  expect(footerPosition.separated).toBe(true);
   const structure = await page.evaluate(() => {
     const rect = (selector: string) => document.querySelector(selector)!.getBoundingClientRect();
     const title = rect('.transcript-title-band'), program = rect('.transcript-program'), identity = rect('.transcript-identity'), table = rect('.transcript-table');
