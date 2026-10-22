@@ -3021,9 +3021,9 @@ html.transcript-print-root { width: 190mm; height: auto; min-height: 0; overflow
 body.transcript-print-body { page: transcript; display: block; width: 190mm; height: auto; min-width: 0; min-height: 0; overflow: visible; margin: 0; padding: 0; background: #fff; color: #000; font: 9pt/1.15 "Times New Roman", serif; }
 .transcript-print-body *, .transcript-print-body *::before, .transcript-print-body *::after { box-sizing: border-box; font-family: inherit; }
 .transcript-sheet { overflow: hidden; position: relative; width: 190mm; height: 276mm; margin: 0; padding: 0; break-inside: avoid; }
-.transcript-content { position: absolute; top: 0; left: 0; width: 190mm; transform-origin: top left; }
+.transcript-content { position: absolute; z-index: 1; top: 0; left: 0; width: 190mm; transform-origin: top left; }
 .transcript-heading-layout { position: relative; height: 89mm; }
-.transcript-watermark { position: absolute; z-index: 0; top: 8mm; left: 0; width: 100%; text-align: center; color: #eee; font: bold 45pt/1.2 "Times New Roman", serif; letter-spacing: 3mm; white-space: nowrap; }
+.transcript-watermark { position: absolute; z-index: 0; inset: 0; display: flex; align-items: center; justify-content: center; color: rgb(21 37 54 / 5.5%); font: bold 72pt/1.2 "Times New Roman", serif; letter-spacing: 5mm; white-space: nowrap; transform: rotate(-30deg); pointer-events: none; user-select: none; }
 .transcript-header { position: absolute; top: 0; left: 0; width: 100%; z-index: 1; display: grid; grid-template-columns: 53% 47%; border: 0; font-size: 10pt; line-height: 1.2; }
 .transcript-header > div { padding: 1mm 1.5mm; }
 .transcript-ministry { border-right: 0; text-align: left; font-size: 8pt; font-weight: bold; }
