@@ -5,6 +5,7 @@ import { websiteOrigins, prepareWebsiteRelease } from './website-release.mjs';
 import { applyWebsiteBranding } from './website-branding.mjs';
 import { prepareWebsiteArticles } from './website-articles.mjs';
 import { repairWebsiteNavigation } from './website-navigation.mjs';
+import { prepareWebsiteHomepage } from './website-homepage.mjs';
 
 // Run only against the private working copy, never the source in Downloads.
 const projectRoot = await realpath('.');
@@ -45,6 +46,7 @@ definePageMeta({ layout: false })
 </script>
 `);
 await adaptWebsite(root, portal);
+await prepareWebsiteHomepage(root);
 await prepareWebsiteRelease(root, origins);
 await applyWebsiteBranding(root);
 await prepareWebsiteArticles(root, origins);
