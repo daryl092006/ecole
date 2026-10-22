@@ -3024,9 +3024,9 @@ body.transcript-print-body { page: transcript; display: block; width: 190mm; hei
 .transcript-content { position: absolute; top: 0; left: 0; width: 190mm; transform-origin: top left; }
 .transcript-heading-layout { position: relative; height: 89mm; }
 .transcript-watermark { position: absolute; z-index: 0; top: 8mm; left: 0; width: 100%; text-align: center; color: #eee; font: bold 45pt/1.2 "Times New Roman", serif; letter-spacing: 3mm; white-space: nowrap; }
-.transcript-header { position: absolute; top: 0; left: 0; width: 100%; z-index: 1; display: grid; grid-template-columns: 53% 47%; border: .3mm solid #000; font-size: 10pt; line-height: 1.2; }
+.transcript-header { position: absolute; top: 0; left: 0; width: 100%; z-index: 1; display: grid; grid-template-columns: 53% 47%; border: 0; font-size: 10pt; line-height: 1.2; }
 .transcript-header > div { padding: 1mm 1.5mm; }
-.transcript-ministry { border-right: .3mm solid #000; text-align: left; font-size: 8pt; font-weight: bold; }
+.transcript-ministry { border-right: 0; text-align: left; font-size: 8pt; font-weight: bold; }
 .transcript-republic { text-align: right; }
 .transcript-republic strong { display: inline-block; margin-bottom: 1.5mm; }
 .transcript-brand { position: absolute; top: 14mm; left: 0; width: 190mm; height: 35mm; text-align: center; margin: 0; }
