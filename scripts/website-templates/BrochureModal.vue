@@ -1,15 +1,15 @@
 <template>
   <div v-if="isOpen" :class="inline ? '' : 'fixed inset-0 z-[100] flex items-center justify-center bg-black/50 p-4'" @click.self="!inline && $emit('close')">
-    <section :role="inline ? undefined : 'dialog'" :aria-modal="inline ? undefined : true" :aria-labelledby="inline ? undefined : 'brochure-title'" :class="inline ? 'bg-white rounded-xl p-6 mt-6' : 'bg-white text-gray-900 rounded-xl p-6 max-w-xl w-full max-h-[85vh] overflow-y-auto'">
+    <section ref="dialog" tabindex="-1" @keydown="onKeydown" :role="inline ? undefined : 'dialog'" :aria-modal="inline ? undefined : true" :aria-labelledby="inline ? undefined : 'brochure-title'" :class="inline ? 'bg-white rounded-xl p-6 mt-6' : 'bg-white text-gray-900 rounded-xl p-6 max-w-xl w-full max-h-[85vh] overflow-y-auto'">
       <div v-if="!inline" class="flex justify-between items-center gap-4 border-b pb-3 mb-4">
         <h2 id="brochure-title" class="text-xl font-bold">
           {{ specificBrochure ? specificBrochure.title : (brochureName || 'Brochures ESCEN') }}
         </h2>
-        <button type="button" class="text-gray-500 hover:text-gray-800 text-lg font-semibold" @click="$emit('close')">✕</button>
+        <button type="button" aria-label="Fermer les brochures" class="text-gray-500 hover:text-gray-800 text-lg font-semibold" @click="$emit('close')">✕</button>
       </div>
       <p v-if="loading" role="status" class="py-6 text-center text-gray-600">Chargement de la brochure…</p>
       <div v-else-if="error" role="alert" class="py-6"><p class="text-red-600 mb-2">{{ error }}</p><button type="button" class="underline text-blue-600" @click="load">Réessayer</button></div>
-      <p v-else-if="!displayedBrochures.length" class="py-6 text-gray-500 text-center">Aucune brochure disponible actuellement.</p>
+      <p v-else-if="!displayedBrochures.length" class="py-6 text-gray-500 text-center">{{ association ? 'Aucune brochure publiée pour cette formation actuellement.' : 'Aucune brochure disponible actuellement.' }}</p>
 
       <div v-else-if="specificBrochure" class="py-2">
         <p class="text-gray-600 mb-4">{{ specificBrochure.description || 'Découvrez le programme détaillé, les compétences clés et les débouchés professionnels de cette formation.' }}</p>
@@ -49,12 +49,24 @@
 <script setup>
 import config from '../../config'
 const props = defineProps({ isOpen: Boolean, brochureName: String, inline: Boolean })
-defineEmits(['close', 'submit'])
+const emit = defineEmits(['close', 'submit'])
 const base = config.app_dev_url
 const brochures = ref([])
 const loading = ref(false)
 const error = ref('')
 let requestNumber = 0
+let controller
+const dialog = ref(null)
+let previousFocus
+function onKeydown(event) {
+  if (props.inline) return
+  if (event.key === 'Escape') { event.preventDefault(); emit('close') }
+  if (event.key !== 'Tab') return
+  const controls = [...dialog.value.querySelectorAll('button, a[href]')].filter(element => !element.disabled)
+  const first = controls[0], last = controls.at(-1)
+  if (event.shiftKey && (document.activeElement === first || document.activeElement === dialog.value)) { event.preventDefault(); last?.focus() }
+  else if (!event.shiftKey && (document.activeElement === last || document.activeElement === dialog.value)) { event.preventDefault(); first?.focus() }
+}
 
 const route = useRoute()
 const brochureAssociations = {
@@ -68,34 +80,56 @@ const brochureAssociations = {
   '/formations/executive-education/finance-digitale': ['EXECUTIVE', 'FD'],
   '/formations/executive-education/management-projets-transformation-digitale': ['EXECUTIVE', 'MP-TD']
 }
+const association = computed(() => props.inline ? null : brochureAssociations[route.path.replace(/\/$/, '')])
+const matchingBrochures = computed(() => {
+  if (!association.value) return brochures.value
+  const [cycle, code] = association.value
+  return brochures.value.filter(item => item.cycle === cycle && item.program_code === code)
+})
 const specificBrochure = computed(() => {
   if (props.inline) return null
-  const association = brochureAssociations[route.path.replace(/\/$/, '')]
-  if (!association) return null
-  const [cycle, code] = association
-  const matches = brochures.value.filter(item => item.cycle === cycle && item.program_code === code)
+  if (!association.value) return null
+  const matches = matchingBrochures.value
   return matches.length === 1 ? matches[0] : null
 })
 
 const displayedBrochures = computed(() => {
   if (specificBrochure.value) return [specificBrochure.value]
-  return brochures.value
+  return matchingBrochures.value
 })
 
 async function load() {
   const current = ++requestNumber
+  controller?.abort()
+  const requestController = new AbortController()
+  controller = requestController
+  const timeout = setTimeout(() => requestController.abort(), 15000)
   loading.value = true
   error.value = ''
   try {
-    const response = await fetch(`${base}/public/brochures`, { cache: 'no-store' })
+    const response = await fetch(`${base}/public/brochures`, { cache: 'no-store', signal: requestController.signal })
     if (!response.ok) throw new Error('Brochures indisponibles. Réessayez.')
     const rows = await response.json()
+    if (!Array.isArray(rows)) throw new Error('Catalogue des brochures invalide. Réessayez.')
     if (current === requestNumber) brochures.value = rows
   } catch (cause) {
     if (current === requestNumber) error.value = cause.message || 'Chargement impossible.'
   } finally {
+    clearTimeout(timeout)
     if (current === requestNumber) loading.value = false
   }
 }
-watch(() => props.isOpen, value => { if (value) load(); else requestNumber++ }, { immediate: true })
+watch(() => props.isOpen, async value => {
+  if (value) {
+    if (import.meta.client && !props.inline) previousFocus = document.activeElement
+    load()
+    await nextTick()
+    if (!props.inline) dialog.value?.focus()
+  } else {
+    requestNumber++
+    controller?.abort()
+    previousFocus?.focus()
+  }
+}, { immediate: true })
+onBeforeUnmount(() => { requestNumber++; controller?.abort(); previousFocus?.focus() })
 </script>

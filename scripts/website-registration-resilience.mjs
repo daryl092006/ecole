@@ -1,7 +1,9 @@
 // Keep these fixes in the adapter so regenerating the site preserves them.
 export function protectRegistrationDocuments(source) {
   if (source.includes('let documentsRequestNumber = 0')) return source;
-  let result = source.replace("const prepLoading = ref(false)", "const prepLoading = ref(false)\nconst prepError = ref('')\nlet prepRequestNumber = 0\nconst documentsLoading = ref(false)\nconst documentsError = ref('')\nlet documentsRequestNumber = 0");
+  let result = source.replace("fetch('https://api.country.is/')", "fetch('https://api.country.is/', { signal: AbortSignal.timeout(3000) })");
+  result = result.replace("if (!iti) return ''", "if (!iti) return inputEl?.value?.trim() || ''");
+  result = result.replace("const prepLoading = ref(false)", "const prepLoading = ref(false)\nconst prepError = ref('')\nlet prepRequestNumber = 0\nconst documentsLoading = ref(false)\nconst documentsError = ref('')\nlet documentsRequestNumber = 0");
   result = result.replace(/const fetchPrepDocs = async \(\) => \{[\s\S]*?\n\}\n/, `const fetchPrepDocs = async () => {
   const current = ++prepRequestNumber
   prepError.value = ''

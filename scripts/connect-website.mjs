@@ -1,6 +1,7 @@
 import { readFile, writeFile, realpath, access } from 'node:fs/promises';
 import path from 'node:path';
 import { adaptWebsite } from './website-adapter.mjs';
+import { websiteOrigins, prepareWebsiteRelease } from './website-release.mjs';
 
 // Run only against the private working copy, never the source in Downloads.
 const projectRoot = await realpath('.');
@@ -9,7 +10,8 @@ const hasSibling = await access(sibling).then(() => true).catch(() => false);
 const expected = hasSibling ? sibling : path.join(projectRoot, '.tmp/escen-website');
 const root = await realpath(expected);
 if (root !== expected) throw new Error('La copie doit être un dossier local, sans lien symbolique.');
-const portal = new URL(process.env.ESCEN_PORTAL_URL || 'http://127.0.0.1:3000');
+const origins = websiteOrigins();
+const portal = new URL(origins.portal);
 if (!['http:', 'https:'].includes(portal.protocol) || portal.username || portal.password || portal.search || portal.hash || portal.pathname !== '/') {
   throw new Error('ESCEN_PORTAL_URL doit être une origine HTTP(S) sans identifiants.');
 }
@@ -40,4 +42,5 @@ definePageMeta({ layout: false })
 </script>
 `);
 await adaptWebsite(root, portal);
+await prepareWebsiteRelease(root, origins);
 console.log(`Copie interconnectée : ${root}\nPortail : ${loginUrl}\nAPI : ${portal.origin}/api/website`);

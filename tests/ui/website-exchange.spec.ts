@@ -117,6 +117,9 @@ for (const width of [390, 1440]) {
     await page.getByPlaceholder('Nom de famille', { exact: true }).fill('Candidate');
     await page.getByPlaceholder('Prénom(s)', { exact: true }).fill('Alice');
     await page.locator('form select').first().selectOption({ label: 'Féminin' });
+    // Choose nationality explicitly; geolocation is optional and asynchronous.
+    await page.locator('.nat-btn').click();
+    await page.locator('.nat-option').filter({ hasText: 'Togolaise' }).click();
     await page.locator('input[type="date"]').fill('2000-01-01');
     await page.getByPlaceholder('Ville, Pays', { exact: true }).fill('Lomé, Togo');
     await page.locator('input[type="email"]').first().fill('alice@example.test');
