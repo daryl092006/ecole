@@ -1,7 +1,7 @@
 import { resolveAcademicYear } from '@/server/academicYearContext';
 import type { RelationalSnapshot } from '@/types/persistence';
 import { z } from 'zod';
-import { requireAccount, RequestError, errorResponse } from '@/server/auth';
+import { requireAccount, requirePermission, RequestError, errorResponse } from '@/server/auth';
 import { boundedRequest, websiteRpc } from '@/server/website';
 import { articleSchema, intakeSchema, websiteAccess } from '@/services/websiteService';
 export const dynamic = 'force-dynamic';
@@ -21,7 +21,7 @@ export async function GET(request: Request) {
           return Response.json(data.filter((row:{academic_year_id:string})=>row.academic_year_id===selectedYearId),{headers:{'Cache-Control':'no-store'}});
         }
         if (kind === 'document' && data?.academic_year_id !== selectedYearId) throw new RequestError(403,'Cette pièce appartient à une autre année.');
-        if (kind === 'admissions') { data.applications = data.applications.filter((row:{academic_year_id:string})=>row.academic_year_id===selectedYearId); data.intakes = data.intakes.filter((row:{academic_year_id:string})=>row.academic_year_id===selectedYearId); }
+        if (kind === 'admissions') { data.applications = data.applications.filter((row:{academic_year_id:string})=>row.academic_year_id===selectedYearId); data.intakes = data.intakes.filter((row:{academic_year_id:string})=>row.academic_year_id===selectedYearId); if (data.level_document_rules) data.level_document_rules = data.level_document_rules.filter((row:{academic_year_id:string})=>row.academic_year_id===selectedYearId); }
       }
     }
     if (kind === 'document') {
@@ -37,13 +37,14 @@ const common = { id: z.uuid().optional(), version: z.number().int().positive().o
 const commandSchema = z.discriminatedUnion('action', [
   articleSchema.extend({ ...common, action: z.literal('article-save') }).strict(),
   intakeSchema.extend({ ...common, action: z.literal('intake-save') }).strict(),
+  z.object({ action: z.literal('level-documents-save'), academic_year_id: z.uuid(), level_id: z.uuid(), required_documents: intakeSchema.shape.required_documents, expected_intakes: z.array(z.object({ id: z.uuid(), version: z.number().int().positive() }).strict()).min(1).max(500), expected_rule_version: z.number().int().positive().nullable(), reason: common.reason }).strict(),
   z.object({ action: z.literal('application-status'), ...common, id: z.uuid(), version: z.number().int().positive(), status: z.enum(['RECU', 'EN_ANALYSE', 'CLASSE']) }).strict(),
 ]);
 export async function POST(request: Request) {
   try {
     const { client, context } = await requireAccount(request); const access = websiteAccess(context);
     const body = commandSchema.parse(await (await boundedRequest(request, 100000)).json());
-    if (body.id && !body.version) throw new RequestError(400, 'Version requise.');
+    if ('id' in body && body.id && !body.version) throw new RequestError(400, 'Version requise.');
     if (body.action === 'article-save' ? !access.manageArticles : !access.manageAdmissions) throw new RequestError(403, 'Modification non autorisée pour ce rôle.');
     const { action, ...data } = body;
     let selectedYearId: string;
@@ -53,12 +54,18 @@ export async function POST(request: Request) {
       const year = await resolveAcademicYear(request,client,context,snapshot.data as RelationalSnapshot);
       if (!year.selectedYearId) throw new RequestError(409,'Choisissez une année scolaire précise avant toute modification.');
       selectedYearId=year.selectedYearId;
-      if (action === 'article-save' && body.id) {
+      if (body.action === 'article-save' && body.id) {
         const articles=await websiteRpc(client,'escen_website_manage',{p_actor_id:context.accountId,p_role_code:context.roleCode,p_action:'articles',p_data:{}});
         if (!articles.some((row:{id:string;academic_year_id:string})=>row.id===body.id && row.academic_year_id===selectedYearId)) throw new RequestError(403,'Cet article appartient à une autre année ou son année doit être confirmée.');
       }
-      if (action === 'intake-save' && body.academic_year_id !== year.selectedYearId) throw new RequestError(409,'Choisissez la même année que la consultation pour cette campagne.');
-      if (year.selectedYearId && action === 'application-status') {
+      if (body.action === 'level-documents-save') {
+        requirePermission(context, 'student.lifecycle.manage');
+        if (body.academic_year_id !== year.selectedYearId) throw new RequestError(409, 'Choisissez la même année que la consultation pour les pièces du niveau.');
+        const result = await websiteRpc(client, 'escen_website_level_documents', { p_actor_id: context.accountId, p_role_code: context.roleCode, p_academic_year_id: selectedYearId, p_level_id: body.level_id, p_required_documents: body.required_documents, p_expected_intakes: body.expected_intakes, p_expected_rule_version: body.expected_rule_version, p_reason: body.reason });
+        return Response.json(result, { status: 201, headers: { 'Cache-Control': 'no-store' } });
+      }
+      if (body.action === 'intake-save' && body.academic_year_id !== year.selectedYearId) throw new RequestError(409,'Choisissez la même année que la consultation pour cette campagne.');
+      if (year.selectedYearId && body.action === 'application-status') {
         const dossiers = await websiteRpc(client,'escen_website_manage',{p_actor_id:context.accountId,p_role_code:context.roleCode,p_action:'admissions',p_data:{}});
         if (!dossiers.applications.some((row:{id:string;academic_year_id:string})=>row.id===body.id && row.academic_year_id===year.selectedYearId)) throw new RequestError(403,'Ce dossier appartient à une autre année.');
       }

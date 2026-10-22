@@ -1,5 +1,15 @@
 # Pièces communes par niveau — proposition soumise à accord
 
+État constaté lors de la reprise : la migration `supabase/migrations/202610220048_website_level_documents.sql` est déjà enregistrée dans le dépôt par le commit `a76bbcd`. Le texte ci-dessous conserve la proposition initiale et son point d’arrêt historique ; il ne décrit plus une migration à créer. La reprise vérifie le branchement UI/API et les tests locaux sans appliquer de migration distante.
+
+## Bilan de la reprise du 22 octobre 2026
+
+Le branchement est vérifié : regroupement des campagnes par filière, pièces communes par année et niveau, résolution explicite des divergences historiques, récapitulatif avant confirmation et actualisation du portail après sauvegarde. L’API vérifie la permission et l’année sélectionnée avant d’appeler la RPC transactionnelle avec les versions attendues.
+
+Les dix tests Playwright des admissions passent à 390 et 1440 px, y compris la confirmation, la reprise après erreur et le changement d’année. `npm test` passe avec 183 groupes PostgreSQL locaux ; les contrôles des pièces par niveau couvrent atomicité, concurrence, droits, héritage et audit. TypeScript passe sans erreur ; ESLint conserve deux avertissements préexistants et aucune erreur. Les dictionnaires de schéma contiennent déjà la table de la migration 048.
+
+Aucune migration créée ou modifiée pendant cette reprise ; aucune application distante. Les sections suivantes décrivent la proposition historique.
+
 La règle demandée est : une seule liste de pièces par année et niveau, commune à toutes les filières. L'ouverture aux candidatures reste propre à chaque filière et niveau. La présentation précédente conservait à tort les pièces dans chaque couple filière–niveau.
 
 ## Présentation prévue

@@ -19,7 +19,12 @@ export interface OnlineApplication {
 export interface ApplicationDocument {
   id: string; document_key: string; filename: string; mime_type: string; byte_size: number;
 }
+export interface WebsiteLevelDocumentRule {
+  id: string; academic_year_id: string; level_id: string; required_documents: string[];
+  version: number; reason: string; updated_at: string;
+}
 export interface WebsiteManagement {
+  level_document_rules?: WebsiteLevelDocumentRule[];
   articles: WebsiteArticle[]; applications: OnlineApplication[]; intakes: WebsiteIntake[];
   years?: { id: string; name: string; status: string }[]; currentYearId?: string | null;
   levels: { id: string; name: string }[]; programs: { id: string; name: string }[];
