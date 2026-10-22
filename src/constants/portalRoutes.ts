@@ -17,7 +17,7 @@ export const PORTAL_ROUTES: PortalRoute[] = [
   {tab:'academique',section:'acad_assessments',href:'/academique/evaluations',title:'Contrôles continus'},
   {tab:'academique',section:'acad_resits',href:'/academique/rattrapages',title:'Rattrapages'},
   {tab:'academique',section:'acad_subjects',href:'/academique/sujets',title:'Composition des épreuves'},
-  { tab: 'academique', section: 'acad_exams', href: '/academique/examens', title: 'Examens et rattrapages' },
+  { tab: 'academique', section: 'acad_exams', href: '/academique/examens', title: 'Contrôles, examens et rattrapages' },
   { tab: 'academique', section: 'acad_jury', href: '/academique/deliberations', title: 'Délibérations et relevés' },
   { tab: 'academique', section: 'acad_settings', href: '/academique/parametres', title: 'Règles académiques à confirmer' },
   { tab: 'etudiants', section: 'stud_list', href: '/etudiants', title: 'Dossiers et inscriptions' },

@@ -10,7 +10,7 @@ import { getAvailableTabs } from '@/permissions/navigation';
 import { ROLES } from '@/types/permissions';
 
 const navigationSections = WORKSPACE_NAVIGATION.flatMap(group => group.sections);
-assert.deepEqual([...navigationSections].sort(), PORTAL_ROUTES.filter(route => route.section !== 'acad_resits').map(route => route.section).sort(), 'Chaque page hors ancienne redirection doit apparaître exactement une fois dans les menus.');
+assert.deepEqual([...navigationSections].sort(), PORTAL_ROUTES.filter(route => !['acad_resits', 'acad_assessments'].includes(route.section)).map(route => route.section).sort(), 'Chaque page hors ancienne redirection doit apparaître exactement une fois dans les menus.');
 for (const role of Object.values(ROLES)) {
   const tabs = getAvailableTabs(role);
   const expected = tabs.flatMap(tab => tab.subTabs.map(page => page.id)).sort();

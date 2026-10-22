@@ -28,7 +28,7 @@ export default function PortalShell({ children }: { children: ReactNode }) {
   const navigationGroup = navigationGroups.find(group => group.sections.includes(currentSubTab));
   const routeTitle = route?.title || tab?.name || 'Mon espace';
   const aliasAllowed = !!tab && MODULE_PATHS[tab.id] === pathname;
-  const authorizedSection = route?.section === 'acad_resits' ? 'acad_exams' : route?.section;
+  const authorizedSection = route && ['acad_resits', 'acad_assessments'].includes(route.section) ? 'acad_exams' : route?.section;
   const allowed = !!tab && (route ? !!tab.subTabs?.some(section => section.id === authorizedSection) : aliasAllowed);
   useEffect(() => {
     if (state.authReady && !state.session) router.replace(state.hasLoggedOut ? '/connexion' : '/connexion?retour=' + encodeURIComponent(pathname));
