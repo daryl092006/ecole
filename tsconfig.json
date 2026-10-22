@@ -32,18 +32,21 @@
     "**/*.mts",
     "**/*.ts",
     "**/*.tsx",
+    ".next-resao-tests/types/**/*.ts",
+    ".next-responsive-audit/types/**/*.ts",
     ".next-ui-tests/types/**/*.ts",
     ".next-verification/types/**/*.ts",
     ".next/dev/types/**/*.ts",
     ".next/types/**/*.ts",
+    ".tmp/next-annual-site/types/**/*.ts",
     ".tmp/next-bottom-up-checked/types/**/*.ts",
     ".tmp/next-bottom-up-final/types/**/*.ts",
     ".tmp/next-bottom-up-ready/types/**/*.ts",
     ".tmp/next-development/types/**/*.ts",
     ".tmp/next-ui-development/types/**/*.ts",
     "next-env.d.ts",
-    ".tmp/next-annual-site/types/**/*.ts",
-    ".next-responsive-audit/types/**/*.ts"
+    "tmp/next-annual-offerings/types/**/*.ts",
+    "tmp/next-website-preview/types/**/*.ts"
   ],
   "exclude": [
     "node_modules"
