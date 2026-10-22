@@ -7,6 +7,7 @@ import { CRUD_CATALOG } from '@/data/crudCatalog';
 import { catalogSpec, parseCatalogRecord, canManageCatalog, validateCatalogReferences, programLevelChanges } from '@/services/catalogCrudService';
 import { buildReconductChanges } from '@/services/yearPreparationService';
 import { annualOfferingChanges, archiveAnnualOfferings } from '@/services/annualOfferingService';
+import { resaoSubjectChanges } from '@/services/resaoCodeService';
 import type { RelationalSnapshot, PersistentChange } from '@/types/persistence';
 const curriculumArchiveErrors = new Set([
   'Archivage interdit : la maquette est approuvée ou archivée. Le gel de la maquette prime.',
@@ -85,6 +86,12 @@ export async function writeCatalog(request: Request, key: string, id?: string) {
     reconductYearId = z.string().uuid().parse(body.values.reconduct_from_year_id);
     delete body.values.reconduct_from_year_id;
   }
+  const automaticSubject = key === 'subjects' && !id && !archive && !body.sourceRowId;
+  const resao = body.values?.resao;
+  if (automaticSubject) {
+    if (!resao) throw new RequestError(400, 'Choisissez la discipline et le semestre pour générer le code REESAO.');
+    delete body.values!.resao;
+  }
   let record: Record<string,unknown>;
   if (archive) {
     if (!id) throw new RequestError(400,'Enregistrement requis.');
@@ -102,6 +109,10 @@ export async function writeCatalog(request: Request, key: string, id?: string) {
     if (year.selectedYearId && (record.academic_year_id || target?.academic_year_id) !== year.selectedYearId) throw new RequestError(409, 'La définition doit appartenir à l’année consultée.');
   }
   const changes: PersistentChange[] = [{ table: key, operation: id ? 'update' : 'insert', record }];
+  if (automaticSubject) {
+    try { changes.splice(0, changes.length, ...resaoSubjectChanges(snapshot, resao, record)); }
+    catch (error) { throw new RequestError(400, error instanceof Error ? error.message : 'Génération du code REESAO impossible.'); }
+  }
   if (key === 'programs' && levelIds !== undefined) {
     try { changes.push(...programLevelChanges(String(record.id), levelIds, snapshot, body.reason)); }
     catch (error) { throw new RequestError(409, error instanceof Error ? error.message : 'Modification des niveaux impossible.'); }

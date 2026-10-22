@@ -29,6 +29,11 @@ export async function GET(request: Request, { params }: Context) {
       tables.levels = (snapshot.tables.levels || []).filter(row => !row.archived_at && row.active !== false);
       tables.programs = (tables.programs || []).map(row => ({ ...row, level_ids: [...new Set((snapshot.tables.curricula || []).filter(curriculum => curriculum.program_id === row.id && !curriculum.archived_at && curriculum.status !== 'ARCHIVED').map(curriculum => curriculum.level_id))] }));
     }
+    if (key === 'subjects') {
+      for (const table of ['curriculum_semesters', 'curricula', 'levels', 'cycles', 'teaching_units']) tables[table] = scoped.tables[table] || [];
+      // Keep all subject codes of the selected year reserved, including archived ones.
+      tables.subjects = scoped.tables.subjects || [];
+    }
     if (key === 'academic_offerings') tables.programs = (snapshot.tables.programs || []).map(row => ({ id: row.id, name: row.name, archived_at: row.archived_at, active: row.active }));
     let historyLinks:{sourceRowId:string;targetId:string}[]=[];
     if(Object.values(HISTORY_CRUD_TABLES).includes(key) && [ROLES.IT,ROLES.DG].includes(context.role as typeof ROLES.IT)){const links=await client.rpc('escen_catalog_history_links',{p_table:key});if(links.error)throw new Error('Provenance indisponible.');historyLinks=links.data || [];}

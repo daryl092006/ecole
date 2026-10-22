@@ -287,4 +287,39 @@ export async function verifyCurriculumCatalog(db, check) {
     await insert('curriculum_semesters', { curriculum_id: empty.id, position: 1, name: 'Seul semestre archivé', target_credits: 1, ...archived });
     await assert.rejects(approve(empty.id), /crédits/i);
   });
+  await check('REESAO : création API atomique de la matière, de son UE et du rattachement, code serveur et audit', async () => {
+    const resaoCycle = await insert('cycles', { code: `M-${suffix}`, name: 'Master' });
+    const resaoLevel = await insert('levels', { cycle_id: resaoCycle.id, code: `M1-${suffix}`, name: 'Master 1', position: 1 });
+    const resaoCurriculum = await insert('curricula', { program_id: program.id, level_id: resaoLevel.id, version: 1 });
+    const semester = await insert('curriculum_semesters', { curriculum_id: resaoCurriculum.id, position: 1, name: 'Semestre REESAO', target_credits: 30 });
+    const year = await insert('academic_years', { code: `RESAO-${suffix}`, name: '2041-2042', starts_on: '2041-09-01', ends_on: '2042-07-01', status: 'BROUILLON' });
+    const create = async (code, revisionNumber = null) => writeCatalog(new Request('http://local.test/api/catalog/subjects', {
+      method: 'POST', headers: { 'Content-Type': 'application/json', 'x-escen-year': year.id },
+      body: JSON.stringify({ revision: revisionNumber ?? await revision(), reason: 'Création matière avec code REESAO', values: { name: 'Finance digitale', code, academic_year_id: year.id, resao: { discipline: 'ECN', semester_id: semester.id, credits: 3.75, coefficient: 0.625 } } }),
+    }), 'subjects');
+    const before = await revision();
+    await assert.rejects(create('FAUX'), error => error.status === 400);
+    assert.equal(await revision(), before);
+    const response = await create('ECN2101');
+    assert.equal(response.status, 201);
+    const { id } = await response.json();
+    const subject = await row('subjects', id);
+    const units = (await db.query('select * from escen.teaching_units where semester_id=$1', [semester.id])).rows;
+    const components = (await db.query('select * from escen.curriculum_components where subject_id=$1', [id])).rows;
+    assert.equal(subject.code, 'ECN2101'); assert.equal(units.length, 1); assert.equal(components.length, 1);
+    assert.equal(units[0].code, subject.code); assert.equal(components[0].code, subject.code);
+    assert.equal(components[0].unit_id, units[0].id);
+    assert.equal(Number(components[0].coefficient), 0.625);
+    assert.equal(await revision(), before + 1);
+    for (const [table, entity] of [['subjects', subject], ['teaching_units', units[0]], ['curriculum_components', components[0]]]) assert.equal((await audit(table, entity.id)).at(-1).actor_id, actor.id);
+    await assert.rejects(create('ECN2102', before), error => error.status === 409);
+    const failedId = randomUUID(), unitId = randomUUID();
+    await assert.rejects(client.rpc('escen_backend_transaction', { p_actor_id: actor.id, p_expected_revision: await revision(), p_changes: [
+      { table: 'subjects', operation: 'insert', record: { id: failedId, code: 'ECN2102', name: 'Rollback REESAO', academic_year_id: year.id } },
+      { table: 'teaching_units', operation: 'insert', record: { id: unitId, curriculum_id: resaoCurriculum.id, semester_id: semester.id, code: 'ECN2102', name: 'Rollback REESAO', credits: 3.75 } },
+      { table: 'curriculum_components', operation: 'insert', record: { id: randomUUID(), subject_id: failedId, unit_id: unitId, curriculum_id: resaoCurriculum.id, code: 'ECN2102', credits: 3.75, coefficient: 0 } },
+    ] }).then(result => { if (result.error) throw new Error(result.error.message); }), /check|constraint/i);
+    assert.equal(await row('subjects', failedId), undefined); assert.equal(await row('teaching_units', unitId), undefined);
+    assert.equal((await audit('subjects', failedId)).length, 0); assert.equal(await revision(), before + 1);
+  });
 }

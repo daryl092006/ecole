@@ -47,6 +47,8 @@ next-env.d.ts
 # Isolated production verification
 /.next-verification/
 /.next-ui-tests/
+/.next-resao-tests/
+/tmp/screenshots/transcripts/
 /.next-responsive-audit/
 /test-results/
 /playwright-report/

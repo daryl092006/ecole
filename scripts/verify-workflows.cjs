@@ -186,6 +186,8 @@ assert.deepEqual(decodeArchivedAnswer(null).optionIds,[]);
 console.log('Vérification réussie : lecture des réponses JSON, choix QCM, justification et commentaires de correction.');
 const {parseCatalogRecord,validateCatalogReferences,canManageCatalog}=require('../src/services/catalogCrudService.ts');
 require('../src/services/catalogCrudService.test.ts');
+require('../src/services/resaoCodeService.test.ts');
+require('../src/services/transcriptDocumentService.test.ts');
 const {identityArchiveChanges}=require('../src/services/identityCrudService.ts');
 const crudUuid='00000000-0000-4000-8000-000000000010';
 assert.throws(()=>parseCatalogRecord('programs',{name:'Test',code:'T',description:'',auth_user_id:crudUuid}));
