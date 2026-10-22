@@ -6,7 +6,7 @@ const root = await realpath(new URL('..', import.meta.url));
 const site = path.resolve(root, '../escen-website');
 const children = [];
 for (const [url, command, args, cwd, env] of [
-  ['http://127.0.0.1:3000/connexion', process.execPath, ['scripts/run-next.mjs', 'dev', '--hostname', '127.0.0.1', '--port', '3000'], root, { WATCHPACK_POLLING: 'true', ESCEN_WEBSITE_URL: 'http://localhost:3200' }],
+  ['http://127.0.0.1:3000/connexion', process.execPath, ['scripts/run-next.mjs', 'dev', '--hostname', '127.0.0.1', '--port', '3000'], root, { ESCEN_BUILD_DIR: 'tmp/next-local-portal', WATCHPACK_POLLING: 'true', ESCEN_WEBSITE_URL: 'http://localhost:3200' }],
   ['http://127.0.0.1:3200/', 'python3', ['-m', 'http.server', '3200', '--bind', '127.0.0.1', '--directory', 'dist'], site, {}],
 ]) {
   const running = await fetch(url, { signal: AbortSignal.timeout(5000) }).then(response => response.ok).catch(() => false);
