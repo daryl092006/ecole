@@ -9,17 +9,19 @@ const rowSchema = z.object({
 });
 export const transcriptDocumentSchema = z.object({
   institution: z.object({ name: z.string().min(1).max(160), approval: z.string().max(200).optional(), footer: z.string().max(500).optional() }),
-  student: z.object({ name: z.string().min(1).max(300), matricule: z.string().min(1).max(160), birthDate: z.string().max(100).optional(), birthPlace: z.string().max(160).optional() }),
+  student: z.object({ name: z.string().min(1).max(300), matricule: z.string().min(1).max(160), birthDate: z.union([z.iso.date(), z.literal('')]).optional(), birthPlace: z.string().max(160).optional() }),
   academicYear: z.string().min(1).max(100), level: z.string().min(1).max(100), program: z.string().min(1).max(200),
   semesters: z.array(z.object({ name: z.string().min(1).max(100), rows: z.array(rowSchema).min(1).max(100), totalCredits: z.number().nonnegative(), earnedCredits: z.number().nonnegative() })).min(1).max(6),
   totalCredits: z.number().nonnegative(), earnedCredits: z.number().nonnegative(),
   average: z.number().min(0).max(20).nullable(), mention: z.string().max(100).nullable(),
-  city: z.string().min(1).max(100), director: z.string().max(200).optional(),
+  city: z.string().trim().min(1).max(100), director: z.string().max(200).optional(), signatoryTitle: z.string().trim().min(1).max(160).optional(),
+});
+export const issuedTranscriptSchema = transcriptDocumentSchema.extend({
+  reference: z.string().trim().min(1).max(160),
+  issuedAt: z.union([z.iso.date(), z.iso.datetime({ offset: true })]),
 });
 export type TranscriptDocumentContent = z.infer<typeof transcriptDocumentSchema>;
-export type TranscriptDocument = TranscriptDocumentContent & { reference: string; issuedAt: string };
-// Contact line supplied in Master FD.docx; a frozen document can override it.
-const modelContact = 'Tokoin Wuiti, Tél. (228) 98 01 27 27 / 92 30 87 87 — hello@escen.university — admission@escen.university — www.escen.university';
+export type TranscriptDocument = z.infer<typeof issuedTranscriptSchema>;
 
 /** Reprint only the frozen content of an already issued document. Never reconstruct a jury decision. */
 export function readTranscriptDocument(row: DatabaseRow): TranscriptDocument {
@@ -29,7 +31,9 @@ export function readTranscriptDocument(row: DatabaseRow): TranscriptDocument {
   const content = parsed.data;
   const codes = content.semesters.flatMap(semester => semester.rows.map(item => item.code));
   if (new Set(codes).size !== codes.length) throw new Error('Le relevé contient des codes en double. Vérifiez le document enregistré.');
-  return { ...content, reference: String(row.reference), issuedAt: String(row.issued_at) };
+  const document = issuedTranscriptSchema.safeParse({ ...content, reference: row.reference, issuedAt: row.issued_at });
+  if (!document.success) throw new Error('La référence ou la date d’émission enregistrée du relevé est invalide.');
+  return document.data;
 }
 
 const number = (value: number | null) => value === null ? '—' : value.toLocaleString('fr-FR', { maximumFractionDigits: 2 });
@@ -44,6 +48,6 @@ export function transcriptDocumentMarkup(document: TranscriptDocument): string {
     <div class="transcript-title-band"><h1>RELEVÉ DE NOTES</h1><p>Année académique : <strong>${h(document.academicYear)}</strong></p></div>
     <div class="transcript-details"><div class="transcript-program"><div><u>Niveau</u> : ${h(document.level)}</div><div><u>Semestre</u> : ${h(document.semesters.map(item => item.name.replace(/^semestre\s*/i, '')).join(' & '))}</div><div><u>Filière</u> : ${h(document.program)}</div></div><div class="transcript-identity"><div><u>Titulaire</u> : ${h(document.student.name)}</div>${document.student.birthDate || document.student.birthPlace ? `<div>Né(e) ${document.student.birthDate ? `le ${h(date(document.student.birthDate))}` : ''}${document.student.birthPlace ? ` à ${h(document.student.birthPlace)}` : ''}</div>` : ''}<div><u>Matricule</u> : ${h(document.student.matricule)}</div></div></div>
     </div><table class="transcript-table"><colgroup><col class="transcript-code-column"><col><col class="transcript-number-column"><col class="transcript-number-column"><col class="transcript-number-column"></colgroup><thead><tr><th>CODES</th><th>UNITÉ D’ENSEIGNEMENT (UE)</th><th>CRÉDITS</th><th>NOTE/20</th><th>VALIDÉE</th></tr></thead><tbody>${document.semesters.map(semester => `<tr class="transcript-semester"><th colspan="5">${h(semester.name.toLocaleUpperCase('fr-FR'))}</th></tr>${semester.rows.map(row => `<tr><td class="transcript-subject-code">${h(row.code)}</td><td>${h(row.name)}</td><td>${h(number(row.credits))}</td><td>${h(number(row.average))}</td><td>${row.validated === null ? '—' : row.validated ? 'Oui' : 'Non'}</td></tr>`).join('')}<tr class="transcript-total"><td class="transcript-total-spacer"></td><th>TOTAL CRÉDITS</th><td>${h(number(semester.totalCredits))}</td><th>TOTAL</th><td>${h(number(semester.earnedCredits))}</td></tr>`).join('')}</tbody></table>
-    <footer class="transcript-bottom"><table class="transcript-summary"><tbody><tr><th>Total crédits :</th><td>${h(number(document.totalCredits))}</td></tr><tr><th>Total crédits validés :</th><td>${h(number(document.earnedCredits))}</td></tr><tr><th>Moyenne générale :</th><td>${h(number(document.average))}</td></tr><tr><th>Mention :</th><td>${h(document.mention ?? '—')}</td></tr></tbody></table><div class="transcript-signature"><div class="transcript-signature-heading"><p>${h(document.city)}, le ${h(date(document.issuedAt))}</p><strong>Le Directeur Académique</strong></div><p class="transcript-director">${h(document.director || 'Signature et cachet')}</p></div></footer>
-  </div><footer class="transcript-page-footer"><p class="transcript-reference">Référence : ${h(document.reference)}</p><p class="transcript-contact">${h(document.institution.footer ?? modelContact)}</p></footer></article>`;
+    <footer class="transcript-bottom"><table class="transcript-summary"><tbody><tr><th>Total crédits :</th><td>${h(number(document.totalCredits))}</td></tr><tr><th>Total crédits validés :</th><td>${h(number(document.earnedCredits))}</td></tr><tr><th>Moyenne générale :</th><td>${h(number(document.average))}</td></tr><tr><th>Mention :</th><td>${h(document.mention ?? '—')}</td></tr></tbody></table><div class="transcript-signature"><div class="transcript-signature-heading"><p>${h(document.city)}, le ${h(date(document.issuedAt))}</p><strong>${h(document.signatoryTitle || 'Le Directeur Académique')}</strong></div><p class="transcript-director">${h(document.director || 'Signature et cachet')}</p></div></footer>
+  </div><footer class="transcript-page-footer"><p class="transcript-reference">Référence : ${h(document.reference)}</p>${document.institution.footer ? `<p class="transcript-contact">${h(document.institution.footer)}</p>` : ''}</footer></article>`;
 }

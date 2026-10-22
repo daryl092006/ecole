@@ -7,7 +7,7 @@ import type { TranscriptDocument } from '../../src/services/transcriptDocumentSe
 const year = { id: '10000000-0000-4000-8000-000000000001', name: '2026-2027', status: 'OUVERTE', starts_on: '2026-09-01', ends_on: '2027-08-31' };
 const semesterId = '10000000-0000-4000-8000-000000000002';
 const documentContent = (count: number): TranscriptDocument => ({
-  reference: 'REL-RECETTE', issuedAt: '2026-09-09', institution: { name: 'ESCEN', approval: 'N° 0102/2021/MESR/SG/DES' },
+  reference: 'REL-RECETTE', issuedAt: new Date().toISOString(), institution: { name: 'ESCEN', approval: 'N° 0102/2021/MESR/SG/DES', footer: 'Coordonnées de l’établissement enregistrées dans le document de recette' },
   student: { name: 'Étudiante de recette', matricule: 'RECETTE-001', birthDate: '2000-01-01', birthPlace: 'Lomé' },
   academicYear: '2025-2026', level: 'Master', program: 'Finance digitale', city: 'Lomé', director: 'Signature de recette',
   semesters: [1, 2].map(semester => ({ name: `Semestre ${semester}`, rows: Array.from({ length: count }, (_, i) => ({ code: `ECN2${semester}${String(i + 1).padStart(2, '0')}`, name: i % 3 ? `Enseignement de recette ${i + 1}` : 'Solution digitale appliquée au secteur financier et à l’agriculture : transformations et perspectives', credits: 3, average: i === 0 ? null : 14, validated: i === 0 ? null : true })), totalCredits: count * 3, earnedCredits: (count - 1) * 3 })),
@@ -95,6 +95,7 @@ for (const count of [7, 20, 30]) test(`Le PDF avec ${count * 2} matières et des
 
 test('Impression connectée : un relevé incomplet reste bloqué sans inventer les résultats', async ({ page }) => {
   await authenticateFixture(page);
+  await page.route('**/api/transcripts/*', route => route.fulfill({ status: 409, json: { error: 'Ce relevé ne contient pas les détails figés nécessaires à son impression.' } }));
   await page.route('**/api/campus', route => route.fulfill({ json: { ...snapshot, tables: { ...snapshot.tables, generated_documents: [{ id: 'DOC', student_id: 'S1', kind: 'RELEVE', decision_id: 'D', reference: 'REL-INCOMPLET', issued_at: '2026-09-09', content_snapshot: { average: 14 } }] } } }));
   await page.goto('/etudiants/cartes');
   await page.getByRole('button', { name: 'Consulter le dossier', exact: true }).click();
@@ -107,6 +108,15 @@ test('Impression connectée : un relevé incomplet reste bloqué sans inventer l
 
 test('Le bouton connecté prépare le relevé complet et déclenche son impression', async ({ page }) => {
   await authenticateFixture(page);
+  let transcriptReads = 0;
+  const freshDocument = { ...documentContent(7), issuedAt: '2027-11-03T23:30:00-04:00', student: { name: 'Identité du document serveur', matricule: 'DOSSIER-SERVEUR' }, city: 'Kara', director: 'Responsable enregistré', signatoryTitle: 'La Directrice Académique' };
+  await page.route('**/api/transcripts/*', route => {
+    transcriptReads++;
+    expect(route.request().headers().authorization).toBe('Bearer fixture-auth-token');
+    expect(route.request().headers()['x-escen-role']).toBe('Informaticien');
+    expect(route.request().headers()['x-escen-year']).toBeTruthy();
+    return route.fulfill({ json: freshDocument });
+  });
   await page.route('**/api/campus', route => route.fulfill({ json: { ...snapshot, tables: { ...snapshot.tables, generated_documents: [{ id: 'DOC', student_id: 'S1', kind: 'RELEVE', decision_id: 'D', reference: 'REL-RECETTE', issued_at: '2026-09-09', content_snapshot: documentContent(7) }] } } }));
   await page.goto('/etudiants/cartes');
   await page.getByRole('button', { name: 'Consulter le dossier', exact: true }).click();
@@ -124,6 +134,13 @@ test('Le bouton connecté prépare le relevé complet et déclenche son impressi
   await expect(frame.getByRole('heading', { name: 'RELEVÉ DE NOTES' })).toHaveCount(1);
   await expect(frame.locator('.transcript-content')).toHaveCSS('transform', /matrix/);
   await expect(frame.locator('.transcript-reference')).toContainText('REL-RECETTE');
+  expect(transcriptReads).toBe(1);
+  await expect(frame.locator('.transcript-identity')).toContainText('Identité du document serveur');
+  await expect(frame.locator('.transcript-identity')).toContainText('DOSSIER-SERVEUR');
+  await expect(frame.locator('.transcript-signature')).toContainText('Kara, le 04 novembre 2027');
+  await expect(frame.locator('.transcript-signature')).toContainText('Responsable enregistré');
+  await expect(frame.locator('.transcript-signature')).toContainText('La Directrice Académique');
+  await expect(frame.locator('.transcript-signature')).not.toContainText('Signature de recette');
 });
 
 
@@ -210,4 +227,10 @@ test('40 matières sans réduction : vérifier la pagination naturelle', async (
   await fs.mkdir('tmp/screenshots/transcripts', { recursive: true });
   await fs.writeFile('tmp/screenshots/transcripts/releve-40-matieres-sans-reduction.pdf', pdf);
   await fs.writeFile('tmp/screenshots/transcripts/releve-40-matieres-sans-reduction.json', JSON.stringify({ ...natural, pdfPages }, null, 2));
+});
+
+
+test('La route des relevés exige une session réelle', async ({ request }) => {
+  const response = await request.get('/api/transcripts/00000000-0000-4000-8000-000000000001');
+  expect(response.status()).toBe(401);
 });

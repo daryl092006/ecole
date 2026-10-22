@@ -188,6 +188,7 @@ const {parseCatalogRecord,validateCatalogReferences,canManageCatalog}=require('.
 require('../src/services/catalogCrudService.test.ts');
 require('../src/services/resaoCodeService.test.ts');
 require('../src/services/transcriptDocumentService.test.ts');
+require('../src/services/transcriptAccessService.test.ts');
 const {identityArchiveChanges}=require('../src/services/identityCrudService.ts');
 const crudUuid='00000000-0000-4000-8000-000000000010';
 assert.throws(()=>parseCatalogRecord('programs',{name:'Test',code:'T',description:'',auth_user_id:crudUuid}));

@@ -49,3 +49,14 @@ Aucune migration créée, aucune modification des migrations existantes et aucun
 ## Largeur validée du relevé
 
 Le relevé utilise les 190 mm disponibles d’une page A4 entre des marges latérales de 10 mm. L’en-tête, le bandeau titre/année et le tableau occupent cette même largeur. L’identité à gauche et la formation à droite occupent deux colonnes égales séparées de 6 mm, alignées en haut et sur les bords extérieurs du document. La synthèse et le cadre de signature utilisent également toute la largeur disponible. Si un document très long doit être réduit pour tenir sur une page, le contenu réduit reste centré horizontalement. Ces choix remplacent les largeurs et décalages fixes cités plus haut.
+
+
+## Données réelles et date du relevé
+
+L’impression recharge le document enregistré par `GET /api/transcripts/[id]` avec la session réelle, le rôle sélectionné et l’année consultée. La route exige `grade.view`, applique le filtre annuel avant le filtre de rôle pour préserver les relations nécessaires aux comptes étudiants, puis ne retourne que le contenu imprimable du document autorisé. Les essais couvrent un autre étudiant, une autre année et un compte sans permission.
+
+Les champs affichés viennent du contenu figé du relevé : identité, matricule, naissance, formation, année, semestres, codes et noms des matières, crédits, notes, validation, totaux, moyenne, mention, ville, signataire et coordonnées. La référence et la date d’émission sont lues sur le document enregistré. La date est formatée dans le fuseau Africa/Lome ; une réimpression conserve la date d’émission d’origine. Le titre du signataire peut être fourni dans `signatoryTitle`.
+
+Les dates invalides bloquent l’impression. Une note absente reste distincte de zéro. Les coordonnées du Word ne sont plus utilisées en remplacement des coordonnées absentes : la ligne de contact est affichée seulement si elle est enregistrée dans le document. Les noms, notes et dates des aperçus de recette restent des données de test ; la date des nouveaux aperçus est prise au moment de leur génération.
+
+Ce branchement relit des relevés déjà établis. Il ne crée pas de décision de jury, ne recalcule pas les résultats historiques et n’active pas un circuit d’émission de nouveaux documents officiels.
