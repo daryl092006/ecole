@@ -116,3 +116,36 @@ test('Le bouton connecté prépare le relevé complet et déclenche son impressi
   await expect(frame.locator('.transcript-content')).toHaveCSS('transform', /matrix/);
   await expect(frame.locator('.transcript-reference')).toContainText('REL-RECETTE');
 });
+
+
+test('Comparaison visuelle Master FD avec les treize matières du modèle', async ({ page }) => {
+  const content = documentContent(7);
+  const subjects = [
+    ['Généralité sur la Finance Digitale', "Généralité sur la Digitalisation et l'économie Numérique", 'Opération Mobile Money', 'Introduction à la transformation digitale', 'Interopérabilité et Intégration en Finance Digitale', 'Réseau de Distribution & Marchand', 'Anglais Commercial'],
+    ['Solution Digitale Appliquée au secteur Financiers / à l’Agriculture', 'Digitalisation des Transferts', 'Digitalisation des paiement Internationaux', "Méthodologie d’évaluation des projets Digitaux", 'Management du changement', "Méthodologie de gestion d’un projet numérique"],
+  ];
+  content.semesters = subjects.map((names, index) => ({ name: `Semestre ${index + 1}`, rows: names.map((name, i) => ({ code: `ECN2${index + 1}${String(i + 1).padStart(2, '0')}`, name, credits: index === 0 ? i > 4 ? 5 : 4 : 5, average: 14, validated: true })), totalCredits: 30, earnedCredits: 30 }));
+  content.totalCredits = 60; content.earnedCredits = 60;
+  content.program = 'Finance Digitale';
+  await page.goto('/connexion');
+  const styles = await page.locator('link[rel="stylesheet"]').evaluateAll(links => links.map(link => (link as HTMLLinkElement).href));
+  await page.setContent(transcriptPrintHtml(content, styles, new URL(page.url()).origin));
+  await page.evaluate(async () => { document.body.getBoundingClientRect(); await document.fonts.ready; await Promise.all(Array.from(document.images).map(img => img.decode())); });
+  await page.evaluate(`(${fitTranscriptToPage.toString()})(document)`);
+  await expect(page.locator('.transcript-sheet h1')).toHaveCSS('font-family', /Transcript Book Antiqua/);
+  const proportions = await page.evaluate(() => {
+    const rect = (selector: string) => document.querySelector(selector)!.getBoundingClientRect();
+    const header = rect('.transcript-header');
+    return { title: rect('.transcript-title-band').width / header.width, table: rect('.transcript-table').width / header.width, identity: rect('.transcript-identity').width / header.width, tableTop: (rect('.transcript-table').top - header.top) / header.width };
+  });
+  // Ratios measured from the supplied Word, rather than a full-width redesign.
+  expect(proportions.title).toBeCloseTo(120 / 151, 2);
+  expect(proportions.table).toBeCloseTo(145 / 151, 2);
+  expect(proportions.identity).toBeCloseTo(51 / 151, 2);
+  expect(proportions.tableTop).toBeCloseTo(122 / 151, 2);
+  const pdf = await page.pdf({ preferCSSPageSize: true, printBackground: true });
+  expect(pdf.toString('latin1').match(/\/Type\s*\/Page\b/g)).toHaveLength(1);
+  await fs.mkdir('tmp/screenshots/transcripts', { recursive: true });
+  await fs.writeFile('tmp/screenshots/transcripts/releve-master-fd.pdf', pdf);
+  await page.screenshot({ path: 'tmp/screenshots/transcripts/releve-master-fd.png', fullPage: true });
+});

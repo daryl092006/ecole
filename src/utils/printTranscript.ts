@@ -33,7 +33,7 @@ export async function printTranscript(documentContent: TranscriptDocument): Prom
     let timeout: ReturnType<typeof setTimeout> | undefined;
     try {
       await Promise.race([
-        Promise.all([...target.querySelectorAll<HTMLLinkElement>('link[rel="stylesheet"]'), ...target.images].map(waitForResource)).then(() => target.fonts.ready),
+        Promise.all([...target.querySelectorAll<HTMLLinkElement>('link[rel="stylesheet"]'), ...target.images].map(waitForResource)).then(() => { target.body.getBoundingClientRect(); return target.fonts.ready; }),
         new Promise<never>((_, reject) => { timeout = setTimeout(() => reject(new Error('Le chargement du relevé a expiré. Réessayez l’impression.')), 15000); }),
       ]);
     } finally { clearTimeout(timeout); }
