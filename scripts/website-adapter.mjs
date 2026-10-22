@@ -4,10 +4,12 @@ import os from 'node:os';
 import { protectRegistrationDocuments } from './website-registration-resilience.mjs';
 
 export async function adaptWebsite(root, portal) {
-  // Keep the public checklist accessible; it reads the same requirements as uploads.
+  // The former checklist URL belongs to the registration flow.
   const preparationFile = path.join(root, 'app/pages/preparation-inscription/index.vue');
   const preparation = await readFile(preparationFile, 'utf8');
-  await writeFile(preparationFile, preparation.replace(/definePageMeta\(\{\s*redirect: '\/inscription'\s*\}\)/, ''));
+  if (!/redirect:\s*['"]\/inscription['"]/.test(preparation)) {
+    await writeFile(preparationFile, preparation.replace('<script setup>', "<script setup>\ndefinePageMeta({ redirect: '/inscription' })"));
+  }
   for (const [template, destination] of [
     ['BrochureModal.vue', 'app/components/BrochureModal.vue'],
     ['brochures.vue', 'app/pages/brochures.vue'],

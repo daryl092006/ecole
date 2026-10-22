@@ -1,6 +1,6 @@
 import { expect, test } from '@playwright/test';
 const website = process.env.ESCEN_TEST_WEBSITE_URL;
-test('Pièces : mêmes exigences dans la préparation et avant inscription', async ({ page }) => {
+test('Ancienne page des pièces : redirection vers le formulaire avec les exigences configurées', async ({ page }) => {
   test.skip(!website, 'Copie du site requise.');
   await page.route('**/api/website/**', route => {
     const url = route.request().url();
@@ -13,10 +13,8 @@ test('Pièces : mêmes exigences dans la préparation et avant inscription', asy
     return route.fulfill({ json: [] });
   });
   await page.goto(`${website}/preparation-inscription/`);
-  const required = page.locator('.prep-doc-group').filter({ hasText: 'Pièces obligatoires' });
-  await expect(required).toContainText('Curriculum vitae');
-  await expect(required).not.toContainText('Dernier diplôme');
-  await page.goto(`${website}/inscription/`);
+  await expect(page).toHaveURL(/\/inscription\/?$/);
+  await expect(page.locator('.prep-folio')).toHaveCount(0);
   await page.getByRole('combobox', { name: 'Pour quel niveau postulez-vous ?' }).selectOption('L1');
   await expect(page.getByText('Curriculum vitae', { exact: true })).toBeVisible();
   await expect(page.getByText('Dernier diplôme', { exact: true })).toBeVisible();
