@@ -161,6 +161,14 @@ test('Comparaison visuelle Master FD avec les treize matières du modèle', asyn
   expect(alignment.programRight).toBeLessThan(1);
   expect(alignment.sameTop).toBeLessThan(1);
   expect(alignment.centered).toBeLessThan(1);
+  const grid = await page.evaluate(() => {
+    const content = document.querySelector<HTMLElement>('.transcript-content')!;
+    const cells = [...document.querySelectorAll<HTMLTableRowElement>('.transcript-table tr')].flatMap(row => [...row.cells]);
+    return { scale: new DOMMatrix(getComputedStyle(content).transform).a, borders: [...new Set(cells.map(cell => getComputedStyle(cell).borderTopWidth))], edge: getComputedStyle(document.querySelector('.transcript-total-spacer')!).borderLeftColor };
+  });
+  expect(grid.scale).toBe(1);
+  expect(grid.borders).toEqual(['1px']);
+  expect(grid.edge).toBe('rgb(0, 0, 0)');
   const pdf = await page.pdf({ preferCSSPageSize: true, printBackground: true });
   expect(pdf.toString('latin1').match(/\/Type\s*\/Page\b/g)).toHaveLength(1);
   await fs.mkdir('tmp/screenshots/transcripts', { recursive: true });

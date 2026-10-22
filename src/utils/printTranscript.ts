@@ -14,7 +14,8 @@ export function fitTranscriptToPage(document: Document): void {
   content.style.left = '0';
   const footer = document.querySelector<HTMLElement>('.transcript-page-footer');
   const availableHeight = sheet.clientHeight - (footer?.offsetHeight || 0) - 12;
-  const scale = Math.min(1, Math.max(1, availableHeight) / content.scrollHeight, (sheet.clientWidth - 2) / content.scrollWidth);
+  const widthScale = content.scrollWidth > sheet.clientWidth + 1 ? (sheet.clientWidth - 2) / content.scrollWidth : 1;
+  const scale = Math.min(1, Math.max(1, availableHeight) / content.scrollHeight, widthScale);
   content.style.transform = `scale(${scale})`;
   content.style.left = `${Math.max(0, (sheet.clientWidth - content.offsetWidth * scale) / 2)}px`;
 }
