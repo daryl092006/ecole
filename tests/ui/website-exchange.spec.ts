@@ -114,12 +114,11 @@ for (const width of [390, 1440]) {
     });
     await page.route('https://api.country.is/**', route => route.fulfill({ json: { country: 'TG' } }));
     await page.goto(`${website}/inscription/`);
+    await expect(page.locator('.nat-value')).toHaveText('Togolaise');
+    await expect(page.getByRole('button', { name: 'Continuer', exact: false })).toBeEnabled();
     await page.getByPlaceholder('Nom de famille', { exact: true }).fill('Candidate');
     await page.getByPlaceholder('Prénom(s)', { exact: true }).fill('Alice');
     await page.locator('form select').first().selectOption({ label: 'Féminin' });
-    // Choose nationality explicitly; geolocation is optional and asynchronous.
-    await page.locator('.nat-btn').click();
-    await page.locator('.nat-option').filter({ hasText: 'Togolaise' }).click();
     await page.locator('input[type="date"]').fill('2000-01-01');
     await page.getByPlaceholder('Ville, Pays', { exact: true }).fill('Lomé, Togo');
     await page.locator('input[type="email"]').first().fill('alice@example.test');
@@ -130,6 +129,10 @@ for (const width of [390, 1440]) {
     await page.getByRole('button', { name: 'Continuer', exact: false }).click();
     await page.locator('form select').first().selectOption(intakeId);
     await page.locator('form select').nth(1).selectOption(articleId);
+    await expect(page.locator('input[type="file"]')).toHaveCount(1);
+    await page.getByRole('button', { name: 'Continuer', exact: false }).click();
+    await expect(page.getByText('Documents obligatoires manquants', { exact: false }).first()).toBeVisible();
+    expect(submitted.some(item => item.action.endsWith('etape3-documents'))).toBe(false);
     await page.locator('input[type="file"]').setInputFiles({ name: 'diplome.pdf', mimeType: 'application/pdf', buffer: Buffer.from('%PDF-1.7\nDocument de recette') });
     await page.getByRole('button', { name: 'Continuer', exact: false }).click();
     await page.getByPlaceholder('Nom', { exact: true }).fill('Parent');

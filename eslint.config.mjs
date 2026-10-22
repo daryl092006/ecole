@@ -27,6 +27,7 @@ const eslintConfig = defineConfig([
     'test-results/**',
     'tmp/next-annual-offerings/**',
     'tmp/next-local-portal/**',
+    'tmp/next-website-preview/**',
     'out/**',
     'build/**',
     'next-env.d.ts',

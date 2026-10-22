@@ -1,5 +1,26 @@
 import { expect, test } from '@playwright/test';
 const website = process.env.ESCEN_TEST_WEBSITE_URL;
+test('Pièces : mêmes exigences dans la préparation et avant inscription', async ({ page }) => {
+  test.skip(!website, 'Copie du site requise.');
+  await page.route('**/api/website/**', route => {
+    const url = route.request().url();
+    if (url.endsWith('/public/niveau/liste')) return route.fulfill({ json: [{ id: 'L1', nom: 'Licence 1', libelle: 'Licence 1' }] });
+    if (url.endsWith('/public/candidature-config')) return route.fulfill({ json: { academic_year: { id: 'YEAR', name: '2025-2026' }, champs: [], types_diplome: [] } });
+    if (url.includes('/document-requirements')) return route.fulfill({ json: [
+      { document_key: 'cv_file', nom_affichage: 'Curriculum vitae', is_obligatoire: true },
+      { document_key: 'diplome_file', nom_affichage: 'Dernier diplôme', is_obligatoire: false },
+    ] });
+    return route.fulfill({ json: [] });
+  });
+  await page.goto(`${website}/preparation-inscription/`);
+  const required = page.locator('.prep-doc-group').filter({ hasText: 'Pièces obligatoires' });
+  await expect(required).toContainText('Curriculum vitae');
+  await expect(required).not.toContainText('Dernier diplôme');
+  await page.goto(`${website}/inscription/`);
+  await page.getByRole('combobox', { name: 'Pour quel niveau postulez-vous ?' }).selectOption('L1');
+  await expect(page.getByText('Curriculum vitae', { exact: true })).toBeVisible();
+  await expect(page.getByText('Dernier diplôme', { exact: true })).toBeVisible();
+});
 for (const width of [390, 1440]) {
   test(`Niveaux du site : année active, erreur et reprise à ${width}px`, async ({ page }) => {
     test.skip(!website, 'Copie du site requise.');
