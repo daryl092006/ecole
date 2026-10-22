@@ -1,0 +1,26 @@
+--- a/src/components/ui/ReviewedForm.tsx
++++ b/src/components/ui/ReviewedForm.tsx
+@@ -23,7 +23,14 @@
+   const [reviewing, setReviewing] = useState(reviewInitially);
+   const [validationError, setValidationError] = useState('');
+   const review = useRef<HTMLElement>(null);
++  const saveError = useRef<HTMLParagraphElement>(null);
+   useEffect(() => { if (reviewing) review.current?.focus(); }, [reviewing]);
++  useEffect(() => {
++    if (reviewing && error) {
++      saveError.current?.focus({ preventScroll: true });
++      saveError.current?.scrollIntoView({ block: 'nearest' });
++    }
++  }, [reviewing, error]);
+   useEffect(() => { setReviewing(reviewInitially); setValidationError(''); }, [completionKey, reviewInitially]);
+   return <form {...props} aria-busy={busy} onSubmit={event => {
+     event.preventDefault();
+@@ -39,7 +46,7 @@
+       <h2>{confirmLabel}</h2>
+       <dl className="review-values">{fields.map(field => <div key={field.label}><dt>{field.label}</dt><dd>{field.previous !== undefined && field.previous !== field.value && <span className="review-previous">Avant : {field.previous || 'Non renseigné'}<br /></span>}{field.value || 'Non renseigné'}</dd></div>)}</dl>
+       <p className="action-consequence">{consequence}</p>
+-      {error && <p className="restricted-box" role="alert">{error}</p>}
++      {error && <p ref={saveError} tabIndex={-1} className="restricted-box" role="alert">{error}</p>}
+       <DrawerActions><button type="submit" className={`btn ${danger ? 'btn-danger' : 'btn-primary'}`} disabled={busy}>{busy ? 'Enregistrement…' : confirmLabel}</button><button type="button" className="btn btn-outline" disabled={busy} onClick={() => onCancelReview ? onCancelReview() : setReviewing(false)}>Revenir aux informations</button></DrawerActions>
+     </section>}
+   </form>;

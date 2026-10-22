@@ -1,0 +1,31 @@
+--- a/app/pages/inscription/index.vue
++++ b/app/pages/inscription/index.vue
+@@ -128,7 +128,7 @@
+ 
+       <!-- Indicateur d'étapes -->
+       <div class="step-nav">
+-        <div v-if="submittedReference" role="status" class="p-4 bg-white text-[#12192B]">Dossier reçu par ESCEN. Référence : {{ submittedReference }}. La réception ne vaut pas validation de votre inscription.</div>
++        <div v-if="submittedReference" ref="submissionReceipt" tabindex="-1" role="status" class="p-4 bg-white text-[#12192B]">Dossier reçu par ESCEN. Référence : {{ submittedReference }}. La réception ne vaut pas validation de votre inscription.</div>
+       <p v-if="registrationYearName" class="p-3 font-semibold text-[#12192B]">Inscription pour l’année {{ registrationYearName }}</p>
+         <p v-else-if="catalogLoading" role="status" class="p-3 text-[#12192B]">Chargement de la campagne de candidature…</p>
+         <p v-else-if="catalogError" role="alert" class="p-3 text-[#12192B]">{{ catalogError }} <button type="button" @click="loadRegistrationCatalog">Réessayer</button></p>
+@@ -666,6 +666,7 @@
+ const acceptCgu = ref(false)
+ const etapeActive = ref(0)
+ const submittedReference = ref('')
++const submissionReceipt = ref(null)
+ const registrationYearId = ref('')
+ const registrationYearName = ref('')
+ const campaignChanged = ref(false)
+@@ -1103,6 +1104,11 @@
+   } finally {
+     isSubmitting.value = false
+   }
++  if (submittedReference.value) {
++    await nextTick()
++    submissionReceipt.value?.focus({ preventScroll: true })
++    submissionReceipt.value?.scrollIntoView({ block: 'center' })
++  }
+ }
+ 
+ // ── Lifecycle ─────────────────────────────────────────────────────────────────

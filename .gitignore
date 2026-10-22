@@ -67,3 +67,6 @@ next-env.d.ts
 /tmp/screenshots/auth-review/
 
 /tmp/next-website-preview/
+/tmp/next-manual-review/
+/tmp/next-business-review/
+/tmp/screenshots/business-review/

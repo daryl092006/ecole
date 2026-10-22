@@ -28,6 +28,8 @@ const eslintConfig = defineConfig([
     'tmp/next-annual-offerings/**',
     'tmp/next-local-portal/**',
     'tmp/next-website-preview/**',
+    'tmp/next-manual-review/**',
+    'tmp/next-business-review/**',
     'out/**',
     'build/**',
     'next-env.d.ts',

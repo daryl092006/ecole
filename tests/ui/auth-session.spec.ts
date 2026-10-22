@@ -140,6 +140,23 @@ test('Les erreurs réseau et de validation ne sont pas confondues', () => {
   expect(authenticationErrorMessage({ code: 'email_not_confirmed' })).toContain('email à confirmer');
 });
 
+test('Déconnexion : un refus du service Auth retire quand même la session du navigateur', async ({ context, page }) => {
+  await fixture(context, true);
+  await context.route('**/auth/v1/logout*', route => route.fulfill({ status: 400, json: { msg: 'Service de déconnexion indisponible.' } }));
+  const errors: string[] = [];
+  page.on('pageerror', error => errors.push(error.message));
+  await page.goto('/mon-espace');
+  await expect(page.locator('#main-content')).toBeVisible();
+  await page.getByLabel('Mon compte et mon rôle').click();
+  await page.getByRole('button', { name: 'Se déconnecter', exact: true }).click();
+  await expect(page).toHaveURL(/\/connexion$/);
+  expect(await page.evaluate(key => localStorage.getItem(key), key)).toBeNull();
+  await page.reload();
+  await expect(page.getByRole('heading', { name: 'Connexion', exact: true })).toBeVisible();
+  await expect(page.locator('#main-content')).toHaveCount(0);
+  expect(errors).toEqual([]);
+});
+
 test('Le retour après connexion conserve les filtres sans accepter une origine externe', () => {
   expect(postLoginPath('/etudiants?recherche=Alice#resultats', ROLES.IT)).toBe('/etudiants?recherche=Alice#resultats');
   for (const value of ['https://example.test', '//example.test', '/\\example.test', '/connexion', '/etudiants\n']) {
