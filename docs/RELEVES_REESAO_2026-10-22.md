@@ -14,11 +14,13 @@ Référence : [guide REESAO, partie IV, page imprimée 126](https://www.reesao.o
 
 Dans **Documents établis**, ouvrir le détail d’un document de nature `RELEVE`, puis **Imprimer le relevé · A4, une page**. Le bouton est monté dans l’écran connecté utilisé par les documents étudiants et les délibérations, avec les filtres existants de dossier, de rôle et d’année.
 
-Le modèle reprend `/Users/gdenis/Downloads/Master FD.docx` : en-tête institutionnel, identité, tableau de cinq colonnes, regroupement par semestre, crédits, synthèse et signature. Le tableau porte l’intitulé **UNITÉ D’ENSEIGNEMENT (UE)**. La hauteur du contenu est mesurée après chargement des styles, du logo et des polices ; l’ensemble est ajusté à la zone imprimable d’une page A4 sans supprimer de ligne. Les documents très longs sont réduits davantage.
+Le modèle reprend `/Users/gdenis/Downloads/Master FD.docx`, comparé visuellement au rendu Quick Look : en-tête encadré en deux colonnes, filigrane ESCEN, logo vertical extrait du Word (`public/logo-escen-releve.png`), agrément centré, bandeau encadré titre/année, formation encadrée à droite puis identité encadrée à gauche, tableau de cinq colonnes aux proportions du modèle, regroupement par semestre, crédits, synthèse et signature. Les noms des enseignements sont en italique et les bandeaux des semestres sont gris. Le tableau porte l’intitulé **UNITÉ D’ENSEIGNEMENT (UE)**. La hauteur du contenu est mesurée après chargement des styles, du logo et des polices ; l’ensemble est ajusté à la zone imprimable d’une page A4 sans supprimer de ligne. Les documents très longs sont réduits davantage.
+
+L’en-tête est actualisé avec **Ministère de l’Éducation nationale** et **Ministère délégué chargé de l’Enseignement supérieur et de la Recherche scientifique**. Sources officielles consultées le 22 octobre 2026 : [composition du gouvernement du 8 octobre 2025](https://presidenceduconseil.gouv.tg/2025/10/08/premier-gouvernement-de-la-cinquieme-republique-une-nouvelle-ere-institutionnelle-placee-sous-le-signe-de-linnovation/) et [actualité du ministère du 9 octobre 2026](https://edusup.gouv.tg/enseignement-superieur-cap-sur-les-perspectives-de-lannee-academique-2026-2027/). La référence historique de l’agrément reste inchangée ; elle n’est pas renommée selon le ministère actuel.
 
 L’impression utilise exclusivement `generated_documents.content_snapshot`, avec `decision_id`, `reference` et `issued_at`. Le contrat de contenu figé est défini par `transcriptDocumentSchema` dans `src/services/transcriptDocumentService.ts` :
 
-- `institution` : nom et agrément facultatif ;
+- `institution` : nom, agrément et ligne de contact facultatifs ; en l’absence de ligne de contact figée, le pied de page ESCEN du modèle Word est repris ;
 - `student` : nom, matricule, date et lieu de naissance facultatifs ;
 - `academicYear`, `level`, `program` ;
 - `semesters[]` : nom, `rows[]` (code, nom, crédits, note ou null, validation ou null), total et crédits acquis ;
@@ -34,7 +36,7 @@ Une donnée absente ne devient jamais zéro. Aucun nom de directeur ni date de s
 - TypeScript : `npx tsc --noEmit --incremental false`.
 - ESLint : aucune erreur ; deux avertissements préexistants.
 - `npm test` : assertions des services et 182 groupes de contrôles PostgreSQL locaux, dont création REESAO via l’API réelle et rollback d’une erreur sur le dernier élément de la transaction.
-- Playwright : six tests catalogue et sept tests de contexte de dossier ; cinq tests REESAO/relevés (formulaire, deux PDF, refus d’un contenu incomplet et déclenchement du bouton connecté).
+- Playwright : six tests catalogue et sept tests de contexte de dossier ; cinq tests REESAO/relevés (formulaire, deux PDF, refus d’un contenu incomplet et déclenchement du bouton connecté). Les tests PDF vérifient aussi l’emplacement du bandeau titre/année, de la formation à droite, de l’identité en dessous à gauche et du tableau après ces blocs.
 - Configuration : `tests/ui/resao-transcripts.config.ts`, artefacts sous `test-results/resao-transcripts/` ; exemples et capture sous `tmp/screenshots/transcripts/`.
 
 Aucune migration créée, aucune modification des migrations existantes et aucune application distante.

@@ -11,6 +11,14 @@ const row = { id: 'DOC', kind: 'RELEVE', decision_id: 'D', reference: 'REL-1', i
 const document = readTranscriptDocument(row);
 const markup = transcriptDocumentMarkup(document);
 assert.ok(markup.includes('UNITÉ D’ENSEIGNEMENT (UE)'));
+assert.ok(markup.includes('MINISTÈRE DE L’ÉDUCATION NATIONALE'));
+assert.ok(markup.includes('MINISTÈRE DÉLÉGUÉ CHARGÉ DE L’ENSEIGNEMENT SUPÉRIEUR ET DE LA RECHERCHE SCIENTIFIQUE'));
+assert.ok(!markup.includes('MINISTÈRE DE L’ENSEIGNEMENT SUPÉRIEUR<br>'));
+assert.ok(markup.includes('src="/logo-escen-releve.png"'));
+assert.ok(markup.includes('class="transcript-title-band"'));
+assert.ok(markup.includes('class="transcript-program"'));
+assert.ok(markup.includes('class="transcript-identity"'));
+assert.ok(markup.includes('www.escen.university'));
 assert.ok(markup.includes('Alice &lt;Test&gt;'));
 assert.ok(markup.includes('&lt;Finance&gt;'));
 assert.ok(markup.includes('<td>—</td><td>—</td>'));

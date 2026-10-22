@@ -71,6 +71,12 @@ for (const count of [7, 30]) test(`Le PDF avec ${count * 2} matières et des lib
     return content.bottom <= page.bottom && content.right <= page.right;
   });
   expect(contained).toBe(true);
+  const structure = await page.evaluate(() => {
+    const rect = (selector: string) => document.querySelector(selector)!.getBoundingClientRect();
+    const title = rect('.transcript-title-band'), program = rect('.transcript-program'), identity = rect('.transcript-identity'), table = rect('.transcript-table');
+    return { formationRight: program.left > identity.right, identityBelowFormation: identity.top > program.bottom, tableBelowIdentity: table.top > identity.bottom, yearBesideTitle: rect('.transcript-title-band p').left > title.left };
+  });
+  expect(structure).toEqual({ formationRight: true, identityBelowFormation: true, tableBelowIdentity: true, yearBesideTitle: true });
   const pdf = await page.pdf({ preferCSSPageSize: true, printBackground: true });
   expect(pdf.toString('latin1').match(/\/Type\s*\/Page\b/g)).toHaveLength(1);
   await fs.mkdir('tmp/screenshots/transcripts', { recursive: true });
