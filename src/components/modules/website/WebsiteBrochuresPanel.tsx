@@ -11,6 +11,7 @@ import FormFeedback from '@/components/ui/FormFeedback';
 const empty = { title: '', slug: '', description: '', status: 'BROUILLON' as WebsiteBrochure['status'], program_id: null as string | null, cycle: null as WebsiteBrochure['cycle'] };
 const labels = { BROUILLON: 'Brouillon', PUBLIE: 'Publiée', RETIRE: 'Retirée' };
 const cycleLabels: Record<string, string> = { LICENCE: 'Licence Pro', MASTER: 'Master Pro', EXECUTIVE: 'Executive Master' };
+const cycles = ['LICENCE', 'MASTER', 'EXECUTIVE', 'GENERAL'];
 
 export default function WebsiteBrochuresPanel({ onBack }: { onBack?: () => void }) {
   const state = usePortal();
@@ -67,20 +68,21 @@ export default function WebsiteBrochuresPanel({ onBack }: { onBack?: () => void 
   return <section>
     <FormFeedback message={success} error={false} />
     <div className="module-header"><div><h1>Brochures du site</h1><p>Documents PDF à télécharger par filière et cycle</p></div><div className="btn-group">{onBack && <button className="btn btn-outline" onClick={onBack}>Articles du site</button>}{canManage && <button className="btn btn-primary" onClick={() => edit({ ...empty })}>Ajouter une brochure</button>}</div></div>
-    {loading ? <LoadingState label="Chargement des brochures…" /> : error ? <div className="card" role="alert"><p>{error}</p><button className="btn btn-outline" onClick={() => setRevision(value => value + 1)}>Réessayer</button></div> : <div className="card">{!rows.length && <p>Aucune brochure pour cette année.</p>}{rows.map(row => <article className="card mb-2" key={row.id}>
-      <div className="brochure-card-header">
-        <div>
-          <h2>{row.title}</h2>
-          <p className="brochure-context">
-            {row.cycle ? (cycleLabels[row.cycle] || row.cycle) : 'Générale'}
-            {row.program_name ? ` · ${row.program_name}` : ''}
-          </p>
-          <p>{row.description}</p>
-          <p className="cell-sub">{labels[row.status]} · {row.filename} · {(row.byte_size / 1024 / 1024).toLocaleString('fr-FR', { maximumFractionDigits: 1 })} Mo</p>
-        </div>
-        {canManage && <button className="btn btn-outline brochure-edit-action" onClick={() => edit(row)}>Modifier : {row.title}</button>}
-      </div>
-    </article>)}</div>}
+    {loading ? <LoadingState label="Chargement des brochures…" /> : error ? <div className="card" role="alert"><p>{error}</p><button className="btn btn-outline" onClick={() => setRevision(value => value + 1)}>Réessayer</button></div> : <div className="brochure-catalogue">{!rows.length && <p className="card">Aucune brochure pour cette année.</p>}{cycles.map(cycle => {
+      const documents = rows.filter(row => (row.cycle || 'GENERAL') === cycle).sort((a, b) => (a.program_name || a.title).localeCompare(b.program_name || b.title, 'fr'));
+      if (!documents.length) return null;
+      return <section className="card brochure-cycle" key={cycle} aria-label={cycleLabels[cycle] || 'Brochures générales'}>
+        <div className="brochure-cycle-heading"><h2>{cycleLabels[cycle] || 'Brochures générales'}</h2><span className="cell-sub">{documents.length} {documents.length > 1 ? 'brochures' : 'brochure'}</span></div>
+        {documents.map(row => <article className="brochure-document" key={row.id}>
+          <div className="brochure-document-body">
+            <h3>{row.program_name || row.title}</h3>
+            <div className="brochure-document-meta"><span className={`pill ${row.status === 'PUBLIE' ? 'pill-success' : row.status === 'BROUILLON' ? 'pill-warning' : 'pill-default'}`}>{labels[row.status]}</span><span>PDF · {row.byte_size < 1024 * 1024 ? `${Math.max(1, Math.round(row.byte_size / 1024)).toLocaleString('fr-FR')} Ko` : `${(row.byte_size / 1024 / 1024).toLocaleString('fr-FR', { maximumFractionDigits: 1 })} Mo`}</span></div>
+            <details className="brochure-document-details"><summary>Détails du document<span className="sr-only"> : {row.title}</span></summary><p>{row.title}</p>{row.description && <p>{row.description}</p>}<p className="cell-sub">{row.filename}</p></details>
+          </div>
+          {canManage && <button className="btn btn-outline brochure-edit-action" aria-label={`Modifier : ${row.title}`} onClick={() => edit(row)}>Modifier</button>}
+        </article>)}
+      </section>;
+    })}</div>}
     {editing && <WorkPage busy={busy} title={editing.id ? 'Modifier la brochure' : 'Ajouter une brochure'} onClose={() => { if (!busy) setEditing(null); }}>
       <form className="card" onSubmit={event => { event.preventDefault(); setConfirm(true); }}>
         <fieldset disabled={busy || confirm}>

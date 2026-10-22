@@ -3,6 +3,26 @@ import { authenticateFixture, snapshot } from './persistent-fixture';
 const yearId = '44444444-4444-4444-8444-444444444444';
 const brochureId = '55555555-5555-4555-8555-555555555555';
 for (const width of [390, 1440]) {
+  test(`Brochures : cycles, titres longs et actions compactes à ${width}px`, async ({ page }) => {
+    await page.setViewportSize({ width, height: 950 });
+    await authenticateFixture(page);
+    await page.route('**/api/campus', route => route.fulfill({ json: { ...snapshot, academicContext: { currentYearId: yearId, selectedYearId: yearId, selection: 'current', years: [{ id: yearId, name: '2026-2027', status: 'OUVERTE', starts_on: '2026-09-01', ends_on: '2027-07-31' }] } } }));
+    await page.route('**/api/website-management*', route => route.fulfill({ json: [] }));
+    const rows = ['LICENCE', 'MASTER', 'EXECUTIVE'].flatMap((cycle, index) => ['Finance Digitale', 'Management de Projets & Transformation Digitale', 'Marketing Digital & E-commerce'].map((program, number) => ({
+      id: `${index}-${number}`, title: `${cycle} Professionnel en ${program}`, program_name: program, cycle,
+      slug: `brochure-${index}-${number}`, description: `Programme et détails de ${program} à ESCEN.`, status: 'PUBLIE',
+      filename: `${cycle}_PROFESSIONNEL_EN_${program.replaceAll(' ', '_')}.pdf`, byte_size: 5800000, version: 1,
+    })));
+    await page.route('**/api/website-brochures', route => route.fulfill({ json: rows }));
+    await page.goto('/site-web/brochures');
+    for (const cycle of ['Licence Pro', 'Master Pro', 'Executive Master']) {
+      await expect(page.getByRole('region', { name: cycle, exact: true }).getByRole('article')).toHaveCount(3);
+    }
+    await expect(page.getByRole('button', { name: /^Modifier :/ })).toHaveCount(9);
+    expect(await page.getByRole('button', { name: /^Modifier :/ }).first().textContent()).toBe('Modifier');
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+    await page.screenshot({ path: `tmp/screenshots/website-review/${width}/brochures-groupes.png`, fullPage: true });
+  });
   test(`Brochures : PDF, confirmation, retrait et reprise après erreur à ${width}px`, async ({ page }) => {
     await page.setViewportSize({ width, height: 950 });
     await authenticateFixture(page);
@@ -43,7 +63,10 @@ for (const width of [390, 1440]) {
     await expect(page.getByLabel('Titre', { exact: true })).toHaveValue('Brochure licence');
     fail = false;
     await page.getByRole('button', { name: 'Confirmer l’enregistrement' }).click();
-    await expect(page.getByText('Retirée · licence.pdf', { exact: false })).toBeVisible();
+    const brochureArticle = page.getByRole('article').filter({ has: page.getByRole('heading', { name: 'Brochure licence', exact: true }) });
+    await expect(brochureArticle.getByText('Retirée', { exact: true })).toBeVisible();
+    await brochureArticle.locator('summary').click();
+    await expect(brochureArticle.getByText('licence.pdf', { exact: true })).toBeVisible();
     await expect.poll(() => page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
     await page.screenshot({ path: `tmp/screenshots/website-review/${width}/brochures.png`, fullPage: true });
   });

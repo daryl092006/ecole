@@ -3,7 +3,19 @@
 .brochure-card-header { display: flex; gap: .5rem; }
 .brochure-context { font-size: inherit; font-weight: inherit; color: inherit; }
 .brochure-fields { display: block; }
+.brochure-catalogue { display: grid; gap: 1.25rem; }
+.brochure-cycle-heading { display: flex; align-items: baseline; justify-content: space-between; gap: 1rem; padding-bottom: .75rem; }
+.brochure-cycle-heading h2 { margin: 0; font-size: 1.05rem; }
+.brochure-document { display: flex; align-items: flex-start; justify-content: space-between; gap: 1rem; padding: 1rem 0; border-top: 1px solid var(--border); }
+.brochure-document-body { min-width: 0; flex: 1; }
+.brochure-document h3 { margin: 0 0 .6rem; font-size: .95rem; line-height: 1.5; overflow-wrap: anywhere; }
+.brochure-document-meta { display: flex; align-items: center; flex-wrap: wrap; gap: .65rem; color: var(--text-secondary); font-size: .8rem; }
+.brochure-document .brochure-document-details { margin: .65rem 0 0; padding: 0; border: 0; background: transparent; box-shadow: none; }
+.brochure-document-details p { margin: .5rem 0 0; font-size: .85rem; overflow-wrap: anywhere; }
+.brochure-document .brochure-edit-action { flex-shrink: 0; }
 @media (max-width: 768px) {
+  .brochure-document { flex-direction: column; align-items: stretch; }
+  .brochure-document .brochure-edit-action { align-self: flex-start; }
   .brochure-card-header { flex-direction: column; align-items: stretch; }
   .brochure-card-header > div { min-width: 0; }
   .brochure-card-header .brochure-edit-action { width: 100%; white-space: normal; overflow-wrap: anywhere; }
@@ -2303,7 +2315,7 @@ label.form-group {
 }
 
 /* Éléments pliables génériques (details / summary) */
-details:not(.role-scope-banner):not(.navigation-section):not(.account-control):not(.academic-year-history):not(.advanced-record-filters):not(.student-advanced-filters):not(.home-directory-group) {
+details:not(.role-scope-banner):not(.navigation-section):not(.account-control):not(.academic-year-history):not(.advanced-record-filters):not(.student-advanced-filters):not(.home-directory-group):not(.brochure-document-details) {
   border: 1px solid #e2e8f0;
   border-radius: 8px;
   background: #ffffff;
@@ -2312,12 +2324,12 @@ details:not(.role-scope-banner):not(.navigation-section):not(.account-control):n
   transition: border-color 0.15s ease, box-shadow 0.15s ease;
 }
 
-details:not(.role-scope-banner):not(.navigation-section):not(.account-control):not(.academic-year-history):not(.advanced-record-filters):not(.student-advanced-filters):not(.home-directory-group)[open] {
+details:not(.role-scope-banner):not(.navigation-section):not(.account-control):not(.academic-year-history):not(.advanced-record-filters):not(.student-advanced-filters):not(.home-directory-group):not(.brochure-document-details)[open] {
   border-color: #cbd5e1;
   box-shadow: 0 1px 3px rgba(15, 23, 42, 0.04);
 }
 
-details:not(.role-scope-banner):not(.navigation-section):not(.account-control):not(.academic-year-history):not(.advanced-record-filters):not(.student-advanced-filters):not(.home-directory-group) > summary {
+details:not(.role-scope-banner):not(.navigation-section):not(.account-control):not(.academic-year-history):not(.advanced-record-filters):not(.student-advanced-filters):not(.home-directory-group):not(.brochure-document-details) > summary {
   cursor: pointer;
   font-weight: 600;
   font-size: 0.85rem;
@@ -2327,7 +2339,7 @@ details:not(.role-scope-banner):not(.navigation-section):not(.account-control):n
   transition: color 0.15s ease;
 }
 
-details:not(.role-scope-banner):not(.navigation-section):not(.account-control):not(.academic-year-history):not(.advanced-record-filters):not(.student-advanced-filters):not(.home-directory-group) > summary:hover {
+details:not(.role-scope-banner):not(.navigation-section):not(.account-control):not(.academic-year-history):not(.advanced-record-filters):not(.student-advanced-filters):not(.home-directory-group):not(.brochure-document-details) > summary:hover {
   color: #0b5163;
 }
 
