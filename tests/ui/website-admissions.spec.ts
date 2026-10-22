@@ -89,6 +89,7 @@ for (const width of [390, 1440]) {
       { id: 'FIN-M1', academic_year_id: years[0].id, level_id: 'M1', level_name: 'Master 1', program_id: 'FIN', program_name: 'Finance Digitale', label: 'Finance Digitale · Master 1', active: true, required_documents: ['diplome_file'], version: 1 },
     ];
     let failSave = true;
+    const levelRules: Record<string, unknown>[] = [];
     const writes: Record<string, unknown>[] = [];
     await page.route('**/api/campus', route => {
       const selection = route.request().headers()['x-escen-year'] || 'current';
@@ -99,50 +100,69 @@ for (const width of [390, 1440]) {
         const command = route.request().postDataJSON();
         writes.push(command);
         if (failSave) { failSave = false; return route.fulfill({ status: 409, json: { error: 'La configuration a changé. Réessayez.' } }); }
+        if (command.action === 'level-documents-save') {
+          for (const item of intakes.filter(item => item.level_id === command.level_id)) {
+            item.required_documents = command.required_documents;
+            item.version++;
+          }
+          const rule = { id: 'RULE-L1', academic_year_id: command.academic_year_id, level_id: command.level_id, required_documents: command.required_documents, version: 1 };
+          levelRules.push(rule);
+          return route.fulfill({ json: { rule, updated_intakes: 2 } });
+        }
         Object.assign(intakes.find(item => item.id === command.id)!, command);
         return route.fulfill({ json: { id: command.id } });
       }
       const nextYear = route.request().headers()['x-escen-year'] === years[1].id;
-      return route.fulfill({ json: { applications: [], intakes: nextYear ? [] : intakes, levels, programs, years } });
+      return route.fulfill({ json: { applications: [], intakes: nextYear ? [] : intakes, levels, programs, years, level_document_rules: nextYear ? [] : levelRules } });
     });
     await page.goto('/site-web/documents');
     const section = page.getByRole('region', { name: 'Configuration des formations' });
-    await expect(section).toContainText('3 formations');
+    await expect(section).toContainText('3 formations affichées sur 3');
     await expect(section).toContainText('2 ouvertes');
-    await expect(section).toContainText('1 sans pièce obligatoire');
+    await expect(page.getByRole('region', { name: 'Pièces communes par niveau' })).toContainText('Différences à harmoniser');
     await expect(page.getByRole('button', { name: 'Actualiser les formations', exact: true })).toBeVisible();
     await expect(page.getByRole('button', { name: 'Actualiser les dossiers', exact: true })).toHaveCount(0);
     await section.getByLabel('Filtrer par filière').selectOption('FIN');
     await section.getByLabel('Filtrer par niveau').selectOption('L1');
-    await expect(section.getByRole('button', { name: /^Configurer :/ })).toHaveCount(1);
+    await expect(section.getByRole('button', { name: /^Configurer l’ouverture :/ })).toHaveCount(1);
     await section.getByLabel('Ouverture sur le site').selectOption('closed');
     await expect(section).toContainText('Aucune formation ne correspond aux filtres choisis.');
     await section.getByRole('button', { name: 'Réinitialiser les filtres' }).click();
     await section.getByRole('searchbox', { name: 'Rechercher une formation' }).fill('financé');
     await expect(section).toContainText('2 formations affichées sur 3');
-    await section.getByRole('button', { name: 'Configurer : Finance Digitale · Licence 1', exact: true }).click();
-    await page.getByRole('checkbox', { name: 'Acte de naissance', exact: true }).check();
+    await section.getByRole('button', { name: 'Configurer l’ouverture : Finance Digitale · Licence 1', exact: true }).click();
     await page.getByRole('checkbox', { name: 'Ouvrir aux inscriptions sur le site', exact: true }).uncheck();
     await page.getByLabel('Motif de la configuration').fill('Fermeture et pièces pour la rentrée');
     await page.getByRole('button', { name: 'Relire la configuration', exact: true }).click();
     expect(writes).toHaveLength(0);
     const review = page.getByRole('region', { name: 'Vérification avant enregistrement' });
     await expect(review).toContainText('Avant : Ouverte');
-    await expect(review).toContainText('Acte de naissance');
+    await expect(review).toContainText('Fermée');
     await page.getByRole('button', { name: 'Confirmer la configuration', exact: true }).click();
     await expect(review.getByRole('alert')).toContainText('La configuration a changé');
     await page.getByRole('button', { name: 'Confirmer la configuration', exact: true }).click();
     await expect(section.getByRole('searchbox', { name: 'Rechercher une formation' })).toHaveValue('financé');
-    const row = section.getByRole('row').filter({ has: page.getByRole('button', { name: 'Configurer : Finance Digitale · Licence 1', exact: true }) });
+    const row = section.getByRole('row').filter({ has: page.getByRole('button', { name: 'Configurer l’ouverture : Finance Digitale · Licence 1', exact: true }) });
     await expect(row).toContainText('Fermée');
-    await expect(row).toContainText('Acte de naissance');
+    await expect(row).toContainText('Communes au niveau');
     expect(writes).toHaveLength(2);
-    expect(writes[1]).toMatchObject({ action: 'intake-save', id: 'FIN-L1', active: false, required_documents: ['naissance_file'], academic_year_id: years[0].id });
+    expect(writes[1]).toMatchObject({ action: 'intake-save', id: 'FIN-L1', active: false, required_documents: [], academic_year_id: years[0].id });
+    await page.getByRole('button', { name: 'Configurer les pièces : Licence 1 · 2025-2026', exact: true }).click();
+    await expect(page.getByRole('dialog').getByRole('alert')).toContainText('Les anciennes campagnes demandent des pièces différentes');
+    await page.getByRole('checkbox', { name: 'Acte de naissance', exact: true }).check();
+    await page.getByLabel('Motif de la configuration').fill('Pièces communes à toutes les filières de licence');
+    await page.getByRole('button', { name: 'Relire les pièces du niveau', exact: true }).click();
+    expect(writes).toHaveLength(2);
+    await expect(page.getByRole('region', { name: 'Vérification avant enregistrement' })).toContainText('Marketing Digital');
+    await page.getByRole('button', { name: 'Confirmer les pièces du niveau', exact: true }).click();
+    await expect(page.getByRole('region', { name: 'Pièces communes par niveau' })).toContainText('Acte de naissance');
+    expect(writes[2]).toMatchObject({ action: 'level-documents-save', academic_year_id: years[0].id, level_id: 'L1', required_documents: ['naissance_file'], expected_rule_version: null, expected_intakes: [{ id: 'FIN-L1', version: 1 }, { id: 'MKT-L1', version: 1 }] });
+    expect(intakes[2].required_documents).toEqual(['diplome_file']);
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
     await page.screenshot({ path: `tmp/screenshots/website-review/${width}/formations-pieces.png`, fullPage: true });
     await page.getByRole('combobox', { name: 'Année consultée', exact: true }).selectOption(years[1].id);
     await expect(section).toContainText('Aucune formation pour 2026-2027');
     await expect(section.getByRole('searchbox', { name: 'Rechercher une formation' })).toHaveValue('');
-    await expect(section.getByRole('button', { name: /^Configurer :/ })).toHaveCount(0);
+    await expect(section.getByRole('button', { name: /^Configurer l’ouverture :/ })).toHaveCount(0);
   });
 }

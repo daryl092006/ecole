@@ -1,10 +1,10 @@
 {
   "stats": {
-    "businessTables": 113,
+    "businessTables": 114,
     "privateTables": 13,
-    "columns": 981,
-    "foreignKeys": 267,
-    "checks": 231,
+    "columns": 988,
+    "foreignKeys": 269,
+    "checks": 234,
     "exclusions": 4
   },
   "tables": [
@@ -571,6 +571,11 @@
     {
       "schema": "escen",
       "name": "website_intakes",
+      "rls": true
+    },
+    {
+      "schema": "escen",
+      "name": "website_level_document_rules",
       "rls": true
     },
     {
@@ -8702,6 +8707,69 @@
       "type": "uuid",
       "nullable": "YES",
       "default": null,
+      "generated": "NEVER"
+    },
+    {
+      "schema": "escen",
+      "table": "website_level_document_rules",
+      "name": "id",
+      "type": "uuid",
+      "nullable": "NO",
+      "default": "gen_random_uuid()",
+      "generated": "NEVER"
+    },
+    {
+      "schema": "escen",
+      "table": "website_level_document_rules",
+      "name": "academic_year_id",
+      "type": "uuid",
+      "nullable": "NO",
+      "default": null,
+      "generated": "NEVER"
+    },
+    {
+      "schema": "escen",
+      "table": "website_level_document_rules",
+      "name": "level_id",
+      "type": "uuid",
+      "nullable": "NO",
+      "default": null,
+      "generated": "NEVER"
+    },
+    {
+      "schema": "escen",
+      "table": "website_level_document_rules",
+      "name": "required_documents",
+      "type": "jsonb",
+      "nullable": "NO",
+      "default": null,
+      "generated": "NEVER"
+    },
+    {
+      "schema": "escen",
+      "table": "website_level_document_rules",
+      "name": "version",
+      "type": "int4",
+      "nullable": "NO",
+      "default": "1",
+      "generated": "NEVER"
+    },
+    {
+      "schema": "escen",
+      "table": "website_level_document_rules",
+      "name": "reason",
+      "type": "text",
+      "nullable": "NO",
+      "default": null,
+      "generated": "NEVER"
+    },
+    {
+      "schema": "escen",
+      "table": "website_level_document_rules",
+      "name": "updated_at",
+      "type": "timestamptz",
+      "nullable": "NO",
+      "default": "now()",
       "generated": "NEVER"
     },
     {
@@ -18943,6 +19011,104 @@
       "definition": "NOT NULL version"
     },
     {
+      "schema": "escen",
+      "table": "website_level_document_rules",
+      "name": "website_level_document_rules_academic_year_id_fkey",
+      "type": "f",
+      "definition": "FOREIGN KEY (academic_year_id) REFERENCES escen.academic_years(id) ON DELETE RESTRICT"
+    },
+    {
+      "schema": "escen",
+      "table": "website_level_document_rules",
+      "name": "website_level_document_rules_academic_year_id_level_id_key",
+      "type": "u",
+      "definition": "UNIQUE (academic_year_id, level_id)"
+    },
+    {
+      "schema": "escen",
+      "table": "website_level_document_rules",
+      "name": "website_level_document_rules_academic_year_id_not_null",
+      "type": "n",
+      "definition": "NOT NULL academic_year_id"
+    },
+    {
+      "schema": "escen",
+      "table": "website_level_document_rules",
+      "name": "website_level_document_rules_id_not_null",
+      "type": "n",
+      "definition": "NOT NULL id"
+    },
+    {
+      "schema": "escen",
+      "table": "website_level_document_rules",
+      "name": "website_level_document_rules_level_id_fkey",
+      "type": "f",
+      "definition": "FOREIGN KEY (level_id) REFERENCES escen.levels(id) ON DELETE RESTRICT"
+    },
+    {
+      "schema": "escen",
+      "table": "website_level_document_rules",
+      "name": "website_level_document_rules_level_id_not_null",
+      "type": "n",
+      "definition": "NOT NULL level_id"
+    },
+    {
+      "schema": "escen",
+      "table": "website_level_document_rules",
+      "name": "website_level_document_rules_pkey",
+      "type": "p",
+      "definition": "PRIMARY KEY (id)"
+    },
+    {
+      "schema": "escen",
+      "table": "website_level_document_rules",
+      "name": "website_level_document_rules_reason_check",
+      "type": "c",
+      "definition": "CHECK (((length(btrim(reason)) >= 3) AND (length(btrim(reason)) <= 1000)))"
+    },
+    {
+      "schema": "escen",
+      "table": "website_level_document_rules",
+      "name": "website_level_document_rules_reason_not_null",
+      "type": "n",
+      "definition": "NOT NULL reason"
+    },
+    {
+      "schema": "escen",
+      "table": "website_level_document_rules",
+      "name": "website_level_document_rules_required_documents_check",
+      "type": "c",
+      "definition": "CHECK (((jsonb_typeof(required_documents) = 'array'::text) AND (jsonb_array_length(required_documents) <= 8)))"
+    },
+    {
+      "schema": "escen",
+      "table": "website_level_document_rules",
+      "name": "website_level_document_rules_required_documents_not_null",
+      "type": "n",
+      "definition": "NOT NULL required_documents"
+    },
+    {
+      "schema": "escen",
+      "table": "website_level_document_rules",
+      "name": "website_level_document_rules_updated_at_not_null",
+      "type": "n",
+      "definition": "NOT NULL updated_at"
+    },
+    {
+      "schema": "escen",
+      "table": "website_level_document_rules",
+      "name": "website_level_document_rules_version_check",
+      "type": "c",
+      "definition": "CHECK ((version > 0))"
+    },
+    {
+      "schema": "escen",
+      "table": "website_level_document_rules",
+      "name": "website_level_document_rules_version_not_null",
+      "type": "n",
+      "definition": "NOT NULL version"
+    },
+    {
       "schema": "escen_private",
       "table": "application_access",
       "name": "application_access_expires_at_not_null",
@@ -22823,6 +22989,24 @@
       "table": "website_intakes",
       "name": "website_intakes_pkey",
       "definition": "CREATE UNIQUE INDEX website_intakes_pkey ON escen.website_intakes USING btree (id)"
+    },
+    {
+      "schema": "escen",
+      "table": "website_level_document_rules",
+      "name": "website_level_document_rules_academic_year_id_level_id_key",
+      "definition": "CREATE UNIQUE INDEX website_level_document_rules_academic_year_id_level_id_key ON escen.website_level_document_rules USING btree (academic_year_id, level_id)"
+    },
+    {
+      "schema": "escen",
+      "table": "website_level_document_rules",
+      "name": "website_level_document_rules_level_fk",
+      "definition": "CREATE INDEX website_level_document_rules_level_fk ON escen.website_level_document_rules USING btree (level_id)"
+    },
+    {
+      "schema": "escen",
+      "table": "website_level_document_rules",
+      "name": "website_level_document_rules_pkey",
+      "definition": "CREATE UNIQUE INDEX website_level_document_rules_pkey ON escen.website_level_document_rules USING btree (id)"
     },
     {
       "schema": "escen_private",

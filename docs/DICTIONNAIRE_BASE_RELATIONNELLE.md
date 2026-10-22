@@ -2,7 +2,7 @@
 
 Généré avec `npm run db:describe` en exécutant les migrations dans PostgreSQL local (PGlite). Aucun accès à Supabase ou aux données de la sauvegarde.
 
-113 tables métier, 13 tables privées, 981 colonnes, 267 clés étrangères, 231 CHECK de tables et 4 exclusions. Les domaines ajoutent les bornes des notes, des montants FCFA et des textes obligatoires.
+114 tables métier, 13 tables privées, 988 colonnes, 269 clés étrangères, 234 CHECK de tables et 4 exclusions. Les domaines ajoutent les bornes des notes, des montants FCFA et des textes obligatoires.
 
 Toutes les tables ont RLS activée, sans accès applicatif permis à ce stade. Les noms techniques ne sont pas des libellés à afficher dans l’interface.
 
@@ -121,6 +121,7 @@ Toutes les tables ont RLS activée, sans accès applicatif permis à ce stade. L
 | escen | website_articles | 13 | 2 | Oui |
 | escen | website_brochures | 16 | 3 | Oui |
 | escen | website_intakes | 9 | 3 | Oui |
+| escen | website_level_document_rules | 7 | 2 | Oui |
 | escen_private | application_access | 3 | 1 | Oui |
 | escen_private | archive_objects | 11 | 1 | Oui |
 | escen_private | audit_events | 13 | 1 | Oui |
@@ -4580,6 +4581,45 @@ CREATE UNIQUE INDEX website_intake_per_year ON escen.website_intakes USING btree
 CREATE INDEX website_intake_program_fk ON escen.website_intakes USING btree (program_id)
 CREATE INDEX website_intake_year_fk ON escen.website_intakes USING btree (academic_year_id)
 CREATE UNIQUE INDEX website_intakes_pkey ON escen.website_intakes USING btree (id)
+```
+
+## escen.website_level_document_rules
+
+| Attribut | Type | Nullable | Défaut | Généré |
+|---|---|---|---|---|
+| id | uuid | NO | gen_random_uuid() | NEVER |
+| academic_year_id | uuid | NO | — | NEVER |
+| level_id | uuid | NO | — | NEVER |
+| required_documents | jsonb | NO | — | NEVER |
+| version | int4 | NO | 1 | NEVER |
+| reason | text | NO | — | NEVER |
+| updated_at | timestamptz | NO | now() | NEVER |
+
+Contraintes :
+
+```sql
+website_level_document_rules_academic_year_id_fkey: FOREIGN KEY (academic_year_id) REFERENCES escen.academic_years(id) ON DELETE RESTRICT
+website_level_document_rules_academic_year_id_level_id_key: UNIQUE (academic_year_id, level_id)
+website_level_document_rules_academic_year_id_not_null: NOT NULL academic_year_id
+website_level_document_rules_id_not_null: NOT NULL id
+website_level_document_rules_level_id_fkey: FOREIGN KEY (level_id) REFERENCES escen.levels(id) ON DELETE RESTRICT
+website_level_document_rules_level_id_not_null: NOT NULL level_id
+website_level_document_rules_pkey: PRIMARY KEY (id)
+website_level_document_rules_reason_check: CHECK (((length(btrim(reason)) >= 3) AND (length(btrim(reason)) <= 1000)))
+website_level_document_rules_reason_not_null: NOT NULL reason
+website_level_document_rules_required_documents_check: CHECK (((jsonb_typeof(required_documents) = 'array'::text) AND (jsonb_array_length(required_documents) <= 8)))
+website_level_document_rules_required_documents_not_null: NOT NULL required_documents
+website_level_document_rules_updated_at_not_null: NOT NULL updated_at
+website_level_document_rules_version_check: CHECK ((version > 0))
+website_level_document_rules_version_not_null: NOT NULL version
+```
+
+Index :
+
+```sql
+CREATE UNIQUE INDEX website_level_document_rules_academic_year_id_level_id_key ON escen.website_level_document_rules USING btree (academic_year_id, level_id)
+CREATE INDEX website_level_document_rules_level_fk ON escen.website_level_document_rules USING btree (level_id)
+CREATE UNIQUE INDEX website_level_document_rules_pkey ON escen.website_level_document_rules USING btree (id)
 ```
 
 ## escen_private.application_access

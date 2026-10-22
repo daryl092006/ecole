@@ -83,6 +83,63 @@ export async function verifyWebsiteDatabase({ db, check, account, level, program
     const audit = (await db.query("select * from escen_private.audit_events where table_name='online_applications' and entity_id=$1 and actor_id=$2 order by happened_at desc limit 1", [draft.id, account.id])).rows[0];
     assert.equal(audit.old_value.status, 'RECU'); assert.equal(audit.new_value.status, 'EN_ANALYSE'); assert.equal(audit.reason, 'Dossier en cours de lecture');
   });
+  await check('Pièces par niveau : atomicité, concurrence, droits, héritage et audit', async () => {
+    await db.exec('begin');
+    try {
+      const rejected = async (run, pattern) => {
+        await db.exec('savepoint rejected_command');
+        try { await assert.rejects(run, pattern); }
+        finally { await db.exec('rollback to savepoint rejected_command; release savepoint rejected_command'); }
+      };
+      const intakes = (await manage('admissions')).intakes.filter(item => item.academic_year_id === year.id && item.level_id === level.id);
+      assert.ok(intakes.length > 0);
+      const expected = intakes.map(({ id, version }) => ({ id, version }));
+      const save = (documents, versions = expected, ruleVersion = null, role = 'IT') => value(
+        'select public.escen_website_level_documents($1,$2,$3,$4,$5::jsonb,$6::jsonb,$7,$8) as value',
+        [account.id, role, year.id, level.id, JSON.stringify(documents), JSON.stringify(versions), ruleVersion, 'Pièces communes de recette']);
+      await rejected(() => save(['cv_file'], expected, null, 'STUD'), /Accès|autorisé/i);
+      await rejected(() => save(['inconnu']), /Pièce/i);
+      await rejected(() => save(['cv_file', 'cv_file']), /dupliquée/i);
+      await rejected(() => save(['cv_file'], expected.map(item => ({ ...item, version: item.version + 1 }))), /changé/i);
+      assert.equal(await value('select count(*)::integer as value from escen.website_level_document_rules'), 0);
+      const saved = await save(['cv_file', 'diplome_file']);
+      assert.equal(saved.updated_intakes, intakes.length);
+      assert.equal(saved.rule.version, 1);
+      const after = (await manage('admissions')).intakes;
+      for (const item of intakes) {
+        const updated = after.find(row => row.id === item.id);
+        assert.deepEqual(updated.required_documents, ['cv_file', 'diplome_file']);
+        assert.equal(updated.version, item.version + 1);
+      }
+      await rejected(() => save(['photo_identite_file']), /changé/i);
+      const fresh = after.filter(item => item.academic_year_id === year.id && item.level_id === level.id).map(({ id, version }) => ({ id, version }));
+      await rejected(() => save(['photo_identite_file'], fresh, null), /changé/i);
+      assert.equal((await save(['diplome_file'], fresh, 1)).rule.version, 2);
+      const newProgram = (await db.query("insert into escen.programs(code,name) values ('LEVEL-DOC-TEST','Filière de recette') returning id")).rows[0];
+      const inherited = (await db.query(`insert into escen.website_intakes
+        (academic_year_id,level_id,program_id,label,required_documents,reason)
+        values ($1,$2,$3,'Nouvelle filière','[]','Recette héritage des pièces') returning required_documents`,
+      [year.id, level.id, newProgram.id])).rows[0];
+      assert.deepEqual(inherited.required_documents, ['diplome_file']);
+      const otherIntakes = after.filter(item => item.academic_year_id !== year.id || item.level_id !== level.id);
+      const finalIntakes = (await manage('admissions')).intakes;
+      for (const item of otherIntakes) {
+        const unchanged = finalIntakes.find(row => row.id === item.id);
+        assert.deepEqual(unchanged.required_documents, item.required_documents);
+        assert.equal(unchanged.version, item.version);
+      }
+      // Une édition de campagne ne peut contourner la règle commune.
+      await db.query('update escen.website_intakes set required_documents=$1::jsonb where id=$2', [JSON.stringify(['cv_file']), intakes[0].id]);
+      assert.deepEqual(await value('select required_documents as value from escen.website_intakes where id=$1', [intakes[0].id]), ['diplome_file']);
+      const audit = (await db.query("select * from escen_private.audit_events where table_name='website_level_document_rules' and entity_id=$1 and old_value is not null", [saved.rule.id])).rows[0];
+      assert.equal(audit.actor_id, account.id);
+      assert.deepEqual(audit.old_value.required_documents, ['cv_file', 'diplome_file']);
+      assert.deepEqual(audit.new_value.required_documents, ['diplome_file']);
+      assert.equal((await value('select public.escen_backend_snapshot() as value')).tables.website_level_document_rules, undefined);
+    } finally {
+      await db.exec('rollback');
+    }
+  });
   await check('Site : brouillons privés, publication, retrait, concurrence et droits effectifs', async () => {
     const input = { title: 'Article de recette', slug: 'article-de-recette', excerpt: 'Résumé de recette', content: 'Un texte conservé', image: '', status: 'BROUILLON', reason: 'Préparation de la publication' };
     const article = await manage('article-save', input);
