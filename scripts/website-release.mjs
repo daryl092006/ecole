@@ -1,5 +1,6 @@
 import { readFile, writeFile, mkdir, readdir } from 'node:fs/promises';
 import path from 'node:path';
+import { websitePageMetadata } from './website-seo.mjs';
 
 export function websiteOrigins(environment = process.env) {
   if (environment.ESCEN_WEBSITE_MODE && !['local', 'production'].includes(environment.ESCEN_WEBSITE_MODE)) throw new Error('ESCEN_WEBSITE_MODE doit être local ou production.');
@@ -16,6 +17,7 @@ export function websiteOrigins(environment = process.env) {
 
 export async function prepareWebsiteRelease(root, origins) {
   const pages = {};
+  const details = {};
   async function visit(directory) {
     for (const entry of await readdir(directory, { withFileTypes: true })) {
       const file = path.join(directory, entry.name);
@@ -29,8 +31,11 @@ export async function prepareWebsiteRelease(root, origins) {
         || source.match(/<Breadcrumb\b[^>]*?\btitle="([^"]+)"/i)?.[1];
       const title = h1?.replace(/<[^>]*>/g, ' ').replace(/\{\{[\s\S]*?\}\}/g, '').replace(/\s+/g, ' ').trim();
       if (title) pages[route || '/'] = title;
+      details[route || '/'] = websitePageMetadata(route || '/', source, title);
       // Existing decorative assets, referenced under obsolete filenames.
       let corrected = source;
+      corrected = corrected.replaceAll('/politique-confidentialite', '/confidentialite');
+      corrected = corrected.replace(/<a\b[^>]*(?:href|to)="\[URL[^\"]*\]"[^>]*>[^<]*<\/a>/g, '<span>Adresse de l’hébergeur à renseigner par l’établissement.</span>');
       for (const [missing, existing] of Object.entries({ 'finance-digitale.jpg': 'financedigital.jpg', 'management-projets.jpg': 'managementprojet.jpg', 'marketing-digital.jpg': 'marketingDigital.jpg', 'ia-genie-logiciel.jpg': 'intelligenceartificielle.jpg' })) {
         corrected = corrected.replaceAll(`/formations/${missing}`, `/formations/${existing}`);
       }
@@ -39,7 +44,7 @@ export async function prepareWebsiteRelease(root, origins) {
   }
   await visit(path.join(root, 'app/pages'));
   await mkdir(path.join(root, 'app/generated'), { recursive: true });
-  await writeFile(path.join(root, 'app/generated/website-seo.json'), JSON.stringify({ origin: origins.site, pages }, null, 2) + '\n');
+  await writeFile(path.join(root, 'app/generated/website-seo.json'), JSON.stringify({ origin: origins.site, pages, details }, null, 2) + '\n');
   await writeFile(path.join(root, 'app/app.vue'), await readFile(new URL('./website-templates/app.vue', import.meta.url), 'utf8'));
   await writeFile(path.join(root, 'app/components/WebsiteActions.vue'), await readFile(new URL('./website-templates/WebsiteActions.vue', import.meta.url), 'utf8'));
   const sliderFile = path.join(root, 'app/components/Slider.vue');

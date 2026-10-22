@@ -35,6 +35,8 @@ export async function adaptWebsite(root, portal) {
   registration = registration.replace('const clearDraftToken = () => {', 'const restartRegistration = () => { clearDraftToken(); window.location.reload() }\nconst clearDraftToken = () => {');
   registration = registration.replaceAll(':disabled="isSubmitting"', ':disabled="isSubmitting || !registrationYearId || campaignChanged"');
   registration = registration.replace('<div class="step-track">', `<p v-if="registrationYearName" class="p-3 font-semibold text-[#12192B]">Inscription pour l’année {{ registrationYearName }}</p>
+        <p v-else-if="catalogLoading" role="status" class="p-3 text-[#12192B]">Chargement de la campagne de candidature…</p>
+        <p v-else-if="catalogError" role="alert" class="p-3 text-[#12192B]">{{ catalogError }} <button type="button" @click="loadRegistrationCatalog">Réessayer</button></p>
         <p v-else role="status" class="p-3 text-[#12192B]">Aucune année d’inscription n’est ouverte actuellement.</p>
         <div v-if="campaignChanged" role="alert" class="p-3 text-[#12192B]">Ce brouillon conserve son ancienne année de dépôt. Pour la nouvelle campagne, commencez un autre dossier.
           <button type="button" class="btn-ghost" @click="restartRegistration">Commencer un nouveau dossier</button>
@@ -68,6 +70,11 @@ onMounted(async () => {`);
   registration = registration.replaceAll(':disabled="!prepNiveauId"', ':disabled="!prepNiveauId || catalogLoading || !!catalogError"');
   registration = registration.replaceAll('isSubmitting || !registrationYearId || campaignChanged', 'isSubmitting || catalogLoading || !!catalogError || !niveaux.length || !registrationYearId || campaignChanged');
   registration = protectRegistrationDocuments(registration);
+  registration = registration.replace('</style>', `@media (max-width: 768px) {
+  .step-item { flex: 1 1 0; min-width: 0; padding: 0 4px; }
+  .step-label { max-width: 100%; font-size: 9px; letter-spacing: 0.04em; overflow-wrap: anywhere; }
+}
+</style>`);
   await writeFile(path.join(root, 'app/pages/inscription/index.vue'), registration);
   let store = await readFile(path.join(sourceRoot, 'app/stores/candidature.ts'), 'utf8');
   store = store.replace('return response.data?.candidat || null', 'return response.data || null');

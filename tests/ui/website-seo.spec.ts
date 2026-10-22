@@ -17,7 +17,7 @@ for (const [route, title] of [
     await expect(page).toHaveTitle(new RegExp(`${title}.*Lomé, Togo`));
     await expect(page.locator('link[rel="canonical"]')).toHaveAttribute('href', site + route);
     await expect(page.locator('meta[name="description"]')).toHaveAttribute('content', /Lomé au Togo/);
-    await expect(page.locator('meta[property="og:image"]')).toHaveAttribute('content', site + '/valeurs/bg.jpg');
+    await expect(page.locator('meta[property="og:image"]')).toHaveAttribute('content', site + '/formations/financedigital.jpg');
   });
 }
 

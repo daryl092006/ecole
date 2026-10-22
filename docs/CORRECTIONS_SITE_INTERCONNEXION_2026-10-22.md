@@ -64,7 +64,7 @@ Après publication : contrôler le catalogue et un téléchargement réel, l’a
 
 - HTTP 406 reproduit avec des clients HTTP, tandis que Chrome reçoit 200 sur l’accueil, robots.txt et sitemap.xml. La règle exacte nécessite les journaux Apache/ModSecurity/WAF. Le `.htaccess` fourni ne désactive pas le pare-feu : faire corriger la règle précise par l’hébergeur, puis retester les clients et les outils de recherche. Le blocage de Googlebot lui-même n’a pas été démontré.
 - Les métriques DR, backlinks, trafic, rebond et visibilité IA du rapport n’ont pas été reconstituées. Leur validation nécessite les exports datés et les accès Search Console/Analytics. Aucune campagne de désaveu ni promesse de classement n’est effectuée.
-- Les articles sont chargés par API. Leur mise en index complète sur cet hébergement statique reste un chantier distinct de rendu/prérendu des publications dynamiques ; les métadonnées des pages de formation sont, elles, présentes dans le HTML exporté.
+- Mise à jour : les articles publics et le catalogue PDF sont désormais prérendus dans le HTML, puis relus depuis l’API côté navigateur. L’export statique et son sitemap doivent être régénérés après un changement de publication. Voir `SEO_GEO_IDENTITE_2026-10-22.md` pour les corrections d’identité, le rendu des contenus et les contrôles.
 - Les formulaires de newsletter/commentaires et les services historiques hors brochures, publications, candidatures et accès au portail ne sont pas ajoutés à l’API par cette correction.
 - La réception d’une candidature ne crée ni étudiant officiel, ni inscription annuelle, ni paiement, ni compte utilisateur.
 

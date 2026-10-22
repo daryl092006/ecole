@@ -2,6 +2,8 @@ import { readFile, writeFile, realpath, access } from 'node:fs/promises';
 import path from 'node:path';
 import { adaptWebsite } from './website-adapter.mjs';
 import { websiteOrigins, prepareWebsiteRelease } from './website-release.mjs';
+import { applyWebsiteBranding } from './website-branding.mjs';
+import { prepareWebsiteArticles } from './website-articles.mjs';
 
 // Run only against the private working copy, never the source in Downloads.
 const projectRoot = await realpath('.');
@@ -43,4 +45,6 @@ definePageMeta({ layout: false })
 `);
 await adaptWebsite(root, portal);
 await prepareWebsiteRelease(root, origins);
+await applyWebsiteBranding(root);
+await prepareWebsiteArticles(root, origins);
 console.log(`Copie interconnectée : ${root}\nPortail : ${loginUrl}\nAPI : ${portal.origin}/api/website`);

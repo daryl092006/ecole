@@ -4,6 +4,7 @@ import { mkdtemp, mkdir, writeFile, readFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { websiteOrigins, prepareWebsiteRelease } from './website-release.mjs';
+import { discoverPublishedArticles } from './website-articles.mjs';
 
 test('Une publication exige les origines publiques explicites et refuse les adresses locales', () => {
   assert.throws(() => websiteOrigins({ ESCEN_WEBSITE_MODE: 'production' }), /explicitement/);
@@ -11,6 +12,13 @@ test('Une publication exige les origines publiques explicites et refuse les adre
     assert.throws(() => websiteOrigins({ ESCEN_WEBSITE_MODE: 'production', ESCEN_PORTAL_URL: origin, ESCEN_PUBLIC_SITE_URL: 'https://escen.university' }));
   }
   assert.deepEqual(websiteOrigins({}), { production: false, portal: 'http://127.0.0.1:3000', site: 'http://localhost:3200' });
+});
+
+test('Le catalogue des articles refuse une panne et les adresses qui sortent des routes publiques', async () => {
+  const mock = (status, data) => async () => new Response(JSON.stringify(data), { status, headers: { 'Content-Type': 'application/json' } });
+  await assert.rejects(discoverPublishedArticles('https://portail.example.org', mock(503, {})), /HTTP 503/);
+  await assert.rejects(discoverPublishedArticles('https://portail.example.org', mock(200, [{ slug: '../dossier-prive' }])), /invalide/);
+  assert.deepEqual(await discoverPublishedArticles('https://portail.example.org', mock(200, [{ slug: 'actualite-publique' }, { slug: 'actualite-publique' }])), ['/blogs/actualite-publique']);
 });
 
 test('La régénération conserve les titres des composants, reste idempotente et change les origines ensemble', async () => {
