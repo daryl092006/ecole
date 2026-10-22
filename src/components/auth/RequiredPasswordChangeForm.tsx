@@ -1,5 +1,8 @@
 'use client';
 import { useState } from 'react';
+import Link from 'next/link';
+import LoadingState from '@/components/ui/LoadingState';
+import SessionRecovery from './SessionRecovery';
 import { useRouter } from 'next/navigation';
 import { getSupabaseBrowserClient } from '@/lib/supabase/client';
 import { usePortal } from '@/hooks/usePortal';
@@ -12,8 +15,9 @@ export default function RequiredPasswordChangeForm() {
   const [feedback, setFeedback] = useState('');
   const [submitting, setSubmitting] = useState(false);
 
-  if (!state.authReady) return <div className="auth-form-card"><p role="status">Vérification de votre accès…</p></div>;
-  if (!state.session) return <div className="auth-form-card"><h2>Connexion requise</h2><p className="auth-form-description">Connectez-vous avec vos identifiants pour mettre à jour votre mot de passe.</p></div>;
+  if (state.authError) return <SessionRecovery message={state.authError} onRetry={state.retryAuthentication} onExit={state.logout} />;
+  if (!state.authReady) return <div className="auth-form-card"><LoadingState label="Vérification de votre accès…" /></div>;
+  if (!state.session) return <div className="auth-form-card"><h2>Connexion requise</h2><p className="auth-form-description">Connectez-vous avec vos identifiants pour mettre à jour votre mot de passe.</p><Link className="btn btn-primary auth-submit" href="/connexion">Se connecter</Link></div>;
 
   return <div className="auth-form-card">
     <span className="auth-eyebrow">SÉCURITÉ DU COMPTE</span><h2>Choisissez un nouveau mot de passe</h2>

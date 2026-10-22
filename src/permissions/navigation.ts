@@ -198,5 +198,10 @@ export function isRouteAllowed(pathname: string, role: RoleName): boolean {
     : MODULE_PATHS[tab.id] === pathname && !!tab.subTabs?.length);
 }
 export function postLoginPath(requested: string | undefined, role: RoleName): string {
-  return requested && isRouteAllowed(requested, role) ? requested : HOME_PATH;
+  if (!requested || !requested.startsWith('/') || requested.startsWith('//') || /[\u0000-\u001f\u007f]/.test(requested)) return HOME_PATH;
+  try {
+    const destination = new URL(requested, 'https://escen.invalid');
+    if (destination.origin !== 'https://escen.invalid' || !isRouteAllowed(destination.pathname, role)) return HOME_PATH;
+    return destination.pathname + destination.search + destination.hash;
+  } catch { return HOME_PATH; }
 }

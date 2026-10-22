@@ -36,10 +36,12 @@ import { correctPublishedGrade, createEvaluation, enterGrade, transitionGradeWor
 import { transitionComplaint } from '@/services/complaintService';
 import { cancelLocalPayment, recordLocalPayment } from '@/services/financeService';
 import { getSupabaseBrowserClient } from '@/lib/supabase/client';
-import { loadAccountSession, loadRelationalCampus, saveStudentProfile } from '@/services/remoteCampusService';
+import { RemoteRequestError, loadAccountSession, loadRelationalCampus, saveStudentProfile } from '@/services/remoteCampusService';
 import { enrichHistoricalStudent } from '@/services/historyStudentService';
 import { projectRelationalCampus } from '@/services/relationalCampusAdapter';
 import type { RelationalSnapshot } from '@/types/persistence';
+
+import { authenticationErrorMessage } from '@/services/authenticationService';
 
 // ─── helpers ─────────────────────────────────────────────────────────────────
 
@@ -78,11 +80,22 @@ export function useAppState() {
   } | null>(null);
   const [authReady, setAuthReady] = useState(false);
   const [hasLoggedOut, setHasLoggedOut] = useState(false);
+  const [authError, setAuthError] = useState('');
+  const [authNotice, setAuthNotice] = useState('');
+  const [authReloadIndex, setAuthReloadIndex] = useState(0);
+  const authVersion = useRef(0);
+  const authenticatedUserId = useRef<string | null>(null);
+  const authAction = useRef<'login' | 'logout' | 'cleanup' | null>(null);
+  const sessionRef = useRef(session);
+  sessionRef.current = session;
+  const retryAuthentication = () => setAuthReloadIndex(index => index + 1);
   const references = useAcademicReferenceStore();
   const [campusRecords, setCampusRecords] = useCampusRecords();
   const groups = references.groups;
   const [demoIdentity, setDemoIdentity] = useState('');
   const [activeRole, setActiveRole] = useState<RoleName>(ROLES.DG);
+  const activeRoleRef = useRef(activeRole);
+  activeRoleRef.current = activeRole;
   const currentTab = route?.tab || Object.entries(MODULE_PATHS).find(([, path]) => path === pathname)?.[0] || 'espace';
   const currentSubTab = route?.section || '';
   const academicYearChoice = useAcademicYearSelection(session?.accountId, activeRole);
@@ -93,29 +106,73 @@ export function useAppState() {
 
   useEffect(() => {
     let cancelled = false;
-    if (window.location.pathname === '/mot-de-passe-reinitialiser') { setAuthReady(true); return () => { cancelled = true; }; }
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    let unsubscribe: (() => void) | undefined;
+    const version = ++authVersion.current;
+    const current = () => !cancelled && authVersion.current === version;
+    const recovery = window.location.pathname === '/mot-de-passe-reinitialiser';
+    setAuthError('');
+    if (!sessionRef.current && !recovery) setAuthReady(false);
     const restoreSession = async () => {
+      if (recovery) { setAuthReady(true); return; }
       try {
         const { data, error } = await getSupabaseBrowserClient().auth.getSession();
         if (error) throw error;
-        if (data.session) {
-          const profile = await loadAccountSession();
-          if (!cancelled) {
-            setSession(profile);
-            setActiveRole(profile.role);
-            setDemoIdentity(profile.role === ROLES.STUD || profile.role === ROLES.DEL ? profile.matricule || '' : profile.role === ROLES.ENS ? profile.teacherId || '' : '');
-          }
+        if (!current()) return;
+        if (!data.session) { authenticatedUserId.current = null; setSession(null); return; }
+        authenticatedUserId.current = data.session.user.id;
+        const profile = await loadAccountSession();
+        if (!current()) return;
+        if (!sessionRef.current || sessionRef.current.accountId !== profile.accountId || !profile.availableRoles.includes(activeRoleRef.current)) {
+          setActiveRole(profile.role);
+          setDemoIdentity(profile.role === ROLES.STUD || profile.role === ROLES.DEL ? profile.matricule || '' : profile.role === ROLES.ENS ? profile.teacherId || '' : '');
         }
-      } catch {
-        try { await getSupabaseBrowserClient().auth.signOut(); } catch { /* The unavailable session remains blocked by the server. */ }
-        if (!cancelled) setSession(null);
+        setSession(previous => JSON.stringify(previous) === JSON.stringify(profile) ? previous : profile);
+        setHasLoggedOut(false);
+        setAuthNotice('');
+      } catch (error) {
+        if (!current()) return;
+        if (error instanceof RemoteRequestError && [401, 403].includes(error.status)) {
+          authAction.current = 'cleanup';
+          try { await getSupabaseBrowserClient().auth.signOut({ scope: 'local' }); } catch { /* Server checks continue to deny this access. */ }
+          finally { authAction.current = null; }
+          if (current()) { setSession(null); setAuthNotice(error.message); }
+        } else {
+          setAuthError('Impossible de vérifier votre connexion pour le moment. Votre session enregistrée est conservée. Réessayez.');
+        }
       } finally {
-        if (!cancelled) setAuthReady(true);
+        if (current()) setAuthReady(true);
       }
     };
-    void restoreSession();
-    return () => { cancelled = true; };
-  }, []);
+    try {
+      const { data } = getSupabaseBrowserClient().auth.onAuthStateChange((event, authSession) => {
+        if (cancelled) return;
+        if (event === 'SIGNED_OUT') {
+          const intentional = authAction.current === 'logout' || authAction.current === 'cleanup';
+          if (!intentional) ++authVersion.current;
+          authenticatedUserId.current = null;
+          setSession(null); setAuthError(''); setAuthReady(true);
+          if (!intentional && sessionRef.current && !window.location.pathname.startsWith('/mot-de-passe-')) {
+            setHasLoggedOut(false);
+            setAuthNotice('Votre session a pris fin. Reconnectez-vous pour continuer.');
+          }
+        } else if (event === 'SIGNED_IN' && authSession && !authAction.current && !recovery) {
+          const changedUser = !!authenticatedUserId.current && authenticatedUserId.current !== authSession.user.id;
+          if (sessionRef.current && !changedUser) return;
+          if (changedUser) { ++authVersion.current; setSession(null); setAuthReady(false); setAuthError(''); }
+          // Never call Auth asynchronously inside its event callback: it holds an SDK lock.
+          clearTimeout(timer);
+          timer = setTimeout(() => { if (!cancelled) setAuthReloadIndex(index => index + 1); }, 0);
+        }
+      });
+      unsubscribe = () => data.subscription.unsubscribe();
+      void restoreSession();
+    } catch {
+      setAuthError('Le service de connexion est indisponible. Réessayez ou contactez l’administration ESCEN.');
+      setAuthReady(true);
+    }
+    return () => { cancelled = true; clearTimeout(timer); unsubscribe?.(); };
+  }, [authReloadIndex]);
 
   // Data state
   const [students, setStudents] = useState<Student[]>(initialStudents);
@@ -259,6 +316,13 @@ export function useAppState() {
       setCampusLoad({ status: 'ready', error: '', students: projection.data.students.length, users: projection.users.length, enrollments: projection.data.enrollments.length });
     }).catch(error => {
       if (controller.signal.aborted) return;
+      if (error instanceof RemoteRequestError && error.status === 401) {
+        ++authVersion.current;
+        setSession(null); setAuthReady(true); setHasLoggedOut(false);
+        setAuthNotice('Votre session a expiré. Reconnectez-vous pour continuer.');
+        void getSupabaseBrowserClient().auth.signOut({ scope: 'local' }).catch(() => { /* The expired access is already blocked. */ });
+        return;
+      }
       const message = error instanceof Error ? error.message : 'Chargement des dossiers impossible.';
       if (preserve) setActionFeedback(message);
       else setCampusLoad({ status: 'error', error: message, students: 0, users: 0, enrollments: 0 });
@@ -286,23 +350,43 @@ export function useAppState() {
     if (route && !isRouteAllowed(pathname, role)) router.replace(HOME_PATH);
   };
   const login = async (email: string, password: string, requested?: string) => {
-    const { data, error } = await getSupabaseBrowserClient().auth.signInWithPassword({ email: email.trim().toLowerCase(), password });
-    if (error || !data.session) throw new Error(error?.message === 'Email not confirmed' ? 'Adresse email à confirmer auprès de l’administration ESCEN.' : 'Adresse email ou mot de passe incorrect.');
+    if (authAction.current) throw new Error('Une opération de connexion est déjà en cours. Patientez.');
+    authAction.current = 'login';
+    const version = ++authVersion.current;
+    let authenticated = false;
+    setAuthError(''); setAuthNotice('');
     try {
+      const { data, error } = await getSupabaseBrowserClient().auth.signInWithPassword({ email: email.trim().toLowerCase(), password });
+      if (error || !data.session) throw new Error(authenticationErrorMessage(error));
+      authenticated = true;
+      authenticatedUserId.current = data.session.user.id;
       const profile = await loadAccountSession();
+      if (authVersion.current !== version) throw new Error('La connexion a été interrompue. Réessayez.');
       setSession(profile); setHasLoggedOut(false); setAuthReady(true); setActiveRole(profile.role);
       setDemoIdentity(profile.role === ROLES.STUD || profile.role === ROLES.DEL ? profile.matricule || '' : profile.role === ROLES.ENS ? profile.teacherId || '' : '');
       setSelectedStudent(null); setSelectedClassForGrades(null); setActionFeedback('');
       router.replace(profile.mustChangePassword ? '/mot-de-passe-modifier' : postLoginPath(requested, profile.role));
     } catch (error) {
-      await getSupabaseBrowserClient().auth.signOut();
+      if (authenticated) {
+        if ((error instanceof RemoteRequestError && error.status >= 500) || (error instanceof Error && ['TimeoutError', 'AbortError', 'TypeError'].includes(error.name))) {
+          setAuthError('Vos identifiants ont été acceptés, mais la vérification de votre accès est indisponible. Réessayez.');
+          setAuthReady(true);
+        } else {
+          authAction.current = 'cleanup';
+          try { await getSupabaseBrowserClient().auth.signOut({ scope: 'local' }); } catch { /* The server still denies access. */ }
+        }
+      }
       throw error;
-    }
+    } finally { authAction.current = null; }
   };
   const logout = async () => {
-    await getSupabaseBrowserClient().auth.signOut();
-    setSession(null); setActionOutcome(null); setHasLoggedOut(true); setDemoIdentity(''); setSelectedStudent(null); setSelectedClassForGrades(null);
-    setSearchQuery(''); setNotifications([]); setActionFeedback(''); router.replace('/connexion');
+    if (authAction.current === 'logout') return;
+    authAction.current = 'logout'; ++authVersion.current;
+    setAuthReady(false); setSession(null); setAuthError(''); setAuthNotice('');
+    setActionOutcome(null); setHasLoggedOut(true); setDemoIdentity(''); setSelectedStudent(null); setSelectedClassForGrades(null);
+    setSearchQuery(''); setNotifications([]); setActionFeedback('');
+    try { await getSupabaseBrowserClient().auth.signOut({ scope: 'local' }); }
+    finally { authAction.current = null; setAuthReady(true); router.replace('/connexion'); }
   };
   const requestAccessHelp = (email: string) => {
     const address = email.trim().toLowerCase();
@@ -697,7 +781,7 @@ export function useAppState() {
   return {
     // Role
     refreshCampus, academicYearSelection, changeAcademicYearSelection: academicYearChoice.change, academicYearContext: relationalSnapshot.academicContext,
-    session, authReady, hasLoggedOut, campusLoad, campusRevision, relationalSnapshot, history, reloadCampus, login, logout, pathname, navigateToStudent, requestAccessHelp,
+    session, authReady, authError, authNotice, retryAuthentication, hasLoggedOut, campusLoad, campusRevision, relationalSnapshot, history, reloadCampus, login, logout, pathname, navigateToStudent, requestAccessHelp,
     globalAccess: !session || capabilities?.globalAccess === true,
     actionFeedback, clearActionFeedback: () => setActionFeedback(''),
     actionOutcome, reportActionOutcome: setActionOutcome, clearActionOutcome: () => setActionOutcome(null),

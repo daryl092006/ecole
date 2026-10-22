@@ -4,14 +4,19 @@ import { getSupabaseBrowserClient } from '@/lib/supabase/client';
 import type { RoleName } from '@/types/permissions';
 import type { RelationalSnapshot, PersistentChange } from '@/types/persistence';
 
+export class RemoteRequestError extends Error {
+  constructor(public status: number, message: string) { super(message); }
+}
+
 async function headers(role?: RoleName, useResolvedYear = true) {
   const session = await getSupabaseBrowserClient().auth.getSession();
-  if (!session.data.session) throw new Error('Connexion requise.');
+  if (!session.data.session) throw new RemoteRequestError(401, 'Connexion requise.');
   return { ...academicYearRequestHeaders(useResolvedYear), Authorization: `Bearer ${session.data.session.access_token}`, ...(role ? { 'x-escen-role': role } : {}) };
 }
 async function readResponse(response: Response) {
-  const data = await response.json();
-  if (!response.ok) throw new Error(data.error || 'Service temporairement indisponible.');
+  let data;
+  try { data = await response.json(); } catch { throw new RemoteRequestError(response.ok ? 502 : response.status, 'Le service a renvoyé une réponse illisible. Réessayez.'); }
+  if (!response.ok) throw new RemoteRequestError(response.status, data.error || 'Service temporairement indisponible.');
   return data;
 }
 const snapshotSchema = z.object({
@@ -31,7 +36,7 @@ export async function saveRelationalChanges(revision: number, changes: Persisten
   return data.revision;
 }
 export async function loadAccountSession(role?: RoleName) {
-  return readResponse(await fetch('/api/session',{ headers:await headers(role),cache:'no-store' }));
+  return readResponse(await fetch('/api/session',{ headers:await headers(role),cache:'no-store', signal: AbortSignal.timeout(15000) }));
 }
 export async function updatePersistentAccount(id: string, values: { action: 'activate' | 'deactivate' | 'archive' | 'role'; reason: string; role?: RoleName; previousRole?: RoleName | null }, role: RoleName): Promise<void> {
   await readResponse(await fetch(`/api/accounts/${encodeURIComponent(id)}`, { method: 'PATCH', headers: { ...await headers(role), 'Content-Type': 'application/json' }, body: JSON.stringify(values) }));

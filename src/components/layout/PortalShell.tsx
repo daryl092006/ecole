@@ -7,6 +7,7 @@ import { usePortal } from '@/hooks/usePortal';
 import { getPortalRoute, HOME_PATH, MODULE_PATHS } from '@/constants/portalRoutes';
 import { isRouteAllowed } from '@/permissions/navigation';
 import LoadingState from '@/components/ui/LoadingState';
+import SessionRecovery from '@/components/auth/SessionRecovery';
 import AcademicYearControl from '@/components/layout/AcademicYearControl';
 import TopBar, { type SearchDestination } from '@/components/layout/TopBar';
 import { getWorkspaceNavigation } from '@/constants/workspaceNavigation';
@@ -31,7 +32,7 @@ export default function PortalShell({ children }: { children: ReactNode }) {
   const authorizedSection = route && ['acad_resits', 'acad_assessments'].includes(route.section) ? 'acad_exams' : route?.section;
   const allowed = !!tab && (route ? !!tab.subTabs?.some(section => section.id === authorizedSection) : aliasAllowed);
   useEffect(() => {
-    if (state.authReady && !state.session) router.replace(state.hasLoggedOut ? '/connexion' : '/connexion?retour=' + encodeURIComponent(pathname));
+    if (state.authReady && !state.session) router.replace(state.hasLoggedOut ? '/connexion' : '/connexion?retour=' + encodeURIComponent(window.location.pathname + window.location.search + window.location.hash));
   }, [state.authReady, state.session, state.hasLoggedOut, router, pathname]);
   useEffect(() => {
     if (state.session?.mustChangePassword) router.replace('/mot-de-passe-modifier');
@@ -75,7 +76,8 @@ export default function PortalShell({ children }: { children: ReactNode }) {
     if (destination.studentId) state.navigateToStudent(destination.studentId); else state.navigateTo(destination.tab, destination.subTab);
     setMenuOpen(false);
   };
-  if (!state.session || !state.authReady) return <div className="route-loading" role="status"><SchoolLogo /><p>Ouverture de la connexion…</p></div>;
+  if (state.authError) return <main className="route-loading"><SchoolLogo /><SessionRecovery message={state.authError} onRetry={state.retryAuthentication} onExit={state.logout} /></main>;
+  if (!state.session || !state.authReady) return <div className="route-loading"><SchoolLogo /><div className="auth-form-card"><LoadingState label="Vérification de votre connexion…" /></div></div>;
   return <><a href="#main-content" className="skip-link">Aller au contenu</a><div className={`app-wrapper ${menuOpen ? 'navigation-open' : ''}`}>
     <TopBar userName={state.session.name} destinations={destinations} onDestination={openDestination} menuOpen={menuOpen} onToggleMenu={() => setMenuOpen(open => !open)} activeRole={activeRole} availableRoles={state.session.availableRoles} searchQuery={state.searchQuery} onSearchChange={state.setSearchQuery} onRoleChange={state.handleRoleChange} notifications={state.notifications} onLogout={state.logout} />
     <div className="app-body">{menuOpen && <button className="navigation-backdrop" aria-label="Fermer la navigation" onClick={() => setMenuOpen(false)} />}

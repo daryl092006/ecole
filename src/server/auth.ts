@@ -23,8 +23,15 @@ export async function requireAccount(request: Request) {
   const authorization = request.headers.get('authorization');
   if (!authorization?.startsWith('Bearer ') || authorization.length > 12000) throw new RequestError(401, 'Connexion requise.');
   const client = getSupabaseServerClient();
-  const authenticated = await client.auth.getUser(authorization.slice(7));
-  if (authenticated.error || !authenticated.data.user) throw new RequestError(401, 'Votre session a expiré. Reconnectez-vous.');
+  let authenticated: Awaited<ReturnType<typeof client.auth.getUser>>;
+  try { authenticated = await client.auth.getUser(authorization.slice(7)); }
+  catch { throw new RequestError(503, 'Le service de connexion est temporairement indisponible. Réessayez.'); }
+  if (authenticated.error) {
+    const status = authenticated.error.status;
+    if (!status || status === 429 || status >= 500) throw new RequestError(503, 'Le service de connexion est temporairement indisponible. Réessayez.');
+    throw new RequestError(401, 'Votre session a expiré. Reconnectez-vous.');
+  }
+  if (!authenticated.data.user) throw new RequestError(401, 'Votre session a expiré. Reconnectez-vous.');
   const mustChangePassword = authenticated.data.user.app_metadata?.must_change_password === true;
   const requestPath = new URL(request.url).pathname;
   if (mustChangePassword && !['/api/session', '/api/session/password'].includes(requestPath)) {
