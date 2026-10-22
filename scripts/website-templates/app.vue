@@ -73,3 +73,5 @@ useHead(() => ({
   script: [{ key: 'escen-structured-data', type: 'application/ld+json', innerHTML: JSON.stringify(graph.value).replace(/</g, String.fromCharCode(92) + 'u003c') }],
 }))
 </script>
+
+<style src="~/assets/css/website-corners.css"></style>

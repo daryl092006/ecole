@@ -47,6 +47,8 @@ export async function prepareWebsiteRelease(root, origins) {
   await writeFile(path.join(root, 'app/generated/website-seo.json'), JSON.stringify({ origin: origins.site, pages, details }, null, 2) + '\n');
   await writeFile(path.join(root, 'app/app.vue'), await readFile(new URL('./website-templates/app.vue', import.meta.url), 'utf8'));
   await writeFile(path.join(root, 'app/components/WebsiteActions.vue'), await readFile(new URL('./website-templates/WebsiteActions.vue', import.meta.url), 'utf8'));
+  await mkdir(path.join(root, 'app/assets/css'), { recursive: true });
+  await writeFile(path.join(root, 'app/assets/css/website-corners.css'), await readFile(new URL('./website-templates/website-corners.css', import.meta.url), 'utf8'));
   const sliderFile = path.join(root, 'app/components/Slider.vue');
   let slider = await readFile(sliderFile, 'utf8');
   // Two stable actions across slides; brochures remain in the catalogue/footer

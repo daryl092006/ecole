@@ -1,0 +1,17 @@
+/* A light radius for public-facing controls, cards and media. Decorative
+   circles, progress dots and background effects retain their geometry. */
+:is(a, button, input, select, textarea, img, section, article, aside, dialog, div)[class*="rounded"]:not([class*="absolute"]):not([class*="blur"]),
+.btn-primary,
+.btn-ghost,
+.website-adviser,
+.registration-feedback,
+.swal-modal,
+.swal-button {
+  border-radius: 6px !important;
+}
+/* Form controls also have component-specific styles without utility classes. */
+input:not([type="checkbox"]):not([type="radio"]), select, textarea {
+  border-radius: 6px !important;
+}
+/* The country flags deliberately keep their straight corners. */
+.website-country-flag { border-radius: 0 !important; }
