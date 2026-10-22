@@ -4,6 +4,7 @@ import { ROLES } from '../../src/types/permissions';
 import { scheduleFixture, attachScheduledExam } from './schedule-management-fixture';
 import { securityContext, securityIds as id, uuid } from './security-fixture';
 import { filterSnapshotForAcademicYear } from '../../src/services/academicYearScopeService';
+import { teacherDirectory } from '../../src/services/teacherManagementService';
 
 async function connectedSchedule(page: Page, withExam = false) {
   await authenticateFixture(page);
@@ -32,6 +33,45 @@ async function confirm(dialog: Locator) {
   await dialog.getByRole('button', { name: /^Confirmer/ }).click();
   await expect(dialog).not.toBeVisible();
 }
+
+test('Programmer un cours : affecter un enseignant ici puis enregistrer le créneau', async ({ page }) => {
+  const fixture = await connectedSchedule(page);
+  const source = fixture.snapshot.tables.teaching_assignments.find(row => row.id === id.assignment(0))!;
+  const createdId = uuid(9998);
+  const commands: Record<string, unknown>[] = [];
+  await page.route('**/api/teachers', route => {
+    if (route.request().method() === 'GET') return route.fulfill({ json: teacherDirectory(fixture.snapshot, securityContext(), id.year) });
+    const body = route.request().postDataJSON(); commands.push(body);
+    fixture.snapshot.tables.teaching_assignments.push({ ...source, id: createdId, teacher_id: body.teacherId, valid_from: body.validFrom, valid_until: body.validUntil });
+    fixture.snapshot.revision++;
+    return route.fulfill({ json: { id: createdId, revision: fixture.snapshot.revision } });
+  });
+  await page.goto(`/academique/emploi-du-temps?matiere=${source.component_id}`);
+  const course = page.getByRole('dialog', { name: 'Nouvelle séance', exact: true });
+  await expect(course).toBeVisible();
+  await course.getByLabel('Groupe du cours', { exact: true }).selectOption(String(source.group_id));
+  if (await course.getByLabel('Filière et niveau', { exact: true }).count()) await course.getByLabel('Filière et niveau', { exact: true }).selectOption(String(source.offering_id));
+  await course.getByLabel('Matière du cours', { exact: true }).selectOption(String(source.component_id));
+  await course.getByRole('button', { name: 'Affecter un enseignant ici' }).click();
+  const assignment = page.getByRole('dialog', { name: 'Choisir l’enseignant de ce cours', exact: true });
+  await assignment.getByLabel('Enseignant', { exact: true }).selectOption(uuid(21));
+  await assignment.getByLabel('Début de l’enseignement', { exact: true }).fill('2026-01-01');
+  await assignment.getByLabel('Motif', { exact: true }).fill('Enseignement confirmé pour ce groupe');
+  await assignment.getByRole('button', { name: 'Vérifier l’enseignant' }).click();
+  expect(commands).toHaveLength(0);
+  await assignment.getByRole('button', { name: 'Confirmer l’enseignant', exact: true }).click();
+  await expect(assignment).toHaveCount(0);
+  await expect(course.getByLabel('Enseignant du cours')).toHaveValue(createdId);
+  expect(commands).toHaveLength(1);
+  expect(fixture.transactions).toHaveLength(0);
+  await course.getByLabel('Salle prévue').selectOption(uuid(950));
+  await course.getByLabel('Début (heure de Lomé)', { exact: true }).fill('2026-10-21T08:00');
+  await course.getByLabel('Fin (heure de Lomé)', { exact: true }).fill('2026-10-21T10:00');
+  await course.getByLabel('Motif', { exact: true }).fill('Cours prévu avec le nouvel enseignant');
+  await confirm(course);
+  expect(fixture.transactions).toHaveLength(1);
+  expect(fixture.transactions[0][0].record).toMatchObject({ assignment_id: createdId, teacher_id: uuid(21) });
+});
 const selectInitial = (page: Page) => page.locator('.calendar-list-day, .calendar-day')
   .filter({ has: page.locator('time[datetime="2026-10-20"]') })
   .getByRole('button', { name: /08:00–10:00.*Groupe 1/ }).filter({ visible: true }).click();
@@ -152,9 +192,13 @@ for (const width of [360, 390, 1440]) test(`Séance : créer, modifier, déplace
   await page.setViewportSize({ width, height: 900 });
   const fixture = await connectedSchedule(page);
   await page.goto('/academique/emploi-du-temps');
-  await page.getByRole('button', { name: 'Nouvelle séance', exact: true }).click();
+  await page.getByRole('button', { name: 'Programmer un cours', exact: true }).click();
   let dialog = page.getByRole('dialog', { name: 'Nouvelle séance', exact: true });
-  await dialog.getByRole('combobox', { name: 'Affectation', exact: true }).selectOption(id.assignment(0));
+  const plannedAssignment = fixture.snapshot.tables.teaching_assignments.find(row => row.id === id.assignment(0))!;
+  await dialog.getByLabel('Groupe du cours', { exact: true }).selectOption(String(plannedAssignment.group_id));
+  if (await dialog.getByLabel('Filière et niveau', { exact: true }).count()) await dialog.getByLabel('Filière et niveau', { exact: true }).selectOption(String(plannedAssignment.offering_id));
+  await dialog.getByLabel('Matière du cours', { exact: true }).selectOption(String(plannedAssignment.component_id));
+  await dialog.getByLabel('Enseignant du cours', { exact: true }).selectOption(id.assignment(0));
   await dialog.getByRole('combobox', { name: 'Salle prévue', exact: true }).selectOption(uuid(950));
   await dialog.getByLabel('Début (heure de Lomé)', { exact: true }).fill('2026-10-21T08:00');
   await dialog.getByLabel('Fin (heure de Lomé)', { exact: true }).fill('2026-10-21T10:00');
@@ -213,7 +257,7 @@ test('Période bloquée : périmètre, motif et récapitulatif à 390px', async 
 test('Formulaire modifié : protection de l’annulation et du clavier Échap', async ({ page }) => {
   const fixture = await connectedSchedule(page);
   await page.goto('/academique/emploi-du-temps');
-  await page.getByRole('button', { name: 'Nouvelle séance', exact: true }).click();
+  await page.getByRole('button', { name: 'Programmer un cours', exact: true }).click();
   const dialog = page.getByRole('dialog', { name: 'Nouvelle séance', exact: true });
   await dialog.getByRole('textbox', { name: 'Motif', exact: true }).fill('Modification en cours');
   await dialog.getByRole('button', { name: 'Annuler', exact: true }).click();

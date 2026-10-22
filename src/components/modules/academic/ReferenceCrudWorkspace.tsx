@@ -236,6 +236,7 @@ export default function ReferenceCrudWorkspace(props: {
     collection: string;
     category?: string;
     createOnLoad?: boolean;
+    contextValues?: Record<string, string>;
     editId?: string;
     onCancel?: () => void;
     onDone?: () => void;
@@ -262,6 +263,7 @@ function ReferenceCrudContent({
     collection: string;
     category?: string;
     createOnLoad?: boolean;
+    contextValues?: Record<string, string>;
     editId?: string;
     onCancel?: () => void;
     onDone?: () => void;
@@ -364,14 +366,14 @@ function ReferenceCrudContent({
       const hasPrefilledToReview = !dismissPrefilled && Boolean(setupYearId && (effectivePrefilledItems.length > 0 || (setup?.prefilledItems && setup.prefilledItems.length > 0)));
       if (canEdit && editing) {
         setSelected(editing); setSourceRowId(undefined); setDialog('edit'); setSaveError('');
-        setReason('Modification des niveaux de la filière');
+        setReason(collection === 'programs' ? 'Modification des niveaux de la filière' : `Modification de ${loadedSpec.title.toLocaleLowerCase('fr')}`);
         setForm({ ...initialValues(loadedSpec.fields, result, setupYearId || '', setupCategory, editing, collection), level_ids: String(editing.level_ids || '') });
       } else if (canEdit && !setup?.editId && !hasPrefilledToReview && (forceCreate || (forceCreate !== false && setupYearId && !(result.tables[collection] || []).some(row => !row.archived_at && (!setupCategory || row.category === setupCategory)))) && loadedSpec.fields.every(field => !field.reference || field.required === false || result.tables[field.reference]?.some(row => !row.archived_at && row.active !== false))) {
         setSelected(null); setSourceRowId(undefined); setDialog('create'); setSaveError('');
         setReason(`Création dans ${loadedSpec.title.toLocaleLowerCase('fr')}`);
-        setForm(completeRelations(collection, result, initialValues(loadedSpec.fields, result, setupYearId || '', setupCategory)));
+        setForm({ ...completeRelations(collection, result, initialValues(loadedSpec.fields, result, setupYearId || '', setupCategory)), ...setup?.contextValues });
       }
-      if (setup?.editId && !editing) throw new Error('La filière à compléter est introuvable. Revenez aux formations et actualisez les données.');
+      if (setup?.editId && !editing) throw new Error('L’élément à modifier est introuvable. Fermez ce formulaire et actualisez les données.');
       const source = pendingResume.current;
       if (source) {
         setSelected(null); setSourceRowId(source.id); setDialog('create'); setReason('Reprise vérifiée du référentiel historique'); setSaveError('');
@@ -380,7 +382,7 @@ function ReferenceCrudContent({
       }
     }).catch(cause => { if (!controller.signal.aborted) setError(cause instanceof Error ? cause.message : 'Chargement impossible.'); });
     return () => controller.abort();
-  }, [collection, activeRole, retry, setupYearId, setupCategory, forceCreate, canEdit, dismissPrefilled, effectivePrefilledItems.length, setup?.prefilledItems, setup?.editId]);
+  }, [collection, activeRole, retry, setupYearId, setupCategory, forceCreate, canEdit, dismissPrefilled, effectivePrefilledItems.length, setup?.prefilledItems, setup?.editId, setup?.contextValues]);
   const sourceTable = Object.entries(HISTORY_CRUD_TABLES).find(([, target]) => target === collection)?.[0];
   const sources = !setup && portal.history.enabled && sourceTable ? (portal.history.catalog?.references[sourceTable] || []).filter(row => !data?.historyLinks?.some(link => link.sourceRowId === row.id)) : [];
   const sourceById = new Map(sources.map(source => [`source:${source.id}`, source]));
@@ -516,7 +518,7 @@ function ReferenceCrudContent({
       defaultReason = `Enregistrement de ${rowTitle(row)} pré-rempli(e) pour ${setup?.yearName || ''}`;
     }
     setReason(defaultReason);
-    setForm({ ...nextForm, ...(collection === 'academic_offerings' && mode === 'create' ? { program_id: annualPrograms.length === 1 ? annualPrograms[0].id : '' } : {}) });
+    setForm({ ...nextForm, ...(collection === 'academic_offerings' && mode === 'create' ? { program_id: annualPrograms.length === 1 ? annualPrograms[0].id : '' } : {}), ...(mode === 'create' ? setup?.contextValues : {}) });
   };
   const manageAnnualGroup = (group: AnnualOfferingGroup) => {
     open('create');
@@ -530,6 +532,7 @@ function ReferenceCrudContent({
     if (setup && field.reference && field.required === false && !(data?.tables[field.reference] || []).some(row => !row.archived_at && row.active !== false)) return true;
     if (field.key === 'level_id' && collection === 'academic_offerings' && data?.tables.curricula?.find(row => row.id === form.curriculum_id)?.level_id) return true;
     if (field.key === 'level_id' && collection === 'group_offerings' && data?.tables.groups?.find(row => row.id === form.group_id)?.level_id) return true;
+    if (setup?.contextValues?.[field.key]) return true;
     return !!setup && (field.key === 'academic_year_id' || (!!setup.category && field.key === 'category'));
   };
 
@@ -789,7 +792,7 @@ function ReferenceCrudContent({
         }).catch(cause => setSaveError(cause instanceof Error ? cause.message : 'Enregistrement impossible.')).finally(() => setSaving(false));
       }}><fieldset disabled={saving} className="permission-fieldset">
         {collection === 'programs' && <p className="cell-sub">Catalogue général · toutes les années</p>}
-        {creatingResaoSubject && <fieldset className="offering-levels-box"><legend>Code REESAO automatique</legend><p>Chaque matière constitue une UE sur le relevé. Choisissez sa discipline et son semestre ; son code sera enregistré avec son rattachement au programme.</p>{resaoSubjectFields.map(field => <label className="form-group" key={field.key}>{field.label}{field.reference ? <select className="select-input" required value={form[field.key] || ''} onChange={event => setForm({ ...form, [field.key]: event.target.value })}><option value="">Sélectionner</option>{(data.tables.curriculum_semesters || []).filter(row => !row.archived_at && data.tables.curricula?.some(curriculum => curriculum.id === row.curriculum_id && curriculum.status === 'DRAFT' && !curriculum.archived_at)).map(row => <option key={row.id} value={row.id}>{catalogLabel('curricula', data.tables.curricula!.find(curriculum => curriculum.id === row.curriculum_id)!, data)} · {String(row.name)}</option>)}</select> : <input className="input" required type={field.type === 'number' ? 'number' : 'text'} min={field.min} max={field.max} step={field.step} maxLength={field.key === 'discipline' ? 3 : undefined} value={form[field.key] || ''} onChange={event => setForm({ ...form, [field.key]: field.key === 'discipline' ? event.target.value.toUpperCase() : event.target.value })} />}</label>)}{resaoCode ? <p role="status">Code attribué : <strong>{resaoCode}</strong></p> : <p className="cell-sub">{resaoError}</p>}</fieldset>}
+        {creatingResaoSubject && <fieldset className="offering-levels-box"><legend>Code REESAO automatique</legend><p>Le code de la matière est calculé à partir de sa discipline et de son semestre.</p>{resaoSubjectFields.filter(field => !setup?.contextValues?.[field.key]).map(field => <label className="form-group" key={field.key}>{field.label}{field.reference ? <select className="select-input" required value={form[field.key] || ''} onChange={event => setForm({ ...form, [field.key]: event.target.value })}><option value="">Sélectionner</option>{(data.tables.curriculum_semesters || []).filter(row => !row.archived_at && data.tables.curricula?.some(curriculum => curriculum.id === row.curriculum_id && curriculum.status === 'DRAFT' && !curriculum.archived_at)).map(row => <option key={row.id} value={row.id}>{catalogLabel('curricula', data.tables.curricula!.find(curriculum => curriculum.id === row.curriculum_id)!, data)} · {String(row.name)}</option>)}</select> : <input className="input" required type={field.type === 'number' ? 'number' : 'text'} min={field.min} max={field.max} step={field.step} maxLength={field.key === 'discipline' ? 3 : undefined} value={form[field.key] || ''} onChange={event => setForm({ ...form, [field.key]: field.key === 'discipline' ? event.target.value.toUpperCase() : event.target.value })} />}</label>)}{resaoCode ? <p role="status">Code attribué : <strong>{resaoCode}</strong></p> : <p className="cell-sub">{resaoError}</p>}</fieldset>}
 
         {setup?.yearId && collection !== 'programs' && <p><strong>Année : {setup.yearName}</strong>{setup.category && ` · ${setup.category === 'INSCRIPTION' ? 'Frais d’inscription' : 'Frais de scolarité'}`}</p>}
         {sourceRowId && <p>Complétez les champs officiels manquants. L’original restera conservé.</p>}

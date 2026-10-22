@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { usePortal } from '@/hooks/usePortal';
 import { loadSchedule, manageSchedule } from '@/services/remoteCampusService';
 import { shiftExamAccess } from '@/services/scheduleManagementService';
@@ -13,6 +13,9 @@ import WorkPage from '@/components/ui/WorkPage';
 import ReviewedForm, { type ReviewField } from '@/components/ui/ReviewedForm';
 import DrawerActions from '@/components/ui/DrawerActions';
 import { DrawerCloseButton } from '@/components/ui/DetailDrawer';
+import { useSearchParams } from 'next/navigation';
+import ScheduleCourseSelector from './ScheduleCourseSelector';
+import CourseAssignmentDialog from './CourseAssignmentDialog';
 
 type Action = ScheduleCommand['action'];
 type Operation = { action: Action; session?: ManagedSession };
@@ -31,6 +34,10 @@ export default function ScheduleWorkspace() {
 
 function ScheduleManager() {
   const portal = usePortal();
+  const params = useSearchParams();
+  const requestedComponent = params.get('matiere') || '';
+  const openedRequest = useRef('');
+  const [assigning, setAssigning] = useState<{ groupId: string; offeringId: string; componentId: string } | null>(null);
   const { activeRole, academicYearSelection } = portal;
   const [directory, setDirectory] = useState<ScheduleDirectory | null>(null);
   const [loading, setLoading] = useState(true), [error, setError] = useState(''), [success, setSuccess] = useState('');
@@ -40,12 +47,17 @@ function ScheduleManager() {
   const [groupSelection, setGroupSelection] = useState({ yearId: '', groupId: '' });
   useEffect(() => {
     const controller = new AbortController();
-    setLoading(true); setError(''); setDetail(null); setOperation(null);
+    setLoading(true); setError(''); setDetail(null); setOperation(null); setAssigning(null);
     void loadSchedule(activeRole, controller.signal).then(data => { if (!controller.signal.aborted) setDirectory(data); })
       .catch(cause => { if (!controller.signal.aborted) setError(cause instanceof Error ? cause.message : 'Chargement impossible.'); })
       .finally(() => { if (!controller.signal.aborted) setLoading(false); });
     return () => controller.abort();
   }, [activeRole, academicYearSelection, reload]);
+  useEffect(() => {
+    const request = `${activeRole}:${academicYearSelection}:${requestedComponent}`;
+    if (!directory?.canCreate || !requestedComponent || openedRequest.current === request || !directory.components.some(row => row.id === requestedComponent)) return;
+    openedRequest.current = request; setDetail(null); setSaveError(''); setForm(blank()); setOperation({ action: 'create_session' });
+  }, [directory, requestedComponent, activeRole, academicYearSelection]);
   if (loading) return <LoadingState label="Chargement du planning…" />;
   if (error || !directory) return <section className="card" role="alert"><p>{error || 'Planning indisponible.'}</p><button className="btn btn-outline" onClick={() => setReload(value => value + 1)}>Réessayer</button></section>;
   const teacherName = (id: string | null) => directory.teachers.find(teacher => teacher.id === id)?.name || 'Enseignant indisponible';
@@ -73,7 +85,7 @@ function ScheduleManager() {
   const assignment = directory.assignments.find(row => row.id === form.assignmentId);
   const siteId = directory.offerings.find(offering => offering.id === assignment?.offeringId)?.siteId;
   const fields: ReviewField[] = [
-    ...(editing ? [{ label: 'Affectation', value: assignmentName(form.assignmentId), ...(current ? { previous: assignmentName(current.assignmentId) } : {}) },
+    ...(editing ? [{ label: 'Cours', value: assignmentName(form.assignmentId), ...(current ? { previous: assignmentName(current.assignmentId) } : {}) },
       { label: 'Type de séance', value: form.mode, previous: current?.mode }, { label: 'Salle prévue', value: roomName(form.roomId || null), ...(current ? { previous: roomName(current.roomId) } : {}) }] : []),
     ...(timed ? [{ label: 'Début (heure de Lomé)', value: form.startsAt ? displayTime(iso(form.startsAt)) : '', ...(current ? { previous: displayTime(current.startsAt) } : {}) },
       { label: 'Fin (heure de Lomé)', value: form.endsAt ? displayTime(iso(form.endsAt)) : '', ...(current ? { previous: displayTime(current.endsAt) } : {}) }] : []),
@@ -98,7 +110,7 @@ function ScheduleManager() {
   const active = sessions.filter(session => !['ANNULE', 'REPORTE'].includes(session.status));
   return <div className="domain-workspace">
     <div className="page-intro"><div><span className="page-eyebrow">PLANNING</span><h1>Séances et emploi du temps</h1><p>Horaires en heure de Lomé (UTC). Les conflits sont contrôlés avant enregistrement.</p></div><div className="btn-group">
-      {directory.canCreate && <button className="btn btn-primary" onClick={() => open('create_session')}>Nouvelle séance</button>}
+      {directory.canCreate && <button className="btn btn-primary" onClick={() => open('create_session')}>Programmer un cours</button>}
       {directory.canUpdate && (directory.canBlockAllSites || directory.sites.length > 0) && <button className="btn btn-outline" onClick={() => open('block_period')}>Bloquer une période</button>}
     </div></div>
     {success && <p className="card" role="status">{success}</p>}
@@ -122,7 +134,7 @@ function ScheduleManager() {
     </WorkPage>}
     {operation && <WorkPage title={titles[operation.action]} busy={saving} onClose={() => setOperation(null)}><ReviewedForm busy={saving} error={saveError} fields={fields} consequence={consequence}
       confirmLabel={`Confirmer : ${titles[operation.action].toLocaleLowerCase('fr')}`} danger={action === 'cancel_session'}
-      validate={() => timed && form.endsAt <= form.startsAt ? 'La fin doit être postérieure au début.' : form.reason.trim().length < 3 ? 'Le motif doit contenir au moins 3 caractères.' : null}
+      validate={() => editing && !assignment ? 'Choisissez le groupe, la matière et l’enseignant du cours.' : timed && form.endsAt <= form.startsAt ? 'La fin doit être postérieure au début.' : form.reason.trim().length < 3 ? 'Le motif doit contenir au moins 3 caractères.' : null}
       onConfirm={event => {
         event.preventDefault(); setSaving(true); setSaveError('');
         const common = { revision: directory.revision, reason: form.reason };
@@ -136,7 +148,7 @@ function ScheduleManager() {
           .catch(cause => setSaveError(cause instanceof Error ? cause.message : 'Enregistrement impossible.')).finally(() => setSaving(false));
       }}>
       {editing && <>
-        <label className="form-group">Affectation<select className="select-input" required value={form.assignmentId} onChange={event => setForm({ ...form, assignmentId: event.target.value, roomId: '' })}><option value="">Choisir une affectation</option>{directory.assignments.filter(assignment => assignment.id === current?.assignmentId || directory.teachers.some(teacher => teacher.id === assignment.teacherId && teacher.active)).map(assignment => <option key={assignment.id} value={assignment.id}>{assignmentName(assignment.id)}</option>)}</select></label>
+        {action === 'create_session' ? <ScheduleCourseSelector directory={directory} assignmentId={form.assignmentId} initialGroupId={groupId} initialComponentId={params.get('matiere') || ''} canAssign={portal.perms.permissions.includes('academic.assignment.manage')} onChange={id => setForm({ ...form, assignmentId: id, roomId: '' })} onAssign={setAssigning} /> : <label className="form-group">Affectation<select className="select-input" required value={form.assignmentId} onChange={event => setForm({ ...form, assignmentId: event.target.value, roomId: '' })}><option value="">Choisir une affectation</option>{directory.assignments.filter(assignment => assignment.id === current?.assignmentId || directory.teachers.some(teacher => teacher.id === assignment.teacherId && teacher.active)).map(assignment => <option key={assignment.id} value={assignment.id}>{assignmentName(assignment.id)}</option>)}</select></label>}
         <label className="form-group">Type de séance<select className="select-input" value={form.mode} onChange={event => setForm({ ...form, mode: event.target.value as SessionMode, roomId: '' })}><option value="COURS">Cours en présentiel</option><option value="PAPIER">Épreuve sur papier</option><option value="EN_LIGNE">En ligne</option></select></label>
         {form.mode !== 'EN_LIGNE' && <label className="form-group">Salle prévue<select className="select-input" required disabled={!assignment} value={form.roomId} onChange={event => setForm({ ...form, roomId: event.target.value })}><option value="">Choisir une salle disponible</option>{directory.rooms.filter(room => room.available && (!room.siteId || room.siteId === siteId)).map(room => <option key={room.id} value={room.id}>{room.name} · {room.capacity} places</option>)}</select></label>}
       </>}
@@ -150,5 +162,8 @@ function ScheduleManager() {
       <label className="form-group">Motif<textarea className="input" required minLength={3} maxLength={1000} value={form.reason} onChange={event => setForm({ ...form, reason: event.target.value })} /></label>
       <DrawerActions><button className="btn btn-primary">Vérifier les informations</button><DrawerCloseButton className="btn btn-outline" disabled={saving}>Annuler</DrawerCloseButton></DrawerActions>
     </ReviewedForm></WorkPage>}
+    {assigning && <CourseAssignmentDialog {...assigning} onClose={() => setAssigning(null)} onSaved={async id => {
+      const updated = await loadSchedule(activeRole); setDirectory(updated); setForm(value => ({ ...value, assignmentId: id, roomId: '' })); setAssigning(null);
+    }} />}
   </div>;
 }

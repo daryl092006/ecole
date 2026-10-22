@@ -1,0 +1,31 @@
+import { test, expect } from '@playwright/test';
+import { authenticateFixture, snapshot } from './persistent-fixture';
+
+for (const width of [390, 1440]) test(`Programmes guidés sans sélection d’UE à ${width}px`, async ({ page }) => {
+  await page.setViewportSize({ width, height: 950 });
+  await authenticateFixture(page);
+  const campus = structuredClone(snapshot);
+  campus.tables.programs = [{ id: 'P1', name: 'Finance Digitale' }, { id: 'P2', name: 'Marketing Digital' }];
+  campus.tables.levels = [{ id: 'L1', name: 'Licence 1' }];
+  campus.tables.curricula = [{ id: 'CUR', program_id: 'P1', level_id: 'L1', status: 'DRAFT', version: 1 }];
+  campus.tables.curriculum_semesters = [{ id: 'SEM', curriculum_id: 'CUR', name: 'Semestre 1', position: 1 }];
+  campus.tables.teaching_units = [{ id: 'UNIT', curriculum_id: 'CUR', semester_id: 'SEM' }];
+  campus.tables.subjects = [{ id: 'SUBJECT', name: 'Introduction à la finance', code: 'FIN1101' }];
+  campus.tables.curriculum_components = [{ id: 'COMP', curriculum_id: 'CUR', unit_id: 'UNIT', subject_id: 'SUBJECT', credits: 3, coefficient: 1 }];
+  await page.route('**/api/campus', route => route.fulfill({ json: campus }));
+  await page.goto('/academique/filieres');
+  await expect(page.getByRole('region', { name: 'Matières du semestre' })).toHaveCount(0);
+  await page.getByLabel('1. Filière').selectOption('P1');
+  await page.getByLabel('2. Niveau').selectOption('L1');
+  await page.getByLabel('3. Semestre').selectOption('SEM');
+  const subjects = page.getByRole('region', { name: 'Matières du semestre' });
+  await expect(subjects).toContainText('Introduction à la finance');
+  await expect(subjects.getByRole('link', { name: 'Programmer un cours' })).toHaveAttribute('href', '/academique/emploi-du-temps?matiere=COMP');
+  await expect(page.getByRole('combobox', { name: /Unité|UE/ })).toHaveCount(0);
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+  await page.screenshot({ path: `tmp/screenshots/course-workflow/${width}/programmes.png`, fullPage: true });
+  await page.getByLabel('1. Filière').selectOption('P2');
+  await expect(subjects).toHaveCount(0);
+  await expect(page.getByLabel('2. Niveau')).toHaveValue('');
+  await expect(page.getByText('Introduction à la finance', { exact: true })).toHaveCount(0);
+});

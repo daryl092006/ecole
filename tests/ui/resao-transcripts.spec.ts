@@ -17,11 +17,11 @@ const documentContent = (count: number): TranscriptDocument => ({
 test('Création : code automatique, récapitulatif puis enregistrement avec le semestre et les crédits', async ({ page }) => {
   await authenticateFixture(page);
   let campusReads = 0;
-  await page.route('**/api/campus', route => { campusReads++; return route.fulfill({ json: { ...snapshot, academicContext: { selection: 'current', selectedYearId: year.id, currentYearId: year.id, years: [year] } } }); });
+  await page.route('**/api/campus', route => { campusReads++; return route.fulfill({ json: { ...snapshot, tables: { ...snapshot.tables, ...tables }, academicContext: { selection: 'current', selectedYearId: year.id, currentYearId: year.id, years: [year] } } }); });
   const tables = {
-    academic_years: [year], subjects: [{ id: 'OLD', name: 'Ancienne matière', code: 'ECN2101', academic_year_id: year.id }],
+    programs: [{ id: 'P', name: 'Finance Digitale' }], academic_years: [year], subjects: [{ id: 'OLD', name: 'Ancienne matière', code: 'ECN2101', academic_year_id: year.id }],
     cycles: [{ id: 'C', code: 'MASTER', name: 'Master' }], levels: [{ id: 'L', cycle_id: 'C', name: 'Master 1', position: 1 }],
-    curricula: [{ id: 'CUR', level_id: 'L', name: 'Finance Digitale · Master 1', status: 'DRAFT' }],
+    curricula: [{ id: 'CUR', program_id: 'P', level_id: 'L', name: 'Finance Digitale · Master 1', status: 'DRAFT' }],
     curriculum_semesters: [{ id: semesterId, curriculum_id: 'CUR', name: 'Semestre 1', position: 1 }], teaching_units: [],
   };
   const writes: Record<string, unknown>[] = [];
@@ -31,11 +31,14 @@ test('Création : code automatique, récapitulatif puis enregistrement avec le s
     return route.fulfill({ status: 201, json: { id: 'CREATED', revision: 2 } });
   });
   await page.goto('/academique/filieres?collection=subjects');
+  await page.getByLabel('1. Filière').selectOption('P');
+  await page.getByLabel('2. Niveau').selectOption('L');
+  await page.getByLabel('3. Semestre').selectOption(semesterId);
   await page.getByRole('button', { name: 'Ajouter une matière', exact: true }).click();
   const dialog = page.getByRole('dialog');
   await dialog.getByRole('textbox', { name: 'Nom', exact: true }).fill('Finance digitale');
   await dialog.getByLabel('Sigle de discipline REESAO (3 lettres)').fill('ecn');
-  await dialog.getByRole('combobox', { name: /^Semestre du programme/ }).selectOption(semesterId);
+  await expect(dialog.getByRole('combobox', { name: /^Semestre du programme/ })).toHaveCount(0);
   await dialog.getByLabel('Crédits', { exact: true }).fill('3.75');
   await dialog.getByLabel('Coefficient', { exact: true }).fill('0.625');
   await expect(dialog.getByRole('textbox', { name: 'Code', exact: true })).toHaveValue('ECN2102');
