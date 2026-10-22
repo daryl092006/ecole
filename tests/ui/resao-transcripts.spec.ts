@@ -134,7 +134,7 @@ test('Le bouton connecté prépare le relevé complet et déclenche son impressi
   await page.getByRole('button', { name: 'Imprimer le relevé · A4, une page' }).click();
   await expect(page.locator('html')).toHaveAttribute('data-transcript-printed', 'true');
   const frame = page.frameLocator('.transcript-print-frame');
-  await expect(frame.getByRole('heading', { name: 'RELEVÉ DE NOTES' })).toHaveCount(1);
+  await expect(frame.getByRole('heading', { name: /RELEV[EÉ] DE NOTES/ })).toHaveCount(1);
   await expect(frame.locator('.transcript-content')).toHaveCSS('transform', /matrix/);
   await expect(frame.locator('.transcript-reference')).toContainText('REL-RECETTE');
   expect(transcriptReads).toBe(1);

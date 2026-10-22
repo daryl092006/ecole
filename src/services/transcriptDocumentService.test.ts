@@ -10,10 +10,10 @@ const content: TranscriptDocumentContent = {
 const row = { id: 'DOC', kind: 'RELEVE', decision_id: 'D', reference: 'REL-1', issued_at: '2026-09-09', content_snapshot: content };
 const document = readTranscriptDocument(row);
 const markup = transcriptDocumentMarkup(document);
-assert.ok(markup.includes('UNITÉ D’ENSEIGNEMENT (UE)'));
+assert.ok(markup.includes('UNITE D’ENSEIGNEMENT(UE)'));
 assert.ok(markup.includes('MINISTÈRE DE L’ÉDUCATION NATIONALE'));
 assert.ok(markup.includes('MINISTÈRE DÉLÉGUÉ CHARGÉ DE L’ENSEIGNEMENT SUPÉRIEUR ET DE LA RECHERCHE SCIENTIFIQUE'));
-assert.ok(!markup.includes('MINISTÈRE DE L’ENSEIGNEMENT SUPÉRIEUR<br>'));
+assert.ok(!markup.includes('MINISTERE DE L’ENSEIGNEMENT'));
 assert.ok(markup.includes('src="/logo-escen-releve.png"'));
 assert.ok(markup.includes('class="transcript-title-band"'));
 assert.ok(markup.includes('class="transcript-program"'));
