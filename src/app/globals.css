@@ -983,8 +983,21 @@ code { font-family: var(--font-sans); font-size: 0.85em; background: var(--bg-te
 .workspace-heading { display: flex; justify-content: space-between; align-items: center; gap: .75rem; font-size: .64rem; letter-spacing: .12em; font-weight: 700; color: var(--text-muted); }
 .prototype-indicator { display: flex; align-items: center; gap: .4rem; letter-spacing: 0; font-weight: 500; }
 .prototype-indicator i { width: 6px; height: 6px; border-radius: 50%; background: var(--success); }
-.workspace-breadcrumb { display: flex; align-items: center; flex-wrap: wrap; gap: .6rem; font-size: .78rem; color: var(--text-secondary); margin: .75rem 0 1.4rem; }
-.workspace-breadcrumb span { color: #a0acbc; }
+.workspace-breadcrumb {
+  display: inline-flex;
+  align-items: center;
+  flex-wrap: nowrap;
+  white-space: nowrap;
+  overflow-x: auto;
+  gap: 0.5rem;
+  font-size: 0.8rem;
+  color: var(--text-secondary);
+  scrollbar-width: none;
+}
+.workspace-breadcrumb::-webkit-scrollbar {
+  display: none;
+}
+.workspace-breadcrumb span { color: #94a3b8; }
 .workspace-breadcrumb strong { font-weight: 600; color: var(--text-primary); }
 .module-header { margin-bottom: 1.5rem; }
 .module-header h1 { font-size: clamp(1.45rem, 2.3vw, 1.85rem); letter-spacing: -.045em; font-weight: 700; }
@@ -1571,8 +1584,8 @@ form { scroll-margin-top: 1rem; }
 .sidebar .nav-item { font-size: 14px; min-height: 44px; }
 .sidebar .subnav-item { font-size: 13px; padding: 10px; }
 .sidebar .nav-toggle { min-width: 40px; min-height: 44px; }
-.workspace-location { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; margin-bottom: 12px; }
-.workspace-location .workspace-breadcrumb { margin: 0; flex-wrap: wrap; }
+.workspace-location { display: flex; align-items: center; justify-content: space-between; gap: 16px; margin-bottom: 14px; padding-bottom: 10px; border-bottom: 1px solid #f1f5f9; }
+.workspace-location .workspace-breadcrumb { margin: 0; }
 .connected-data-bar { border-top: 1px solid #e1e7eb; padding-top: 10px; margin-bottom: 18px; }
 
 /* Revue des écrans : donner la priorité au titre, à la recherche et aux dossiers. */
