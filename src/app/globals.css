@@ -2172,6 +2172,50 @@ label.form-group {
   margin-top: 0.5rem;
 }
 
+/* Sélecteur de dossier étudiant (StudentDossierPicker) */
+.dossier-picker-card {
+  margin-top: 0.5rem;
+}
+
+.dossier-picker-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 1rem;
+  margin-bottom: 1.25rem;
+  padding-bottom: 0.85rem;
+  border-bottom: 1px solid #f1f5f9;
+}
+
+.dossier-picker-header h2 {
+  font-size: 1.15rem;
+  font-weight: 700;
+  color: var(--text-primary);
+  margin: 0;
+}
+
+.dossier-picker-toolbar {
+  margin-bottom: 1.25rem;
+}
+
+.dossier-picker-toolbar .input {
+  background: #ffffff;
+  border: 1px solid #cbd5e1;
+}
+
+.dossier-active-card {
+  margin-bottom: 1.5rem;
+}
+
+.dossier-active-inner {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 1.25rem;
+}
+
 /* Espace de travail de formulaire plein écran (WorkPage) */
 .work-page {
   max-width: 980px;
