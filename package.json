@@ -8,7 +8,7 @@
     "start": "node scripts/run-next.mjs start",
     "lint": "eslint",
     "test": "node scripts/verify-workflows.cjs && npm run test:db",
-    "test:db": "node scripts/verify-database.mjs",
+    "test:db": "node scripts/verify-database.mjs && node scripts/verify-teacher-profile-recovery.mjs",
     "test:legacy": "python3 scripts/prepare-legacy-data.py --self-test",
     "db:describe": "node scripts/describe-database.mjs",
     "db:stage": "node scripts/load-legacy-stage.mjs",

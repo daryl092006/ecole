@@ -81,9 +81,48 @@ export default function ConnectedDomainWorkspace({ section, studentMatricule }: 
     && (!dateKey || ((!start || String(row[dateKey] || '').slice(0, 10) >= start) && (!end || (!!row[dateKey] && String(row[dateKey]).slice(0, 10) <= end))))
     && Object.entries(row).some(([key, value]) => connectedRecordValue(collection, key, value, snapshot).toLocaleLowerCase('fr').includes(query.toLocaleLowerCase('fr'))));
   const page = rows.slice(offset, offset + 25);
-  if (['espace_documents', 'espace_finance'].includes(section) && !portal.perms.scope.ownDataOnly) return <section className="card"><h1>{title}</h1><p>Vous êtes connecté en tant que membre du personnel ({portal.activeRole}). Accédez directement aux espaces de gestion correspondants pour l’établissement :</p><nav className="next-activities" aria-label="Accès de gestion">{portal.availableTabs.flatMap(tab => tab.subTabs || []).filter(item => ['staff_records', 'stud_cards', 'fin_kpis', 'fin_payments'].includes(item.id)).map(item => <Link key={item.id} href={item.href}>{item.name} →</Link>)}</nav></section>;
+  if (['espace_documents', 'espace_finance'].includes(section) && !portal.perms.scope.ownDataOnly) return (
+    <section className="card card-full staff-redirect-card">
+      <div className="staff-redirect-header">
+        <span className="pill pill-default">Espace personnel étudiant</span>
+        <h1>{title}</h1>
+        <p className="staff-redirect-desc">
+          Cette rubrique est réservée aux étudiants pour consulter leurs documents et quittances scolaires personnelles.
+          En tant que <strong>{portal.activeRole}</strong>, accédez directement aux modules de gestion de l’établissement :
+        </p>
+      </div>
+      <nav className="staff-redirect-grid" aria-label="Accès de gestion">
+        {portal.availableTabs.flatMap(tab => tab.subTabs || []).filter(item => ['staff_records', 'stud_cards', 'fin_kpis', 'fin_payments'].includes(item.id)).map(item => (
+          <Link key={item.id} href={item.href} className="staff-redirect-link-card">
+            <span className="staff-redirect-link-title">{item.name}</span>
+            <span className="staff-redirect-link-arrow">Accéder →</span>
+          </Link>
+        ))}
+      </nav>
+    </section>
+  );
   const selectDossier = (matricule: string) => { setDossier(matricule); setSelected(null); setQuery(''); setOffset(0); setExported(false); };
-  const dossierPicker = contextual && !studentMatricule ? student ? <section className="card card-full dossier-active-card"><div className="dossier-active-inner"><div><span className="page-eyebrow">DOSSIER ACTIF</span><h2>Dossier consulté</h2><p><strong>{student.firstname} {student.lastname}</strong> · {student.matricule}</p><p className="cell-sub">{student.filiere} · {student.niveau}</p></div><button className="btn btn-outline" onClick={() => selectDossier('')}>Changer de dossier</button></div></section> : <StudentDossierPicker students={portal.students} onSelect={selectDossier} /> : null;
+  const dossierPicker = contextual && !studentMatricule ? student ? (
+    <section className="card card-full dossier-active-card">
+      <div className="dossier-active-inner">
+        <div>
+          <span className="page-eyebrow">DOSSIER ACTIF</span>
+          <h2>Dossier consulté : {student.firstname} {student.lastname}</h2>
+          <p className="cell-sub">Matricule : <strong>{student.matricule}</strong> · {student.filiere} · {student.niveau}</p>
+        </div>
+        <div className="btn-group">
+          {portal.perms.permissions.includes('student.view') && (
+            <Link className="btn btn-primary" href={`/etudiants/${encodeURIComponent(student.matricule)}`}>
+              Accéder au dossier complet →
+            </Link>
+          )}
+          <button className="btn btn-outline" onClick={() => selectDossier('')}>
+            Changer d’étudiant
+          </button>
+        </div>
+      </div>
+    </section>
+  ) : <StudentDossierPicker students={portal.students} onSelect={selectDossier} /> : null;
   if (contextual && !student && !studentMatricule) return <div className="domain-workspace"><div className="page-intro"><div><span className="page-eyebrow">CONSULTATION</span><h1>{title}</h1><p>{definition.purpose}</p></div></div>{section === 'acad_grades' && <GroupSubjectGradesPanel snapshot={snapshot} canViewStudents={portal.perms.permissions.includes('student.view')} onSelectStudent={mat => { setDossier(mat); setSelected(null); setQuery(''); setOffset(0); setExported(false); }} />}{dossierPicker}</div>;
   return <div className="domain-workspace">{!studentMatricule && <div className="page-intro"><div><span className="page-eyebrow">CONSULTATION</span><h1>{title}</h1><p>{definition.purpose}</p></div></div>}
     {dossierPicker}

@@ -1,5 +1,6 @@
 'use client';
 import { useState } from 'react';
+import Link from 'next/link';
 import ResponsiveTable from '@/components/ui/ResponsiveTable';
 import type { Student } from '@/types';
 
@@ -76,9 +77,14 @@ export default function StudentDossierPicker({ students, onSelect }: Props) {
                   </div>
                 </td>
                 <td>
-                  <button className="btn btn-sm btn-outline" onClick={() => onSelect(student.matricule)}>
-                    Consulter le dossier
-                  </button>
+                  <div className="btn-group">
+                    <button className="btn btn-sm btn-outline" onClick={() => onSelect(student.matricule)}>
+                      Consulter le dossier
+                    </button>
+                    <Link className="btn btn-sm btn-outline" href={`/etudiants/${encodeURIComponent(student.matricule)}`}>
+                      Fiche complète →
+                    </Link>
+                  </div>
                 </td>
               </tr>
             ))}

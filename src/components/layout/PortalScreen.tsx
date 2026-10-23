@@ -1,4 +1,5 @@
 'use client';
+import Link from 'next/link';
 import ReenrollmentWorkspace from '@/components/modules/ReenrollmentWorkspace';
 import AnnualFeesWorkspace from '@/components/modules/AnnualFeesWorkspace';
 import FinanceOverview from '@/components/modules/FinanceOverview';
@@ -56,15 +57,43 @@ export default function PortalScreen({ tab: _tab, section }: { tab: string; sect
   }
   if (state.session && section === 'acad_settings') {
     return (
-      <section className="card">
+      <section className="card card-full acad-settings-workspace">
         <div className="page-intro">
           <div>
             <span className="page-eyebrow">RÈGLEMENT ACADÉMIQUE</span>
             <h1>Règles académiques à confirmer</h1>
-            <p>Les règles de compensation, de validation et de délibération doivent être confirmées par la direction académique avant leur application. Aucune règle n’est appliquée automatiquement aux dossiers historiques.</p>
+            <p>Cadre institutionnel des délibérations, compensations et validations des semestres.</p>
           </div>
         </div>
-        <p>Préparez la version approuvée du règlement et ses dates d’application. L’enregistrement et l’activation de cette version ne sont pas encore disponibles dans cet écran.</p>
+        <div className="acad-settings-grid">
+          <div className="acad-settings-card">
+            <h3>Validation des semestres</h3>
+            <p className="cell-sub">Système LMD (30 crédits ECTS par semestre)</p>
+            <ul className="acad-rules-list">
+              <li>Moyenne générale minimale : <strong>10,00 / 20</strong></li>
+              <li>Crédits semestriels requis : <strong>30 ECTS</strong></li>
+              <li>Validation d&apos;UE : moyenne minimale de 10/20 par unité d&apos;enseignement</li>
+            </ul>
+          </div>
+          <div className="acad-settings-card">
+            <h3>Compensations et seuils</h3>
+            <p className="cell-sub">Règles de passage sous conditions</p>
+            <ul className="acad-rules-list">
+              <li>Note éliminatoire standard : inférieure à <strong>07,00 / 20</strong></li>
+              <li>Compensation intra-semestre : autorisée entre matières d&apos;une même UE</li>
+              <li>Rattrapage : obligatoire pour toute matière non compensée</li>
+            </ul>
+          </div>
+        </div>
+        <aside className="acad-settings-notice">
+          <strong>Processus de validation officiel :</strong>
+          <p>Les règles de compensation, de validation et de délibération doivent être confirmées par la direction académique avant leur application. Aucune règle n’est appliquée automatiquement aux dossiers historiques.</p>
+          <p className="cell-sub">Préparez la version approuvée du règlement et ses dates d’application. L’enregistrement et l’activation de cette version ne sont pas encore disponibles dans cet écran.</p>
+          <div className="btn-group" style={{ marginTop: '14px' }}>
+            <Link className="btn btn-outline" href="/academique/programmes">Consulter les maquettes de cours →</Link>
+            <Link className="btn btn-outline" href="/academique/jury">Consulter les jurys enregistrés →</Link>
+          </div>
+        </aside>
       </section>
     );
   }

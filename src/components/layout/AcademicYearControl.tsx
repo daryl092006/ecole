@@ -16,5 +16,5 @@ export default function AcademicYearControl() {
     <option value="current">{current ? `Année de travail : ${current.name}` : context?.currentYearConfigured ? 'Mes années autorisées · consultation' : 'Choisir une année scolaire'}</option>
     <option value="all">Toutes les années · consultation</option>
     {(context?.years || []).filter(year => year.id !== current?.id).map(year => <option key={year.id} value={year.id}>{year.name} · {YEAR_STATUS_LABELS[year.status]}</option>)}
-  </select>{current && selectedValue !== 'current' && <span className="cell-sub">Année de travail : {current.name}</span>}{portal.globalAccess && (portal.perms.permissions.includes('academic.year.open') || portal.perms.permissions.includes('academic.structure.manage')) && <Link href="/academique/referentiel?collection=academic_years">Gérer</Link>}</div>;
+  </select>{current && selectedValue !== 'current' && <span className="cell-sub">Année de travail : {current.name}</span>}{portal.globalAccess && (portal.perms.permissions.includes('academic.year.open') || portal.perms.permissions.includes('academic.structure.manage')) && <Link href="/academique/referentiel?collection=academic_years" className="academic-year-manage-link" title="Configurer les années scolaires">Gérer</Link>}</div>;
 }

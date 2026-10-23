@@ -1589,7 +1589,10 @@ form { scroll-margin-top: 1rem; }
 .connected-data-bar { border-top: 1px solid #e1e7eb; padding-top: 10px; margin-bottom: 18px; }
 
 /* Revue des écrans : donner la priorité au titre, à la recherche et aux dossiers. */
-.workspace-data-footer { margin: 28px 0 0; }
+.workspace-data-footer { margin: 36px 0 16px; padding-top: 14px; border-top: 1px solid #e2e8f0; font-size: 11px; color: #64748b; }
+.workspace-footer-inner { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 12px; }
+.footer-system-status { display: inline-flex; align-items: center; gap: 6px; color: #059669; font-weight: 500; }
+.status-dot-pulse { width: 7px; height: 7px; border-radius: 50%; background-color: #10b981; box-shadow: 0 0 0 2px rgba(16, 185, 129, 0.2); }
 .student-advanced-filters summary { cursor: pointer; color: #2563eb; font-weight: 600; font-size: 13px; padding: 10px 0; }
 .student-advanced-filters .filter-grid { margin-top: 12px; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 12px; }
 .student-filter-footer { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px; margin-top: 14px; padding-top: 12px; border-top: 1px solid #f1f5f9; }
@@ -1686,9 +1689,33 @@ form { scroll-margin-top: 1rem; }
 .publication-list p { line-height: 1.7; margin: 12px 0; color: #475569; }
 @media(max-width:1024px) { .planning-filters { grid-template-columns: repeat(2,minmax(0,1fr)); } .planning-session { grid-template-columns: 1fr; gap: 10px; } }
 @media(max-width:768px) { .planning-filters { grid-template-columns: 1fr; } .planning-session { padding: 15px; } }
-.availability-details { margin: 12px 0 18px; color: #64748b; font-size: 12px; }
-.availability-details summary { cursor: pointer; padding: 8px 0; color: #64748b; }
-.availability-details p { line-height: 1.7; padding: 12px; background: #f8fafc; margin-top: 8px; border-radius: 6px; }
+.availability-details { margin: 14px 0 20px; border: 1px solid #e2e8f0; border-radius: 8px; background: #ffffff; overflow: hidden; }
+.availability-details summary { cursor: pointer; padding: 10px 14px; color: #475569; font-size: 12px; font-weight: 600; background: #f8fafc; }
+.availability-details summary:hover { color: #0f172a; }
+.availability-details p { line-height: 1.6; padding: 12px 14px; margin: 0; font-size: 12px; color: #64748b; border-top: 1px solid #e2e8f0; background: #ffffff; }
+
+.academic-year-manage-link { display: inline-flex; align-items: center; padding: 4px 10px; border-radius: 6px; background: #eff6ff; color: #2563eb; border: 1px solid #bfdbfe; font-size: 11px; font-weight: 600; text-decoration: none; transition: all 0.15s ease; white-space: nowrap; }
+.academic-year-manage-link:hover { background: #dbeafe; border-color: #93c5fd; color: #1d4ed8; }
+
+.staff-redirect-card { padding: 24px; border: 1px solid #e2e8f0; background: #ffffff; }
+.staff-redirect-header { margin-bottom: 20px; }
+.staff-redirect-header h1 { font-size: 20px; margin: 10px 0 8px; color: #0f172a; }
+.staff-redirect-desc { font-size: 14px; line-height: 1.6; color: #475569; max-width: 720px; }
+.staff-redirect-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 14px; margin-top: 16px; }
+.staff-redirect-link-card { display: flex; flex-direction: column; justify-content: space-between; padding: 16px; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; text-decoration: none; transition: all 0.15s ease; }
+.staff-redirect-link-card:hover { border-color: #93c5fd; background: #eff6ff; transform: translateY(-1px); }
+.staff-redirect-link-title { font-size: 14px; font-weight: 600; color: #0f172a; }
+.staff-redirect-link-arrow { margin-top: 10px; font-size: 12px; font-weight: 500; color: #2563eb; }
+
+.acad-settings-workspace { padding: 24px; }
+.acad-settings-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 16px; margin: 20px 0; }
+.acad-settings-card { padding: 18px; border: 1px solid #e2e8f0; border-radius: 8px; background: #f8fafc; }
+.acad-settings-card h3 { font-size: 15px; font-weight: 700; color: #0f172a; margin-bottom: 4px; }
+.acad-rules-list { list-style: none; padding: 0; margin: 12px 0 0; font-size: 13px; color: #334155; display: grid; gap: 8px; }
+.acad-rules-list li { position: relative; padding-left: 14px; }
+.acad-rules-list li::before { content: '•'; position: absolute; left: 0; color: #2563eb; font-weight: bold; }
+.acad-settings-notice { padding: 16px; background: #f8fafc; border: 1px solid #e2e8f0; border-left: 4px solid #2563eb; border-radius: 6px; font-size: 13px; color: #334155; line-height: 1.6; }
+.acad-settings-notice p { margin: 6px 0 0; }
 .next-activity-panel { margin-top: 24px; padding: 18px 0; border-top: 1px solid #e2e8f0; }
 .next-activity-panel h2 { font-size: 16px; font-weight: 700; color: #0f172a; }
 .advanced-record-filters { margin: 12px 0 18px; }
