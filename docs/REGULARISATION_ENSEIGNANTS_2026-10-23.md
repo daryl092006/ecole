@@ -1,6 +1,6 @@
-# Régularisation des profils enseignants — préparation du 23 octobre 2026
+# Régularisation des profils enseignants — 23 octobre 2026
 
-**État : correction préparée et testée en local, non appliquée à Supabase.**
+**État : correction appliquée à Supabase après accord explicite, puis vérifiée le 23 octobre 2026 à 14:36:13 UTC.** Les sections de préparation ci-dessous conservent la description du lot approuvé ; le bilan d'application figure en fin de document.
 
 Cette phase fait suite à l'accord de préparer la correction des 19 comptes ENS identifiés dans `AUDIT_ROLES_2026-10-23.md`. Elle ne modifie aucun rôle, aucune migration et aucun script historique protégé.
 
@@ -81,4 +81,26 @@ Le script échoue si la liste des 19 comptes, leurs rattachements ou la provenan
 
 Un import `Link` manquant dans des modifications concomitantes de `PortalScreen.tsx` a été ajouté pour débloquer les contrôles globaux. Les autres modifications de ce fichier et du reste de l'espace de travail ont été préservées.
 
-Les vérifications locales ne prétendent pas avoir connecté ces utilisateurs avec leurs mots de passe réels. La correction en production reste à appliquer et à contrôler après accord sur le lot présenté. Les affectations d'enseignement restent un travail distinct : elles ne sont pas déduites du rôle ENS.
+Les vérifications locales ne prétendent pas avoir connecté ces utilisateurs avec leurs mots de passe réels. Les affectations d'enseignement restent un travail distinct : elles ne sont pas déduites du rôle ENS.
+
+## Application distante autorisée et vérifiée
+
+Après l'accord explicite « go » sur le lot présenté, l'empreinte du SQL a été contrôlée à nouveau, ainsi que le projet lié, la révision 16 et les identités des 19 cibles. Le fichier `correction.sql` approuvé a été exécuté une seule fois, sans modification de son contenu. Aucune migration de schéma n'a été appliquée.
+
+| Contrôle distant après application | Résultat |
+| --- | --- |
+| Révision du portail | 16 → 17 |
+| Dossiers personnel créés | 19 |
+| Profils enseignants créés et rattachés | 19 |
+| Comptes ENS actifs sans profil enseignant | 0 |
+| Profils de session des comptes actifs vérifiés par RPC | 172 |
+| Compte `a.jean.coach@escen.university` | Profil enseignant rattaché et retourné dans sa session |
+| Événements d'audit contrôlés | 38 : 19 pour `staff`, 19 pour `teachers` |
+| Audit avec auteur approuvé, action INSERT, motif et valeurs attendus | 38 / 38 |
+| Tables métier modifiées dans le snapshot | `staff`, `teachers` uniquement |
+
+Les empreintes de toutes les autres collections du snapshot sont identiques avant et après l'opération, notamment celles des personnes, comptes, rôles, permissions, attributions et étudiants. Les lectures de `escen_account_session` ont confirmé, pour chacun des 172 comptes actifs, l'identité du compte, les attributions présentes et les profils nécessaires selon le rôle. Les 19 identifiants enseignants correspondent exactement au lot approuvé.
+
+Les contrôles TypeScript, ESLint et `npm test` ont été relancés avec succès pendant cette phase : zéro erreur TypeScript/lint, deux avertissements de lint préexistants, 185 groupes PostgreSQL et 10 groupes de régularisation réussis. Les 20 tests Playwright des parcours enseignants avaient été validés pendant la préparation ; aucun code applicatif n'a été modifié pendant l'application distante.
+
+Les preuves privées sont conservées dans le même répertoire de lot : `before-application.json`, `after-application.json`, `verify-application.sql` et `audit-after-application.json`. Le blocage lié au profil manquant est levé pour les 19 enseignants. Une nouvelle tentative de connexion permet de charger les profils rétablis ; aucun mot de passe n'a été changé ou utilisé pour ces contrôles.
