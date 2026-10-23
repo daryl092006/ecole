@@ -10,12 +10,12 @@ import ReviewedForm from '@/components/ui/ReviewedForm';
 const emptyPerson = () => ({ firstname: '', lastname: '', email: '', phone: '', gender: '', birthDate: '', nationality: '', address: '', city: '', country: '' });
 const labels = { firstname: 'Prénom', lastname: 'Nom', email: 'Email', phone: 'Téléphone', birthDate: 'Date de naissance', nationality: 'Nationalité', address: 'Adresse', city: 'Ville', country: 'Pays' };
 
-export default function StudentCrudActions({ matricule, onCreated }: { matricule?: string; onCreated?: (matricule: string) => void }) {
+export default function StudentCrudActions({ matricule, onCreated, variant }: { matricule?: string; onCreated?: (matricule: string) => void; variant?: 'primary' | 'outline' }) {
   const portal = usePortal(); const router = useRouter();
   const [open, setOpen] = useState(false); const [person, setPerson] = useState(emptyPerson); const [number, setNumber] = useState(''); const [reason, setReason] = useState(''); const [saving, setSaving] = useState(false); const [error, setError] = useState('');
   if (!portal.session || !portal.globalAccess || !portal.perms.permissions.includes('student.lifecycle.manage') || !matricule && !portal.perms.permissions.includes('student.update')) return null;
   const student = portal.students.find(row => row.matricule === matricule);
-  return <><button className={`btn ${matricule ? 'btn-outline' : 'btn-primary'}`} onClick={() => { setOpen(true); setError(''); setPerson(emptyPerson()); setNumber(''); setReason(''); }}>{matricule ? 'Archiver le dossier' : 'Ajouter un dossier étudiant'}</button>
+  return <><button className={`btn ${variant ? `btn-${variant}` : matricule ? 'btn-outline' : 'btn-outline'}`} onClick={() => { setOpen(true); setError(''); setPerson(emptyPerson()); setNumber(''); setReason(''); }}>{matricule ? 'Archiver le dossier' : 'Ajouter un dossier étudiant'}</button>
     {open && <WorkPage busy={saving} title={matricule ? 'Archiver le dossier étudiant' : 'Ajouter un dossier étudiant'} onClose={() => { if (!saving) setOpen(false); }}>
       <ReviewedForm busy={saving} error={error} danger={!!matricule} confirmLabel={matricule ? 'Confirmer l’archivage' : 'Confirmer la création du dossier'}
         fields={matricule ? [{ label: 'Étudiant', value: `${student?.firstname || ''} ${student?.lastname || ''} · ${matricule}` }, { label: 'Motif', value: reason }] : [{ label: 'Matricule officiel', value: number }, ...Object.entries(labels).map(([key, label]) => ({ label, value: person[key as keyof typeof person] }))]}
