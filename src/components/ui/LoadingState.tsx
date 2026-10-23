@@ -38,10 +38,9 @@ export default function LoadingState({
         aria-busy="true"
       >
         <div className="loading-state-heading">
-          <LoaderCircle className="loading-spinner" size={22} aria-hidden="true" />
+          <LoaderCircle className="loading-spinner" size={20} aria-hidden="true" />
           <strong>{label}</strong>
         </div>
-        <p>Veuillez patienter, les informations sont en cours de récupération.</p>
         <div className="loading-cards-grid" aria-hidden="true">
           {[...Array(3)].map((_, i) => (
             <div key={i} className="loading-card-skeleton">
@@ -64,10 +63,9 @@ export default function LoadingState({
         aria-busy="true"
       >
         <div className="loading-state-heading">
-          <LoaderCircle className="loading-spinner" size={22} aria-hidden="true" />
+          <LoaderCircle className="loading-spinner" size={20} aria-hidden="true" />
           <strong>{label}</strong>
         </div>
-        <p>Veuillez patienter, les informations sont en cours de récupération.</p>
         <div className="loading-table-skeleton" aria-hidden="true">
           <div className="skeleton-table-head">
             <span style={{ width: '25%' }} />
@@ -96,10 +94,9 @@ export default function LoadingState({
       aria-busy="true"
     >
       <div className="loading-state-heading">
-        <LoaderCircle className="loading-spinner" size={24} aria-hidden="true" />
+        <LoaderCircle className="loading-spinner" size={20} aria-hidden="true" />
         <strong>{label}</strong>
       </div>
-      <p>Veuillez patienter, les informations sont en cours de récupération.</p>
       <div className="loading-skeleton" aria-hidden="true">
         <span />
         <span />

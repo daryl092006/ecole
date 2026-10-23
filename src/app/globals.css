@@ -3079,10 +3079,12 @@ input[type="radio"] {
 .error-state-content { min-width: 0; }
 .error-state h1 { font-size: clamp(1.15rem, 2vw, 1.45rem); line-height: 1.4; font-weight: 700; color: var(--text-primary); overflow-wrap: anywhere; }
 .error-state p { margin: .5rem 0 1.25rem; max-width: 65ch; color: var(--text-secondary); overflow-wrap: anywhere; }
-.loading-state-heading { font-size: .9rem; line-height: 1.5; }
-.loading-state-heading strong { font-weight: 600; }
+.loading-state-heading { display: flex; align-items: center; gap: .65rem; font-size: .88rem; line-height: 1.5; color: var(--text-primary); margin-bottom: .85rem; }
+.loading-state-heading strong { font-weight: 600; color: var(--text-primary); }
+.loading-spinner { animation: loading-spin 1s linear infinite; color: var(--primary); flex-shrink: 0; }
+@keyframes loading-spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
 .loading-state p { font-size: .85rem; }
-.loading-state-compact { background: var(--accent-light); padding: .85rem 1rem; }
+.loading-state-compact { background: var(--accent-light); padding: .85rem 1rem; border: 1px solid var(--accent-border); border-radius: var(--radius-sm); }
 .loading-cards-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 1rem; }
 .loading-card-skeleton { padding: 1.25rem; border: 1px solid var(--border); border-radius: var(--radius-sm); display: grid; gap: 1rem; }
 .skeleton-bar, .skeleton-table-head span, .skeleton-table-row span { display: block; height: .75rem; border-radius: 4px; background: #e6edf3; animation: loading-pulse 1.4s ease-in-out infinite; }
