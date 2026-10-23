@@ -1,3 +1,4 @@
+import { displayedEmployeeNumber } from '@/utils/staffReference';
 import type { DatabaseRow, PersistentContext, RelationalSnapshot } from '@/types/persistence';
 import type { TeacherDirectory, TeacherProfile } from '@/types/teachers';
 import { filterRelationalSnapshot } from './persistentPermissionsService';
@@ -27,7 +28,7 @@ export function teacherDirectory(snapshot: RelationalSnapshot, context: Persiste
   const staff = rows('staff').flatMap(member => {
     const person = rows('people').find(row => row.id === member.person_id && !row.archived_at);
     return member.archived_at || !person ? [] : [{ id: member.id, personId: person.id,
-      name: `${String(person.firstname || '')} ${String(person.lastname || '')}`.trim(), employeeNumber: String(member.employee_number || '') }];
+      name: `${String(person.firstname || '')} ${String(person.lastname || '')}`.trim(), employeeNumber: displayedEmployeeNumber(member.employee_number) }];
   });
   // Academic managers can choose an available teacher; no personal contact or account data is returned.
   const teachers: TeacherProfile[] = rows('teachers').flatMap(teacher => {

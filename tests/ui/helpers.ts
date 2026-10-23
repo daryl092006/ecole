@@ -41,6 +41,6 @@ export async function captureWorkspace(page: Page, name: string) {
   expect(tableIssues).toEqual([]);
   const width = page.viewportSize()!.width;
   const style = await page.addStyleTag({ content: '.app-wrapper { height: auto; overflow: visible; } .app-body, .main-content { overflow: visible; }' });
-  await page.screenshot({ path: `.tmp/interface/${width}/${name}.png`, fullPage: true });
+  await page.screenshot({ path: `${process.env.ESCEN_SCREENSHOT_DIR || '.tmp/interface'}/${width}/${name}.png`, fullPage: true });
   await style.evaluate(element => element.parentNode?.removeChild(element));
 }

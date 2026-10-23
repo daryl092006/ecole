@@ -40,6 +40,7 @@ export async function verifyTeacherManagement(db, check, { year, site, level }) 
     } catch (error) { return { data: null, error }; }
   } };
   const staffApi = loadLocalApiModule('app/api/staff/route.ts', client, context);
+  const staffDetailApi = loadLocalApiModule('app/api/staff/[personId]/route.ts', client, context);
   const api = loadLocalApiModule('app/api/teachers/route.ts', client, context);
   const revision = () => scalar('select revision as value from escen_private.portal_revision where singleton');
   const audits = () => scalar('select count(*)::integer as value from escen_private.audit_events');
@@ -66,10 +67,44 @@ export async function verifyTeacherManagement(db, check, { year, site, level }) 
   });
   await check('Personnel sans option enseignant : aucun profil pédagogique inventé', async () => {
     const before = await scalar('select count(*)::integer as value from escen.teachers');
-    const response = await addStaff({ isTeacher: false });
+    const response = await addStaff({ isTeacher: false, employeeNumber: '', position: 'Comptable', startsOn: '2026-10-01' });
     ordinaryStaffId = (await response.json()).id;
     assert.equal(response.status, 201);
     assert.equal(await scalar('select count(*)::integer as value from escen.teachers'), before);
+  });
+  await check('Personnel administratif : fonction persistée sans matricule affiché ni compte créé', async () => {
+    const member = (await db.query('select * from escen.staff where id=$1', [ordinaryStaffId])).rows[0];
+    assert.match(member.employee_number, /^INT-[0-9a-f-]{36}$/);
+    const contract = (await db.query('select * from escen.staff_contracts where staff_id=$1', [ordinaryStaffId])).rows[0];
+    assert.equal(contract.position, 'Comptable');
+    assert.equal(contract.contract_type, 'PERMANENT');
+    assert.equal(day(contract.starts_on), '2026-10-01');
+    assert.equal(contract.site_id, null);
+    assert.equal(await scalar('select count(*)::integer as value from escen.accounts where person_id=$1', [member.person_id]), 0);
+    const directory = await (await staffApi.GET(new Request('http://local.test/api/staff'))).json();
+    assert.equal(directory.records.find(row => row.staffId === ordinaryStaffId).employeeNumber, '');
+  });
+  await check('Personnel : modification motivée, référence stable et historique des fonctions conservé', async () => {
+    const member = (await db.query('select * from escen.staff where id=$1', [ordinaryStaffId])).rows[0];
+    const patch = async values => staffDetailApi.PATCH(new Request('http://local.test/api/staff', {
+      method: 'PATCH', body: JSON.stringify({ revision: await revision(), firstname: 'Nouveau', lastname: 'Professeur', email: '', phone: '90112233', employeeNumber: '', position: 'Comptable', contractType: 'PERMANENT', reason: 'Contact du personnel vérifié', ...values }),
+    }), { params: Promise.resolve({ personId: member.person_id }) });
+    assert.equal((await patch({})).status, 200);
+    assert.equal(await scalar('select employee_number as value from escen.staff where id=$1', [member.id]), member.employee_number);
+    assert.equal(await scalar("select count(*)::integer as value from escen_private.audit_events where table_name='staff' and entity_id=$1 and reason='Contact du personnel vérifié' and actor_id=$2", [member.id, actor.id]), 1);
+    assert.equal(await scalar('select count(*)::integer as value from escen.staff_contracts where staff_id=$1', [member.id]), 1);
+    assert.equal((await patch({ position: 'Secrétaire', contractType: 'VACATAIRE', reason: 'Nouvelle fonction validée' })).status, 200);
+    const contracts = (await db.query('select * from escen.staff_contracts where staff_id=$1 order by starts_on, position', [member.id])).rows;
+    assert.equal(contracts.length, 2);
+    assert.equal(day(contracts.find(row => row.position === 'Comptable').ends_on), day(new Date()));
+    assert.equal(contracts.find(row => !row.ends_on).position, 'Secrétaire');
+    assert.equal(contracts.find(row => !row.ends_on).contract_type, 'VACATAIRE');
+    const before = await revision();
+    const auditCount = await audits();
+    assert.equal((await patch({ position: '' })).status, 400);
+    assert.equal((await patch({ revision: 0 })).status, 409);
+    assert.equal(await revision(), before);
+    assert.equal(await audits(), auditCount);
   });
   await check('Personnel enseignant : échec du profil annule identité, dossier, audit et révision', async () => {
     const before = await revision();

@@ -60,22 +60,21 @@ test('Suivi enseignant : distinguer les copies remises des résultats manquants 
 });
 
 for (const width of [390, 1440]) {
-  test(`Personnel : case enseignant, récapitulatif et transaction unique à ${width}px`, async ({ page }) => {
+  test(`Personnel : création enseignant, récapitulatif et transaction unique à ${width}px`, async ({ page }) => {
     await page.setViewportSize({ width, height: 900 });
     const fixture = await connectedTeachers(page);
     await page.goto('/personnel');
-    await page.getByRole('button', { name: 'Nouveau membre', exact: true }).click();
-    const dialog = page.getByRole('dialog', { name: 'Nouveau membre du personnel', exact: true });
+    await page.getByRole('button', { name: 'Nouvel enseignant', exact: true }).click();
+    const dialog = page.getByRole('dialog', { name: 'Nouvel enseignant', exact: true });
     await dialog.getByRole('textbox', { name: 'Prénom', exact: true }).fill('Dina');
     await dialog.getByRole('textbox', { name: 'Nom', exact: true }).fill('Pédagogie');
-    await dialog.getByRole('textbox', { name: 'Matricule officiel du personnel', exact: true }).fill('ENS-RECETTE');
-    await dialog.getByRole('checkbox', { name: 'C’est un enseignant', exact: true }).check();
+    await dialog.getByRole('textbox', { name: 'Matricule enseignant (facultatif)', exact: true }).fill('ENS-RECETTE');
     await dialog.getByRole('textbox', { name: 'Spécialité enseignante', exact: true }).fill('Statistiques');
     await dialog.getByRole('button', { name: 'Vérifier les informations', exact: true }).click();
-    await expect(dialog.locator('.action-review')).toContainText('Profil enseignant');
+    await expect(dialog.locator('.action-review')).toContainText('Enseignant');
     await expect(dialog.locator('.action-review')).toContainText('Statistiques');
     expect(fixture.transactions).toEqual([]);
-    await dialog.getByRole('button', { name: 'Confirmer la création du dossier', exact: true }).click();
+    await dialog.getByRole('button', { name: 'Confirmer la création', exact: true }).click();
     await expect(dialog).not.toBeVisible();
     await expect(page.getByRole('row').filter({ hasText: 'ENS-RECETTE' })).toContainText('Dina Pédagogie');
     expect(fixture.transactions[0].map(change => change.table)).toEqual(['people', 'staff', 'teachers']);

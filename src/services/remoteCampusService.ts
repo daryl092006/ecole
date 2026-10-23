@@ -61,8 +61,8 @@ export async function mutateCatalog(collection: string, values: { revision: numb
 }
 
 export async function updatePersonnel(personId: string, values: import('@/types/staff').PersonnelForm & {revision:number;reason:string}, role:RoleName):Promise<void> {
-  const {personId: ignored, ...body}=values;
-  void ignored;
+  const {firstname,lastname,email,phone,employeeNumber,position,contractType,revision,reason}=values;
+  const body={firstname,lastname,email,phone,employeeNumber,position:position || '',contractType:contractType || 'PERMANENT',revision,reason};
   await readResponse(await fetch(`/api/staff/${encodeURIComponent(personId)}`,{method:'PATCH',headers:{...await headers(role),'Content-Type':'application/json'},body:JSON.stringify(body)}));
 }
 export async function archivePersonnel(personId:string, revision:number, reason:string, role:RoleName):Promise<void> {

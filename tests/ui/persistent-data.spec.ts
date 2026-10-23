@@ -106,24 +106,25 @@ for (const width of [390, 1440]) {
     await page.getByRole('button', { name: 'Tous les examens', exact: false }).click();
     const dialog = page.getByRole('dialog');
     await expect(page.getByRole('button', { name: 'Voir les copies' })).toBeFocused();
-    const records: import('../../src/types/staff').PersonnelRecord[] = [{ personId: 'PERSON', staffId: null, firstname: 'Jean', lastname: 'Technique', email: 'it@example.test', phone: '', employeeNumber: '', active: true, contracts: [] }];
+    const records: import('../../src/types/staff').PersonnelRecord[] = [{ personId: 'PERSON', staffId: null, firstname: 'Jean', lastname: 'Technique', email: 'it@example.test', phone: '', employeeNumber: '', isTeacher: false, active: true, contracts: [] }];
     let saved = false;
     await page.route('**/api/staff', async route => {
       if (route.request().method() === 'POST') {
-        const body = route.request().postDataJSON(); expect(body.employeeNumber).toBe('P-2026-001'); expect(body.firstname).toBe('Marie');
-        saved = true; records.push({ ...records[0], personId: 'NEW', staffId: 'STAFF', firstname: body.firstname, lastname: body.lastname, email: body.email, employeeNumber: body.employeeNumber });
+        const body = route.request().postDataJSON(); expect(body.employeeNumber).toBe(''); expect(body.position).toBe('Comptable'); expect(body.firstname).toBe('Marie');
+        saved = true; records.push({ ...records[0], personId: 'NEW', staffId: 'STAFF', firstname: body.firstname, lastname: body.lastname, email: body.email, employeeNumber: '', contracts: [{ id: 'C1', position: body.position, type: 'PERMANENT', startsOn: '2026-10-23', endsOn: null }] });
         await route.fulfill({ status: 201, json: { id: 'STAFF' } });
       } else await route.fulfill({ json: { records, revision:1 } });
     });
-    await page.goto('/personnel'); await page.getByRole('button', { name: 'Ouvrir le dossier' }).click();
-    await expect(dialog.getByText('Aucun contrat renseigné dans la base.', { exact: false })).toBeVisible();
-    await page.keyboard.press('Escape'); await page.getByRole('button', { name: 'Nouveau membre' }).click();
+    await page.goto('/personnel'); await page.getByRole('button', { name: 'Ouvrir', exact: true }).click();
+    await expect(dialog.getByText('Aucune fonction enregistrée.', { exact: false })).toBeVisible();
+    await page.keyboard.press('Escape'); await page.getByRole('button', { name: 'Nouveau membre du personnel' }).click();
+    await expect(dialog.getByLabel('Matricule enseignant (facultatif)')).toHaveCount(0);
     await dialog.getByLabel('Prénom', { exact: true }).fill('Marie'); await dialog.getByLabel('Nom', { exact: true }).fill('Exemple');
-    await dialog.getByLabel('Matricule officiel du personnel').fill('P-2026-001');
-    await dialog.getByRole('button', { name: 'Vérifier les informations', exact: true }).click();expect(saved).toBe(false);await dialog.getByRole('button', { name: 'Confirmer la création du dossier', exact: true }).click();
-    await expect(page.getByText('Dossier enregistré en base.', { exact: true })).toBeVisible(); expect(saved).toBe(true);
+    await dialog.getByLabel('Fonction', { exact: true }).fill('Comptable');
+    await dialog.getByRole('button', { name: 'Vérifier les informations', exact: true }).click();expect(saved).toBe(false);await dialog.getByRole('button', { name: 'Confirmer la création', exact: true }).click();
+    await expect(page.getByText('Dossier enregistré.', { exact: true })).toBeVisible(); expect(saved).toBe(true);
     await expect(page.getByRole('row').filter({ hasText: 'Marie Exemple' })).toBeVisible();
-    await page.reload(); await expect(page.getByRole('row').filter({ hasText: 'P-2026-001' })).toBeVisible();
+    await page.reload(); await expect(page.getByRole('row').filter({ hasText: 'Marie Exemple' })).toBeVisible();
     await captureWorkspace(page, 'personnel-dossiers');
   });
 }

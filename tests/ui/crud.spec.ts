@@ -38,7 +38,7 @@ for(const width of [390,1440]) {
   });
   test(`CRUD du personnel et révocation visible à ${width}px`,async({page})=>{
     await page.setViewportSize({width,height:950});await authenticateFixture(page);await page.route('**/api/campus',route=>route.fulfill({json:snapshot}));
-    const records:PersonnelRecord[]=[{personId:'00000000-0000-4000-8000-000000000012',staffId:'00000000-0000-4000-8000-000000000013',firstname:'Marie',lastname:'Personnel',email:'marie@example.test',phone:'',employeeNumber:'EMP-1',active:true,contracts:[]}];let revision=1;const methods:string[]=[];
+    const records:PersonnelRecord[]=[{personId:'00000000-0000-4000-8000-000000000012',staffId:'00000000-0000-4000-8000-000000000013',firstname:'Marie',lastname:'Personnel',email:'marie@example.test',phone:'',employeeNumber:'EMP-1',isTeacher:true,active:true,contracts:[]}];let revision=1;const methods:string[]=[];
     await page.route('**/api/staff**',async route=>{
       const method=route.request().method();if(method==='GET'){await route.fulfill({json:{records,revision}});return;}
       const body=route.request().postDataJSON();expect(body.revision).toBe(revision);methods.push(method);

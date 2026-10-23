@@ -1,3 +1,4 @@
+import { displayedEmployeeNumber } from '@/utils/staffReference';
 import { emptyDataset, DEFAULT_SETTINGS, type Dataset } from '@/types/application';
 import type { DatabaseRow, RelationalSnapshot } from '@/types/persistence';
 import type { DemoUser } from '@/types/user';
@@ -84,7 +85,7 @@ export function projectRelationalCampus(snapshot: RelationalSnapshot, now = new 
   const staff = byId('staff');
   data.teachers = rows('teachers').flatMap(row => {
     const employee = staff.get(text(row, 'staff_id')); const person = people.get(text(employee, 'person_id'));
-    return person ? [{ id: row.id, employeeNumber: text(employee, 'employee_number'), firstname: text(person, 'firstname'), lastname: text(person, 'lastname'), email: text(person, 'email'), specialty: text(row, 'specialty'), active: row.active === true }] : [];
+    return person ? [{ id: row.id, employeeNumber: displayedEmployeeNumber(text(employee, 'employee_number')), firstname: text(person, 'firstname'), lastname: text(person, 'lastname'), email: text(person, 'email'), specialty: text(row, 'specialty'), active: row.active === true }] : [];
   });
   data.rooms = rows('rooms').map(row => ({ code: text(row, 'code'), name: text(row, 'name'), building: text(rows('buildings').find(item => item.id === row.building_id), 'name'), capacity: numeric(row, 'capacity'), status: (row.status === 'MAINTENANCE' ? 'En maintenance' : row.status === 'AVAILABLE' ? 'Disponible' : 'Indisponible') as Dataset['rooms'][number]['status'] }));
 

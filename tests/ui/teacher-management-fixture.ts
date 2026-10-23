@@ -36,9 +36,13 @@ export function teacherFixture(context: PersistentContext = securityContext(), m
   } };
   const api = loadSecurityApi('app/api/teachers/route.ts', client, context) as { GET: (request: Request) => Promise<Response>; POST: (request: Request) => Promise<Response> };
   const staffApi = loadSecurityApi('app/api/staff/route.ts', client, context) as { GET: (request: Request) => Promise<Response>; POST: (request: Request) => Promise<Response> };
+  const staffDetailApi = loadSecurityApi('app/api/staff/[personId]/route.ts', client, context) as {
+    PATCH: (request: Request, context: { params: Promise<{ personId: string }> }) => Promise<Response>;
+    DELETE: (request: Request, context: { params: Promise<{ personId: string }> }) => Promise<Response>;
+  };
   const post = (body: Record<string, unknown>, year = id.year) => api.POST(new Request('http://local.test/api/teachers', {
     method: 'POST', headers: { 'x-escen-year': year }, body: JSON.stringify({ revision: snapshot.revision, reason: 'Motif de gestion pédagogique', ...body }),
   }));
   const get = (year = id.year) => api.GET(new Request('http://local.test/api/teachers', { headers: { 'x-escen-year': year } }));
-  return { snapshot, transactions, api, staffApi, post, get };
+  return { snapshot, transactions, api, staffApi, staffDetailApi, post, get };
 }
