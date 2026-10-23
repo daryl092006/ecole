@@ -97,7 +97,10 @@ export async function localBusinessFixture() {
     '/api/campus': load(new URL('app/api/campus/route.ts', root)),
     '/api/website-management': load(new URL('app/api/website-management/route.ts', root)),
     '/api/year-preparation': load(new URL('app/api/year-preparation/route.ts', root)),
+    '/api/students': load(new URL('app/api/students/route.ts', root)),
   };
+  const students = load(new URL('app/api/students/[matricule]/route.ts', root));
+  const studentOperations = load(new URL('app/api/students/[matricule]/operations/route.ts', root));
   const catalog = load(new URL('app/api/catalog/[collection]/route.ts', root));
   const catalogItem = load(new URL('app/api/catalog/[collection]/[id]/route.ts', root));
   const transcripts = load(new URL('app/api/transcripts/[id]/route.ts', root));
@@ -106,9 +109,9 @@ export async function localBusinessFixture() {
   async function dispatch(request) {
     const path = new URL(request.url).pathname;
     const segments = path.split('/');
-    const handlers = routes[path] || (segments[2] === 'catalog' ? segments[4] ? catalogItem : catalog : segments[2] === 'transcripts' ? transcripts : segments[2] === 'website' ? publicWebsite : null);
+    const handlers = routes[path] || (segments[2] === 'catalog' ? segments[4] ? catalogItem : catalog : segments[2] === 'students' ? segments[4] === 'operations' ? studentOperations : students : segments[2] === 'transcripts' ? transcripts : segments[2] === 'website' ? publicWebsite : null);
     if (!handlers?.[request.method]) return Response.json({ error: 'Route non prévue dans la recette locale.' }, { status: 501 });
-    const response = await handlers[request.method](request, { params: Promise.resolve({ collection: segments[3], id: segments[4] || segments[3], path: segments.slice(3) }) });
+    const response = await handlers[request.method](request, { params: Promise.resolve({ collection: segments[3], id: segments[4] || segments[3], matricule: decodeURIComponent(segments[3] || ''), path: segments.slice(3) }) });
     requests.push({ path, method: request.method, status: response.status });
     return response;
   }

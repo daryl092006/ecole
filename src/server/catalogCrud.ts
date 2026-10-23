@@ -147,16 +147,16 @@ export async function writeCatalog(request: Request, key: string, id?: string) {
     if (response.error) throw new RequestError(409,'Enregistrement refusé : doublon, relation incompatible ou modification concurrente.');
     currentRevision = response.data;
   } else {
-    for (let i = 0; i < changes.length; i += 100) {
-      const chunk = changes.slice(i, i + 100);
-      const response = await client.rpc('escen_backend_transaction', { p_actor_id: context.accountId, p_expected_revision: currentRevision, p_changes: chunk });
-      if (response.error) {
-        const knownArchiveError = archive && ['curriculum_semesters', 'teaching_units', 'curriculum_components'].includes(key)
-          && response.error.code === '23514' && curriculumArchiveErrors.has(response.error.message);
-        throw new RequestError(409, knownArchiveError ? response.error.message : 'Enregistrement refusé : doublon, relation incompatible ou modification concurrente.');
-      }
-      currentRevision = response.data;
+    // La RPC est bornée à 100 lignes. Plusieurs appels ne forment pas une transaction :
+    // un échec tardif laisserait le groupe ou l’année partiellement enregistré.
+    if (changes.length > 100) throw new RequestError(400, 'Cette opération dépasse la limite de 100 modifications liées. Réduisez la sélection ; aucune donnée n’a été enregistrée.');
+    const response = await client.rpc('escen_backend_transaction', { p_actor_id: context.accountId, p_expected_revision: currentRevision, p_changes: changes });
+    if (response.error) {
+      const knownArchiveError = archive && ['curriculum_semesters', 'teaching_units', 'curriculum_components'].includes(key)
+        && response.error.code === '23514' && curriculumArchiveErrors.has(response.error.message);
+      throw new RequestError(409, knownArchiveError ? response.error.message : 'Enregistrement refusé : doublon, relation incompatible ou modification concurrente.');
     }
+    currentRevision = response.data;
   }
   return Response.json({ id: record.id, revision: currentRevision },{status: id ? 200 : 201,headers:{'Cache-Control':'no-store'}});
 }

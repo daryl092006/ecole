@@ -71,3 +71,13 @@ next-env.d.ts
 /tmp/next-manual-review/
 /tmp/next-business-review/
 /tmp/screenshots/business-review/
+
+# Local audit recipes, generated results and isolated Git worktrees
+/tmp/github-*/
+/tmp/next-page-audit-*/
+/tmp/page-*
+/tmp/current-*.spec.ts
+/tmp/tmp/
+/tmp/screenshots/page-*/
+/tmp/screenshots/loading-feedback/
+/tmp/screenshots/personnel-review/
