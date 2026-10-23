@@ -48,7 +48,11 @@ export default function EtudiantsModule({ persistent = false, activeRole, create
       {currentSubTab === 'stud_list' && (
         <div>
           <div className="module-header">
-            <h1>Dossiers étudiants</h1>{persistent && <div className="btn-group"><StudentCrudActions />{perms.permissions.includes('student.lifecycle.manage') && perms.permissions.includes('payment.record') && <button className="btn btn-primary" onClick={()=>setNewEnrollment(true)}>Nouvelle inscription</button>}</div>}
+            <div>
+              <h1>Dossiers étudiants</h1>
+              <p>Consultez, filtrez et gérez les dossiers et inscriptions des étudiants.</p>
+            </div>
+            {persistent && <div className="btn-group"><StudentCrudActions />{perms.permissions.includes('student.lifecycle.manage') && perms.permissions.includes('payment.record') && <button className="btn btn-primary" onClick={()=>setNewEnrollment(true)}>Nouvelle inscription</button>}</div>}
           </div>
 
           {!persistent && perms.permissions.includes('student.group.assign') && <StudentRegistrationForm groups={groups} onCreate={createStudent} />}

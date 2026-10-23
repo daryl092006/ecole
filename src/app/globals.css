@@ -1570,10 +1570,10 @@ form { scroll-margin-top: 1rem; }
 
 /* Revue des écrans : donner la priorité au titre, à la recherche et aux dossiers. */
 .workspace-data-footer { margin: 28px 0 0; }
-.student-advanced-filters summary { cursor: pointer; color: #176d80; font-size: 13px; padding: 10px 0; }
-.student-advanced-filters .filter-grid { margin-top: 12px; grid-template-columns: repeat(3,minmax(0,1fr)); }
-.student-filter-footer { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px; margin-top: 12px; }
-.student-filter-footer p { font-size: 13px; color: #526a79; }
+.student-advanced-filters summary { cursor: pointer; color: #2563eb; font-weight: 600; font-size: 13px; padding: 10px 0; }
+.student-advanced-filters .filter-grid { margin-top: 12px; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 12px; }
+.student-filter-footer { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px; margin-top: 14px; padding-top: 12px; border-top: 1px solid #f1f5f9; }
+.student-filter-footer p { font-size: 13px; font-weight: 500; color: #475569; }
 @media(max-width:768px) {
   .workspace-location { flex-direction: row; align-items: center; flex-wrap: wrap; margin-bottom: 12px; }
   .workspace-home .home-destinations { gap: 8px; }
@@ -2134,25 +2134,30 @@ label.form-group {
 /* Filtres étudiants (StudentFiltersPanel) */
 .student-filters {
   background: #ffffff;
-  border: 1px solid #dfe6ec;
-  border-radius: 12px;
+  border: 1px solid #e2e8f0;
+  border-radius: 14px;
+  padding: 1.5rem;
+  box-shadow: 0 1px 3px rgba(15, 23, 42, 0.04);
 }
 
 .student-search-row {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(min(100%, 240px), 1fr));
-  gap: 1rem;
-  margin-bottom: 0.5rem;
+  gap: 1.25rem;
+  margin-bottom: 0.75rem;
 }
 
-.student-search-row .input {
+.student-search-row .input,
+.student-search-row .select-input,
+.student-advanced-filters .select-input {
   background: #ffffff;
+  border: 1px solid #cbd5e1;
 }
 
 .student-advanced-filters {
-  border-top: 1px solid #eef2f6;
-  padding-top: 0.5rem;
-  margin-top: 0.25rem;
+  border-top: 1px solid #f1f5f9;
+  padding-top: 0.75rem;
+  margin-top: 0.5rem;
 }
 
 /* Espace de travail de formulaire plein écran (WorkPage) */
