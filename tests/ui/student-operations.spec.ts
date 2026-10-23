@@ -9,6 +9,7 @@ for(const width of [390,1440])test(`Paiement relu et enregistré une seule fois 
   return route.fulfill({json:{revision:1,enrollments:[{id:'00000000-0000-4000-8000-000000000101',status:'REINSCRIT'}],payments:[],paid}});
  });
  await page.goto('/etudiants/ESCEN-TEST-001');
+ await page.getByRole('navigation',{name:'Sections du dossier étudiant'}).getByRole('button',{name:'Frais et versements',exact:true}).click();
  await page.getByRole('button',{name:'Enregistrer un paiement',exact:true}).click();
  await page.getByLabel('Montant FCFA',{exact:true}).fill('50000');await page.getByLabel('Payeur',{exact:true}).fill('Parent de recette');await page.getByLabel('Référence du versement').fill('RECETTE-001');await page.getByLabel('Organisme ou caisse').fill('Caisse ESCEN');await page.getByLabel('Date du paiement').fill('2026-10-15');await page.getByLabel('Motif',{exact:true}).fill('Versement contrôlé de recette');
  await page.getByRole('button',{name:'Vérifier l’opération'}).click();expect(operations).toHaveLength(0);
@@ -17,7 +18,7 @@ for(const width of [390,1440])test(`Paiement relu et enregistré une seule fois 
 });
 test('Sans inscription officielle, aucun encaissement proposé',async({page})=>{
  await authenticateFixture(page);await page.route('**/api/campus',route=>route.fulfill({json:snapshot}));await page.route('**/api/students/*/operations',route=>route.fulfill({json:{revision:1,enrollments:[],payments:[],paid:0}}));
- await page.goto('/etudiants/ESCEN-TEST-001');await expect(page.getByText('Aucune inscription officielle pour cette année. Une inscription est nécessaire avant un encaissement.')).toBeVisible();await expect(page.getByRole('button',{name:'Enregistrer un paiement',exact:true})).toHaveCount(0);
+ await page.goto('/etudiants/ESCEN-TEST-001');await page.getByRole('navigation',{name:'Sections du dossier étudiant'}).getByRole('button',{name:'Frais et versements',exact:true}).click();await expect(page.getByText('Aucune inscription officielle pour cette année. Une inscription est nécessaire avant un encaissement.')).toBeVisible();await expect(page.getByRole('button',{name:'Enregistrer un paiement',exact:true})).toHaveCount(0);
 });
 test('Contrat en brouillon : approbation et continuité dans Frais et versements',async({page})=>{
  await authenticateFixture(page);await page.route('**/api/campus',route=>route.fulfill({json:snapshot}));
@@ -47,6 +48,7 @@ test('Changement de groupe relu et enregistré une seule fois',async({page})=>{
   return route.fulfill({json:{revision:1,enrollments:[{id:'00000000-0000-4000-8000-000000000101',status:'INSCRIT',enrolledOn:'2026-10-12',currentGroupId:groupA,currentGroupName:'Groupe A',currentGroupValidFrom:'2026-10-12',availableGroups:[{id:groupA,name:'Groupe A'},{id:groupB,name:'Groupe B'}]}],payments:[],paid:0}});
  });
  await page.goto('/etudiants/ESCEN-TEST-001');
+ await page.getByRole('navigation',{name:'Sections du dossier étudiant'}).getByRole('button',{name:'Années et groupes',exact:true}).click();
  await page.getByRole('button',{name:'Changer de groupe',exact:true}).click();
  await page.getByLabel('Date d’effet',{exact:true}).fill('2026-11-02');
  await page.getByLabel('Motif',{exact:true}).fill('Rééquilibrage des effectifs');

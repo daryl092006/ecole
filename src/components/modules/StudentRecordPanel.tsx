@@ -226,10 +226,6 @@ export default function StudentRecordPanel({ studentId, embedded = false }: { st
         )}
       </section>
 
-      {['identity', 'parcours', 'finance'].includes(section) && (
-        <StudentOperationsPanel matricule={student.matricule} onChanged={() => setRetry(value => value + 1)} />
-      )}
-
       <nav className="record-sections" aria-label="Sections du dossier étudiant">
         {sections.map(item => (
           <button
@@ -266,6 +262,9 @@ export default function StudentRecordPanel({ studentId, embedded = false }: { st
         />
       ) : (
         <>
+          {['parcours', 'finance'].includes(section) && (
+            <StudentOperationsPanel matricule={student.matricule} onChanged={() => setRetry(value => value + 1)} />
+          )}
           {section === 'notes' && studentEvaluationsSummary.length > 0 && (
             <section className="card card-full mb-2" aria-label="Synthèse des évaluations et copies de l’étudiant">
               <div className="card-header">
