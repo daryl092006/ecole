@@ -3,7 +3,7 @@ import DrawerActions from '@/components/ui/DrawerActions';
 import { useEffect, useState } from 'react';
 import { usePortal } from '@/hooks/usePortal';
 import { loadWebsiteBrochures, loadWebsiteData, saveWebsiteBrochure } from '@/services/remoteCampusService';
-import type { WebsiteBrochure } from '@/types/website';
+import type { WebsiteBrochure, WebsiteProgramReference } from '@/types/website';
 import LoadingState from '@/components/ui/LoadingState';
 import ErrorState from '@/components/ui/ErrorState';
 import WorkPage from '@/components/ui/WorkPage';
@@ -18,7 +18,7 @@ export default function WebsiteBrochuresPanel({ onBack }: { onBack?: () => void 
   const state = usePortal();
   const role = state.activeRole;
   const year = state.academicYearContext?.selectedYearId;
-  const canManage = !!year && state.perms.permissions.includes('communication.manage') && state.session?.capabilities?.[role]?.globalAccess;
+  const canManage = !!year && state.perms.permissions.includes('communication.manage') && !!state.session?.capabilities?.[role]?.globalAccess;
   const [rows, setRows] = useState<WebsiteBrochure[]>([]);
   const [editing, setEditing] = useState<(typeof empty & Partial<WebsiteBrochure>) | null>(null);
   const [file, setFile] = useState<File | null>(null);
@@ -29,7 +29,10 @@ export default function WebsiteBrochuresPanel({ onBack }: { onBack?: () => void 
   const [busy, setBusy] = useState(false);
   const [confirm, setConfirm] = useState(false);
   const [revision, setRevision] = useState(0);
-  const [programs, setPrograms] = useState<{ id: string; name: string; code?: string }[]>([]);
+  const [programs, setPrograms] = useState<WebsiteProgramReference[]>([]);
+  const [programsLoading, setProgramsLoading] = useState(true);
+  const [programsError, setProgramsError] = useState('');
+  const [programsRevision, setProgramsRevision] = useState(0);
 
   useEffect(() => {
     const controller = new AbortController();
@@ -38,12 +41,18 @@ export default function WebsiteBrochuresPanel({ onBack }: { onBack?: () => void 
       .catch(cause => { if (!controller.signal.aborted) setError(cause.message); })
       .finally(() => { if (!controller.signal.aborted) setLoading(false); });
 
-    loadWebsiteData<{ programs: { id: string; name: string }[] }>('admissions', role, controller.signal)
-      .then(res => { if (!controller.signal.aborted && res?.programs) setPrograms(res.programs); })
-      .catch(() => {});
-
     return () => controller.abort();
   }, [role, year, revision]);
+
+  useEffect(() => {
+    const controller = new AbortController();
+    setPrograms([]); setProgramsError(''); setProgramsLoading(canManage);
+    if (canManage) void loadWebsiteData<{ programs: WebsiteProgramReference[] }>('brochure-programs', role, controller.signal)
+      .then(data => { if (!controller.signal.aborted) setPrograms(data.programs); })
+      .catch(cause => { if (!controller.signal.aborted) setProgramsError(cause instanceof Error ? cause.message : 'Chargement des filières impossible.'); })
+      .finally(() => { if (!controller.signal.aborted) setProgramsLoading(false); });
+    return () => controller.abort();
+  }, [role, year, canManage, programsRevision]);
 
   function edit(row: typeof editing) { setEditing(row); setFile(null); setConfirm(false); setSaveError(''); setSuccess(''); }
 
@@ -85,19 +94,21 @@ export default function WebsiteBrochuresPanel({ onBack }: { onBack?: () => void 
       </section>;
     })}</div>}
     {editing && <WorkPage busy={busy} title={editing.id ? 'Modifier la brochure' : 'Ajouter une brochure'} onClose={() => { if (!busy) setEditing(null); }}>
-      <form className="card" onSubmit={event => { event.preventDefault(); setConfirm(true); }}>
+      <form className="card" onSubmit={event => { event.preventDefault(); if (!programsLoading && !programsError) setConfirm(true); }}>
+        {programsLoading && <LoadingState label="Chargement des filières…" />}
+        {programsError && <div role="alert"><p>{programsError}</p><button type="button" className="btn btn-outline" onClick={() => setProgramsRevision(value => value + 1)}>Réessayer les filières</button></div>}
         <fieldset disabled={busy || confirm}>
           <label className="form-group">Titre<input className="input" required minLength={3} maxLength={180} value={editing.title} onChange={event => setEditing({ ...editing, title: event.target.value })} /></label>
           <label className="form-group">Adresse de la brochure (slug)<input className="input" required pattern="[a-z0-9]+(-[a-z0-9]+)*" maxLength={180} value={editing.slug} onChange={event => setEditing({ ...editing, slug: event.target.value })} /></label>
           <div className="brochure-fields">
-            <label className="form-group">Filière associée (facultatif)<select className="select-input" value={editing.program_id || ''} onChange={event => setEditing({ ...editing, program_id: event.target.value || null })}><option value="">Aucune (Brochure générale)</option>{programs.map(p => <option key={p.id} value={p.id}>{p.name} ({p.code})</option>)}</select></label>
+            <label className="form-group">Filière associée (facultatif)<select className="select-input" disabled={programsLoading || !!programsError} value={editing.program_id || ''} onChange={event => setEditing({ ...editing, program_id: event.target.value || null })}><option value="">Aucune (Brochure générale)</option>{editing.program_id && !programs.some(program => program.id === editing.program_id) && <option value={editing.program_id}>{editing.program_name || 'Filière actuelle indisponible'}</option>}{programs.map(p => <option key={p.id} value={p.id}>{p.name}{p.code ? ` (${p.code})` : ''}</option>)}</select></label>
             <label className="form-group">Cycle d'études<select className="select-input" value={editing.cycle || ''} onChange={event => setEditing({ ...editing, cycle: (event.target.value || null) as WebsiteBrochure['cycle'] })}><option value="">Aucun</option><option value="LICENCE">Licence professionnelle</option><option value="MASTER">Master professionnel</option><option value="EXECUTIVE">Executive Master</option></select></label>
           </div>
           <label className="form-group">Description<textarea className="input" maxLength={500} value={editing.description} onChange={event => setEditing({ ...editing, description: event.target.value })} /></label>
           <label className="form-group">Fichier PDF — 10 Mo maximum<input className="input" type="file" accept="application/pdf,.pdf" required={!editing.id} onChange={event => setFile(event.target.files?.[0] || null)} /></label>
           {editing.filename && <p>Fichier actuel : {editing.filename}</p>}
           <label className="form-group">Diffusion<select className="select-input" value={editing.status} onChange={event => setEditing({ ...editing, status: event.target.value as WebsiteBrochure['status'] })}><option value="BROUILLON">Brouillon privé</option><option value="PUBLIE">Publier sur le site</option><option value="RETIRE">Retirer du site</option></select></label>
-          {!confirm && <DrawerActions><button className="btn btn-primary">Vérifier la brochure</button></DrawerActions>}
+          {!confirm && <DrawerActions><button className="btn btn-primary" disabled={programsLoading || !!programsError}>Vérifier la brochure</button></DrawerActions>}
         </fieldset>
         {saveError && <p role="alert" className="auth-error">{saveError}</p>}
         {confirm && <div className="card" role="region" aria-label="Confirmation de la brochure"><h2>{editing.title}</h2><p>{file?.name || editing.filename}</p><p>{editing.status === 'PUBLIE' ? 'Visible sur le site lorsque cette année est l’année de travail.' : editing.status === 'RETIRE' ? 'Le téléchargement sera retiré du site.' : 'Le PDF restera privé.'}</p><DrawerActions><button type="button" className="btn btn-primary" disabled={busy} onClick={() => void save()}>{busy ? 'Enregistrement…' : 'Confirmer l’enregistrement'}</button><button type="button" className="btn btn-outline" disabled={busy} onClick={() => setConfirm(false)}>Modifier</button></DrawerActions></div>}

@@ -171,4 +171,29 @@ La navigation générale a été observée principalement avec le rôle IT, les 
 
 Le serveur de revue a été arrêté. L’ajout automatique du dossier de types Next dans `tsconfig.json` a été retiré ; ce fichier est identique à son état initial. Les modifications préexistantes sont conservées. Seul ce rapport est destiné au commit local ; les captures et scripts de recette restent dans `tmp/`.
 
-Aucune correction visible n’a été appliquée. Les cinq propositions ci-dessus sont prêtes à être examinées avant modification, conformément au point d’arrêt du guide projet.
+Lors de l’observation initiale, aucune correction visible n’avait été appliquée. Les suites données après accord utilisateur sont consignées ci-dessous.
+
+
+## Corrections après accord utilisateur
+
+L’instruction « go » autorise les corrections proposées. Quatre constats sont corrigés ; le périmètre des archives d’articles reste à confirmer avant branchement.
+
+| Constat | Correction | Vérification |
+| --- | --- | --- |
+| Liens académiques 404 | Liens vers `/academique/filieres` et `/academique/deliberations` | Navigation réelle et titres d’arrivée à 390 et 1440 px. |
+| Titre de la fenêtre des contrats | Titre spécifique « Choisir le dossier pour gérer le contrat » ; encaissement conserve son propre titre | Les deux parcours sont exercés aux deux largeurs. |
+| Aide des frais personnels | Texte dédié aux versements/reçus de l’inscription et au contact scolarité/finance | Vérification sous rôle Étudiant, sans consigne d’encaissement. |
+| Filières des brochures sous marketing | Lecture `kind=brochure-programs`, protégée par `communication.manage` et un accès global ; seuls `id`, `name`, `code` des filières actives sont exposés | Réponse limitée aux références, admissions toujours refusées, périmètre restreint/consultation seule/non authentifié refusés. |
+| Erreur de chargement des filières | Message dans le formulaire, bouton de reprise, blocage de la confirmation jusqu’au chargement réussi, saisie conservée | Erreur serveur puis reprise avec le véritable gestionnaire API, à 390 et 1440 px. |
+
+Contrôles de cette phase :
+
+- `npx tsc --noEmit --incremental false` : aucune erreur.
+- `npm run lint` : aucune erreur ; deux avertissements préexistants (`site`, `_tab`).
+- `npm test` : workflows réussis, 185 groupes PostgreSQL et 10 groupes de régularisation enseignants réussis.
+- `npx playwright test --config tests/ui/page-review-fixes.config.ts --grep-invert 'Site :'` : **16 réussites**, incluant publication/retrait de brochure, reprise d’erreur, droits API, navigation et libellés. Les deux scénarios « Site : … » dépendant de la copie publique sont exclus de cette recette du portail.
+- Captures : `tmp/screenshots/page-review-fixes/390/brochure-marketing.png` et `1440/brochure-marketing.png` ; capture mobile relue visuellement.
+
+Aucune migration ou modification distante. Aucun changement d’envoi d’emails. Les modifications préexistantes dans `catalogCrud.ts`, la fixture locale et les anciennes captures restent préservées.
+
+Reste : choisir si le bouton Archives doit consulter les articles des autres années en lecture seule, ou les anciens articles importés de l’ancien site. Cette décision a été demandée explicitement ; aucune réponse n’est déduite du temps écoulé. Le mauvais branchement des archives reste inchangé jusqu’à cette décision, conformément à `AGENTS.md:181` : « Avant une règle métier indécise […] présenter la proposition et attendre l’accord. »

@@ -7,7 +7,7 @@ for (const width of [390, 1440]) {
     await page.setViewportSize({ width, height: 950 });
     await authenticateFixture(page);
     await page.route('**/api/campus', route => route.fulfill({ json: { ...snapshot, academicContext: { currentYearId: yearId, selectedYearId: yearId, selection: 'current', years: [{ id: yearId, name: '2026-2027', status: 'OUVERTE', starts_on: '2026-09-01', ends_on: '2027-07-31' }] } } }));
-    await page.route('**/api/website-management*', route => route.fulfill({ json: [] }));
+    await page.route('**/api/website-management*', route => route.fulfill({ json: new URL(route.request().url()).searchParams.get('kind') === 'brochure-programs' ? { programs: [] } : [] }));
     const rows = ['LICENCE', 'MASTER', 'EXECUTIVE'].flatMap((cycle, index) => ['Finance Digitale', 'Management de Projets & Transformation Digitale', 'Marketing Digital & E-commerce'].map((program, number) => ({
       id: `${index}-${number}`, title: `${cycle} Professionnel en ${program}`, program_name: program, cycle,
       slug: `brochure-${index}-${number}`, description: `Programme et détails de ${program} à ESCEN.`, status: 'PUBLIE',
@@ -27,7 +27,7 @@ for (const width of [390, 1440]) {
     await page.setViewportSize({ width, height: 950 });
     await authenticateFixture(page);
     await page.route('**/api/campus', route => route.fulfill({ json: { ...snapshot, academicContext: { currentYearId: yearId, selectedYearId: yearId, selection: 'current', years: [{ id: yearId, name: '2026-2027', status: 'OUVERTE', starts_on: '2026-09-01', ends_on: '2027-07-31' }] } } }));
-    await page.route('**/api/website-management*', route => route.fulfill({ json: [] }));
+    await page.route('**/api/website-management*', route => route.fulfill({ json: new URL(route.request().url()).searchParams.get('kind') === 'brochure-programs' ? { programs: [] } : [] }));
     let saved = false;
     let posts = 0;
     let fail = false;

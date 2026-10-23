@@ -1,7 +1,7 @@
 import { defineConfig } from '@playwright/test';
 
 export default defineConfig({
-  testDir: '.', testMatch: ['page-review-fixes.spec.ts'],
+  testDir: '.', testMatch: ['page-review-fixes.spec.ts', 'website-brochures.spec.ts'],
   timeout: 60000, expect: { timeout: 15000 }, workers: 1, reporter: 'list',
   outputDir: '../../test-results/page-review-fixes',
   use: { baseURL: 'http://127.0.0.1:3129', channel: 'chrome', headless: true, viewport: { width: 1440, height: 950 }, trace: 'retain-on-failure' },

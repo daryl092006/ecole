@@ -9,6 +9,17 @@ export async function GET(request: Request) {
   try {
     const { client, context } = await requireAccount(request); const access = websiteAccess(context);
     const params = new URL(request.url).searchParams; const kind = params.get('kind');
+    if (kind === 'brochure-programs') {
+      requirePermission(context, 'communication.manage');
+      if (!access.manageArticles) throw new RequestError(403, 'Accès non autorisé.');
+      const snapshot = await client.rpc('escen_backend_snapshot');
+      if (snapshot.error) throw new RequestError(503, 'Les filières des brochures sont indisponibles. Réessayez.');
+      const programs = ((snapshot.data as RelationalSnapshot).tables.programs || [])
+        .filter(row => row.active === true && !row.archived_at)
+        .map(row => ({ id: row.id, name: String(row.name || ''), code: String(row.code || '') }))
+        .sort((a, b) => a.name.localeCompare(b.name, 'fr'));
+      return Response.json({ programs }, { headers: { 'Cache-Control': 'no-store' } });
+    }
     if (!['articles', 'admissions', 'document'].includes(kind || '') || (kind === 'articles' ? !access.articles : !access.admissions)) throw new RequestError(403, 'Accès non autorisé.');
     const data = await websiteRpc(client, 'escen_website_manage', { p_actor_id: context.accountId, p_role_code: context.roleCode, p_action: kind, p_data: kind === 'document' ? { id: z.uuid().parse(params.get('id')) } : {} });
     {

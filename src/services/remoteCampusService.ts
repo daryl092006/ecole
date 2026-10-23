@@ -82,7 +82,7 @@ export async function savePreparedSubject(subject:import('@/types/subject').Subj
   return readResponse(await fetch('/api/subjects',{method:'POST',headers:{...await headers(role),'Content-Type':'application/json'},body:JSON.stringify({subject,revision,reason,...(previousId?{previousId}:{})})}));
 }
 
-export async function loadWebsiteData<T>(kind: 'articles' | 'admissions', role: RoleName, signal?: AbortSignal): Promise<T> {
+export async function loadWebsiteData<T>(kind: 'articles' | 'admissions' | 'brochure-programs', role: RoleName, signal?: AbortSignal): Promise<T> {
   return readResponse(await fetch(`/api/website-management?kind=${kind}`, { headers: await headers(role), cache: 'no-store', signal }));
 }
 export async function saveWebsiteData(values: Record<string, unknown>, role: RoleName): Promise<void> {

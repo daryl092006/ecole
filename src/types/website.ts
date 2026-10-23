@@ -36,3 +36,4 @@ export interface WebsiteBrochure {
   program_id: string | null; cycle: BrochureCycle | null; program_name?: string | null; program_code?: string | null;
 }
 export type BrochureCycle = 'LICENCE' | 'MASTER' | 'EXECUTIVE';
+export interface WebsiteProgramReference { id: string; name: string; code: string; }
