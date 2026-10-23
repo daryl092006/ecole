@@ -90,8 +90,8 @@ export default function PortalScreen({ tab: _tab, section }: { tab: string; sect
           <p>Les règles de compensation, de validation et de délibération doivent être confirmées par la direction académique avant leur application. Aucune règle n’est appliquée automatiquement aux dossiers historiques.</p>
           <p className="cell-sub">Préparez la version approuvée du règlement et ses dates d’application. L’enregistrement et l’activation de cette version ne sont pas encore disponibles dans cet écran.</p>
           <div className="btn-group" style={{ marginTop: '14px' }}>
-            <Link className="btn btn-outline" href="/academique/programmes">Consulter les maquettes de cours →</Link>
-            <Link className="btn btn-outline" href="/academique/jury">Consulter les jurys enregistrés →</Link>
+            <Link className="btn btn-outline" href="/academique/filieres">Consulter les maquettes de cours →</Link>
+            <Link className="btn btn-outline" href="/academique/deliberations">Consulter les jurys enregistrés →</Link>
           </div>
         </aside>
       </section>

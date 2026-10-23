@@ -23,7 +23,12 @@ export const DOMAIN_WORKSPACES: Record<string, DomainWorkspaceDefinition> = {
 DOMAIN_WORKSPACES.espace_support = { ...DOMAIN_WORKSPACES.sys_support, next: [] };
 DOMAIN_WORKSPACES.espace_announcements = { ...DOMAIN_WORKSPACES.comm_news, next: [] };
 DOMAIN_WORKSPACES.espace_documents = { ...DOMAIN_WORKSPACES.stud_cards, next: [] };
-DOMAIN_WORKSPACES.espace_finance = { ...DOMAIN_WORKSPACES.fin_payments, next: ['espace_documents'] };
+DOMAIN_WORKSPACES.espace_finance = {
+  ...DOMAIN_WORKSPACES.fin_payments,
+  purpose: 'Consultez vos frais, vos versements et vos reçus pour l’année sélectionnée.',
+  availability: 'Cette rubrique présente les versements, reçus et échéances enregistrés pour votre inscription. Pour toute question sur un paiement ou votre situation financière, contactez la scolarité ou le service financier.',
+  next: ['espace_documents'],
+};
 
 export const NATIVE_FIELD_LABELS: Record<string, string> = {
   id: 'Référence', name: 'Nom', code: 'Code', title: 'Titre', label: 'Libellé', content: 'Contenu', description: 'Description', status: 'État', kind: 'Nature', active: 'Actif', required: 'Obligatoire', reason: 'Motif', value: 'Note', old_value: 'Ancienne valeur', new_value: 'Nouvelle valeur', decision: 'Décision', amount: 'Montant FCFA', quantity: 'Quantité', unit_price: 'Prix unitaire FCFA', method: 'Mode de paiement', number: 'Numéro', specialty: 'Spécialité', created_at: 'Créé le', updated_at: 'Modifié le', archived_at: 'Archivé le', published_at: 'Publié le', paid_at: 'Payé le', issued_at: 'Émis le', received_at: 'Reçu le', enrolled_on: 'Date d’inscription', due_on: 'Échéance', starts_at: 'Début', ends_at: 'Fin', valid_from: 'Depuis le', valid_until: 'Jusqu’au', student_id: 'Étudiant', enrollment_id: 'Inscription', offering_id: 'Formation de l’année', academic_year_id: 'Année universitaire', teacher_id: 'Enseignant', staff_id: 'Personnel', person_id: 'Personne', group_id: 'Groupe', room_id: 'Salle', site_id: 'Lieu d’enseignement', building_id: 'Bâtiment', subject_id: 'Matière', evaluation_id: 'Évaluation', grade_id: 'Note', session_id: 'Séance', contract_id: 'Contrat', payment_id: 'Versement', fee_type_id: 'Type de frais', scholarship_id: 'Bourse', communication_id: 'Publication', supplier_id: 'Fournisseur', purchase_id: 'Achat', ticket_id: 'Demande', role_id: 'Rôle', document_type_id: 'Type de pièce', complaint_id: 'Réclamation', jury_id: 'Jury', from_status: 'État précédent', to_status: 'Nouvel état', starts_on: 'Date de début', ends_on: 'Date de fin', location: 'Localisation', email: 'Email', phone: 'Téléphone', firstname: 'Prénom', lastname: 'Nom', filename: 'Nom du fichier', position: 'Fonction ou ordre', capacity: 'Capacité', address: 'Adresse', notes: 'Observations', reference: 'Référence de pièce',
