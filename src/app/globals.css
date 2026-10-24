@@ -3284,3 +3284,85 @@ body.transcript-print-body { page: transcript; display: block; width: 190mm; hei
 .transcript-reference { margin: 3mm 0 0; font-size: 7pt; }
 .transcript-contact { margin: 3mm 0 0; border-top: .3mm solid #000; padding-top: 1mm; text-align: center; font-size: 7pt; }
 .transcript-print-body { print-color-adjust: exact; -webkit-print-color-adjust: exact; }
+
+/* Campus-wide screen presentation, using the existing ESCEN palette.
+   Keep official documents and their print geometry independent. */
+@media screen {
+  .main-content { background: var(--bg-primary); scrollbar-gutter: stable; }
+  .workspace-location { padding-bottom: 1rem; margin-bottom: 1.5rem; border-bottom-color: var(--border); }
+  .workspace-breadcrumb { font-size: .82rem; }
+  .page-intro, .module-header { align-items: flex-start; gap: 1rem; margin-bottom: 1.75rem; }
+  .page-intro > div, .module-header > div, .home-hero > div { min-width: 0; }
+  .page-intro h1, .module-header h1, .home-hero h1 { font-size: clamp(1.5rem, 2.2vw, 2rem); line-height: 1.3; letter-spacing: -.025em; text-wrap: balance; }
+  .page-intro p, .module-header p, .home-hero p { font-size: .94rem; line-height: 1.75; max-width: 72ch; }
+  .page-eyebrow { color: var(--accent); font-size: .72rem; letter-spacing: .06em; }
+  .card, .metric-card, .journey-stage { border-radius: var(--radius-lg); }
+  .card-header { align-items: center; gap: 1rem; }
+  .card-header h2 { line-height: 1.5; }
+  .btn { line-height: 1.5; white-space: normal; overflow-wrap: anywhere; }
+  .btn > svg { flex-shrink: 0; }
+  .btn-primary { box-shadow: 0 2px 5px rgba(37, 99, 235, .14); }
+  .btn-group { gap: .6rem; }
+  .form-group, label.form-group { gap: .5rem; }
+  .form-label, label.form-group, .form-group > label { font-size: .85rem; line-height: 1.6; }
+  :is(.input, .select-input, .search-input) { min-height: 44px; line-height: 1.5; }
+  textarea.input { min-height: 112px; }
+  input[type="checkbox"], input[type="radio"] { accent-color: var(--accent); }
+  :is(.input, .select-input, textarea)[aria-invalid="true"] { border-color: var(--danger); }
+  .data-table th { font-size: .78rem; line-height: 1.6; text-transform: none; letter-spacing: 0; }
+  .data-table td { padding-top: 1rem; padding-bottom: 1rem; font-variant-numeric: tabular-nums; }
+  .data-table tbody tr:last-child td { border-bottom: 0; }
+  .table-wrap { border-radius: var(--radius); }
+  .sidebar .nav-section-title { font-size: .68rem; letter-spacing: .07em; }
+  .sidebar .subnav-item { color: #cbd5e1; font-size: .85rem; line-height: 1.6; }
+  .sidebar .nav-item.active { box-shadow: none; }
+  .sidebar .subnav-item.active { background: rgba(37, 99, 235, .3); }
+  .home-hero { padding-bottom: 1.75rem; }
+  .home-metrics span { font-size: .82rem; line-height: 1.6; color: var(--text-secondary); }
+  .home-metrics strong { font-variant-numeric: tabular-nums; }
+  .home-section-heading p, .home-bottom-grid .card > p { font-size: .88rem; line-height: 1.7; }
+  .home-destinations h3 { font-size: 1rem; }
+  .home-destinations p { font-size: .86rem; line-height: 1.7; }
+  .home-destinations > a > span, .home-bottom-grid .card-header a { font-size: .82rem; }
+  .home-record-counts > div { font-size: .88rem; gap: 1rem; }
+  .home-source-summary > span { font-size: .8rem; flex-wrap: wrap; }
+  .home-navigation .card a { min-height: 44px; }
+  .journey-stage-heading p { font-size: .9rem; }
+  .journey-actions a { background: var(--surface-alt); }
+  .journey-actions strong { font-size: .94rem; line-height: 1.6; }
+  .journey-actions a > span { font-size: .83rem; }
+  .empty-state { padding: 2rem 1.25rem; line-height: 1.75; }
+  .detail-drawer-header { padding: 1.25rem 1.5rem; }
+  .detail-drawer-header h2 { overflow-wrap: anywhere; }
+  .review-values > div { padding: .85rem; border: 1px solid var(--border); border-radius: var(--radius-sm); background: var(--surface-alt); }
+  .review-values dt { font-size: .82rem; color: var(--text-secondary); }
+  .review-values dd { line-height: 1.65; }
+  .auth-brand-copy h1 { font-size: clamp(2.2rem, 3.5vw, 3.7rem); line-height: 1.15; text-wrap: balance; }
+  .auth-form-card { border-radius: var(--radius-xl); box-shadow: var(--shadow-lg); }
+  .auth-form-description, .auth-help-note { font-size: .9rem; line-height: 1.75; }
+  .auth-form-footer { color: var(--text-secondary); font-size: .8rem; }
+  .workspace-data-footer { font-size: .78rem; line-height: 1.7; }
+}
+@media screen and (max-width: 1024px) {
+  .main-content { padding: 1.25rem 1.5rem 2rem; }
+  .home-source-summary { grid-template-columns: 1fr; }
+}
+@media screen and (max-width: 768px) {
+  .main-content { padding: 1rem 1rem 2rem; }
+  .workspace-location { margin-bottom: 1.25rem; gap: .75rem; }
+  .page-intro, .module-header { gap: .85rem; margin-bottom: 1.25rem; }
+  .page-intro h1, .module-header h1, .home-hero h1 { font-size: 1.5rem; }
+  .card, .journey-stage { padding: 1.1rem; }
+  .home-metrics > div, .home-destinations > a { padding: 1.1rem; }
+  .home-metrics, .home-destinations { gap: .75rem; }
+  .detail-drawer-header { padding: 1rem; }
+  .data-table td { padding-top: .75rem; padding-bottom: .75rem; }
+  .auth-form-card { padding: 1.5rem; }
+  /* A 16px field font prevents automatic zoom while typing on iOS. */
+  :is(.auth-layout, .app-wrapper, .detail-drawer) :is(input:not([type="checkbox"]):not([type="radio"]), select, textarea) { font-size: 1rem; }
+}
+@media screen and (max-width: 480px) {
+  .main-content { padding-inline: .85rem; }
+  .home-metrics strong { font-size: 1.5rem; }
+  .auth-form-card { padding: 1.25rem; }
+}

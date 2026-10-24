@@ -7,6 +7,14 @@ async function open(page: Page, route: string, width: number, account: AuditAcco
   await page.goto(route);
   await expect(page.locator('main')).toBeVisible();
   await expect(page.locator('main .loading-state:visible')).toHaveCount(0);
+  if (route.startsWith('/academique/filieres')) {
+    // The connected workspace now opens the table after choosing its context.
+    await page.getByRole('combobox', { name: '1. Filière', exact: true }).selectOption({ index: 1 });
+    await page.getByRole('combobox', { name: '2. Niveau', exact: true }).selectOption({ index: 1 });
+    const version = page.getByRole('combobox', { name: 'Version du programme', exact: true });
+    if (await version.count()) await version.selectOption({ index: 1 });
+    await page.getByRole('combobox', { name: '3. Semestre', exact: true }).selectOption({ index: 1 });
+  }
   await page.evaluate(() => document.fonts.ready);
   expect(problems).toEqual([]);
 }
@@ -19,7 +27,7 @@ async function expectPageFits(page: Page) {
 for (const { route, width, label } of [
   { route: '/site-web/articles', width: 360, label: 'Modifier : Ouverture de l’année universitaire et des formations' },
   { route: '/site-web/articles', width: 390, label: 'Modifier : Ouverture de l’année universitaire et des formations' },
-  { route: '/site-web/documents', width: 360, label: 'Configurer : Licence professionnelle en informatique' },
+  { route: '/site-web/documents', width: 360, label: 'Configurer les pièces : Licence 1 · 2026-2027' },
 ]) {
   test(`Le bouton long reste lisible à ${width}px : ${route}`, async ({ page }) => {
     await open(page, route, width);
@@ -54,10 +62,15 @@ for (const { route, account } of [
       const wrapper = element.parentElement!;
       const before = wrapper.scrollLeft;
       wrapper.scrollLeft = wrapper.scrollWidth;
-      return { before, after: wrapper.scrollLeft, overflow: getComputedStyle(wrapper).overflowX };
+      return { before, after: wrapper.scrollLeft, overflow: getComputedStyle(wrapper).overflowX, content: wrapper.scrollWidth, available: wrapper.clientWidth };
     });
     expect(scroll.overflow).toBe('auto');
-    expect(scroll.after).toBeGreaterThan(scroll.before);
+    if (route.startsWith('/academique/filieres') && scroll.content <= scroll.available) {
+      // The current semester table has five columns and can fit without scrolling.
+      expect(scroll.content).toBeLessThanOrEqual(scroll.available);
+    } else {
+      expect(scroll.after).toBeGreaterThan(scroll.before);
+    }
     const finalCell = table.locator('tbody tr').first().locator('td').last();
     await finalCell.scrollIntoViewIfNeeded();
     const box = await finalCell.boundingBox();

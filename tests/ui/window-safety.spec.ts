@@ -90,6 +90,7 @@ for (const width of [360, 390]) {
     await page.getByRole('button', { name: 'Fiche & Dossier', exact: true }).click();
     const dossier = page.getByRole('dialog', { name: `Dossier étudiant · ${matricule}`, exact: true });
     await dossier.evaluate(element => element.setAttribute('data-preserved-window', 'true'));
+    await dossier.getByRole('button', { name: 'Frais et versements', exact: true }).click();
     await dossier.getByRole('button', { name: 'Enregistrer un paiement', exact: true }).click();
     const dialog = page.getByRole('dialog', { name: `Encaisser · ${matricule}`, exact: true });
     await visibleActions(page, dialog);
