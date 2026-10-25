@@ -6,16 +6,14 @@ import { useEffect, useState } from 'react';
 import { usePortal } from '@/hooks/usePortal';
 import { loadPreparedSubjects, savePreparedSubject } from '@/services/remoteCampusService';
 import { subjectPoints, subjectSchema } from '@/services/subjectCompositionService';
-import { assessmentCategory } from '@/services/assessmentDisplayService';
-import { historyValue } from '@/services/historyDisplayService';
-import type { SubjectDirectory, SubjectInput, SubjectPart, SubjectQuestion, SubjectPurpose, PreparedSubject } from '@/types/subject';
+import { subjectExamIssue } from '@/services/subjectExamPolicy';
+import type { SubjectDirectory, SubjectInput, SubjectPart, SubjectQuestion, SubjectPurpose, PreparedSubject, SubjectExam } from '@/types/subject';
 import ResponsiveTable from '@/components/ui/ResponsiveTable';
 import ReviewedForm from '@/components/ui/ReviewedForm';
 import Link from 'next/link';
 import { printDocument, escapeHtml as h } from '@/utils/printDocument';
 
 const purposes: Record<SubjectPurpose, string> = { CONTROLE_CONTINU: 'Contrôle continu', EXAMEN: 'Examen', RATTRAPAGE: 'Rattrapage' };
-const categoryFor = { CONTROLE_CONTINU: 'control', EXAMEN: 'exam', RATTRAPAGE: 'resit' };
 const blank = (purpose: SubjectPurpose = 'EXAMEN'): SubjectInput => ({
   title: '',
   instructions: '',
@@ -27,10 +25,12 @@ const blank = (purpose: SubjectPurpose = 'EXAMEN'): SubjectInput => ({
   parts: [],
 });
 const blankQuestion = (): SubjectQuestion => ({ prompt: '', kind: 'TEXTE', points: 1, options: [], correction: '' });
+const forExam = (exam: SubjectExam): SubjectInput => ({ ...blank(exam.purpose), title: exam.title, durationMinutes: exam.durationMinutes, evaluationId: exam.id });
+const dateTime = (value: string | null) => value ? new Intl.DateTimeFormat('fr-FR', { dateStyle: 'short', timeStyle: 'short', timeZone: 'Africa/Lome' }).format(new Date(value)) : 'Non renseigné';
 
 export default function SubjectStudio() {
   const portal = usePortal();
-  const { activeRole, history } = portal;
+  const { activeRole } = portal;
   const [directory, setDirectory] = useState<SubjectDirectory | null>(null);
   const [error, setError] = useState('');
   const [retry, setRetry] = useState(0);
@@ -46,6 +46,8 @@ export default function SubjectStudio() {
   const [saving, setSaving] = useState(false);
   const [feedback, setFeedback] = useState('');
   const [saveError, setSaveError] = useState('');
+  const [now, setNow] = useState(Date.now);
+  useEffect(() => { const timer = setInterval(() => setNow(Date.now()), 15000); return () => clearInterval(timer); }, []);
 
   useEffect(() => {
     const controller = new AbortController();
@@ -62,25 +64,26 @@ export default function SubjectStudio() {
         if (requested && !existing) {
           setError('Ce sujet n’est plus disponible ou ne fait pas partie de vos accès.');
         } else if (existing) {
+          const exam = result.exams?.find(row => row.id === existing.evaluationId);
+          const editable = !subjectExamIssue(exam) && existing.status !== 'AUTORISE';
           setPrevious(existing);
           setConnectedEvalId(existing.evaluationId || '');
-          setSubject({ title: existing.title, instructions: existing.instructions, durationMinutes: existing.durationMinutes,
-            purpose: existing.purpose, evaluationId: existing.evaluationId || null, sourceEvaluationRowId: existing.sourceEvaluationRowId,
+          setSubject({ title: editable && exam ? exam.title : existing.title, instructions: existing.instructions, durationMinutes: editable && exam ? exam.durationMinutes : existing.durationMinutes,
+            purpose: editable && exam ? exam.purpose : existing.purpose, evaluationId: existing.evaluationId || null, sourceEvaluationRowId: existing.sourceEvaluationRowId,
             authorize: existing.status === 'AUTORISE', parts: structuredClone(existing.parts) });
-          setPartIndex(0); setQuestionIndex(0); setTab('compose'); setEditing(true);
+          setPartIndex(0); setQuestionIndex(0); setTab(subjectExamIssue(result.exams?.find(row => row.id === existing.evaluationId)) || existing.status === 'AUTORISE' ? 'preview' : 'compose'); setEditing(true);
         } else if (params.get('nouveau') === '1') {
-          const purpose = params.get('nature') === 'control' ? 'CONTROLE_CONTINU' : params.get('nature') === 'resit' ? 'RATTRAPAGE' : 'EXAMEN';
-          const initialTitle = params.get('titre') || '';
-          const evalId = params.get('evalId') || '';
-          setConnectedEvalId(evalId);
-          setSubject({
-            ...blank(purpose),
-            title: initialTitle,
-            evaluationId: evalId || null,
-            sourceEvaluationRowId: evalId ? null : params.get('source'),
-          });
-          setPrevious(null);
-          setEditing(true);
+          const exam = result.exams?.find(row => row.id === params.get('evalId'));
+          const issue = subjectExamIssue(exam);
+          if (exam && !issue) {
+            const saved = result.subjects.find(row => row.evaluationId === exam.id && !row.archived);
+            setConnectedEvalId(exam.id);
+            setPrevious(saved || null);
+            setSubject(saved ? { title: saved.title, instructions: saved.instructions, durationMinutes: exam.durationMinutes,
+              purpose: exam.purpose, evaluationId: exam.id, sourceEvaluationRowId: null,
+              parts: structuredClone(saved.parts), authorize: saved.status === 'AUTORISE' } : forExam(exam));
+            setTab('compose'); setEditing(true);
+          } else if (params.get('evalId')) setFeedback(issue || 'Choisissez un examen programmé.');
         }
       })
       .catch(cause => {
@@ -102,28 +105,30 @@ export default function SubjectStudio() {
       ),
     }));
 
-  const open = (record?: PreparedSubject) => {
+  const open = (record?: PreparedSubject, exam?: SubjectExam) => {
+    const linkedExam = exam || directory?.exams?.find(row => row.id === record?.evaluationId);
+    const editable = !subjectExamIssue(linkedExam) && record?.status !== 'AUTORISE';
     setPrevious(record || null);
-    const evalId = record?.evaluationId || '';
+    const evalId = record?.evaluationId || exam?.id || '';
     setConnectedEvalId(evalId);
     setSubject(
       record
         ? {
-            title: record.title,
+            title: editable && linkedExam ? linkedExam.title : record.title,
             instructions: record.instructions,
-            durationMinutes: record.durationMinutes,
-            purpose: record.purpose,
+            durationMinutes: editable && linkedExam ? linkedExam.durationMinutes : record.durationMinutes,
+            purpose: editable && linkedExam ? linkedExam.purpose : record.purpose,
             evaluationId: record.evaluationId || null,
             sourceEvaluationRowId: record.sourceEvaluationRowId,
             authorize: record.status === 'AUTORISE',
             parts: structuredClone(record.parts),
           }
-        : blank()
+        : exam ? forExam(exam) : blank()
     );
     setEditing(true);
     setPartIndex(0);
     setQuestionIndex(0);
-    setTab('compose');
+    setTab(record && (record.status === 'AUTORISE' || subjectExamIssue(directory?.exams?.find(row => row.id === record.evaluationId))) ? 'preview' : 'compose');
     setSaveError('');
     setFeedback('');
   };
@@ -146,18 +151,15 @@ export default function SubjectStudio() {
       `<div class="document-heading"><h1>ESCEN</h1><h2>${h(subject.title)}</h2></div><p>${subject.authorize ? 'Épreuve autorisée' : 'Brouillon de'} ${h(purposes[subject.purpose].toLowerCase())} · ${subject.durationMinutes} minutes · ${subjectPoints(subject)} points</p><p>${h(subject.instructions).replace(/\n/g, '<br>')}</p>${subject.parts.map(part => `<h3>${h(part.title)}</h3><p>${h(part.instructions).replace(/\n/g, '<br>')}</p>${part.questions.map((q, index) => `<h4>Question ${index + 1} · ${q.points} point(s)</h4><p>${h(q.prompt).replace(/\n/g, '<br>')}</p>${q.options.length ? `<ol>${q.options.map(option => `<li>${h(option.label)}</li>`).join('')}</ol>` : '<p>Réponse : __________________________________________________</p>'}`).join('')}`).join('')}`
     );
 
-  if (error) return <ErrorState title="Bibliothèque des sujets indisponible" message={error} onRetry={() => setRetry(value => value + 1)} />;
+  if (error) return <ErrorState title="Composition des épreuves indisponible" message={error} onRetry={() => setRetry(value => value + 1)} />;
   if (!directory) return <LoadingState label="Chargement des sujets…" variant="table" />;
 
-  const connectedEvaluations = (portal.relationalSnapshot.tables.evaluations || []).filter(row => {
-    if (row.cancelled_at || row.archived_at) return false;
-    const isResit = row.kind === 'RATTRAPAGE' || row.session_type === 'RATTRAPAGE';
-    if (subject.purpose === 'RATTRAPAGE') return isResit;
-    if (subject.purpose === 'EXAMEN') return row.kind === 'EXAMEN' && !isResit;
-    return !isResit && ['DEVOIR', 'INTERROGATION', 'TP', 'EXPOSE', 'PROJET'].includes(String(row.kind));
-  });
+  const exams = directory.exams || [];
+  const availableExams = exams.filter(exam => !subjectExamIssue(exam, now));
+  const selectedExam = exams.find(exam => exam.id === connectedEvalId);
+  const compositionIssue = previous?.status === 'AUTORISE' ? 'Le sujet est autorisé : consultation uniquement.' : subjectExamIssue(selectedExam, now);
 
-  const returnEvalId = connectedEvalId || subject.sourceEvaluationRowId;
+  const returnEvalId = connectedEvalId;
   const currentPart = subject.parts[partIndex];
   const currentQuestion = currentPart?.questions[questionIndex];
 
@@ -166,23 +168,35 @@ export default function SubjectStudio() {
       <div className="subject-studio">
         <header className="subject-heading">
           <button className="btn btn-outline" onClick={leave} disabled={saving}>
-            ← Bibliothèque des sujets
+            ← Composition des épreuves
           </button>
-          <h1>{previous ? 'Modifier l’épreuve' : 'Composer une épreuve'}</h1>
-          <p>Préparez le sujet, son barème et son corrigé. Chaque sauvegarde conserve une version.</p>
+          <h1>{compositionIssue ? 'Consulter le sujet' : previous ? 'Modifier le sujet' : 'Composer le sujet'}</h1>
+          <p>{subject.title}</p>
+          {compositionIssue && <p role="status">{compositionIssue}</p>}
+          {selectedExam && <dl className="record-details-grid">
+            <div><dt>Nature</dt><dd>{purposes[selectedExam.purpose]}</dd></div>
+            <div><dt>Groupe</dt><dd>{selectedExam.group}</dd></div>
+            <div><dt>Matière</dt><dd>{selectedExam.subject}</dd></div>
+            <div><dt>Début de l’examen</dt><dd>{dateTime(selectedExam.startsAt)}</dd></div>
+            <div><dt>Fin de l’examen</dt><dd>{dateTime(selectedExam.endsAt)}</dd></div>
+            <div><dt>Durée de composition</dt><dd>{selectedExam.durationMinutes} minutes</dd></div>
+            <div><dt>Salle / mode</dt><dd>{selectedExam.room || (selectedExam.mode === 'EN_LIGNE' ? 'En ligne' : 'Salle non renseignée')}</dd></div>
+          </dl>}
         </header>
         <div className="subject-tabs" role="tablist" aria-label="Préparation du sujet">
-          {([['compose', 'Composition'], ['preview', 'Aperçu étudiant'], ['correction', 'Corrigé']] as const).map(([key, label]) => (
+          {([['compose', 'Composition'], ['preview', 'Aperçu étudiant'], ['correction', 'Corrigé']] as const).filter(([key]) => key !== 'compose' || !compositionIssue).map(([key, label]) => (
             <button role="tab" aria-selected={tab === key} className={tab === key ? 'selected' : ''} key={key} onClick={() => setTab(key)}>
               {label}
             </button>
           ))}
         </div>
-        {tab === 'compose' ? (
+        {tab === 'compose' && !compositionIssue ? (
           <ReviewedForm
             className="card subject-editor"
             completionKey={previous?.id}
             validate={() => {
+              const issue = subjectExamIssue(selectedExam);
+              if (issue) return issue;
               const checked = subjectSchema.safeParse(subject);
               return checked.success ? null : checked.error.issues[0]?.message || 'Vérifiez les champs du sujet.';
             }}
@@ -193,7 +207,9 @@ export default function SubjectStudio() {
               { label: 'Titre', value: subject.title },
               { label: 'Nature', value: purposes[subject.purpose] },
               { label: 'Durée', value: subject.durationMinutes + ' minutes' },
-              { label: 'Rattachement', value: connectedEvalId ? String(connectedEvaluations.find(e => String(e.id) === connectedEvalId)?.name || 'Évaluation connectée') : 'Sujet libre' },
+              { label: 'Examen programmé', value: selectedExam?.title || subject.title },
+              { label: 'Début', value: dateTime(selectedExam?.startsAt || null) },
+              { label: 'Fin', value: dateTime(selectedExam?.endsAt || null) },
               { label: 'Diffusion', value: subject.authorize ? 'Autorisé pour l’épreuve en ligne' : 'Brouillon privé non diffusé' },
               { label: 'Contenu', value: subject.parts.length + ' partie(s) · ' + subject.parts.reduce((sum, part) => sum + part.questions.length, 0) + ' question(s)' },
               { label: 'Barème', value: subjectPoints(subject) + ' points' },
@@ -206,6 +222,8 @@ export default function SubjectStudio() {
             }
             onConfirm={event => {
               event.preventDefault();
+              const issue = subjectExamIssue(selectedExam);
+              if (issue) { setSaveError(issue); return; }
               const parsed = subjectSchema.safeParse(subject);
               if (!parsed.success) {
                 setSaveError(parsed.error.issues[0]?.message || 'Vérifiez les champs du sujet.');
@@ -247,80 +265,7 @@ export default function SubjectStudio() {
             }}
           >
             <fieldset disabled={saving} className="permission-fieldset">
-              <div className="form-grid">
-                <label className="form-group">
-                  Titre de l’épreuve
-                  <input className="input" required maxLength={160} value={subject.title} onChange={event => setSubject({ ...subject, title: event.target.value })} />
-                </label>
-                <label className="form-group">
-                  Nature
-                  <select
-                    className="select-input"
-                    value={subject.purpose}
-                    onChange={event => {
-                      setConnectedEvalId('');
-                      setSubject({ ...subject, purpose: event.target.value as SubjectPurpose, evaluationId: null, sourceEvaluationRowId: null, authorize: false });
-                    }}
-                  >
-                    {Object.entries(purposes).map(([value, label]) => (
-                      <option key={value} value={value}>
-                        {label}
-                      </option>
-                    ))}
-                  </select>
-                </label>
-                <label className="form-group">
-                  Durée en minutes
-                  <input className="input" required type="number" min={1} max={2147483647} value={subject.durationMinutes} onChange={event => setSubject({ ...subject, durationMinutes: Number(event.target.value) })} />
-                </label>
-                {connectedEvaluations.length > 0 && (
-                  <label className="form-group">
-                    Évaluation de l’année
-                    <select
-                      className="select-input"
-                      value={connectedEvalId}
-                      onChange={event => {
-                        const id = event.target.value;
-                        setConnectedEvalId(id);
-                        const ev = connectedEvaluations.find(row => String(row.id) === id);
-                        setSubject(current => ({
-                          ...current,
-                          evaluationId: id || null,
-                          sourceEvaluationRowId: id ? null : current.sourceEvaluationRowId,
-                          title: ev && !current.title.trim() ? String(ev.name || '') : current.title,
-                        }));
-                      }}
-                    >
-                      <option value="">Sujet libre ou toutes formations</option>
-                      {connectedEvaluations.map(row => (
-                        <option key={row.id} value={String(row.id)}>
-                          {String(row.name || row.id)}
-                        </option>
-                      ))}
-                    </select>
-                  </label>
-                )}
-                {history.catalog && (
-                  <label className="form-group">
-                    Épreuve historique associée
-                    <select
-                      className="select-input"
-                      disabled={!!connectedEvalId}
-                      value={subject.sourceEvaluationRowId || ''}
-                      onChange={event => setSubject({ ...subject, sourceEvaluationRowId: event.target.value || null, evaluationId: null })}
-                    >
-                      <option value="">Sujet préparatoire sans rattachement</option>
-                      {(history.catalog.references.evaluations || [])
-                        .filter(row => assessmentCategory(row) === categoryFor[subject.purpose] && !row.values.deleted_at)
-                        .map(row => (
-                          <option key={row.id} value={row.id}>
-                            {historyValue('unite_valeur_id', row.values.unite_valeur_id, row, history.catalog!)} · {row.values.date ? String(row.values.date) : 'Date non renseignée'} · {historyValue('group_id', row.values.group_id, row, history.catalog!)}
-                          </option>
-                        ))}
-                    </select>
-                  </label>
-                )}
-              </div>
+              <p className="cell-sub">La nature et la durée proviennent de la programmation de cet examen. Rédigez ci-dessous ses consignes, ses parties et ses questions.</p>
 
               {connectedEvalId && (
                 <div className="card mb-2" style={{ backgroundColor: 'var(--surface-sunken)' }}>
@@ -330,11 +275,11 @@ export default function SubjectStudio() {
                       checked={!!subject.authorize}
                       onChange={event => setSubject({ ...subject, authorize: event.target.checked })}
                     />
-                    <strong>Autoriser immédiatement ce sujet pour l’épreuve en ligne</strong>
+                    <strong>Autoriser ce sujet pour l’examen</strong>
                   </label>
                   <p className="cell-sub" style={{ marginTop: 4 }}>
                     {subject.authorize
-                      ? 'Le sujet sera validé pour diffusion. Les étudiants du groupe pourront composer dès l’ouverture de la séance en ligne.'
+                      ? 'Le sujet sera autorisé. Pour un examen en ligne, l’accès des étudiants dépend aussi des horaires programmés.'
                       : 'Le sujet restera à l’état de brouillon. Vous pourrez l’autoriser ultérieurement.'}
                   </p>
                 </div>
@@ -593,14 +538,29 @@ export default function SubjectStudio() {
       <div className="page-intro">
         <div>
           <span className="page-eyebrow">PRÉPARATION DES ÉPREUVES</span>
-          <h1>Bibliothèque des sujets</h1>
-          <p>Composez les épreuves ici. Les diffusions en ligne, les copies et les notes sont consultables dans le module académique.</p>
+          <h1>Composition des épreuves</h1>
+          <p>Choisissez un examen programmé à venir, puis préparez ses questions, son barème et son corrigé.</p>
         </div>
-        <button className="btn btn-primary" onClick={() => open()}>
-          Composer une épreuve
-        </button>
       </div>
+      <section className="card">
+        <h2>Examen à préparer</h2>
+        {availableExams.length ? <>
+          <label className="form-group">Examen programmé
+            <select className="select-input" value={connectedEvalId} onChange={event => setConnectedEvalId(event.target.value)}>
+              <option value="">Choisir un examen à venir</option>
+              {availableExams.map(exam => <option key={exam.id} value={exam.id}>{exam.title} · {exam.group} · {dateTime(exam.startsAt)}</option>)}
+            </select>
+          </label>
+          {selectedExam && !compositionIssue && <>
+            <p>{selectedExam.group} · {selectedExam.subject} · Du {dateTime(selectedExam.startsAt)} au {dateTime(selectedExam.endsAt)} · {selectedExam.durationMinutes} minutes</p>
+            <button className="btn btn-primary" onClick={() => open(directory.subjects.find(row => row.evaluationId === selectedExam.id && !row.archived), selectedExam)}>Ouvrir la composition du sujet</button>
+          </>}
+        </> : <p>Aucun examen programmé à venir n’est disponible pour la composition dans l’année consultée.</p>}
+        <Link className="btn btn-outline" href="/academique/examens">Consulter les examens et leur programmation</Link>
+        {feedback && <p role="status">{feedback}</p>}
+      </section>
       <section className="card card-full">
+        <h2>Sujets enregistrés</h2>
         <label className="form-group">
           Rechercher un sujet
           <input className="input" type="search" value={query} onChange={event => setQuery(event.target.value)} />
@@ -609,7 +569,7 @@ export default function SubjectStudio() {
           <thead>
             <tr>
               <th>Sujet</th>
-              <th>Statut &amp; Rattachement</th>
+              <th>État du sujet et examen</th>
               <th>Nature</th>
               <th>Durée</th>
               <th>Barème</th>
@@ -634,7 +594,7 @@ export default function SubjectStudio() {
                     ) : row.evaluationId ? (
                       <div className="cell-sub">Épreuve connectée</div>
                     ) : (
-                      <div className="cell-sub">Sujet libre</div>
+                      <div className="cell-sub">Consultation uniquement</div>
                     )}
                   </td>
                   <td>{purposes[row.purpose]}</td>
@@ -642,7 +602,7 @@ export default function SubjectStudio() {
                   <td>{subjectPoints(row)} points</td>
                   <td>
                     <div className="btn-group">
-                      <IconButton className="btn btn-outline" onClick={() => open(row)} label="Modifier" />
+                      {row.status !== 'AUTORISE' && !subjectExamIssue(exams.find(exam => exam.id === row.evaluationId), now) && <IconButton className="btn btn-outline" onClick={() => open(row)} label="Modifier le sujet" />}
                       <IconButton
                         className="btn btn-outline"
                         onClick={() => {
@@ -658,7 +618,7 @@ export default function SubjectStudio() {
             })}
             {!rows.length && (
               <tr>
-                <td colSpan={6}>Aucun sujet préparé. Commencez avec « Composer une épreuve ».</td>
+                <td colSpan={6}>Aucun sujet enregistré pour l’année consultée.</td>
               </tr>
             )}
           </tbody>

@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
 import { usePortal } from '@/hooks/usePortal';
 import { ASSESSMENT_LABELS, combinedAssessmentProgress, type AssessmentCategory } from '@/services/assessmentDisplayService';
+import { subjectExams, subjectExamIssue } from '@/services/subjectExamPolicy';
 import { connectedRecordName, connectedRecordValue } from '@/services/connectedRecordDisplayService';
 import type { DatabaseRow } from '@/types/persistence';
 import ResponsiveTable from '@/components/ui/ResponsiveTable';
@@ -151,6 +152,7 @@ export default function NativeAssessmentWorkspace({ category }: { category: Asse
         .sort((a, b) => Number(b.version) - Number(a.version))[0];
       const selectedDelivery = (data.tables.exam_deliveries || []).find(row => row.evaluation_id === selected.id);
       const selectedSession = selectedDelivery && (data.tables.sessions || []).find(row => row.id === selectedDelivery.session_id);
+      const compositionAvailable = !subjectExamIssue(subjectExams(data).find(exam => exam.id === selected.id));
       const today = new Intl.DateTimeFormat('en-CA', { timeZone: 'Africa/Lome', year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date());
       const preparationAvailable = selectedMembers.every(member =>
         !['SOUMISES', 'VALIDEES', 'PUBLIEES'].includes(String(member.status))
@@ -162,8 +164,8 @@ export default function NativeAssessmentWorkspace({ category }: { category: Asse
             <h3>Mise en place de l’épreuve</h3>
             <ol className="exam-preparation-steps">
               <li><strong>1. Groupe et candidats</strong><span>{groupName(selected)} · {candidates.length} candidat(s)</span></li>
-              <li><strong>2. Sujet et barème</strong><span>{selectedPaper ? selectedPaper.status === 'AUTORISE' ? 'Sujet autorisé' : 'Sujet en brouillon' : 'Sujet à composer'}</span></li>
-              <li><strong>3. Date et salle</strong><span>{selectedSession ? new Intl.DateTimeFormat('fr-FR', { dateStyle: 'short', timeStyle: 'short', timeZone: 'Africa/Lome' }).format(new Date(String(selectedSession.starts_at))) : 'Séance à choisir dans la programmation'}</span></li>
+              <li><strong>2. Date et salle</strong><span>{selectedSession ? new Intl.DateTimeFormat('fr-FR', { dateStyle: 'short', timeStyle: 'short', timeZone: 'Africa/Lome' }).format(new Date(String(selectedSession.starts_at))) : 'Séance à choisir dans la programmation'}</span></li>
+              <li><strong>3. Sujet et barème</strong><span>{selectedPaper ? selectedPaper.status === 'AUTORISE' ? 'Sujet autorisé' : 'Sujet en brouillon' : 'Sujet à composer après programmation'}</span></li>
               <li><strong>4. Accès étudiant en ligne</strong><span>{selectedDelivery && selectedPaper?.status === 'AUTORISE' ? 'Sujet autorisé et fenêtre configurée' : 'Sujet autorisé et programmation nécessaires'}</span></li>
             </ol>
             <p>Pour une composition en ligne, les candidats éligibles accèdent au sujet autorisé pendant la fenêtre programmée. Les notes suivent leur propre circuit de validation.</p>
@@ -206,7 +208,7 @@ export default function NativeAssessmentWorkspace({ category }: { category: Asse
                 Saisir / Gérer les notes
               </button>
             )}
-            {preparationAvailable && perms.permissions.includes('evaluation.create') && (
+            {preparationAvailable && compositionAvailable && perms.permissions.includes('evaluation.create') && (
               <Link className="btn btn-outline" href={selectedPaper ? `/academique/sujets?sujet=${encodeURIComponent(String(selectedPaper.id))}` : `/academique/sujets?nouveau=1&nature=${category}&evalId=${encodeURIComponent(String(selected.id))}&titre=${encodeURIComponent(String(selected.name || ''))}`}>
                 {selectedPaper ? 'Modifier le sujet' : 'Composer le sujet'}
               </Link>

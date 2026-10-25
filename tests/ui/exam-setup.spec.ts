@@ -1,5 +1,6 @@
 import { expect, test } from '@playwright/test';
 import { installResponsiveAudit } from './responsive-audit-fixture';
+import { subjectProgrammingFixture } from './subject-programming-fixture';
 
 for (const width of [390, 1440]) test(`Préparer un examen et son rattrapage à ${width}px`, async ({ page }) => {
   await page.setViewportSize({ width, height: 960 });
@@ -34,10 +35,12 @@ for (const width of [390, 1440]) test(`Préparer un examen et son rattrapage à 
 
 test('Modifier le sujet enregistré conserve ses questions', async ({ page }) => {
   await installResponsiveAudit(page, 'staff');
+  const fixture = subjectProgrammingFixture();
+  const { exams } = await (await fixture.get()).json();
   const paper = {
     id: 'existing-paper', libraryId: 'library', version: 2, archived: false, status: 'BROUILLON',
     title: 'Sujet déjà préparé', instructions: 'Consignes conservées', durationMinutes: 90,
-    purpose: 'EXAMEN', evaluationId: null, sourceEvaluationRowId: null,
+    purpose: 'EXAMEN', evaluationId: fixture.subject.evaluationId, sourceEvaluationRowId: null,
     parts: [{ title: 'Partie conservée', instructions: '', questions: [{ prompt: 'Question déjà rédigée', kind: 'TEXTE', points: 20, options: [], correction: 'Corrigé conservé' }] }],
   };
   let revision = 1;
@@ -49,11 +52,11 @@ test('Modifier le sujet enregistré conserve ses questions', async ({ page }) =>
       Object.assign(paper, { id: 'saved-paper', version: 3 }); revision++;
       return route.fulfill({ json: { id: paper.id, revision } });
     }
-    return route.fulfill({ json: { revision, subjects: [paper] } });
+    return route.fulfill({ json: { revision, subjects: [paper], exams } });
   });
   await page.goto('/academique/sujets?sujet=existing-paper');
-  await expect(page.getByRole('heading', { name: 'Modifier l’épreuve', exact: true })).toBeVisible();
-  await expect(page.locator('input[value="Sujet déjà préparé"]')).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Modifier le sujet', exact: true })).toBeVisible();
+  await expect(page.getByText('Examen de finance programmé', { exact: true })).toBeVisible();
   await expect(page.locator('.subject-prompt')).toHaveValue('Question déjà rédigée');
   await page.getByRole('button', { name: 'Enregistrer le brouillon', exact: true }).click();
   await page.getByRole('button', { name: 'Confirmer la sauvegarde du brouillon', exact: true }).click();

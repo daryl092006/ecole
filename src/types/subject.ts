@@ -22,4 +22,9 @@ export interface PreparedSubject extends SubjectInput {
   authorizedBy?: string | null;
   authorizedAt?: string | null;
 }
-export interface SubjectDirectory { revision: number; subjects: PreparedSubject[]; }
+export interface SubjectExam {
+  id: string; title: string; purpose: SubjectPurpose; group: string; subject: string;
+  startsAt: string | null; endsAt: string | null; compositionClosesAt: string | null;
+  durationMinutes: number; room: string; mode: string; issue: string | null;
+}
+export interface SubjectDirectory { revision: number; subjects: PreparedSubject[]; exams?: SubjectExam[]; }

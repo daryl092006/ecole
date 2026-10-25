@@ -1,8 +1,9 @@
-import { resolveAcademicYear, assertArchiveAcademicYear } from '@/server/academicYearContext';
+import { resolveAcademicYear } from '@/server/academicYearContext';
 import { filterSnapshotForAcademicYear } from '@/services/academicYearScopeService';
 import { z } from 'zod';
 import { requireAccount, requirePermission, errorResponse, RequestError } from '@/server/auth';
-import { assessmentCategory } from '@/services/assessmentDisplayService';
+import { filterRelationalSnapshot } from '@/services/persistentPermissionsService';
+import { subjectExams, subjectExamIssue } from '@/services/subjectExamPolicy';
 import { ROLES } from '@/types/permissions';
 import { subjectSchema, buildSubjectChanges, projectSubjects } from '@/services/subjectCompositionService';
 import type { RelationalSnapshot, PersistentContext, DatabaseRow } from '@/types/persistence';
@@ -14,24 +15,10 @@ const privileged = (context: PersistentContext) =>
   context.grants.some(g => !g.site_id && !g.group_id && !g.academic_year_id);
 
 function visible(snapshot: RelationalSnapshot, context: PersistentContext): DatabaseRow[] {
-  if (privileged(context)) return snapshot.tables.exam_papers || [];
   const papers = snapshot.tables.exam_papers || [];
-  const teacherAssignments = new Set(
-    (snapshot.tables.teaching_assignments || [])
-      .filter(ta => !context.teacherId || String(ta.teacher_id) === context.teacherId)
-      .map(ta => String(ta.id))
-  );
-  const teacherEvals = new Set(
-    (snapshot.tables.evaluations || [])
-      .filter(ev => teacherAssignments.has(String(ev.assignment_id)))
-      .map(ev => String(ev.id))
-  );
-
-  return papers.filter(row => {
-    if (String(row.author_id) === context.accountId) return true;
-    if (row.evaluation_id && teacherEvals.has(String(row.evaluation_id))) return true;
-    return false;
-  });
+  const evaluationIds = new Set((filterRelationalSnapshot(snapshot, context).tables.evaluations || []).map(row => row.id));
+  return papers.filter(row => row.evaluation_id ? evaluationIds.has(String(row.evaluation_id))
+    : privileged(context) || row.author_id === context.accountId);
 }
 
 export async function GET(request: Request) {
@@ -47,7 +34,8 @@ export async function GET(request: Request) {
       year.selectedYearId || (year.selection === 'all' ? null : '00000000-0000-0000-0000-000000000000')
     );
     return Response.json(
-      { revision: snapshot.revision, subjects: projectSubjects(scoped, visible(scoped, context)) },
+      { revision: snapshot.revision, subjects: projectSubjects(scoped, visible(scoped, context)),
+        exams: year.selectedYearId ? subjectExams(filterRelationalSnapshot(scoped, context)) : [] },
       { headers: { 'Cache-Control': 'no-store' } }
     );
   } catch (error) {
@@ -79,6 +67,21 @@ export async function POST(request: Request) {
     }
     if (body.previousId && !previous) throw new RequestError(404, 'Sujet introuvable ou non modifiable.');
 
+    if (!body.subject.evaluationId || body.subject.sourceEvaluationRowId) {
+      throw new RequestError(400, 'Choisissez un examen programmé : un sujet doit appartenir à cet examen.');
+    }
+    if (previous && previous.evaluation_id !== body.subject.evaluationId) throw new RequestError(409, 'Le sujet ne peut pas être déplacé vers un autre examen.');
+    const scoped = filterSnapshotForAcademicYear(filterRelationalSnapshot(snapshot, context), year.selectedYearId);
+    const exam = subjectExams(scoped).find(row => row.id === body.subject.evaluationId);
+    const issue = subjectExamIssue(exam);
+    if (issue) throw new RequestError(409, issue);
+    if (exam && (body.subject.purpose !== exam.purpose || body.subject.durationMinutes !== exam.durationMinutes)) {
+      throw new RequestError(409, 'La nature et la durée du sujet doivent correspondre à la programmation de l’examen. Actualisez la page.');
+    }
+    if (!previous && (snapshot.tables.exam_papers || []).some(row => row.evaluation_id === body.subject.evaluationId && !row.archived_at)) {
+      throw new RequestError(409, 'Cet examen possède déjà un sujet. Ouvrez ce sujet pour le compléter.');
+    }
+
     if (body.subject.evaluationId) {
       const evaluation = (snapshot.tables.evaluations || []).find(e => e.id === body.subject.evaluationId);
       if (!evaluation) throw new RequestError(404, 'Évaluation introuvable.');
@@ -95,31 +98,14 @@ export async function POST(request: Request) {
         throw new RequestError(409, 'L’évaluation sélectionnée n’appartient pas à l’année scolaire consultée.');
       }
 
-      if (evaluation.kind === 'EXAMEN' && body.subject.purpose !== 'EXAMEN') {
+      if (evaluation.kind === 'EXAMEN' && evaluation.session_type !== 'RATTRAPAGE' && body.subject.purpose !== 'EXAMEN') {
         throw new RequestError(400, 'La nature du sujet doit être EXAMEN pour cette épreuve.');
       }
-      if (evaluation.kind === 'RATTRAPAGE' && body.subject.purpose !== 'RATTRAPAGE') {
+      if ((evaluation.kind === 'RATTRAPAGE' || evaluation.session_type === 'RATTRAPAGE') && body.subject.purpose !== 'RATTRAPAGE') {
         throw new RequestError(400, 'La nature du sujet doit être RATTRAPAGE pour cette épreuve.');
       }
       if (!['EXAMEN', 'RATTRAPAGE'].includes(String(evaluation.kind)) && body.subject.purpose !== 'CONTROLE_CONTINU') {
         throw new RequestError(400, 'La nature du sujet doit être CONTROLE_CONTINU pour cette épreuve.');
-      }
-    }
-
-    if (previous && body.subject.sourceEvaluationRowId === previous.source_evaluation_row_id && body.subject.sourceEvaluationRowId && body.subject.purpose !== previous.purpose) {
-      throw new RequestError(400, 'Dissociez l’épreuve historique avant de changer la nature du sujet.');
-    }
-
-    if (body.subject.sourceEvaluationRowId && body.subject.sourceEvaluationRowId !== previous?.source_evaluation_row_id) {
-      if (![ROLES.IT, ROLES.DG].includes(context.role as typeof ROLES.IT) || !privileged(context)) {
-        throw new RequestError(403, 'Ce rattachement historique nécessite un accès global aux archives.');
-      }
-      await assertArchiveAcademicYear(request, client, context, body.subject.sourceEvaluationRowId);
-      const source = await client.rpc('escen_history_exam', { p_id: body.subject.sourceEvaluationRowId });
-      if (source.error || !source.data) throw new RequestError(404, 'Évaluation historique introuvable.');
-      const category = { CONTROLE_CONTINU: 'control', EXAMEN: 'exam', RATTRAPAGE: 'resit' }[body.subject.purpose];
-      if (assessmentCategory(source.data.exam) !== category) {
-        throw new RequestError(400, 'La nature du sujet ne correspond pas à l’épreuve associée.');
       }
     }
 
