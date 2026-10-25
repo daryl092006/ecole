@@ -56,12 +56,13 @@ export async function localBusinessFixture() {
   const documents = [];
   for (const [reference, content] of [['REL-LOCAL-COMPLET', transcriptContent], ['REL-LOCAL-INCOMPLET', { average: 14 }]]) documents.push(await insert('generated_documents', { student_id: student.id, enrollment_id: enrollment.id, decision_id: decision.id, kind: 'RELEVE', reference, version: 1, content_snapshot: content, issued_by: account.id, issued_at: '2026-10-20T12:00:00Z' }));
   const files = new Map();
+  const authUsers = new Map([['fixture-auth-token', { id: authId, email: person.email, app_metadata: {} }]]);
   const client = {
     storage: { from: bucket => ({
       upload: async (path, bytes) => { files.set(`${bucket}/${path}`, bytes); return { data: { path }, error: null }; },
       remove: async paths => { for (const path of paths) files.delete(`${bucket}/${path}`); return { data: [], error: null }; },
     }) },
-    auth: { getUser: async token => ({ data: { user: token === 'fixture-auth-token' ? { id: authId, email: person.email, app_metadata: {} } : null }, error: null }) },
+    auth: { getUser: async token => ({ data: { user: authUsers.get(token) || null }, error: null }) },
     async rpc(name, args = {}) {
       if (!/^[a-z_]+$/.test(name) || Object.keys(args).some(key => !/^[a-z_]+$/.test(key))) throw new Error('Invalid RPC identifier');
       try {
@@ -96,6 +97,7 @@ export async function localBusinessFixture() {
     '/api/session': load(new URL('app/api/session/route.ts', root)),
     '/api/campus': load(new URL('app/api/campus/route.ts', root)),
     '/api/support': load(new URL('app/api/support/route.ts', root)),
+    '/api/communications': load(new URL('app/api/communications/route.ts', root)),
     '/api/website-management': load(new URL('app/api/website-management/route.ts', root)),
     '/api/year-preparation': load(new URL('app/api/year-preparation/route.ts', root)),
     '/api/students': load(new URL('app/api/students/route.ts', root)),
@@ -116,5 +118,5 @@ export async function localBusinessFixture() {
     requests.push({ path, method: request.method, status: response.status });
     return response;
   }
-  return { db, insert, value, client, dispatch, requests, account, year, nextYear, level, programs, curricula, documents, files, close: () => db.close() };
+  return { db, insert, value, client, dispatch, requests, account, year, nextYear, level, programs, curricula, documents, files, authUsers, close: () => db.close() };
 }

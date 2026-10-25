@@ -6,7 +6,7 @@ sur les écrans montés, leurs routes API et les transactions SQL existantes.
 | Chantier | Constat vérifié | Travail à terminer |
 | --- | --- | --- |
 | Support | Tables, audit et transaction présents ; écrans auparavant consultatifs | Parcours terminé localement : création personnelle, réponses, prise en charge et résolution motivée ; tests PostgreSQL et navigateur réussis |
-| Annonces internes | Lecture filtrée par destinataires ; aucune API d’écriture dédiée | Création et publication ciblée, retrait motivé, droits et audit |
+| Annonces internes | Lecture filtrée par destinataires ; API d’écriture ajoutée | Brouillon, publication ciblée avec expiration facultative, retrait motivé, droits et audit terminés localement et testés |
 | Achats | Fournisseurs et inventaire modifiables ; demandes et réceptions consultatives | Demande avec lignes, décision autorisée, réception partielle et suivi |
 | Pièces et documents étudiants | Consultation et impression de relevés existants ; documents officiels nouveaux non émis depuis ces écrans | Dépôt et conformité des pièces, émission autorisée de cartes et certificats avec instantané conservé |
 | Admission des candidatures | Un formulaire de conversion existe déjà | Rendre atomiques la création du dossier et le classement de candidature : deux appels distincts aujourd’hui, risque de succès partiel ; aucune inscription ni identité Auth automatique |
@@ -36,6 +36,21 @@ l’auteur imposé, les autres dossiers et années, les droits, les changements 
 l’audit et l’annulation de toute la transaction si une écriture échoue.
 Les captures de suivi ont été relues dans `tmp/screenshots/support-completion-390.png`
 et `tmp/screenshots/support-completion-1440.png`.
+
+## Deuxième lot : annonces internes
+
+API `/api/communications` et écrans `/communication/annonces`,
+`/mon-espace/annonces`. Les brouillons et audiences sont enregistrés ensemble,
+la publication demande une confirmation distincte et le retrait conserve le motif.
+Les destinataires restent filtrés par rôle, groupe, année, date et état.
+La publication utilise la RPC transactionnelle existante ; aucune migration ni
+email envoyé. Les pièces jointes et accusés de lecture ne sont pas ajoutés dans ce lot.
+
+Validation : six tests dédiés support/annonces réussis, dont deux parcours
+navigateur annonces (390 et 1440 px). Le contrôle PostgreSQL utilise un vrai compte
+étudiant et vérifie les brouillons privés, les autres audiences, les années,
+la concurrence, les dates futures/expirées, le retrait et ses trois événements
+d’audit. `npm test` passe avec 185 groupes PostgreSQL ; TypeScript et ESLint sans erreur.
 
 ## Décisions nécessaires pour clore les autres chantiers
 

@@ -184,3 +184,10 @@ export async function loadSupport(role: RoleName, signal?: AbortSignal): Promise
 export async function manageSupport(command: import('./persistentSupportService').SupportCommand, role: RoleName): Promise<{ id: string; revision: number }> {
   return readResponse(await fetch('/api/support', { method: 'POST', headers: { ...await headers(role), 'Content-Type': 'application/json' }, body: JSON.stringify(command) }));
 }
+
+export async function loadCommunications(role: RoleName, signal?: AbortSignal): Promise<import('@/types/communicationWorkspace').CommunicationDirectory> {
+  return readResponse(await fetch('/api/communications', { headers: await headers(role), cache: 'no-store', signal }));
+}
+export async function manageCommunication(command: import('./persistentCommunicationService').CommunicationCommand, role: RoleName): Promise<{ id: string; revision: number }> {
+  return readResponse(await fetch('/api/communications', { method: 'POST', headers: { ...await headers(role), 'Content-Type': 'application/json' }, body: JSON.stringify(command) }));
+}

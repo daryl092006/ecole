@@ -20,7 +20,7 @@ export const MODULE_JOURNEYS: Record<string, JourneyStage[]> = {
     { title: 'Gérer les accès', description: 'Vérifier les permissions du rôle avant de l’attribuer à un compte.', sections: ['staff_roles', 'staff_permissions', 'staff_list'] },
   ],
   marketing: [
-    { title: 'Consulter la communication', description: 'Retrouver les publications, les informations urgentes et les pièces associées.', sections: ['comm_announcements'] },
+    { title: 'Gérer les annonces', description: 'Préparer un brouillon, confirmer ses destinataires et publier ou retirer une annonce.', sections: ['comm_announcements'] },
   ],
   website: [{ title: 'Gérer le site web', description: 'Configurer les pièces et suivre les demandes, articles et brochures.', sections: ['web_applications', 'web_documents', 'web_brochures', 'comm_news'] }],
   logistique: [
@@ -41,6 +41,6 @@ export const SECTION_TASKS: Record<string, string> = {
   stud_list: 'Rechercher ou créer un dossier', stud_status: 'Retrouver une année d’inscription', stud_cards: 'Consulter les pièces des dossiers', stud_accounts: 'Vérifier un compte étudiant',
   fin_kpis: 'Consulter les données financières', fin_contracts: 'Retrouver des frais ou une bourse', fin_payments: 'Retrouver un versement', fin_reports: 'Préparer un export financier',
   staff_records: 'Rechercher ou créer un dossier professionnel', staff_teachers: 'Consulter les affectations', staff_list: 'Gérer un compte du personnel', staff_roles: 'Comprendre un rôle', staff_permissions: 'Comparer les permissions',
-  comm_news: 'Lire les actualités', comm_announcements: 'Retrouver une annonce', log_suppliers: 'Gérer les fournisseurs', log_purchases: 'Consulter le parcours des achats', log_assets: 'Gérer les équipements',
+  comm_news: 'Lire les actualités', comm_announcements: 'Préparer et publier une annonce', log_suppliers: 'Gérer les fournisseurs', log_purchases: 'Consulter le parcours des achats', log_assets: 'Gérer les équipements',
   sys_data: 'Examiner les données et les anomalies', sys_logs: 'Rechercher un événement', sys_backups: 'Exporter les événements consultés', sys_support: 'Suivre et traiter les demandes de support',
 };

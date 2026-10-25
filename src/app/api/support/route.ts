@@ -15,7 +15,8 @@ async function load(request: Request) {
 export async function GET(request: Request) {
   try {
     const { context, snapshot, year } = await load(request);
-    const tickets = visibleSupportTickets(snapshot, context, year.selectedYearId);
+    const readYear = year.selectedYearId || (year.selection === 'all' ? null : '00000000-0000-0000-0000-000000000000');
+    const tickets = visibleSupportTickets(snapshot, context, readYear);
     const ids = new Set(tickets.map(ticket => ticket.id));
     return Response.json({ revision: snapshot.revision, yearId: year.selectedYearId, canManage: canManageSupport(context, year.selectedYearId), tickets,
       messages: (snapshot.tables.support_messages || []).filter(message => ids.has(String(message.ticket_id))),

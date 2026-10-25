@@ -89,6 +89,10 @@ export async function installResponsiveAudit(page: Page, account: AuditAccount) 
         const scoped = filterSnapshotForAcademicYear(filterRelationalSnapshot(campus, context), id.year);
         json = { revision: campus.revision, yearId: id.year, canManage: context.permissions.includes('system.support.manage'), tickets: scoped.tables.support_tickets || [], messages: scoped.tables.support_messages || [], categories: scoped.tables.support_categories || [] };
       }
+      else if (url.pathname === '/api/communications') {
+        const scoped = filterSnapshotForAcademicYear(filterRelationalSnapshot(campus, context), id.year);
+        json = { revision: campus.revision, yearId: id.year, canManage: context.permissions.includes('communication.manage'), announcements: scoped.tables.communications || [], audiences: scoped.tables.communication_audiences || [], roles: scoped.tables.roles || [], groups: scoped.tables.groups || [] };
+      }
       else if (url.pathname === '/api/history') json = url.searchParams.has('table')
         ? { table: url.searchParams.get('table'), total: 0, records: [], offset: Number(url.searchParams.get('offset') || 0), limit: 50 }
         : { totalSourceRows: 0, datasets: [], references: {} };
