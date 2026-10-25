@@ -33,6 +33,20 @@ test('Accès aux contrôles sans élargir l’accès aux examens', async ({ page
   await expect(page.getByRole('heading', { name: 'Accès refusé' })).toBeVisible();
 });
 
+test('Un examen passé ne propose plus sa mise en place', async ({ page }) => {
+  await authenticateFixture(page);
+  const campus = structuredClone(snapshot);
+  campus.tables.evaluations = [{ id: 'PAST', name: 'Examen passé', kind: 'EXAMEN', status: 'PUBLIEES', held_on: '2020-05-04' }];
+  await page.route('**/api/campus', route => route.fulfill({ json: campus }));
+  await page.goto('/academique/examens');
+  await page.getByRole('button', { name: 'Ouvrir le détail', exact: true }).click();
+  const dialog = page.getByRole('dialog');
+  await expect(dialog.getByRole('region', { name: 'Préparation de l’épreuve' })).toHaveCount(0);
+  await expect(dialog.getByRole('link', { name: /Composer le sujet|Modifier le sujet|Planifier la date/ })).toHaveCount(0);
+  await expect(dialog.getByRole('button', { name: /Programmer la diffusion|Modifier la diffusion/ })).toHaveCount(0);
+  await expect(dialog.getByRole('button', { name: 'Saisir / Gérer les notes' })).toBeVisible();
+});
+
 for (const width of [390, 1440]) {
   test(`Examens et rattrapages dans un même espace à ${width}px`, async ({ page }) => {
     await page.setViewportSize({ width, height: 950 });
@@ -45,6 +59,8 @@ for (const width of [390, 1440]) {
     ];
     await page.route('**/api/campus', route => route.fulfill({ json: campus }));
     await page.goto('/academique/examens');
+    await expect(page.getByRole('link', { name: 'Composer une épreuve' })).toHaveCount(0);
+    await expect(page.getByRole('button', { name: 'Nouvelle évaluation' })).toBeVisible();
     const sessions = page.getByRole('navigation', { name: 'Type d’évaluation' });
     await expect(page.getByText('Épreuve session normale', { exact: true })).toBeVisible();
     await expect(page.getByText('Épreuve seconde session', { exact: true })).toHaveCount(0);

@@ -130,11 +130,6 @@ export default function NativeAssessmentWorkspace({ category }: { category: Asse
             Nouvelle évaluation
           </button>
         )}
-        {perms.permissions.includes('evaluation.create') && (
-          <Link className="btn btn-outline" href={`/academique/sujets?nouveau=1&nature=${category}`}>
-            Composer une épreuve
-          </Link>
-        )}
       </div>
     </div>
     <section className="card card-full">
@@ -156,10 +151,14 @@ export default function NativeAssessmentWorkspace({ category }: { category: Asse
         .sort((a, b) => Number(b.version) - Number(a.version))[0];
       const selectedDelivery = (data.tables.exam_deliveries || []).find(row => row.evaluation_id === selected.id);
       const selectedSession = selectedDelivery && (data.tables.sessions || []).find(row => row.id === selectedDelivery.session_id);
+      const today = new Intl.DateTimeFormat('en-CA', { timeZone: 'Africa/Lome', year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date());
+      const preparationAvailable = selectedMembers.every(member =>
+        !['SOUMISES', 'VALIDEES', 'PUBLIEES'].includes(String(member.status))
+        && (!member.held_on || String(member.held_on).slice(0, 10) >= today));
       const planningQuery = new URLSearchParams({ affectation: String(selected.assignment_id), mode: 'PAPIER', epreuve: String(selected.id), nature: category });
       return (
         <WorkPage title={String(selected.name)} onClose={() => setSelectedId('')}>
-          <section className="exam-preparation" aria-label="Préparation de l’épreuve">
+          {preparationAvailable && <section className="exam-preparation" aria-label="Préparation de l’épreuve">
             <h3>Mise en place de l’épreuve</h3>
             <ol className="exam-preparation-steps">
               <li><strong>1. Groupe et candidats</strong><span>{groupName(selected)} · {candidates.length} candidat(s)</span></li>
@@ -168,7 +167,7 @@ export default function NativeAssessmentWorkspace({ category }: { category: Asse
               <li><strong>4. Accès étudiant en ligne</strong><span>{selectedDelivery && selectedPaper?.status === 'AUTORISE' ? 'Sujet autorisé et fenêtre configurée' : 'Sujet autorisé et programmation nécessaires'}</span></li>
             </ol>
             <p>Pour une composition en ligne, les candidats éligibles accèdent au sujet autorisé pendant la fenêtre programmée. Les notes suivent leur propre circuit de validation.</p>
-          </section>
+          </section>}
           <dl className="record-details-grid">
             <div><dt>Matière</dt><dd>{subjectName(selected)}</dd></div>
             <div><dt>Groupe</dt><dd>{groupName(selected)}</dd></div>
@@ -207,13 +206,13 @@ export default function NativeAssessmentWorkspace({ category }: { category: Asse
                 Saisir / Gérer les notes
               </button>
             )}
-            {perms.permissions.includes('evaluation.create') && (
+            {preparationAvailable && perms.permissions.includes('evaluation.create') && (
               <Link className="btn btn-outline" href={selectedPaper ? `/academique/sujets?sujet=${encodeURIComponent(String(selectedPaper.id))}` : `/academique/sujets?nouveau=1&nature=${category}&evalId=${encodeURIComponent(String(selected.id))}&titre=${encodeURIComponent(String(selected.name || ''))}`}>
                 {selectedPaper ? 'Modifier le sujet' : 'Composer le sujet'}
               </Link>
             )}
-            {perms.permissions.includes('schedule.create') && <Link className="btn btn-outline" href={`/academique/emploi-du-temps?${planningQuery}`}>Planifier la date et la salle</Link>}
-            {perms.permissions.includes('evaluation.create') && (
+            {preparationAvailable && perms.permissions.includes('schedule.create') && <Link className="btn btn-outline" href={`/academique/emploi-du-temps?${planningQuery}`}>Planifier la date et la salle</Link>}
+            {preparationAvailable && perms.permissions.includes('evaluation.create') && (
               <button className="btn btn-outline" onClick={() => setSchedulingDelivery(selected)}>
                 {selectedDelivery ? 'Modifier la diffusion' : 'Programmer la diffusion'}
               </button>
