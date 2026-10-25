@@ -94,7 +94,7 @@ export default function NativeAssessmentWorkspace({ category }: { category: Asse
       members,
       subjectLabel: subjectName(members[0]),
       groupLabel: groupName(members[0]),
-      statusLabel: combinedAssessmentProgress(members),
+      statusLabel: combinedAssessmentProgress(members, pendingCount),
       notesCount: vals.length,
       absentCount,
       pendingCount,
@@ -109,6 +109,7 @@ export default function NativeAssessmentWorkspace({ category }: { category: Asse
     && `${item.primary.name} ${item.subjectLabel} ${item.groupLabel} ${item.statusLabel}`.toLocaleLowerCase('fr').includes(query.toLocaleLowerCase('fr')));
   const selectedMembers = linkedKeys.size === 1 ? linkedRaw : undefined;
   const selected = selectedMembers?.[0];
+  const selectedStatusLabel = selected ? allGroupedItems.find(item => item.key === groupKey(selected))?.statusLabel : undefined;
   const selectedMemberIds = new Set((selectedMembers || []).map(row => row.id));
   const source = selected && history.catalog?.references.evaluations?.find(row => row.id === selected.legacy_source_row_id);
   const candidates = allCandidates.filter(row => selectedMemberIds.has(String(row.evaluation_id)));
@@ -168,7 +169,7 @@ export default function NativeAssessmentWorkspace({ category }: { category: Asse
           <dl className="record-details-grid">
             <div><dt>Matière</dt><dd>{subjectName(selected)}</dd></div>
             <div><dt>Groupe</dt><dd>{groupName(selected)}</dd></div>
-            <div><dt>État des notes</dt><dd>{connectedRecordValue('evaluations', 'status', selected.status, data)}</dd></div>
+            <div><dt>État des notes</dt><dd>{selectedStatusLabel || connectedRecordValue('evaluations', 'status', selected.status, data)}</dd></div>
             <div>
               <dt>Sujet d’examen</dt>
               <dd>

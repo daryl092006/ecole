@@ -29,7 +29,8 @@ export function assessmentProgress(values: Record<string, unknown>, now = new Da
   return values.status === 'BROUILLON' ? 'Brouillon' : 'État non renseigné';
 }
 
-export function combinedAssessmentProgress(rows: Record<string, unknown>[]): string {
+export function combinedAssessmentProgress(rows: Record<string, unknown>[], incompleteGradeCount = 0): string {
   const states = [...new Set(rows.map(row => assessmentProgress(row)))];
+  if (states.length === 1 && states[0] === 'Résultats publiés' && incompleteGradeCount > 0) return 'Publication à vérifier';
   return states.length === 1 ? states[0] : 'États différents';
 }

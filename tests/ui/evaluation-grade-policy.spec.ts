@@ -133,7 +133,11 @@ test('Une saisie vide sans statut bloque la soumission sans devenir zéro', asyn
 
 test('Ancien NON_TRAITE publié : zéro et moyenne cohérents dans la liste et les fenêtres', async ({ page }) => {
   const { commands } = await prepare(page, 'PUBLIEES', true);
-  await expect(page.getByRole('row', { name: /Politique des copies/ })).toContainText('Moy. 6/20');
+  const summary = page.getByRole('row', { name: /Politique des copies/ });
+  await expect(summary).toContainText('Moy. 6/20');
+  await expect(summary).toContainText('1 à corriger');
+  await expect(summary).toContainText('Publication à vérifier');
+  await expect(summary).not.toContainText('Résultats publiés');
   await page.getByRole('button', { name: 'Saisir / Gérer', exact: true }).click();
   let dialog = page.getByRole('dialog');
   await expect(dialog.getByRole('row', { name: /Boris Copie/ })).toContainText('0 / 20');
@@ -143,6 +147,7 @@ test('Ancien NON_TRAITE publié : zéro et moyenne cohérents dans la liste et l
   dialog = page.getByRole('dialog');
   await expect(dialog.getByRole('row', { name: /Boris Copie/ })).toContainText('0');
   await expect(dialog.getByRole('row', { name: /Boris Copie/ })).toContainText('Copie non traitée');
+  await expect(dialog.getByText('Publication à vérifier', { exact: true })).toBeVisible();
   expect(commands).toHaveLength(0);
 });
 
