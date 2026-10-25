@@ -3428,3 +3428,75 @@ body.transcript-print-body { page: transcript; display: block; width: 190mm; hei
 .purchase-details p { line-height: 1.7; margin: .6rem 0; overflow-wrap: anywhere; }
 .purchase-details h3 { margin: 1.25rem 0 .75rem; }
 .purchases-workspace .data-table { margin-top: 1rem; }
+
+/* Reference campus presentation, shared by every authenticated workspace. */
+.app-wrapper .sidebar {
+  background: var(--surface);
+  color: var(--text-primary);
+  border-right: 1px solid var(--border);
+}
+.sidebar .nav-section-title {
+  color: var(--text-muted);
+  border-left: 3px solid var(--accent);
+  padding-left: .65rem;
+  margin-left: .5rem;
+  letter-spacing: .055em;
+}
+.sidebar .sidebar-section:nth-child(3n + 2) .nav-section-title { border-left-color: var(--cyan); }
+.sidebar .sidebar-section:nth-child(3n) .nav-section-title { border-left-color: var(--purple); }
+.sidebar .nav-item, .sidebar .subnav-item { color: var(--text-secondary); }
+.sidebar .nav-item > svg:first-child {
+  box-sizing: content-box;
+  padding: .35rem;
+  border-radius: .5rem;
+  background: var(--surface-alt);
+  flex-shrink: 0;
+}
+.sidebar .nav-item:hover, .sidebar .subnav-item:hover {
+  background: var(--accent-light);
+  color: var(--accent-hover);
+}
+.sidebar .nav-item.active {
+  background: var(--accent-light);
+  color: var(--accent-hover);
+  box-shadow: none;
+}
+.sidebar .nav-item.active > svg:first-child { background: var(--accent-border); }
+.sidebar .subnav-list { border-left-color: var(--border); }
+.sidebar .subnav-item.active {
+  background: var(--accent-light);
+  color: var(--accent-hover);
+  border-left-color: var(--accent);
+}
+.sidebar .nav-toggle, .sidebar .sidebar-close { color: var(--text-secondary); }
+.sidebar :where(button, a):focus-visible { outline-color: var(--accent); }
+.app-wrapper .main-content {
+  background: linear-gradient(135deg, #f6f8fd 0%, var(--bg-primary) 45%, #f1f8fb 100%);
+}
+.app-wrapper .workspace-location { border-bottom-color: var(--border); }
+.app-wrapper .page-intro h1, .app-wrapper .module-header h1 {
+  padding-left: .85rem;
+  border-left: 3px solid var(--accent);
+}
+.app-wrapper :is(.browser-toolbar, .directory-toolbar) {
+  padding: 1rem;
+  background: var(--surface-alt);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+}
+.app-wrapper .home-metrics > div { box-shadow: var(--shadow-sm); }
+.app-wrapper .home-metrics svg {
+  box-sizing: content-box;
+  padding: .65rem;
+  border-radius: var(--radius);
+  background: var(--accent-light);
+}
+.app-wrapper .home-metrics > div:nth-child(3n + 2) svg { color: var(--success); background: var(--success-light); }
+.app-wrapper .home-metrics > div:nth-child(3n) svg { color: var(--purple); background: var(--purple-light); }
+.app-wrapper .data-table th { background: #f4f6fa; text-transform: none; letter-spacing: .015em; }
+.app-wrapper .data-table tbody tr:nth-child(even) td { background: #fafbfe; }
+.app-wrapper .data-table tbody tr:hover td, .app-wrapper .data-table tbody tr:focus-within td { background: var(--accent-light); }
+@media (max-width: 768px) {
+  .app-wrapper :is(.browser-toolbar, .directory-toolbar) { padding: .85rem; }
+  .sidebar .nav-item > svg:first-child { padding: .25rem; }
+}

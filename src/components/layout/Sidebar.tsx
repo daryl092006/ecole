@@ -68,10 +68,10 @@ export default function Sidebar({
 }: SidebarProps) {
   const groups = getWorkspaceNavigation(availableTabs, { hideStudentPersonalPages: true });
   const activeGroup = groups.find(group => group.sections.includes(currentSubTab))?.id || '';
-  const [expanded, setExpanded] = useState(activeGroup);
+  const [expanded, setExpanded] = useState<string[]>(activeGroup ? [activeGroup] : []);
 
   useEffect(() => {
-    setExpanded(activeGroup);
+    setExpanded(previous => activeGroup && !previous.includes(activeGroup) ? [...previous, activeGroup] : previous);
   }, [activeGroup, currentSubTab, activeRole]);
 
   return (
@@ -98,7 +98,7 @@ export default function Sidebar({
             <div className="nav-section-title">{category}</div>
             {groups.filter(group => group.category === category).map(group => {
               const Icon = ICONS[group.icon] || HelpCircle;
-              const isExpanded = expanded === group.id;
+              const isExpanded = expanded.includes(group.id);
               const isActive = activeGroup === group.id;
               const isSingleDirect = group.pages.length === 1 && group.pages[0].name === group.name;
               if (isSingleDirect) {
@@ -119,7 +119,7 @@ export default function Sidebar({
                   <button type="button" className={`nav-item ${isActive ? 'active' : ''}`}
                     aria-label={`${isExpanded ? 'Replier' : 'Déplier'} ${group.name}`}
                     aria-expanded={isExpanded} aria-controls={`subnav-${group.id}`}
-                    onClick={() => setExpanded(value => value === group.id ? '' : group.id)}>
+                    onClick={() => setExpanded(previous => previous.includes(group.id) ? previous.filter(id => id !== group.id) : [...previous, group.id])}>
                     <Icon size={18} /><span>{group.name}</span>
                     <ChevronDown size={16} className={isExpanded ? 'rotated' : ''} />
                   </button>
