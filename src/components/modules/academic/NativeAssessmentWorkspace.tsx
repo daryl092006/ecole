@@ -97,7 +97,7 @@ export default function NativeAssessmentWorkspace({ category }: { category: Asse
       members,
       subjectLabel: subjectName(members[0]),
       groupLabel: groupName(members[0]),
-      statusLabel: combinedAssessmentProgress(members, pendingCount),
+      statusLabel: combinedAssessmentProgress(members, pendingCount, cands.length),
       notesCount: vals.length,
       absentCount,
       pendingCount,
