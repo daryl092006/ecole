@@ -53,20 +53,6 @@ export default function NativeAssessmentWorkspace({ category }: { category: Asse
   };
   const isResit = (row: DatabaseRow) => row.kind === 'RATTRAPAGE' || row.session_type === 'RATTRAPAGE';
   const groupKey = (row: DatabaseRow) => row.legacy_source_row_id ? `${row.legacy_source_row_id}:${String(row.name || '')}` : row.id;
-  const formatOfferings = (offeringIds: unknown[]) => {
-    const unique = [...new Set(offeringIds.filter(Boolean))];
-    if (unique.length <= 1) return connectedRecordValue('evaluations', 'offering_id', unique[0], data);
-    const names = unique.map(id => {
-      const off = data.tables.academic_offerings?.find(item => item.id === id);
-      const curr = off && data.tables.curricula?.find(item => item.id === off.curriculum_id);
-      const prog = curr && data.tables.programs?.find(item => item.id === curr.program_id);
-      return prog?.name ? String(prog.name) : '';
-    }).filter(Boolean);
-    const distinctProgs = [...new Set(names)];
-    const firstOff = data.tables.academic_offerings?.find(item => item.id === unique[0]);
-    const level = firstOff && data.tables.levels?.find(item => item.id === firstOff.level_id);
-    return distinctProgs.length ? `${distinctProgs.join(', ')}${level?.name ? ` · ${level.name}` : ''}` : connectedRecordValue('evaluations', 'offering_id', unique[0], data);
-  };
   const allEvaluations = data.tables.evaluations || [];
   const allCandidates = data.tables.evaluation_candidates || [];
   const allGrades = data.tables.grades || [];
@@ -107,7 +93,6 @@ export default function NativeAssessmentWorkspace({ category }: { category: Asse
       primary: members[0],
       members,
       subjectLabel: subjectName(members[0]),
-      formationLabel: formatOfferings(members.map(m => m.offering_id)),
       groupLabel: groupName(members[0]),
       statusLabel: combinedAssessmentProgress(members),
       notesCount: vals.length,
@@ -121,7 +106,7 @@ export default function NativeAssessmentWorkspace({ category }: { category: Asse
   const availableSubjects = [...new Set(allGroupedItems.filter(item => !groupFilter || item.groupLabel === groupFilter).map(item => item.subjectLabel).filter(s => s && s !== 'Non renseignée'))].sort((a, b) => a.localeCompare(b, 'fr'));
   const rows = allGroupedItems.filter(item => (!statusFilter || item.statusLabel === statusFilter) && (!groupFilter || item.groupLabel === groupFilter)
     && (!subjectFilter || item.subjectLabel === subjectFilter)
-    && `${item.primary.name} ${item.subjectLabel} ${item.formationLabel} ${item.groupLabel} ${item.statusLabel}`.toLocaleLowerCase('fr').includes(query.toLocaleLowerCase('fr')));
+    && `${item.primary.name} ${item.subjectLabel} ${item.groupLabel} ${item.statusLabel}`.toLocaleLowerCase('fr').includes(query.toLocaleLowerCase('fr')));
   const selectedMembers = linkedKeys.size === 1 ? linkedRaw : undefined;
   const selected = selectedMembers?.[0];
   const selectedMemberIds = new Set((selectedMembers || []).map(row => row.id));
@@ -149,17 +134,17 @@ export default function NativeAssessmentWorkspace({ category }: { category: Asse
       </div>
     </div>
     <section className="card card-full">
-      {linkedKeys.size > 1 && <p role="status">Ce lien concerne plusieurs formations. Choisissez l’épreuve de la formation à consulter.</p>}
+      {linkedKeys.size > 1 && <p role="status">Ce lien regroupe plusieurs épreuves. Choisissez celle à consulter.</p>}
       <div className="browser-toolbar">
         <label className="form-group">Rechercher une épreuve<input className="input" type="search" value={query} onChange={event => { setQuery(event.target.value); setExported(false); }} placeholder="Matière, groupe ou état" /></label>
         {availableGroups.length > 0 && <label className="form-group">Filtrer par groupe<select className="select-input" value={groupFilter} onChange={e => { setGroupFilter(e.target.value); setSubjectFilter(''); setExported(false); }}><option value="">Tous les groupes ({availableGroups.length})</option>{availableGroups.map(g => <option key={g} value={g}>{g}</option>)}</select></label>}
         {availableSubjects.length > 0 && <label className="form-group">Filtrer par matière<select className="select-input" value={subjectFilter} onChange={e => { setSubjectFilter(e.target.value); setExported(false); }}><option value="">Toutes les matières ({availableSubjects.length})</option>{availableSubjects.map(s => <option key={s} value={s}>{s}</option>)}</select></label>}
         <label className="form-group">État de l’épreuve<select className="select-input" value={statusFilter} onChange={event => { setStatusFilter(event.target.value); setExported(false); }}><option value="">Tous les états</option>{[...new Set(allGroupedItems.map(item => item.statusLabel))].sort().map(status => <option key={status}>{status}</option>)}</select></label>
-        <IconButton className="btn btn-outline" label="Exporter les épreuves" disabled={!rows.length} onClick={() => { downloadCsv('epreuves.csv', ['Épreuve', 'Matière', 'Formation', 'Groupe', 'Notes et moyenne', 'État de l’épreuve'], rows.map(item => [String(item.primary.name), item.subjectLabel, item.formationLabel, item.groupLabel, item.statsLabel, item.statusLabel])); setExported(true); }} />
+        <IconButton className="btn btn-outline" label="Exporter les épreuves" disabled={!rows.length} onClick={() => { downloadCsv('epreuves.csv', ['Épreuve', 'Matière', 'Groupe', 'Notes et moyenne', 'État de l’épreuve'], rows.map(item => [String(item.primary.name), item.subjectLabel, item.groupLabel, item.statsLabel, item.statusLabel])); setExported(true); }} />
       </div>
       <label className="checkbox-field"><input type="checkbox" checked={withdrawn} onChange={event => { setWithdrawn(event.target.checked); setStatusFilter(''); setExported(false); }} /> Épreuves retirées</label>
       {exported && <p role="status">{rows.length} épreuve(s) exportée(s).</p>}
-      <ResponsiveTable className="data-table"><thead><tr><th>Épreuve</th><th>Matière</th><th>Groupe</th><th>Formation</th><th>Notes et moyenne</th><th>État de l’épreuve</th><th>Actions</th></tr></thead><tbody>{rows.map(item => <tr key={item.primary.id}><td>{String(item.primary.name)}</td><td>{item.subjectLabel}</td><td>{item.groupLabel}</td><td>{item.formationLabel}</td><td>{item.statsLabel}</td><td>{item.statusLabel}</td><td><div className="btn-group"><IconButton className="btn btn-outline" label="Ouvrir le détail" onClick={() => { setSelectedId(item.primary.id); setCopies(false); }} />{(perms.permissions.includes('grade.enter') || perms.permissions.includes('grade.review') || perms.permissions.includes('grade.approve') || perms.permissions.includes('grade.publish')) && <IconButton className="btn btn-primary" label="Saisir / Gérer" onClick={() => setManagingEvalIds(item.members.map(m => String(m.id)))} />}</div></td></tr>)}{!rows.length && <tr><td colSpan={7}>Aucune épreuve pour cette catégorie et ces filtres.</td></tr>}</tbody></ResponsiveTable>
+      <ResponsiveTable className="data-table"><thead><tr><th>Épreuve</th><th>Matière</th><th>Groupe</th><th>Notes et moyenne</th><th>État de l’épreuve</th><th>Actions</th></tr></thead><tbody>{rows.map(item => <tr key={item.primary.id}><td>{String(item.primary.name)}</td><td>{item.subjectLabel}</td><td>{item.groupLabel}</td><td>{item.statsLabel}</td><td>{item.statusLabel}</td><td><div className="btn-group"><IconButton className="btn btn-outline" label="Ouvrir le détail" onClick={() => { setSelectedId(item.primary.id); setCopies(false); }} />{(perms.permissions.includes('grade.enter') || perms.permissions.includes('grade.review') || perms.permissions.includes('grade.approve') || perms.permissions.includes('grade.publish')) && <IconButton className="btn btn-primary" label="Saisir / Gérer" onClick={() => setManagingEvalIds(item.members.map(m => String(m.id)))} />}</div></td></tr>)}{!rows.length && <tr><td colSpan={6}>Aucune épreuve pour cette catégorie et ces filtres.</td></tr>}</tbody></ResponsiveTable>
     </section>
     {selected && selectedMembers && (() => {
       const selectedPaper = (data.tables.exam_papers || [])
@@ -183,7 +168,6 @@ export default function NativeAssessmentWorkspace({ category }: { category: Asse
           <dl className="record-details-grid">
             <div><dt>Matière</dt><dd>{subjectName(selected)}</dd></div>
             <div><dt>Groupe</dt><dd>{groupName(selected)}</dd></div>
-            <div><dt>Formation</dt><dd>{formatOfferings(selectedMembers.map(m => m.offering_id))}</dd></div>
             <div><dt>État des notes</dt><dd>{connectedRecordValue('evaluations', 'status', selected.status, data)}</dd></div>
             <div>
               <dt>Sujet d’examen</dt>
