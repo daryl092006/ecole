@@ -146,6 +146,17 @@ test('Ancien NON_TRAITE publié : zéro et moyenne cohérents dans la liste et l
   expect(commands).toHaveLength(0);
 });
 
+test('Notes publiées avec le marqueur PRESENT : aucune copie annoncée à corriger', async ({ page }) => {
+  const { campus } = await prepare(page, 'PUBLIEES');
+  campus.tables.grades = [0, 1, 2].map(index => ({ id: `PRESENT${index}`, candidate_id: `C${index}`, value: 12, absence_status: 'PRESENT' }));
+  await page.reload();
+  const row = page.getByRole('row', { name: /Politique des copies/ });
+  await expect(row).toContainText('3 note(s)');
+  await expect(row).toContainText('Moy. 12/20');
+  await expect(row).toContainText('Résultats publiés');
+  await expect(row).not.toContainText('à corriger');
+});
+
 
 test('Copie en ligne vide remise à l’échéance : zéro et NON_TRAITE préremplis', async ({ page }) => {
   const { campus } = await prepare(page);

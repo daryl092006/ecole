@@ -16,7 +16,7 @@ export function evaluationGradeValue(grade: EvaluationGradeValue | null | undefi
   if (grade.absence_status === 'NON_TRAITE') {
     return grade.value == null || numericGrade(grade.value) === 0 ? 0 : null;
   }
-  if (grade.absence_status) return null;
+  if (grade.absence_status && grade.absence_status !== 'PRESENT') return null;
   return numericGrade(grade.value);
 }
 

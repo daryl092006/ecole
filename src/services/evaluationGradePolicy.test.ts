@@ -23,6 +23,12 @@ for (const value of [0, 12, 20, '12.5']) {
   assert.equal(evaluationGradeIsComplete({ value }), true);
   assert.equal(evaluationCandidateStatusLabel({ value }), 'Présent · Copie corrigée');
 }
+for (const value of [0, 12, 20, '12.5']) {
+  const grade = { value, absence_status: 'PRESENT' };
+  assert.equal(evaluationGradeValue(grade), Number(value));
+  assert.equal(evaluationGradeIsComplete(grade), true);
+  assert.equal(evaluationCandidateStatusLabel(grade), 'Présent · Copie corrigée');
+}
 for (const value of [null, undefined, '', ' ', 'invalide', NaN, Infinity, -1, 21]) {
   assert.equal(evaluationGradeValue({ value }), null);
   assert.equal(evaluationGradeIsComplete({ value }), false);
