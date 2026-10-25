@@ -241,3 +241,4 @@ require('../src/services/evaluationGradePolicy.test.ts');
 
 require('../src/services/onlineExamDraftService.test.ts');
 require('../src/services/persistentSupportService.test.ts');
+require('../src/services/persistentPurchaseService.test.ts');

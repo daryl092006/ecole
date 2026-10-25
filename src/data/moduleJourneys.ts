@@ -25,7 +25,7 @@ export const MODULE_JOURNEYS: Record<string, JourneyStage[]> = {
   website: [{ title: 'Gérer le site web', description: 'Configurer les pièces et suivre les demandes, articles et brochures.', sections: ['web_applications', 'web_documents', 'web_brochures', 'comm_news'] }],
   logistique: [
     { title: 'Référencer les fournisseurs', description: 'Renseigner les coordonnées pour identifier les interlocuteurs de l’établissement.', sections: ['log_suppliers'] },
-    { title: 'Suivre les achats', description: 'Distinguer la demande, la décision et la réception ; consulter la disponibilité du traitement.', sections: ['log_purchases'] },
+    { title: 'Suivre les achats', description: 'Enregistrer une demande détaillée, sa décision et les livraisons reçues.', sections: ['log_purchases'] },
     { title: 'Tenir l’inventaire', description: 'Identifier chaque équipement, sa localisation et son état.', sections: ['log_assets'] },
   ],
   systeme: [
@@ -41,6 +41,6 @@ export const SECTION_TASKS: Record<string, string> = {
   stud_list: 'Rechercher ou créer un dossier', stud_status: 'Retrouver une année d’inscription', stud_cards: 'Consulter les pièces des dossiers', stud_accounts: 'Vérifier un compte étudiant',
   fin_kpis: 'Consulter les données financières', fin_contracts: 'Retrouver des frais ou une bourse', fin_payments: 'Retrouver un versement', fin_reports: 'Préparer un export financier',
   staff_records: 'Rechercher ou créer un dossier professionnel', staff_teachers: 'Consulter les affectations', staff_list: 'Gérer un compte du personnel', staff_roles: 'Comprendre un rôle', staff_permissions: 'Comparer les permissions',
-  comm_news: 'Lire les actualités', comm_announcements: 'Préparer et publier une annonce', log_suppliers: 'Gérer les fournisseurs', log_purchases: 'Consulter le parcours des achats', log_assets: 'Gérer les équipements',
+  comm_news: 'Lire les actualités', comm_announcements: 'Préparer et publier une annonce', log_suppliers: 'Gérer les fournisseurs', log_purchases: 'Demander, approuver et réceptionner un achat', log_assets: 'Gérer les équipements',
   sys_data: 'Examiner les données et les anomalies', sys_logs: 'Rechercher un événement', sys_backups: 'Exporter les événements consultés', sys_support: 'Suivre et traiter les demandes de support',
 };

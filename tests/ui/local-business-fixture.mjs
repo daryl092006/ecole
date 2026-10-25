@@ -98,6 +98,7 @@ export async function localBusinessFixture() {
     '/api/campus': load(new URL('app/api/campus/route.ts', root)),
     '/api/support': load(new URL('app/api/support/route.ts', root)),
     '/api/communications': load(new URL('app/api/communications/route.ts', root)),
+    '/api/purchases': load(new URL('app/api/purchases/route.ts', root)),
     '/api/website-management': load(new URL('app/api/website-management/route.ts', root)),
     '/api/year-preparation': load(new URL('app/api/year-preparation/route.ts', root)),
     '/api/students': load(new URL('app/api/students/route.ts', root)),

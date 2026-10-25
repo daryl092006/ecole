@@ -191,3 +191,10 @@ export async function loadCommunications(role: RoleName, signal?: AbortSignal): 
 export async function manageCommunication(command: import('./persistentCommunicationService').CommunicationCommand, role: RoleName): Promise<{ id: string; revision: number }> {
   return readResponse(await fetch('/api/communications', { method: 'POST', headers: { ...await headers(role), 'Content-Type': 'application/json' }, body: JSON.stringify(command) }));
 }
+
+export async function loadPurchases(role: RoleName, signal?: AbortSignal): Promise<import('@/types/purchaseWorkspace').PurchaseDirectory> {
+  return readResponse(await fetch('/api/purchases', { headers: await headers(role), cache: 'no-store', signal }));
+}
+export async function managePurchase(command: import('./persistentPurchaseService').PurchaseCommand, role: RoleName): Promise<{ id: string; revision: number }> {
+  return readResponse(await fetch('/api/purchases', { method: 'POST', headers: { ...await headers(role), 'Content-Type': 'application/json' }, body: JSON.stringify(command) }));
+}

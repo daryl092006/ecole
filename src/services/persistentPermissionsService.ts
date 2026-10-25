@@ -2,6 +2,7 @@ import type { DatabaseRow, PersistentContext, RelationalSnapshot } from '@/types
 import { ROLES, type Permission } from '@/types/permissions';
 import { attendanceSessions } from './attendanceManagementService';
 import { visibleSupportTickets } from './persistentSupportService';
+import { visiblePurchases } from './persistentPurchaseService';
 
 const field = (row: DatabaseRow, name: string) => typeof row[name] === 'string' ? row[name] as string : '';
 const ownRole = (context: PersistentContext) => context.role === ROLES.STUD || context.role === ROLES.DEL;
@@ -25,6 +26,7 @@ const policy = new Map(domainTables.flatMap(item => item.tables.map(table => [ta
 
 export function filterRelationalSnapshot(snapshot: RelationalSnapshot, context: PersistentContext): RelationalSnapshot {
   const supportIds = new Set(visibleSupportTickets(snapshot, context, null).map(ticket => ticket.id));
+  const purchaseIds = new Set(visiblePurchases(snapshot, context, null).map(purchase => purchase.id));
   const tables = snapshot.tables;
   const rows = (name: string) => tables[name] ?? [];
   const can = (permission: Permission) => context.permissions.includes(permission);
@@ -127,6 +129,8 @@ export function filterRelationalSnapshot(snapshot: RelationalSnapshot, context: 
       || self && (financial.has(name) || academic.has(name) || ['students','enrollments','enrollment_groups','student_documents','document_types','document_reviews','generated_documents','communications','communication_audiences','communication_reads','communication_files'].includes(name));
     if (!permitted || (teacher || supervisor || self) && ['academic_rule_versions','juries','jury_members','jury_decisions','jury_grade_inputs','credit_awards'].includes(name)) continue;
     source[name] = collection.filter(row => {
+      if (name === 'purchases') return purchaseIds.has(row.id);
+      if (name === 'purchase_lines' || name === 'purchase_receipts') return purchaseIds.has(field(row, 'purchase_id'));
       if (name === 'attendances' || name === 'teacher_attendances') return attendanceSessionIds.has(field(row, 'session_id'));
       if (name === 'absence_justifications') return attendanceIds.has(field(row, 'attendance_id'));
       if (name === 'people') return peopleIds.has(row.id);

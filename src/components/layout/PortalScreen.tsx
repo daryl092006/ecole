@@ -32,6 +32,7 @@ import WebsiteArticlesPanel from '@/components/modules/website/WebsiteArticlesPa
 import ConnectedDomainWorkspace from '@/components/modules/ConnectedDomainWorkspace';
 import SupportWorkspace from '@/components/modules/SupportWorkspace';
 import CommunicationsWorkspace from '@/components/modules/CommunicationsWorkspace';
+import PurchasesWorkspace from '@/components/modules/PurchasesWorkspace';
 import { DOMAIN_WORKSPACES } from '@/data/domainWorkspaces';
 
 export default function PortalScreen({ tab: _tab, section }: { tab: string; section: string }) {
@@ -42,6 +43,7 @@ export default function PortalScreen({ tab: _tab, section }: { tab: string; sect
   if (state.session && section === 'espace_exams') return <StudentExamsWorkspace />;
   if (state.session && ['espace_support', 'sys_support'].includes(section)) return <SupportWorkspace key={`${activeRole}:${state.academicYearSelection}`} />;
   if (state.session && ['espace_announcements', 'comm_announcements'].includes(section)) return <CommunicationsWorkspace key={`${activeRole}:${state.academicYearSelection}`} />;
+  if (state.session && section === 'log_purchases') return <PurchasesWorkspace key={`${activeRole}:${state.academicYearSelection}`} />;
   if (state.session && section === 'sys_logs') return <AuditJournalPanel />;
   if (state.session && section === 'sys_emails') return <EmailOutboxPanel key={`${activeRole}:${state.academicYearSelection}`} />;
   if (state.session && section === 'sys_backups') return <AuditJournalPanel exportMode />;

@@ -93,6 +93,10 @@ export async function installResponsiveAudit(page: Page, account: AuditAccount) 
         const scoped = filterSnapshotForAcademicYear(filterRelationalSnapshot(campus, context), id.year);
         json = { revision: campus.revision, yearId: id.year, canManage: context.permissions.includes('communication.manage'), announcements: scoped.tables.communications || [], audiences: scoped.tables.communication_audiences || [], roles: scoped.tables.roles || [], groups: scoped.tables.groups || [] };
       }
+      else if (url.pathname === '/api/purchases') {
+        const scoped = filterSnapshotForAcademicYear(filterRelationalSnapshot(campus, context), id.year);
+        json = { revision: campus.revision, yearId: id.year, canCreate: context.permissions.includes('purchase.create'), canApprove: context.permissions.includes('purchase.approve'), canReceive: context.permissions.includes('purchase.receive'), requiresSite: false, purchases: scoped.tables.purchases || [], lines: scoped.tables.purchase_lines || [], receipts: scoped.tables.purchase_receipts || [], expenses: scoped.tables.expenses || [], suppliers: scoped.tables.suppliers || [], sites: scoped.tables.sites || [] };
+      }
       else if (url.pathname === '/api/history') json = url.searchParams.has('table')
         ? { table: url.searchParams.get('table'), total: 0, records: [], offset: Number(url.searchParams.get('offset') || 0), limit: 50 }
         : { totalSourceRows: 0, datasets: [], references: {} };
