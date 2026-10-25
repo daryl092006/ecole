@@ -3,6 +3,7 @@ import { DrawerCloseButton } from '@/components/ui/DetailDrawer';
 import { useState } from 'react';
 import { usePortal } from '@/hooks/usePortal';
 import WorkPage from '@/components/ui/WorkPage';
+import ReviewedForm from '@/components/ui/ReviewedForm';
 import DrawerActions from '@/components/ui/DrawerActions';
 import { manageEvaluation } from '@/services/remoteCampusService';
 import { connectedRecordValue } from '@/services/connectedRecordDisplayService';
@@ -13,10 +14,12 @@ export default function EvaluationCreateDialog({
   onClose,
   onCreated,
   preselectedAssignmentId,
+  category = 'control',
 }: {
   onClose: () => void;
   onCreated: (evalId: string) => void;
   preselectedAssignmentId?: string;
+  category?: 'control' | 'exam' | 'resit';
 }) {
   const portal = usePortal();
   const snapshot = portal.relationalSnapshot;
@@ -37,8 +40,9 @@ export default function EvaluationCreateDialog({
   });
 
   const [assignmentId, setAssignmentId] = useState(preselectedAssignmentId || filteredAssignments[0]?.id || '');
+  const [groupId, setGroupId] = useState(() => String(filteredAssignments.find(row => row.id === preselectedAssignmentId)?.group_id || filteredAssignments[0]?.group_id || ''));
   const [name, setName] = useState('');
-  const [kind, setKind] = useState<'DEVOIR' | 'EXAMEN' | 'INTERROGATION' | 'TP' | 'EXPOSE' | 'PROJET' | 'RATTRAPAGE'>('DEVOIR');
+  const [kind, setKind] = useState<'DEVOIR' | 'EXAMEN' | 'INTERROGATION' | 'TP' | 'EXPOSE' | 'PROJET' | 'RATTRAPAGE'>(category === 'exam' ? 'EXAMEN' : category === 'resit' ? 'RATTRAPAGE' : 'DEVOIR');
   const [parentEvaluationId, setParentEvaluationId] = useState('');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
@@ -56,7 +60,7 @@ export default function EvaluationCreateDialog({
   );
   const candidateCount = enrollments.filter(e => groupEnrollmentIds.has(String(e.id)) && e.offering_id === selectedAssignment?.offering_id && isEvaluationEnrollmentStatus(e.status)).length;
 
-  const parentOptions = evaluations.filter(e => e.assignment_id === assignmentId && e.kind !== 'RATTRAPAGE');
+  const parentOptions = evaluations.filter(e => e.assignment_id === assignmentId && e.kind !== 'RATTRAPAGE' && e.session_type !== 'RATTRAPAGE' && !e.cancelled_at && !e.archived_at);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -100,8 +104,29 @@ export default function EvaluationCreateDialog({
 
   return (
     <WorkPage title="Créer une nouvelle évaluation" onClose={onClose} busy={busy}>
-      <form onSubmit={handleSubmit} className="form-column">
+      <ReviewedForm onConfirm={handleSubmit} className="form-column" busy={busy} error={error}
+        confirmLabel="Confirmer la création de l’évaluation"
+        fields={[
+          { label: 'Évaluation', value: name.trim() },
+          { label: 'Nature', value: kind },
+          { label: 'Matière', value: String(selectedSubject?.name || selectedSubject?.code || '') },
+          { label: 'Groupe', value: String(selectedGroup?.name || '') },
+          { label: 'Candidats', value: `${candidateCount} étudiant(s)` },
+          ...(kind === 'RATTRAPAGE' ? [{ label: 'Évaluation d’origine', value: String(parentOptions.find(row => row.id === parentEvaluationId)?.name || '') }] : []),
+        ]}
+        validate={() => !assignmentId ? 'Choisissez un enseignement.' : name.trim().length < 2 ? 'Le libellé doit contenir au moins deux caractères.' : !candidateCount ? 'Aucun candidat éligible dans ce groupe.' : kind === 'RATTRAPAGE' && !parentEvaluationId ? 'Choisissez l’évaluation d’origine.' : null}
+        consequence="L’évaluation et ses candidats seront enregistrés ensemble en brouillon. Vous pourrez ensuite programmer la séance et préparer le sujet. Aucune note ni ouverture aux étudiants n’est créée par cette étape.">
         {error && <div className="restricted-box mb-2" role="alert">{error}</div>}
+
+        <label className="form-group mb-2">Groupe concerné
+          <select className="select-input" required value={groupId} onChange={event => {
+            const id = event.target.value;
+            setGroupId(id); setAssignmentId(filteredAssignments.find(row => row.group_id === id)?.id || ''); setParentEvaluationId('');
+          }}>
+            {!groupId && <option value="">Choisir un groupe</option>}
+            {groups.filter(group => filteredAssignments.some(row => row.group_id === group.id)).map(group => <option key={group.id} value={group.id}>{String(group.name || group.code || 'Groupe')}</option>)}
+          </select>
+        </label>
 
         <label className="form-group mb-2">
           Enseignement (Matière &amp; Groupe)
@@ -114,7 +139,7 @@ export default function EvaluationCreateDialog({
               setParentEvaluationId('');
             }}
           >
-            {filteredAssignments.map(a => {
+            {filteredAssignments.filter(row => !groupId || row.group_id === groupId).map(a => {
               const comp = components.find(c => c.id === a.component_id);
               const subj = comp && subjects.find(s => s.id === comp.subject_id);
               const grp = groups.find(g => g.id === a.group_id);
@@ -208,7 +233,7 @@ export default function EvaluationCreateDialog({
             Annuler
           </DrawerCloseButton>
         </DrawerActions>
-      </form>
+      </ReviewedForm>
     </WorkPage>
   );
 }

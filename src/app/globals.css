@@ -3500,3 +3500,12 @@ body.transcript-print-body { page: transcript; display: block; width: 190mm; hei
   .app-wrapper :is(.browser-toolbar, .directory-toolbar) { padding: .85rem; }
   .sidebar .nav-item > svg:first-child { padding: .25rem; }
 }
+
+/* Exam preparation workflow. */
+.exam-preparation { padding: 1.25rem; margin-bottom: 1.5rem; border: 1px solid var(--accent-border); border-radius: var(--radius); background: var(--accent-light); }
+.exam-preparation h3 { margin-bottom: 1rem; }
+.exam-preparation-steps { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 1rem; list-style: none; }
+.exam-preparation-steps li { display: grid; gap: .4rem; min-width: 0; padding: 1rem; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-sm); }
+.exam-preparation-steps span, .exam-preparation p { color: var(--text-secondary); line-height: 1.65; font-size: .875rem; overflow-wrap: anywhere; }
+.exam-preparation p { margin-top: 1rem; }
+@media (max-width: 768px) { .exam-preparation-steps { grid-template-columns: 1fr; } }

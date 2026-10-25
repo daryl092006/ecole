@@ -57,7 +57,18 @@ export default function SubjectStudio() {
         if (controller.signal.aborted) return;
         setDirectory(result);
         const params = new URL(window.location.href).searchParams;
-        if (params.get('nouveau') === '1') {
+        const requested = params.get('sujet');
+        const existing = requested ? result.subjects.find(row => row.id === requested && !row.archived) : undefined;
+        if (requested && !existing) {
+          setError('Ce sujet n’est plus disponible ou ne fait pas partie de vos accès.');
+        } else if (existing) {
+          setPrevious(existing);
+          setConnectedEvalId(existing.evaluationId || '');
+          setSubject({ title: existing.title, instructions: existing.instructions, durationMinutes: existing.durationMinutes,
+            purpose: existing.purpose, evaluationId: existing.evaluationId || null, sourceEvaluationRowId: existing.sourceEvaluationRowId,
+            authorize: existing.status === 'AUTORISE', parts: structuredClone(existing.parts) });
+          setPartIndex(0); setQuestionIndex(0); setTab('compose'); setEditing(true);
+        } else if (params.get('nouveau') === '1') {
           const purpose = params.get('nature') === 'control' ? 'CONTROLE_CONTINU' : params.get('nature') === 'resit' ? 'RATTRAPAGE' : 'EXAMEN';
           const initialTitle = params.get('titre') || '';
           const evalId = params.get('evalId') || '';
@@ -125,6 +136,7 @@ export default function SubjectStudio() {
     url.searchParams.delete('nature');
     url.searchParams.delete('evalId');
     url.searchParams.delete('titre');
+    url.searchParams.delete('sujet');
     window.history.replaceState(window.history.state, '', url);
   };
 
@@ -219,7 +231,13 @@ export default function SubjectStudio() {
                     const fresh = await loadPreparedSubjects(activeRole);
                     setDirectory(fresh);
                     const saved = fresh.subjects.find(row => row.id === result.id);
-                    if (saved) setPrevious(saved);
+                    if (saved) {
+                      setPrevious(saved);
+                      const url = new URL(window.location.href);
+                      for (const key of ['nouveau', 'source', 'nature', 'evalId', 'titre']) url.searchParams.delete(key);
+                      url.searchParams.set('sujet', saved.id);
+                      window.history.replaceState(window.history.state, '', url);
+                    }
                   } catch {
                     setError('Le sujet a bien été enregistré, mais sa version actualisée n’a pas pu être chargée.');
                   }

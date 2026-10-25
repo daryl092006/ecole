@@ -166,8 +166,20 @@ export default function NativeAssessmentWorkspace({ category }: { category: Asse
         .filter(row => row.evaluation_id === selected.id && !row.archived_at)
         .sort((a, b) => Number(b.version) - Number(a.version))[0];
       const selectedDelivery = (data.tables.exam_deliveries || []).find(row => row.evaluation_id === selected.id);
+      const selectedSession = selectedDelivery && (data.tables.sessions || []).find(row => row.id === selectedDelivery.session_id);
+      const planningQuery = new URLSearchParams({ affectation: String(selected.assignment_id), mode: 'PAPIER', epreuve: String(selected.id), nature: category });
       return (
         <WorkPage title={String(selected.name)} onClose={() => setSelectedId('')}>
+          <section className="exam-preparation" aria-label="Préparation de l’épreuve">
+            <h3>Mise en place de l’épreuve</h3>
+            <ol className="exam-preparation-steps">
+              <li><strong>1. Groupe et candidats</strong><span>{groupName(selected)} · {candidates.length} candidat(s)</span></li>
+              <li><strong>2. Sujet et barème</strong><span>{selectedPaper ? selectedPaper.status === 'AUTORISE' ? 'Sujet autorisé' : 'Sujet en brouillon' : 'Sujet à composer'}</span></li>
+              <li><strong>3. Date et salle</strong><span>{selectedSession ? new Intl.DateTimeFormat('fr-FR', { dateStyle: 'short', timeStyle: 'short', timeZone: 'Africa/Lome' }).format(new Date(String(selectedSession.starts_at))) : 'Séance à choisir dans la programmation'}</span></li>
+              <li><strong>4. Accès étudiant en ligne</strong><span>{selectedDelivery && selectedPaper?.status === 'AUTORISE' ? 'Sujet autorisé et fenêtre configurée' : 'Sujet autorisé et programmation nécessaires'}</span></li>
+            </ol>
+            <p>Pour une composition en ligne, les candidats éligibles accèdent au sujet autorisé pendant la fenêtre programmée. Les notes suivent leur propre circuit de validation.</p>
+          </section>
           <dl className="record-details-grid">
             <div><dt>Matière</dt><dd>{subjectName(selected)}</dd></div>
             <div><dt>Groupe</dt><dd>{groupName(selected)}</dd></div>
@@ -208,10 +220,11 @@ export default function NativeAssessmentWorkspace({ category }: { category: Asse
               </button>
             )}
             {perms.permissions.includes('evaluation.create') && (
-              <Link className="btn btn-outline" href={`/academique/sujets?nouveau=1&nature=${category}&evalId=${encodeURIComponent(String(selected.id))}&titre=${encodeURIComponent(String(selected.name || ''))}`}>
+              <Link className="btn btn-outline" href={selectedPaper ? `/academique/sujets?sujet=${encodeURIComponent(String(selectedPaper.id))}` : `/academique/sujets?nouveau=1&nature=${category}&evalId=${encodeURIComponent(String(selected.id))}&titre=${encodeURIComponent(String(selected.name || ''))}`}>
                 {selectedPaper ? 'Modifier le sujet' : 'Composer le sujet'}
               </Link>
             )}
+            {perms.permissions.includes('schedule.create') && <Link className="btn btn-outline" href={`/academique/emploi-du-temps?${planningQuery}`}>Planifier la date et la salle</Link>}
             {perms.permissions.includes('evaluation.create') && (
               <button className="btn btn-outline" onClick={() => setSchedulingDelivery(selected)}>
                 {selectedDelivery ? 'Modifier la diffusion' : 'Programmer la diffusion'}
@@ -260,7 +273,7 @@ export default function NativeAssessmentWorkspace({ category }: { category: Asse
       />
     )}
     {onlineCopiesId && <PersistentExamCopies evaluationId={onlineCopiesId} onClose={() => setOnlineCopiesId('')} />}
-    {creatingEval && <EvaluationCreateDialog onClose={() => setCreatingEval(false)} onCreated={id => { setCreatingEval(false); setManagingEvalIds([id]); }} />}
+    {creatingEval && <EvaluationCreateDialog category={category === 'unknown' ? 'control' : category} onClose={() => setCreatingEval(false)} onCreated={id => { setCreatingEval(false); setSelectedId(id); }} />}
     {managingEvalIds.length > 0 && <EvaluationGradeDialog evaluationId={managingEvalIds[0]} evaluationIds={managingEvalIds} onClose={() => setManagingEvalIds([])} />}
   </div>;
 }

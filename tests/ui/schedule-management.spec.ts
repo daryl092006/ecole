@@ -6,6 +6,16 @@ import { securityContext, securityIds as id, uuid } from './security-fixture';
 import { filterSnapshotForAcademicYear } from '../../src/services/academicYearScopeService';
 import { teacherDirectory } from '../../src/services/teacherManagementService';
 
+const systemNow = Date.now;
+test.beforeEach(async ({ page }, info) => {
+  if (info.title.startsWith('Épreuve liée :')) {
+    // These fixtures describe an exam that has not opened yet on 20 October.
+    Date.now = () => Date.parse('2026-10-19T08:00:00Z');
+    await page.clock.setFixedTime(new Date('2026-10-19T08:00:00Z'));
+  }
+});
+test.afterEach(() => { Date.now = systemNow; });
+
 async function connectedSchedule(page: Page, withExam = false) {
   await authenticateFixture(page);
   const fixture = scheduleFixture(securityContext(), true);

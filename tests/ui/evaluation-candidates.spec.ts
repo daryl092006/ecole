@@ -33,10 +33,17 @@ for (const rejected of [false, true]) {
     await expect(dialog.locator('p').filter({ hasText: 'Effectif rattaché' })).toContainText('2 étudiant(s)');
     await dialog.getByRole('textbox', { name: 'Intitulé de l’évaluation' }).fill('Évaluation de recette');
     await dialog.getByRole('button', { name: 'Créer l’évaluation en brouillon', exact: true }).click();
+    expect(commands).toHaveLength(0);
+    await dialog.getByRole('button', { name: 'Confirmer la création de l’évaluation', exact: true }).click();
     expect(commands).toHaveLength(1);
     if (rejected) {
       await expect(dialog.getByRole('alert')).toContainText('Aucun lot partiel');
+      await dialog.getByRole('button', { name: 'Revenir aux informations', exact: true }).click();
       await expect(dialog.getByRole('textbox', { name: 'Intitulé de l’évaluation' })).toHaveValue('Évaluation de recette');
-    } else await expect(page.getByRole('dialog').getByRole('heading', { level: 2 })).toHaveText('Notes · Évaluation de recette');
+    } else {
+      await expect(page.getByRole('dialog').getByRole('heading', { level: 2 })).toHaveText('Évaluation de recette');
+      await expect(page.getByRole('region', { name: 'Préparation de l’épreuve' })).toBeVisible();
+      await expect(page.getByRole('link', { name: 'Composer le sujet', exact: true })).toBeVisible();
+    }
   });
 }

@@ -1,5 +1,6 @@
 'use client';
 import { useState } from 'react';
+import Link from 'next/link';
 import { usePortal } from '@/hooks/usePortal';
 import WorkPage from '@/components/ui/WorkPage';
 import ReviewedForm from '@/components/ui/ReviewedForm';
@@ -29,7 +30,7 @@ export default function ExamDeliveryScheduleDialog({
   const portal = usePortal();
   const snapshot = portal.relationalSnapshot;
   const sessions = (snapshot.tables.sessions || []).filter(
-    s => s.assignment_id === evaluation.assignment_id && s.mode !== 'COURS'
+    s => s.assignment_id === evaluation.assignment_id && s.mode !== 'COURS' && !s.cancelled_at && !s.archived_at && !['ANNULE', 'ANNULEE'].includes(String(s.status))
   );
   const existingDelivery = (snapshot.tables.exam_deliveries || []).find(
     d => d.evaluation_id === evaluation.id
@@ -118,6 +119,7 @@ export default function ExamDeliveryScheduleDialog({
             sur papier ») doit être planifiée dans l’Emploi du temps pour cet enseignement.
           </p>
           <div className="btn-group mt-2">
+            {portal.perms.permissions.includes('schedule.create') && <Link className="btn btn-primary" href={`/academique/emploi-du-temps?${new URLSearchParams({ affectation: String(evaluation.assignment_id), mode: 'EN_LIGNE', epreuve: String(evaluation.id), nature: evaluation.kind === 'RATTRAPAGE' ? 'resit' : evaluation.kind === 'EXAMEN' ? 'exam' : 'control' })}`}>Créer la séance pour cette épreuve</Link>}
             <DrawerCloseButton className="btn btn-outline" disabled={busy}>
               Fermer
             </DrawerCloseButton>

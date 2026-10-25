@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
+import Link from 'next/link';
 import { usePortal } from '@/hooks/usePortal';
 import { loadSchedule, manageSchedule } from '@/services/remoteCampusService';
 import { shiftExamAccess } from '@/services/scheduleManagementService';
@@ -37,6 +38,7 @@ function ScheduleManager() {
   const portal = usePortal();
   const params = useSearchParams();
   const requestedComponent = params.get('matiere') || '';
+  const requestedAssignment = params.get('affectation') || '';
   const openedRequest = useRef('');
   const [assigning, setAssigning] = useState<{ groupId: string; offeringId: string; componentId: string } | null>(null);
   const { activeRole, academicYearSelection } = portal;
@@ -55,10 +57,14 @@ function ScheduleManager() {
     return () => controller.abort();
   }, [activeRole, academicYearSelection, reload]);
   useEffect(() => {
-    const request = `${activeRole}:${academicYearSelection}:${requestedComponent}`;
-    if (!directory?.canCreate || !requestedComponent || openedRequest.current === request || !directory.components.some(row => row.id === requestedComponent)) return;
-    openedRequest.current = request; setDetail(null); setSaveError(''); setForm(blank()); setOperation({ action: 'create_session' });
-  }, [directory, requestedComponent, activeRole, academicYearSelection]);
+    const request = `${activeRole}:${academicYearSelection}:${requestedComponent}:${requestedAssignment}`;
+    if (!directory?.canCreate || openedRequest.current === request) return;
+    const assignment = directory.assignments.find(row => row.id === requestedAssignment);
+    if (!assignment && (!requestedComponent || !directory.components.some(row => row.id === requestedComponent))) return;
+    openedRequest.current = request; setDetail(null); setSaveError('');
+    setForm({ ...blank(), assignmentId: assignment?.id || '', mode: assignment ? params.get('mode') === 'EN_LIGNE' ? 'EN_LIGNE' : 'PAPIER' : 'COURS' });
+    setOperation({ action: 'create_session' });
+  }, [directory, requestedComponent, requestedAssignment, activeRole, academicYearSelection, params]);
   if (loading) return <LoadingState label="Chargement du planning…" variant="cards" />;
   if (error || !directory) return <ErrorState title="Planning indisponible" message={error || 'Les séances n’ont pas pu être chargées.'} onRetry={() => setReload(value => value + 1)} />;
   const teacherName = (id: string | null) => directory.teachers.find(teacher => teacher.id === id)?.name || 'Enseignant indisponible';
@@ -114,6 +120,7 @@ function ScheduleManager() {
       {directory.canCreate && <button className="btn btn-primary" onClick={() => open('create_session')}>Programmer un cours</button>}
       {directory.canUpdate && (directory.canBlockAllSites || directory.sites.length > 0) && <button className="btn btn-outline" onClick={() => open('block_period')}>Bloquer une période</button>}
     </div></div>
+    {params.get('epreuve') && <Link className="btn btn-outline mb-2" href={`/academique/examens?${new URLSearchParams({ epreuve: params.get('epreuve')!, ...(params.get('nature') === 'resit' ? { session: 'rattrapage' } : params.get('nature') === 'control' ? { session: 'controle' } : {}) })}`}>Revenir à la préparation de l’épreuve</Link>}
     {success && <p className="card" role="status">{success}</p>}
     {!directory.selectedYearId && <p className="restricted-box">Choisissez une année scolaire précise pour gérer le planning.</p>}
     <section className="card"><ScheduleGroupFilter groups={groups} value={groupId} onChange={id => setGroupSelection({ yearId, groupId: id })} count={active.length} /></section>
