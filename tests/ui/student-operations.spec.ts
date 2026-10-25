@@ -1,8 +1,9 @@
 import {expect,test} from '@playwright/test';
-import {authenticateFixture,snapshot} from './persistent-fixture';
+import {authenticateFixture} from './persistent-fixture';
+import { installResponsiveAudit } from './responsive-audit-fixture';
+test.beforeEach(async ({ page }) => { await installResponsiveAudit(page, 'staff'); });
 for(const width of [390,1440])test(`Paiement relu et enregistré une seule fois à ${width}px`,async({page})=>{
  await page.setViewportSize({width,height:1000});await authenticateFixture(page);
- await page.route('**/api/campus',route=>route.fulfill({json:snapshot}));
  const operations:Record<string,unknown>[]=[];let paid=0;
  await page.route('**/api/students/*/operations',route=>{
   if(route.request().method()==='POST'){const body=route.request().postDataJSON();operations.push(body);paid=body.amount;return route.fulfill({status:201,json:{revision:2}});}
@@ -17,11 +18,11 @@ for(const width of [390,1440])test(`Paiement relu et enregistré une seule fois 
  await expect(page.getByText('Paiement et reçu enregistrés.',{exact:true})).toBeVisible();expect(operations).toHaveLength(1);expect(operations[0]).toMatchObject({action:'payment',amount:50000,reference:'RECETTE-001'});
 });
 test('Sans inscription officielle, aucun encaissement proposé',async({page})=>{
- await authenticateFixture(page);await page.route('**/api/campus',route=>route.fulfill({json:snapshot}));await page.route('**/api/students/*/operations',route=>route.fulfill({json:{revision:1,enrollments:[],payments:[],paid:0}}));
+ await authenticateFixture(page);await page.route('**/api/students/*/operations',route=>route.fulfill({json:{revision:1,enrollments:[],payments:[],paid:0}}));
  await page.goto('/etudiants/ESCEN-TEST-001');await page.getByRole('navigation',{name:'Sections du dossier étudiant'}).getByRole('button',{name:'Frais et versements',exact:true}).click();await expect(page.getByText('Aucune inscription officielle pour cette année. Une inscription est nécessaire avant un encaissement.')).toBeVisible();await expect(page.getByRole('button',{name:'Enregistrer un paiement',exact:true})).toHaveCount(0);
 });
 test('Contrat en brouillon : approbation et continuité dans Frais et versements',async({page})=>{
- await authenticateFixture(page);await page.route('**/api/campus',route=>route.fulfill({json:snapshot}));
+ await authenticateFixture(page);
  const operations:Record<string,unknown>[]=[];let contractStatus='DRAFT';
  await page.route('**/api/students/*/operations',route=>{
   if(route.request().method()==='POST'){const body=route.request().postDataJSON();operations.push(body);contractStatus='APPROVED';return route.fulfill({status:201,json:{revision:2}});}
@@ -40,7 +41,7 @@ test('Contrat en brouillon : approbation et continuité dans Frais et versements
  expect(operations[0]).toMatchObject({action:'approve_contract',enrollmentId:'00000000-0000-4000-8000-000000000101',dueOn:'2026-10-15'});
 });
 test('Changement de groupe relu et enregistré une seule fois',async({page})=>{
- await authenticateFixture(page);await page.route('**/api/campus',route=>route.fulfill({json:snapshot}));
+ await authenticateFixture(page);
  const operations:Record<string,unknown>[]=[];
  const groupA='00000000-0000-4000-8000-000000000201',groupB='00000000-0000-4000-8000-000000000202';
  await page.route('**/api/students/*/operations',route=>{

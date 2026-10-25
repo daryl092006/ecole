@@ -1,7 +1,7 @@
 import { prepareTestYear } from './academic-year-test-helpers.mjs';
 import assert from 'node:assert/strict';
 import { createHash, randomUUID } from 'node:crypto';
-export async function verifyAcademicYears({ db, check, insert, account, year, level, site, curriculum, component, teacher, student }) {
+export async function verifyAcademicYears({ db, check, insert, account, year, level, curriculum, component, teacher, student }) {
   const value = async (sql, args = []) => (await db.query(sql, args)).rows[0].value;
   const command = async (action, yearId, status = null, revision = undefined, role = 'IT') => value('select public.escen_academic_year_command($1,$2,$3,$4,$5,$6,$7) as value', [account.id, role, action, yearId, revision ?? await value('select revision as value from escen_private.portal_revision where singleton'), 'Commande annuelle motivée de recette', status]);
   let fresh = await insert('academic_years', { code: 'ARCHIVE-2040', name: 'Archive de recette', starts_on: '2040-09-01', ends_on: '2041-07-31', status: 'CLOTUREE' }); let offering; let enrollment; let application;

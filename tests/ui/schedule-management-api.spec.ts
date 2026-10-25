@@ -3,6 +3,10 @@ import { scheduleFixture, createSession, attachScheduledExam } from './schedule-
 import { securityContext, securityIds as id, uuid } from './security-fixture';
 import { ROLES } from '../../src/types/permissions';
 
+const systemNow = Date.now;
+test.beforeEach(() => { Date.now = () => Date.parse('2026-10-19T08:00:00Z'); });
+test.afterEach(() => { Date.now = systemNow; });
+
 test('Créer, modifier, déplacer, remplacer et annuler : changements ciblés et motif', async () => {
   const fixture = scheduleFixture(securityContext(), true);
   const response = await fixture.post(createSession);

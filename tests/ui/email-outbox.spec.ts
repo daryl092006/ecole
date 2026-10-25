@@ -54,7 +54,7 @@ test('Suivi : direction en lecture, erreur distincte d’une liste vide', async 
   let failed = true;
   await page.route('**/api/email-outbox**', route => route.fulfill(failed ? { status: 503, json: { error: 'Suivi des mails indisponible.' } } : { json: { yearId: auditYearId, records, total: 3, offset: 0, limit: 50, configuration: { ready: true } } }));
   await page.goto('/systeme/mails');
-  await expect(page.getByRole('alert')).toHaveText(/Suivi des mails indisponible/);
+  await expect(page.getByRole('main').getByRole('alert')).toHaveText(/Suivi des mails indisponible/);
   await expect(page.getByText(/Aucun mail pour cette année/)).toHaveCount(0);
   failed = false;
   await page.getByRole('button', { name: 'Réessayer', exact: true }).click();

@@ -36,7 +36,7 @@ import PurchasesWorkspace from '@/components/modules/PurchasesWorkspace';
 import StudentDocumentsWorkspace from '@/components/modules/StudentDocumentsWorkspace';
 import { DOMAIN_WORKSPACES } from '@/data/domainWorkspaces';
 
-export default function PortalScreen({ tab: _tab, section }: { tab: string; section: string }) {
+export default function PortalScreen({ section }: { tab: string; section: string }) {
   const state = usePortal();
   const { activeRole, perms } = state;
   const currentSubTab = section;
