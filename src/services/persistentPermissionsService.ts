@@ -1,6 +1,7 @@
 import type { DatabaseRow, PersistentContext, RelationalSnapshot } from '@/types/persistence';
 import { ROLES, type Permission } from '@/types/permissions';
 import { attendanceSessions } from './attendanceManagementService';
+import { visibleSupportTickets } from './persistentSupportService';
 
 const field = (row: DatabaseRow, name: string) => typeof row[name] === 'string' ? row[name] as string : '';
 const ownRole = (context: PersistentContext) => context.role === ROLES.STUD || context.role === ROLES.DEL;
@@ -23,6 +24,7 @@ const academic = new Set(domainTables.find(item => item.permission === 'academic
 const policy = new Map(domainTables.flatMap(item => item.tables.map(table => [table,item.permission] as const)));
 
 export function filterRelationalSnapshot(snapshot: RelationalSnapshot, context: PersistentContext): RelationalSnapshot {
+  const supportIds = new Set(visibleSupportTickets(snapshot, context, null).map(ticket => ticket.id));
   const tables = snapshot.tables;
   const rows = (name: string) => tables[name] ?? [];
   const can = (permission: Permission) => context.permissions.includes(permission);
@@ -166,9 +168,9 @@ export function filterRelationalSnapshot(snapshot: RelationalSnapshot, context: 
       if (name === 'jury_decisions') return decisionIds.has(row.id);
       if (row.decision_id) return decisionIds.has(field(row,'decision_id'));
       if (name === 'generated_documents') return studentIds.has(field(row,'student_id'));
-      if (name === 'support_tickets') return can('system.support.manage') || row.author_id === context.accountId;
-      if (name === 'support_messages') return rows('support_tickets').some(ticket => ticket.id === row.ticket_id && (can('system.support.manage') || ticket.author_id === context.accountId));
-      if (name === 'support_files') return rows('support_messages').some(message => message.id === row.message_id && rows('support_tickets').some(ticket => ticket.id === message.ticket_id && (can('system.support.manage') || ticket.author_id === context.accountId)));
+      if (name === 'support_tickets') return supportIds.has(row.id);
+      if (name === 'support_messages') return supportIds.has(field(row, 'ticket_id'));
+      if (name === 'support_files') return rows('support_messages').some(message => message.id === row.message_id && supportIds.has(field(message, 'ticket_id')));
       if (row.student_id) return studentIds.has(field(row,'student_id'));
       if (row.enrollment_id) return enrollmentIds.has(field(row,'enrollment_id'));
       if (row.payment_id) return paymentIds.has(field(row,'payment_id'));

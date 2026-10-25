@@ -240,3 +240,4 @@ require('../src/services/evaluationCandidateService.test.ts');
 require('../src/services/evaluationGradePolicy.test.ts');
 
 require('../src/services/onlineExamDraftService.test.ts');
+require('../src/services/persistentSupportService.test.ts');

@@ -3416,3 +3416,7 @@ body.transcript-print-body { page: transcript; display: block; width: 190mm; hei
   .evaluation-grade-workspace .kpi-card { flex-direction: row; align-items: center; gap: 1rem; }
   .evaluation-grade-workspace .kpi-value { flex-shrink: 0; }
 }
+
+.support-thread > p, .support-thread .card > p { white-space: pre-wrap; overflow-wrap: anywhere; line-height: 1.7; margin: .6rem 0; }
+.support-thread h3 { margin: 1.25rem 0 .75rem; }
+.support-workspace .data-table { margin-top: 1rem; }

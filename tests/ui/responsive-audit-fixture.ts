@@ -85,6 +85,10 @@ export async function installResponsiveAudit(page: Page, account: AuditAccount) 
       let json: unknown;
       if (url.pathname === '/api/session') json = account === 'anonymous' ? null : { capabilities: fixtureCapabilities, accountId: context.accountId, name: student ? 'Élise Étudiante' : 'Jean Technique', email: 'audit@example.test', role: context.role, availableRoles: [context.role], studentId: context.studentId, teacherId: null, matricule: student ? 'ESCEN-TEST-001' : null, mustChangePassword: account === 'password' };
       else if (url.pathname === '/api/campus') json = { ...filterSnapshotForAcademicYear(filterRelationalSnapshot(campus, context), id.year), academicContext: { currentYearId: id.year, currentYearConfigured: true, selectedYearId: id.year, selection: 'current', years: tables.academic_years } };
+      else if (url.pathname === '/api/support') {
+        const scoped = filterSnapshotForAcademicYear(filterRelationalSnapshot(campus, context), id.year);
+        json = { revision: campus.revision, yearId: id.year, canManage: context.permissions.includes('system.support.manage'), tickets: scoped.tables.support_tickets || [], messages: scoped.tables.support_messages || [], categories: scoped.tables.support_categories || [] };
+      }
       else if (url.pathname === '/api/history') json = url.searchParams.has('table')
         ? { table: url.searchParams.get('table'), total: 0, records: [], offset: Number(url.searchParams.get('offset') || 0), limit: 50 }
         : { totalSourceRows: 0, datasets: [], references: {} };

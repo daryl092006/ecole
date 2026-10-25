@@ -31,7 +31,7 @@ export const MODULE_JOURNEYS: Record<string, JourneyStage[]> = {
   systeme: [
     { title: 'Contrôler les données', description: 'Examiner les dossiers et les anomalies sans modifier les sources originales.', sections: ['sys_data'] },
     { title: 'Tracer et exporter', description: 'Retrouver les événements, suivre les mails et choisir les lignes à exporter.', sections: ['sys_logs', 'sys_emails', 'sys_backups'] },
-    { title: 'Assistance', description: 'Consulter le périmètre d’assistance disponible et les demandes et messages enregistrés.', sections: ['sys_support'] },
+    { title: 'Assistance', description: 'Prendre en charge les demandes, répondre et conserver les comptes rendus de résolution.', sections: ['sys_support'] },
   ],
 };
 
@@ -42,5 +42,5 @@ export const SECTION_TASKS: Record<string, string> = {
   fin_kpis: 'Consulter les données financières', fin_contracts: 'Retrouver des frais ou une bourse', fin_payments: 'Retrouver un versement', fin_reports: 'Préparer un export financier',
   staff_records: 'Rechercher ou créer un dossier professionnel', staff_teachers: 'Consulter les affectations', staff_list: 'Gérer un compte du personnel', staff_roles: 'Comprendre un rôle', staff_permissions: 'Comparer les permissions',
   comm_news: 'Lire les actualités', comm_announcements: 'Retrouver une annonce', log_suppliers: 'Gérer les fournisseurs', log_purchases: 'Consulter le parcours des achats', log_assets: 'Gérer les équipements',
-  sys_data: 'Examiner les données et les anomalies', sys_logs: 'Rechercher un événement', sys_backups: 'Exporter les événements consultés', sys_support: 'Consulter l’assistance disponible',
+  sys_data: 'Examiner les données et les anomalies', sys_logs: 'Rechercher un événement', sys_backups: 'Exporter les événements consultés', sys_support: 'Suivre et traiter les demandes de support',
 };
