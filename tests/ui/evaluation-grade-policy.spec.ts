@@ -136,7 +136,7 @@ test('Ancien NON_TRAITE publié : zéro et moyenne cohérents dans la liste et l
   const summary = page.getByRole('row', { name: /Politique des copies/ });
   await expect(summary).toContainText('Moy. 6/20');
   await expect(summary).toContainText('1 à corriger');
-  await expect(summary).toContainText('État incohérent · notes incomplètes');
+  await expect(summary).toContainText('Notes incomplètes');
   await expect(summary).not.toContainText('Résultats publiés');
   await page.getByRole('button', { name: 'Saisir / Gérer', exact: true }).click();
   let dialog = page.getByRole('dialog');
@@ -147,20 +147,20 @@ test('Ancien NON_TRAITE publié : zéro et moyenne cohérents dans la liste et l
   dialog = page.getByRole('dialog');
   await expect(dialog.getByRole('row', { name: /Boris Copie/ })).toContainText('0');
   await expect(dialog.getByRole('row', { name: /Boris Copie/ })).toContainText('Copie non traitée');
-  await expect(dialog.getByText('État incohérent · notes incomplètes', { exact: true })).toBeVisible();
+  await expect(dialog.getByText('Notes incomplètes', { exact: true })).toBeVisible();
   expect(commands).toHaveLength(0);
 });
 
-test('Publication issue de la reprise historique explicitement distinguée', async ({ page }) => {
+test('Résultats avec notes incomplètes indiqués sans jargon', async ({ page }) => {
   const { campus } = await prepare(page, 'PUBLIEES', true);
   campus.tables.evaluations[0].legacy_source_row_id = 'legacy-evaluation';
   await page.reload();
   const row = page.getByRole('row', { name: /Politique des copies/ });
-  await expect(row).toContainText('Historique importé · notes à compléter');
+  await expect(row).toContainText('Notes incomplètes');
   await expect(row).not.toContainText('Résultats publiés');
 });
 
-test('Publication historique sans candidat explicitement signalée', async ({ page }) => {
+test('Résultats sans candidat explicitement signalés', async ({ page }) => {
   const { campus } = await prepare(page, 'PUBLIEES');
   campus.tables.evaluations[0].legacy_source_row_id = 'legacy-evaluation';
   campus.tables.evaluation_candidates = [];
@@ -168,7 +168,7 @@ test('Publication historique sans candidat explicitement signalée', async ({ pa
   await page.reload();
   const row = page.getByRole('row', { name: /Politique des copies/ });
   await expect(row).toContainText('0 candidat(s)');
-  await expect(row).toContainText('Historique importé · aucun candidat');
+  await expect(row).toContainText('Aucun candidat');
   await expect(row).not.toContainText('Résultats publiés');
 });
 

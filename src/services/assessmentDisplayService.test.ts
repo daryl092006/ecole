@@ -11,8 +11,8 @@ assert.equal(assessmentProgress({ published: '0' }, now), 'État non renseigné'
 assert.equal(assessmentProgress({ published: '1' }, now), 'Résultats publiés');
 assert.equal(assessmentProgress({ status: 'VALIDEES' }, now), 'Notes validées');
 assert.equal(combinedAssessmentProgress([{ status: 'PUBLIEES' }, { status: 'BROUILLON' }]), 'États différents');
-assert.equal(combinedAssessmentProgress([{ status: 'PUBLIEES' }], 1), 'État incohérent · notes incomplètes');
+assert.equal(combinedAssessmentProgress([{ status: 'PUBLIEES' }], 1), 'Notes incomplètes');
 assert.equal(combinedAssessmentProgress([{ status: 'PUBLIEES' }], 0), 'Résultats publiés');
-assert.equal(combinedAssessmentProgress([{ status: 'PUBLIEES', legacy_source_row_id: 'legacy-evaluation' }], 1), 'Historique importé · notes à compléter');
-assert.equal(combinedAssessmentProgress([{ status: 'PUBLIEES', legacy_source_row_id: 'legacy-evaluation' }], 0, 0), 'Historique importé · aucun candidat');
+assert.equal(combinedAssessmentProgress([{ status: 'PUBLIEES', legacy_source_row_id: 'legacy-evaluation' }], 1), 'Notes incomplètes');
+assert.equal(combinedAssessmentProgress([{ status: 'PUBLIEES', legacy_source_row_id: 'legacy-evaluation' }], 0, 0), 'Aucun candidat');
 assert.equal(assessmentProgress({ status: 'PUBLIEES', archived_at: '2026-01-01' }, now), 'Retirée');

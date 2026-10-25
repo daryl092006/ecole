@@ -32,9 +32,7 @@ export function assessmentProgress(values: Record<string, unknown>, now = new Da
 export function combinedAssessmentProgress(rows: Record<string, unknown>[], incompleteGradeCount = 0, candidateCount?: number): string {
   const states = [...new Set(rows.map(row => assessmentProgress(row)))];
   if (states.length === 1 && states[0] === 'Résultats publiés' && (incompleteGradeCount > 0 || candidateCount === 0)) {
-    return rows.every(row => Boolean(row.legacy_source_row_id))
-      ? candidateCount === 0 ? 'Historique importé · aucun candidat' : 'Historique importé · notes à compléter'
-      : candidateCount === 0 ? 'État incohérent · aucun candidat' : 'État incohérent · notes incomplètes';
+    return candidateCount === 0 ? 'Aucun candidat' : 'Notes incomplètes';
   }
   return states.length === 1 ? states[0] : 'États différents';
 }
