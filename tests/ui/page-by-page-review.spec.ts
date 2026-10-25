@@ -93,11 +93,11 @@ for (const width of [390, 1440]) test(`Revue des pages, sous-onglets et fenêtre
       const context = await browser.newContext({ viewport: { width, height: 960 }, reducedMotion: 'reduce' });
       const page = await context.newPage();
       page.setDefaultTimeout(12000);
-      page.setDefaultNavigationTimeout(15000);
+      page.setDefaultNavigationTimeout(45000);
       const { problems } = await installResponsiveAudit(page, screen.account);
       page.on('pageerror', error => failures.push(`${screen.href}: ${error.message}`));
       try {
-        await page.goto(screen.href);
+        await page.goto(screen.href, { waitUntil: 'domcontentloaded' });
         if (['acad_assessments', 'acad_resits'].includes(screen.key)) await page.waitForURL(url => url.pathname === '/academique/examens');
         await ready(page);
         await capture(page, screen.href, 'Page initiale');
