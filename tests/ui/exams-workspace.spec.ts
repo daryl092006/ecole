@@ -1,6 +1,21 @@
 import { expect, test } from '@playwright/test';
 import { ACCOUNT_IDS, authenticateFixture, snapshot } from './persistent-fixture';
 import { ROLES } from '../../src/types/permissions';
+import { installResponsiveAudit } from './responsive-audit-fixture';
+
+for (const width of [390, 1440]) for (const [path, session] of [['evaluations', 'controle'], ['rattrapages', 'rattrapage']]) {
+  test(`Entrée directe ${path} conserve les filtres à ${width}px`, async ({ page }) => {
+    await page.setViewportSize({ width, height: 960 });
+    const { problems } = await installResponsiveAudit(page, 'staff');
+    await page.goto(`/academique/${path}?groupe=TEST&filtre=a&filtre=b&session=ancienne`);
+    await expect(page).toHaveURL(url => url.pathname === '/academique/examens' && url.searchParams.get('session') === session);
+    const query = new URL(page.url()).searchParams;
+    expect(query.get('groupe')).toBe('TEST');
+    expect(query.getAll('filtre')).toEqual(['a', 'b']);
+    await expect(page.getByRole('navigation', { name: 'Type d’évaluation' }).getByRole('link', { name: session === 'controle' ? 'Contrôles continus' : 'Rattrapages' })).toHaveAttribute('aria-current', 'page');
+    expect(problems).toEqual([]);
+  });
+}
 
 test('Accès aux contrôles sans élargir l’accès aux examens', async ({ page }) => {
   await authenticateFixture(page);
