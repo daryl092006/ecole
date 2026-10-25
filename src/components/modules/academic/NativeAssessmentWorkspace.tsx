@@ -56,6 +56,7 @@ export default function NativeAssessmentWorkspace({ category }: { category: Asse
   const allEvaluations = data.tables.evaluations || [];
   const allCandidates = data.tables.evaluation_candidates || [];
   const allGrades = data.tables.grades || [];
+  const gradeDataAvailable = Array.isArray(data.tables.grades);
   const allAttempts = data.tables.exam_attempts || [];
   const gradeByCand = new Map(allGrades.map(g => [String(g.candidate_id), g]));
   const lastAttemptByCand = new Map<string, DatabaseRow>();
@@ -81,11 +82,13 @@ export default function NativeAssessmentWorkspace({ category }: { category: Asse
   const allGroupedItems = [...groupedMap.values()].map(members => {
     const memberIds = new Set(members.map(m => String(m.id)));
     const cands = allCandidates.filter(c => memberIds.has(String(c.evaluation_id)));
-    const vals = cands.map(c => evaluationGradeValue(gradeByCand.get(String(c.id)))).filter((value): value is number => value !== null);
-    const absentCount = cands.filter(c => ['ABSENT', 'JUSTIFIE'].includes(String(gradeByCand.get(String(c.id))?.absence_status || ''))).length;
-    const pendingCount = cands.filter(c => !evaluationGradeIsComplete(gradeByCand.get(String(c.id)))).length;
+    const vals = gradeDataAvailable ? cands.map(c => evaluationGradeValue(gradeByCand.get(String(c.id)))).filter((value): value is number => value !== null) : [];
+    const absentCount = gradeDataAvailable ? cands.filter(c => ['ABSENT', 'JUSTIFIE'].includes(String(gradeByCand.get(String(c.id))?.absence_status || ''))).length : 0;
+    const pendingCount = gradeDataAvailable ? cands.filter(c => !evaluationGradeIsComplete(gradeByCand.get(String(c.id)))).length : 0;
     const avg = vals.length ? vals.reduce((a, b) => a + b, 0) / vals.length : null;
-    const statsLabel = vals.length
+    const statsLabel = !gradeDataAvailable
+      ? `${cands.length} candidat(s)`
+      : vals.length
       ? `${vals.length} note(s) · Moy. ${avg!.toLocaleString('fr-FR', { maximumFractionDigits: 2 })}/20${absentCount ? ` · ${absentCount} abs.` : ''}${pendingCount ? ` · ${pendingCount} à corriger` : ''}`
       : `${cands.length} candidat(s)${absentCount ? ` · ${absentCount} abs.` : ''}${pendingCount ? ` · ${pendingCount} à corriger` : ''}`;
     return {

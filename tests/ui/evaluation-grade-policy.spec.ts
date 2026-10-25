@@ -162,6 +162,16 @@ test('Notes publiées avec le marqueur PRESENT : aucune copie annoncée à corri
   await expect(row).not.toContainText('à corriger');
 });
 
+test('Sans accès aux notes, la liste ne les invente pas comme copies à corriger', async ({ page }) => {
+  const { campus } = await prepare(page, 'PUBLIEES');
+  delete campus.tables.grades;
+  await page.reload();
+  const row = page.getByRole('row', { name: /Politique des copies/ });
+  await expect(row).toContainText('3 candidat(s)');
+  await expect(row).toContainText('Résultats publiés');
+  await expect(row).not.toContainText('à corriger');
+});
+
 
 test('Copie en ligne vide remise à l’échéance : zéro et NON_TRAITE préremplis', async ({ page }) => {
   const { campus } = await prepare(page);
