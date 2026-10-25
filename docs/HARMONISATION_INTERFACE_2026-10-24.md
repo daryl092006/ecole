@@ -1,5 +1,12 @@
 # Harmonisation de l’interface ESCEN — 24 octobre 2026
 
+> Rectification après revue visuelle : les chiffres ci-dessous décrivent un
+> contrôle automatique de géométrie, pas une revue complète des pages.
+> Plusieurs variantes de catalogue affichaient le même écran initial, et les
+> écrans d’erreur de Personnel et Données n’étaient pas rejetés par le test.
+> La réponse de test de l’historique et le contrôle des erreurs ont été corrigés.
+> La reprise détaillée est suivie dans `REVUE_VISUELLE_PAGE_PAR_PAGE_2026-10-24.md`.
+
 ## Périmètre
 
 Harmonisation des styles partagés de toutes les rubriques du portail et des

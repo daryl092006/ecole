@@ -205,7 +205,7 @@ export default function AcademicYearLifecycle({
                   {String(year.starts_on || '').split('-').reverse().join('/')} — {String(year.ends_on || '').split('-').reverse().join('/')}
                 </p>
               </div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '16px', flexWrap: 'wrap' }}>
+              <div className="academic-year-actions">
                 {canManage && (
                   <button
                     type="button"

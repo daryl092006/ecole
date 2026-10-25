@@ -33,7 +33,7 @@ export default function ProgramsCoursesWorkspace() {
   const unassigned = (tables.subjects || []).filter(subject => !subject.archived_at && !(tables.curriculum_components || []).some(component => !component.archived_at && component.subject_id === subject.id));
   const changed = () => { setTask(null); portal.refreshCampus(); };
 
-  return <div className="domain-workspace">
+  return <div className="domain-workspace workspace-stack">
     <div className="page-intro"><div><span className="page-eyebrow">ENSEIGNEMENTS</span><h1>Programmes de cours et matières</h1><p>Choisissez une filière, un niveau, puis un semestre pour organiser ses matières.</p></div>{canEdit && <button className="btn btn-outline" onClick={() => setTask({ collection: 'programs' })}>Gérer les filières et leurs niveaux</button>}</div>
     <section className="card" aria-label="Choisir le programme">
       <div className="form-grid">

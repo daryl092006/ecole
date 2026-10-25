@@ -90,7 +90,7 @@ export default function AttendanceWorkspace() {
       { label: 'Étudiant', value: operation.justification.studentName }, { label: 'Justificatif', value: operation.justification.reason },
       { label: 'Décision', value: justificationStatus[operation.decision], previous: 'En attente' },
     ] : [];
-  return <div>
+  return <div className="attendance-workspace workspace-stack">
     <header className="page-intro"><div><span className="page-eyebrow">PRÉSENCES</span><h1>Feuilles de présence</h1><p>Choisissez une séance pour retrouver les étudiants, la présence enseignante et les justificatifs.</p></div></header>
     {portal.history.enabled && <button className="btn btn-outline" onClick={() => setArchives(true)}>Consulter les séances historiques</button>}
     {success && <p role="status" className="restricted-box">{success}</p>}

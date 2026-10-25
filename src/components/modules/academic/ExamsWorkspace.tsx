@@ -22,7 +22,7 @@ export default function ExamsWorkspace() {
     return `/academique/examens${query.size ? `?${query}` : ''}`;
   };
   return <>
-    <nav className="btn-group mb-2" aria-label="Type d’évaluation">
+    <nav className="exam-session-tabs" aria-label="Type d’évaluation">
       {canControls && <Link className={`btn ${category === 'control' ? 'btn-primary' : 'btn-outline'}`} href={href('controle')} aria-current={category === 'control' ? 'page' : undefined}>Contrôles continus</Link>}
       {canExams && <Link className={`btn ${category === 'exam' ? 'btn-primary' : 'btn-outline'}`} href={href('')} aria-current={category === 'exam' ? 'page' : undefined}>Session normale</Link>}
       {canExams && <Link className={`btn ${category === 'resit' ? 'btn-primary' : 'btn-outline'}`} href={href('rattrapage')} aria-current={category === 'resit' ? 'page' : undefined}>Rattrapages</Link>}

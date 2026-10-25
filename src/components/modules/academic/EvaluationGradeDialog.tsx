@@ -259,7 +259,7 @@ function EvaluationGrades({ evaluationId, busy, setBusy }: { evaluationId: strin
       <div className="evaluation-grade-workspace">
         {busy && !pendingTransition && !correctingGradeId && <LoadingState compact label="Enregistrement en cours…" />}
         <details className="context-details mb-2" open>
-          <summary>Workflow de validation des notes</summary>
+          <summary>Étapes de validation des notes</summary>
           <WorkflowStepper steps={STEPS} currentStep={status} title="Cycle d’évaluation" />
         </details>
 

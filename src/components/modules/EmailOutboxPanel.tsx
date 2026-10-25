@@ -65,7 +65,7 @@ export default function EmailOutboxPanel() {
   };
 
   if (!allowed) return <section className="card"><h1>Suivi des mails</h1><p role="alert">Accès réservé à la direction et à l’Informaticien avec attribution globale.</p></section>;
-  return <section className="card card-full">
+  return <section className="card card-full email-workspace">
     <div className="setup-actions"><div><h1>Suivi des mails</h1><p>Notifications liées aux actions de l’année consultée.</p></div><button className="btn btn-outline" onClick={() => setRevision(value => value + 1)}>Actualiser</button></div>
     {message && <p role="status">{message}</p>}
     {error ? <ErrorState title="Mails indisponibles" message={error} onRetry={() => setRevision(value => value + 1)} /> : !page ? <LoadingState label="Chargement des mails…" variant="table" /> : <>

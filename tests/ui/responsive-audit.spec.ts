@@ -94,6 +94,7 @@ for (const width of widths.filter(value => !process.env.ESCEN_AUDIT_WIDTH || Str
         if (screen.readyHeading) await expect(page.getByRole('heading', { name: screen.readyHeading, exact: true })).toBeVisible();
         await expect(page.locator('main')).toBeVisible();
         await expect(page.locator('main .loading-state:visible')).toHaveCount(0);
+        await expect(page.locator('main .error-state')).toHaveCount(0);
         await page.evaluate(async () => { await Promise.race([document.fonts.ready, new Promise(done => setTimeout(done, 3000))]); await new Promise<void>(done => requestAnimationFrame(() => requestAnimationFrame(() => done()))); });
         const diagnostic = await inspect(page);
         if (!await page.locator('h1:visible, h2:visible').count()) diagnostic.issues.push('Contenu vide : aucun titre de page après chargement');

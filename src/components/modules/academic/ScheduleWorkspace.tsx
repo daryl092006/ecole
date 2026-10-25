@@ -109,7 +109,7 @@ function ScheduleManager() {
   const groupId = groupSelection.yearId === yearId && groups.some(group => group.id === groupSelection.groupId) ? groupSelection.groupId : '';
   const sessions = directory.sessions.filter(session => !groupId || session.groupId === groupId);
   const active = sessions.filter(session => !['ANNULE', 'REPORTE'].includes(session.status));
-  return <div className="domain-workspace">
+  return <div className="domain-workspace workspace-stack">
     <div className="page-intro"><div><span className="page-eyebrow">PLANNING</span><h1>Séances et emploi du temps</h1><p>Horaires en heure de Lomé (UTC). Les conflits sont contrôlés avant enregistrement.</p></div><div className="btn-group">
       {directory.canCreate && <button className="btn btn-primary" onClick={() => open('create_session')}>Programmer un cours</button>}
       {directory.canUpdate && (directory.canBlockAllSites || directory.sites.length > 0) && <button className="btn btn-outline" onClick={() => open('block_period')}>Bloquer une période</button>}

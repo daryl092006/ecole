@@ -3366,3 +3366,53 @@ body.transcript-print-body { page: transcript; display: block; width: 190mm; hei
   .home-metrics strong { font-size: 1.5rem; }
   .auth-form-card { padding: 1.25rem; }
 }
+
+/* Findings from the individual page review: spacing, reading order and density. */
+@media screen {
+  .workspace-stack > :is(.card, .btn, details) + .card { margin-top: 1.25rem; }
+  .attendance-workspace > .card > p { color: var(--text-secondary); line-height: 1.7; margin-bottom: .85rem; }
+  .attendance-workspace > .card > .btn { margin-bottom: 1rem; }
+  .roles-overview > .roles-mobile-selector { display: none; }
+  .roles-overview > .card { margin-top: 0; }
+  .role-catalog-item { text-align: left; }
+  .roles-workspace .permission-matrix td { vertical-align: top; }
+  .exam-session-tabs { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); max-width: 560px; gap: .5rem; margin-bottom: 1.5rem; }
+  .exam-session-tabs .btn { min-height: 44px; text-align: center; box-shadow: none; }
+  .workflow-entry-card { border-left: 3px solid var(--accent); }
+  .workflow-entry-card p { max-width: 75ch; margin: .5rem 0 1rem; line-height: 1.7; color: var(--text-secondary); }
+  .publication-card h3 { max-width: 70ch; font-size: 1rem; }
+  .publication-card > p { margin: .6rem 0; line-height: 1.7; color: var(--text-secondary); }
+  .publication-card > .btn { margin-top: .35rem; }
+  .admissions-workspace > p { margin-bottom: .85rem; color: var(--text-secondary); line-height: 1.7; }
+  .admissions-workspace > .btn { margin-bottom: 1.25rem; }
+  .email-workspace h1 { font-size: clamp(1.5rem, 2.2vw, 2rem); line-height: 1.3; }
+  .email-workspace .setup-actions p { margin-top: .5rem; color: var(--text-secondary); line-height: 1.7; }
+  .email-workspace > .cell-sub { margin: 1rem 0; font-size: .85rem; }
+  .availability-details { box-shadow: none; border-left: 3px solid var(--accent-border); }
+  .availability-details > summary { line-height: 1.6; }
+  .availability-details > p { font-size: .85rem; line-height: 1.75; }
+  .directory-toolbar, .browser-toolbar { row-gap: 1rem; }
+  .record-details-grid dd { line-height: 1.7; }
+  .academic-year-actions { display: flex; align-items: center; gap: 1rem; flex-wrap: wrap; }
+  .evaluation-grade-workspace .kpi-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: .75rem; }
+  .evaluation-grade-workspace .kpi-card { display: flex; flex-direction: column; justify-content: space-between; gap: .6rem; min-width: 0; padding: 1rem; border: 1px solid var(--border); border-radius: var(--radius); background: var(--surface-alt); }
+  .evaluation-grade-workspace .kpi-label { color: var(--text-secondary); font-size: .85rem; line-height: 1.6; }
+  .evaluation-grade-workspace .kpi-value { display: block; font-size: 1.35rem; line-height: 1.3; font-variant-numeric: tabular-nums; }
+}
+@media screen and (max-width: 768px) {
+  .card-header { align-items: flex-start; text-align: left; }
+  .card-header > h2, .card-header > div { width: 100%; text-align: left; }
+  .roles-overview > .roles-mobile-selector { display: flex; }
+  .roles-workspace .permission-matrix td { min-width: 0; white-space: normal; }
+  .roles-workspace .permission-matrix .pill { width: fit-content; }
+  .exam-session-tabs { max-width: none; gap: .4rem; }
+  .exam-session-tabs .btn { padding: .5rem .35rem; font-size: .8rem; }
+  .academic-year-actions { width: 100%; gap: .75rem; }
+  .academic-year-actions > .btn-group { flex-direction: row; justify-content: flex-start; gap: .5rem; width: 100%; }
+  .academic-year-actions > .btn-group > .btn:not(.icon-action) { flex: 1 1 145px; }
+  .academic-year-actions > .btn-group > .icon-action { width: 44px; flex: 0 0 44px; }
+  .workspace-stack > :is(.card, .btn, details) + .card { margin-top: 1rem; }
+  .evaluation-grade-workspace .kpi-grid { grid-template-columns: 1fr; }
+  .evaluation-grade-workspace .kpi-card { flex-direction: row; align-items: center; gap: 1rem; }
+  .evaluation-grade-workspace .kpi-value { flex-shrink: 0; }
+}
