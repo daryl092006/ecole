@@ -198,3 +198,17 @@ export async function loadPurchases(role: RoleName, signal?: AbortSignal): Promi
 export async function managePurchase(command: import('./persistentPurchaseService').PurchaseCommand, role: RoleName): Promise<{ id: string; revision: number }> {
   return readResponse(await fetch('/api/purchases', { method: 'POST', headers: { ...await headers(role), 'Content-Type': 'application/json' }, body: JSON.stringify(command) }));
 }
+
+export async function loadStudentDocuments(role: RoleName, signal?: AbortSignal): Promise<import('@/types/studentDocumentWorkspace').StudentDocumentDirectory> {
+  return readResponse(await fetch('/api/student-documents', { headers: await headers(role), cache: 'no-store', signal }));
+}
+export async function uploadStudentDocument(metadata: import('zod').infer<typeof import('./studentDocumentPolicy').studentDocumentUploadSchema>, file: File, role: RoleName) {
+  const body = new FormData(); body.append('metadata', JSON.stringify(metadata)); body.append('file', file);
+  return readResponse(await fetch('/api/student-documents', { method: 'POST', headers: await headers(role), body }));
+}
+export async function reviewStudentDocument(input: import('zod').infer<typeof import('./studentDocumentPolicy').studentDocumentReviewSchema>, role: RoleName) {
+  return readResponse(await fetch('/api/student-documents', { method: 'PATCH', headers: { ...await headers(role), 'Content-Type': 'application/json' }, body: JSON.stringify(input) }));
+}
+export async function studentDocumentUrl(id: string, role: RoleName): Promise<string> {
+  return (await readResponse(await fetch(`/api/student-documents?file=${encodeURIComponent(id)}`, { headers: await headers(role), cache: 'no-store' }))).url;
+}

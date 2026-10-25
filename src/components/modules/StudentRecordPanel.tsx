@@ -3,6 +3,7 @@ import IconButton from '@/components/ui/IconButton';
 import Link from 'next/link';
 import { usePortal } from '@/hooks/usePortal';
 import ConnectedDomainWorkspace from './ConnectedDomainWorkspace';
+import StudentDocumentsWorkspace from './StudentDocumentsWorkspace';
 import HistoricalWorkspace from '@/components/modules/history/HistoricalWorkspace';
 import StudentOperationsPanel from './StudentOperationsPanel';
 import StudentCrudActions from './StudentCrudActions';
@@ -343,11 +344,11 @@ export default function StudentRecordPanel({ studentId, embedded = false }: { st
               </div>
             </section>
           )}
-          <ConnectedDomainWorkspace
+          {section === 'documents' ? <StudentDocumentsWorkspace studentMatricule={student.matricule} /> : <ConnectedDomainWorkspace
             key={section}
             section={sections.find(item => item.id === section)!.native}
             studentMatricule={student.matricule}
-          />
+          />}
         </>
       )}
 

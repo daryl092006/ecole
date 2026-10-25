@@ -22,8 +22,8 @@ import ArchiveFinanceWorkspace from './history/ArchiveFinanceWorkspace';
 import GroupSubjectGradesPanel from './academic/GroupSubjectGradesPanel';
 import TranscriptPrintAction from './academic/TranscriptPrintAction';
 
-export default function ConnectedDomainWorkspace({ section, studentMatricule }: { section: string; studentMatricule?: string }) {
-  const portal = usePortal(); const definition = DOMAIN_WORKSPACES[section]; const snapshot = portal.relationalSnapshot;
+export default function ConnectedDomainWorkspace({ section, studentMatricule, onlyCollection }: { section: string; studentMatricule?: string; onlyCollection?: string }) {
+  const portal = usePortal(); const base = DOMAIN_WORKSPACES[section]; const definition = onlyCollection ? { ...base, collections: base.collections.filter(item => item.table === onlyCollection) } : base; const snapshot = portal.relationalSnapshot;
   const hasArchives = portal.history.enabled && !!HISTORY_SECTIONS[section];
   const scheduleYearId = portal.academicYearContext?.selectedYearId || '';
   // Imported business records use the same tables as newly entered records.

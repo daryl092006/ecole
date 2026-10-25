@@ -61,6 +61,7 @@ export async function localBusinessFixture() {
     storage: { from: bucket => ({
       upload: async (path, bytes) => { files.set(`${bucket}/${path}`, bytes); return { data: { path }, error: null }; },
       remove: async paths => { for (const path of paths) files.delete(`${bucket}/${path}`); return { data: [], error: null }; },
+      createSignedUrl: async path => files.has(`${bucket}/${path}`) ? { data: { signedUrl: `https://private.example.test/${encodeURIComponent(`${bucket}/${path}`)}` }, error: null } : { data: null, error: { message: 'Fichier absent' } },
     }) },
     auth: { getUser: async token => ({ data: { user: authUsers.get(token) || null }, error: null }) },
     async rpc(name, args = {}) {
@@ -99,6 +100,7 @@ export async function localBusinessFixture() {
     '/api/support': load(new URL('app/api/support/route.ts', root)),
     '/api/communications': load(new URL('app/api/communications/route.ts', root)),
     '/api/purchases': load(new URL('app/api/purchases/route.ts', root)),
+    '/api/student-documents': load(new URL('app/api/student-documents/route.ts', root)),
     '/api/website-management': load(new URL('app/api/website-management/route.ts', root)),
     '/api/year-preparation': load(new URL('app/api/year-preparation/route.ts', root)),
     '/api/students': load(new URL('app/api/students/route.ts', root)),

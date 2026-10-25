@@ -86,11 +86,35 @@ relues à 390 et 1440 px.
 3. Documents officiels : modèle de carte/certificat, signataire, durée de validité
    et conditions d’émission approuvés par l’établissement.
 
-La proposition `docs/proposals/STUDENT_DOCUMENT_STORAGE_2026-10-25.sql` prépare
-un stockage privé PDF/JPEG/PNG de 5 Mo pour les pièces étudiantes. Elle a été
-présentée pour accord ; aucune nouvelle migration n’a été créée ni appliquée.
+La proposition `docs/proposals/STUDENT_DOCUMENT_STORAGE_2026-10-25.sql` a été
+présentée puis autorisée pour le chantier local. La migration nouvelle
+`202610250049_student_document_storage.sql` prépare le stockage privé PDF/JPEG/PNG
+de 5 Mo. Elle a été vérifiée dans PGlite local, sans application distante.
 Les questions sur le règlement et le mode de création des accès restent en attente.
 
 Toute migration nouvelle sera présentée avec son SQL avant création/application,
 conformément à AGENTS.md. Aucune migration existante, donnée distante ou
 publication en production n’est modifiée pendant cette finalisation locale.
+
+## Quatrième lot : pièces étudiantes privées
+
+- `/api/student-documents`, `/etudiants/cartes`, `/mon-espace/documents` et onglet
+  Pièces du dossier : dépôt, remplacement explicite, historique et conformité
+  avec motif et confirmation.
+- Les fichiers PDF/JPEG/PNG sont contrôlés par signature et taille ; accès privé
+  via lien signé court, limité au dossier, au rôle et à l’année autorisés.
+- Fichier et pièce enregistrés ensemble par la transaction existante. Nettoyage
+  du stockage après échec SQL confirmé ; conservation du fichier si la réponse
+  est perdue après un éventuel commit, avec demande d’actualisation avant reprise.
+- Les versions précédentes et leurs vérifications restent conservées. Une pièce
+  justificative reste distincte d’une carte, d’un certificat ou d’un relevé officiel.
+- Trois tests dédiés réussis : API avec PostgreSQL réel, parcours navigateur à
+  390 et 1440 px. Test supplémentaire du résultat incertain après commit réel.
+- `npm test` : 185 groupes PostgreSQL et 10 contrôles de régularisation enseignants
+  réussis ; TypeScript et ESLint sans erreur (deux avertissements préexistants).
+- `npm run db:describe` exécuté : dictionnaire et JSON régénérés ensemble, sans
+  différence de schéma métier. Aucun stockage distant créé par ce chantier.
+
+La comparaison globale des parcours et les écarts restants sont détaillés dans
+`docs/COMPARAISON_GLOBALE_REFERENCE_2026-10-25.md` ; les examens en constituent
+un domaine parmi les autres.
