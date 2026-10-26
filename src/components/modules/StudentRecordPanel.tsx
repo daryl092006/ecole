@@ -7,6 +7,7 @@ import StudentDocumentsWorkspace from './StudentDocumentsWorkspace';
 import HistoricalWorkspace from '@/components/modules/history/HistoricalWorkspace';
 import StudentOperationsPanel from './StudentOperationsPanel';
 import StudentEnrollmentsPanel from './StudentEnrollmentsPanel';
+import StudentAttendancePanel from './StudentAttendancePanel';
 import StudentProfilePanel from '@/components/modules/StudentProfilePanel';
 import LoadingState from '@/components/ui/LoadingState';
 import ResponsiveTable from '@/components/ui/ResponsiveTable';
@@ -339,7 +340,7 @@ export default function StudentRecordPanel({ studentId, embedded = false, initia
               </div>
             </section>
           )}
-          {section === 'finance' ? null : section === 'parcours' ? <StudentEnrollmentsPanel matricule={student.matricule} /> : section === 'documents' ? <StudentDocumentsWorkspace studentMatricule={student.matricule} /> : <ConnectedDomainWorkspace
+          {section === 'finance' ? null : section === 'assiduite' ? <StudentAttendancePanel matricule={student.matricule} /> : section === 'parcours' ? <StudentEnrollmentsPanel matricule={student.matricule} /> : section === 'documents' ? <StudentDocumentsWorkspace studentMatricule={student.matricule} /> : <ConnectedDomainWorkspace
             key={`workspace:${section}`}
             section={sections.find(item => item.id === section)!.native}
             studentMatricule={student.matricule}
