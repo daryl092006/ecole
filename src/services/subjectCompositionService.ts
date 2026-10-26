@@ -1,6 +1,7 @@
 import { z } from 'zod';
 import type { SubjectInput, PreparedSubject } from '@/types/subject';
 import type { PersistentChange, RelationalSnapshot, DatabaseRow } from '@/types/persistence';
+import { subjectPlainText, questionCompletionIssue } from './subjectContentService';
 
 const option = z.object({
   label: z.string().trim().min(1).max(1000),
@@ -8,12 +9,17 @@ const option = z.object({
 }).strict();
 
 const question = z.object({
-  prompt: z.string().trim().min(1).max(8000),
+  prompt: z.string().trim().min(1).max(8000).refine(value => !!subjectPlainText(value), 'Rédigez l’énoncé de la question.'),
   kind: z.enum(['TEXTE', 'QCM_SIMPLE', 'QCM_MULTIPLE']),
+  presentation: z.enum(['TRUE_FALSE', 'SHORT_TEXT', 'LONG_TEXT']).optional(),
+  requiresJustification: z.boolean().optional(),
   points: z.number().min(0.001).max(99999.999),
   options: z.array(option).max(8),
   correction: z.string().max(8000),
 }).strict().superRefine((q, ctx) => {
+  if (q.presentation === 'TRUE_FALSE' && (q.kind !== 'QCM_SIMPLE' || q.options.length !== 2 || q.options[0]?.label !== 'Vrai' || q.options[1]?.label !== 'Faux')) ctx.addIssue({ code: 'custom', message: 'Une question Vrai / Faux comporte exactement ces deux choix.' });
+  if (['SHORT_TEXT', 'LONG_TEXT'].includes(q.presentation || '') && q.kind !== 'TEXTE') ctx.addIssue({ code: 'custom', message: 'Une question textuelle attend une réponse ouverte.' });
+  if (q.requiresJustification && q.kind === 'TEXTE') ctx.addIssue({ code: 'custom', message: 'La justification accompagne une question à choix.' });
   if (q.kind === 'TEXTE' && q.options.length) {
     ctx.addIssue({ code: 'custom', message: 'Une réponse ouverte ne comporte pas de choix.' });
   }
@@ -36,6 +42,7 @@ export const subjectSchema = z.object({
   parts: z.array(z.object({
     title: z.string().trim().min(1).max(160),
     instructions: z.string().max(4000),
+    caseStudy: z.boolean().optional(),
     questions: z.array(question).max(100),
   }).strict()).max(20),
 }).strict()
@@ -47,6 +54,17 @@ export const subjectSchema = z.object({
   })
   .refine(input => !input.authorize || (!!input.evaluationId && input.parts.some(p => p.questions.length > 0)), {
     message: 'L’autorisation pour diffusion nécessite une évaluation rattachée et au moins une question.',
+  })
+  .superRefine((input, ctx) => {
+    if (!input.authorize) return;
+    input.parts.forEach((part, index) => {
+      if (!part.questions.length) ctx.addIssue({ code: 'custom', path: ['parts', index], message: 'Chaque partie doit contenir au moins une question avant autorisation.' });
+      if (part.caseStudy && !subjectPlainText(part.instructions)) ctx.addIssue({ code: 'custom', path: ['parts', index, 'instructions'], message: 'Renseignez le contexte de l’étude de cas.' });
+      part.questions.forEach((question, questionIndex) => {
+        const issue = questionCompletionIssue(question);
+        if (issue) ctx.addIssue({ code: 'custom', path: ['parts', index, 'questions', questionIndex], message: issue });
+      });
+    });
   });
 
 export function subjectPoints(subject: SubjectInput) {
@@ -95,6 +113,7 @@ export function buildSubjectChanges(
         paper_id: id,
         title: part.title,
         instructions: part.instructions,
+        context: { caseStudy: part.caseStudy === true },
         position: index + 1,
       },
     });
@@ -111,7 +130,7 @@ export function buildSubjectChanges(
           prompt: q.prompt,
           points: q.points,
           position: position + 1,
-          configuration: { correction: q.correction },
+          configuration: { correction: q.correction, ...(q.presentation ? { presentation: q.presentation } : {}), requiresJustification: q.requiresJustification === true },
         },
       });
       q.options.forEach((choice, choiceIndex) => {
@@ -181,6 +200,7 @@ export function projectSubjects(snapshot: RelationalSnapshot, papers: DatabaseRo
       .map(part => ({
         title: String(part.title),
         instructions: String(part.instructions || ''),
+        caseStudy: (part.context as Record<string, unknown> | null)?.caseStudy === true,
         questions: rows('exam_questions')
           .filter(q => q.part_id === part.id && q.paper_id === paper.id)
           .sort((a, b) => Number(a.position) - Number(b.position))
@@ -189,6 +209,8 @@ export function projectSubjects(snapshot: RelationalSnapshot, papers: DatabaseRo
             kind: q.kind as PreparedSubject['parts'][number]['questions'][number]['kind'],
             points: Number(q.points),
             correction: String((q.configuration as Record<string, unknown>)?.correction || ''),
+            presentation: (q.configuration as { presentation?: PreparedSubject['parts'][number]['questions'][number]['presentation'] })?.presentation,
+            requiresJustification: (q.configuration as Record<string, unknown>)?.requiresJustification === true,
             options: rows('exam_options')
               .filter(o => o.question_id === q.id)
               .sort((a, b) => Number(a.position) - Number(b.position))

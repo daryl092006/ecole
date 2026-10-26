@@ -1,4 +1,5 @@
 'use client';
+import SubjectRichText from '@/components/ui/SubjectRichText';
 import { useState } from 'react';
 import { usePortal } from '@/hooks/usePortal';
 import WorkPage from '@/components/ui/WorkPage';
@@ -29,7 +30,7 @@ export default function PersistentExamCopies({ evaluationId, candidateId, onClos
         {selected === attempt.id && questions.map(question => {
           const response = answers.find(row => row.question_id === question.id)?.response as OnlineExamAnswer | undefined;
           const choices = response?.option_ids || [];
-          return <section className="online-exam-question" key={question.id}><h3 className="subject-text">{String(question.prompt)}</h3><p className="subject-text">{response?.text || (choices.length ? (tables.exam_options || []).filter(row => choices.includes(row.id)).map(row => String(row.label)).join(' ; ') : 'Sans réponse')}</p></section>;
+          return <section className="online-exam-question" key={question.id}><SubjectRichText value={String(question.prompt)} /><p className="subject-text">{response?.text || (choices.length ? (tables.exam_options || []).filter(row => choices.includes(row.id)).map(row => String(row.label)).join(' ; ') : 'Sans réponse')}</p></section>;
         })}
       </article>;
     })}

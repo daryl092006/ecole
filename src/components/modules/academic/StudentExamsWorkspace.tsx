@@ -1,4 +1,5 @@
 'use client';
+import SubjectRichText from '@/components/ui/SubjectRichText';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { usePortal } from '@/hooks/usePortal';
 import LoadingState from '@/components/ui/LoadingState';
@@ -176,7 +177,7 @@ function OnlineExamEditor({ initial, onBack }: { initial: OnlineExamView; onBack
     }}>Recharger la version enregistrée</button>}
     {view.paper.parts.map(part => <section key={part.id}><h2>{part.title}</h2>{part.instructions && <p>{part.instructions}</p>}{part.questions.map((question, index) => {
       const answer = answers[question.id] || emptyExamAnswer();
-      return <fieldset className="online-exam-question" disabled={locked} key={question.id}><legend>{index + 1}. {question.prompt} ({question.points} points)</legend>
+      return <fieldset className="online-exam-question" disabled={locked} key={question.id}><legend>{index + 1}. ({question.points} points)</legend><SubjectRichText value={question.prompt} />
         {question.kind.startsWith('QCM') ? question.options.map(option => <label className="checkbox-field" key={option.id}><input type={question.kind === 'QCM_SIMPLE' ? 'radio' : 'checkbox'} name={question.id} checked={answer.option_ids.includes(option.id)} onChange={event => update(question.id, { text: '', option_ids: question.kind === 'QCM_SIMPLE' ? [option.id] : event.target.checked ? [...answer.option_ids, option.id] : answer.option_ids.filter(id => id !== option.id) })} />{option.label}</label>)
           : <label className="form-group">Votre réponse<textarea className="input" rows={6} maxLength={20000} value={answer.text} onChange={event => update(question.id, { text: event.target.value, option_ids: [] })} /></label>}
       </fieldset>;
