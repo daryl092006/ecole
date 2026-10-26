@@ -19,7 +19,7 @@ for (const width of [390, 820, 1440]) {
       for (const section of ['Frais et versements', 'Notes', 'Pièces du dossier', 'Frais et versements', 'Années et groupes', 'Identité et contacts']) {
         await tabs.getByRole('button', { name: section, exact: true }).click();
         await expect(tabs.getByRole('button', { name: section, exact: true })).toHaveAttribute('aria-pressed', 'true');
-        await expect(panel.getByRole('heading', { name: 'Gestion des paiements', exact: true })).toHaveCount(section === 'Frais et versements' ? 1 : 0);
+        await expect(panel.getByRole('heading', { name: 'Versements', exact: true })).toHaveCount(section === 'Frais et versements' ? 1 : 0);
       }
       expect(keyWarnings).toEqual([]);
       expect(errors).toEqual([]);

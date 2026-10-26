@@ -28,7 +28,7 @@ for (const width of [390, 1440]) {
   test(`Réaffectation relue, historique et actualisation à ${width}px`, async ({ page }) => {
     await page.setViewportSize({ width, height: 1000 });
     const fixture = await mount(page);
-    await page.getByText('Affectations aux échéances', { exact: true }).click();
+    await page.getByRole('button', { name: 'Versement PAY-INITIAL', exact: true }).click();
     await page.getByRole('button', { name: 'Réaffecter PAY-INITIAL', exact: true }).click();
     await page.getByLabel('Affectation Première échéance', { exact: true }).fill('0');
     await page.getByLabel('Affectation Deuxième échéance', { exact: true }).fill('350');
@@ -51,7 +51,7 @@ for (const width of [390, 1440]) {
     await expect(page.getByText(/Tout excédent ou montant sans contrat approuvé restera à affecter/)).toBeVisible();
     await page.getByRole('button', { name: 'Confirmer le paiement', exact: true }).click();
     await expect(page.getByText('Paiement et reçu enregistrés.', { exact: true })).toBeVisible();
-    await page.getByText('Affectations aux échéances', { exact: true }).click();
+    await page.getByRole('button', { name: 'Versement PAY-UI-1000', exact: true }).click();
     await expect(page.getByText(/PAY-UI-1000.*Affecté : 800 FCFA.*Reste à affecter : 200 FCFA/)).toBeVisible();
     expect(fixture.transactions).toHaveLength(1);
   });
@@ -66,7 +66,7 @@ test('Contrat brouillon : versement conservé et réaffectation indisponible', a
   await page.getByRole('button', { name: 'Vérifier l’opération', exact: true }).click();
   await page.getByRole('button', { name: 'Confirmer le paiement', exact: true }).click();
   await expect(page.getByText('Paiement et reçu enregistrés.', { exact: true })).toBeVisible();
-  await page.getByText('Affectations aux échéances', { exact: true }).click();
+  await page.getByRole('button', { name: 'Versement PAY-UI-500', exact: true }).click();
   await expect(page.getByText(/PAY-UI-500.*Affecté : 0 FCFA.*Reste à affecter : 500 FCFA/)).toBeVisible();
   await expect(page.getByRole('button', { name: /^Réaffecter / })).toHaveCount(0);
 });
@@ -74,7 +74,7 @@ test('Contrat brouillon : versement conservé et réaffectation indisponible', a
 test('Une erreur de réaffectation reste dans le récapitulatif et conserve les valeurs', async ({ page }) => {
   const fixture = await mount(page);
   fixture.state.fail = true;
-  await page.getByText('Affectations aux échéances', { exact: true }).click();
+  await page.getByRole('button', { name: 'Versement PAY-INITIAL', exact: true }).click();
   await page.getByRole('button', { name: 'Réaffecter PAY-INITIAL', exact: true }).click();
   await page.getByLabel('Affectation Première échéance', { exact: true }).fill('0');
   await page.getByLabel('Affectation Deuxième échéance', { exact: true }).fill('350');

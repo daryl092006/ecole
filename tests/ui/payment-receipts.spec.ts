@@ -38,7 +38,7 @@ async function mount(page: Page, state: 'POSTED' | 'PENDING' | 'ANNULE' = 'POSTE
   });
   await page.goto('/etudiants/ESCEN-TEST-001');
   await page.getByRole('button', { name: 'Frais et versements', exact: true }).click();
-  await page.getByText('Annulations, remboursements et avoirs', { exact: true }).click();
+  await page.getByRole('button', { name: 'Versement PAY-INITIAL', exact: true }).click();
   return { ...fixture, reads: () => reads };
 }
 const printed = (page: Page) => page.evaluate(() => (window as unknown as { receiptPrints: string[] }).receiptPrints);

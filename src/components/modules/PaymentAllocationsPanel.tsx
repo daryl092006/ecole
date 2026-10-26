@@ -11,8 +11,8 @@ import DrawerActions from '@/components/ui/DrawerActions';
 import { DrawerCloseButton } from '@/components/ui/DetailDrawer';
 
 const money = (value: number) => `${value.toLocaleString('fr-FR')} FCFA`;
-export default function PaymentAllocationsPanel({ matricule, revision, directory, onSaved }: {
-  matricule: string; revision: number; directory: PaymentAllocationDirectory; onSaved: (message: string) => void;
+export default function PaymentAllocationsPanel({ matricule, revision, directory, onSaved, inline = false }: {
+  matricule: string; revision: number; directory: PaymentAllocationDirectory; onSaved: (message: string) => void; inline?: boolean;
 }) {
   const portal = usePortal();
   const [selected, setSelected] = useState<AllocatablePayment | null>(null);
@@ -39,7 +39,7 @@ export default function PaymentAllocationsPanel({ matricule, revision, directory
     finally { setBusy(false); }
   }
   return <div>
-    <SecondaryDetails title="Affectations aux échéances">
+    <SecondaryDetails inline={inline} title="Affectations aux échéances">
       <p>Les nouveaux paiements règlent les échéances les plus anciennes. Les montants sans contrat approuvé ou excédentaires restent à affecter.</p>
       {directory.payments.map(payment => <div className="card" key={payment.id}>
         <p><strong>{payment.reference}</strong> · Affecté : {money(payment.allocated)} · Reste à affecter : {money(payment.unallocated)}{payment.cancelled ? ' · Annulé' : payment.pending ? ' · En attente' : ''}</p>

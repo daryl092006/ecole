@@ -339,7 +339,7 @@ export default function StudentRecordPanel({ studentId, embedded = false, initia
               </div>
             </section>
           )}
-          {section === 'parcours' ? <StudentEnrollmentsPanel matricule={student.matricule} /> : section === 'documents' ? <StudentDocumentsWorkspace studentMatricule={student.matricule} /> : <ConnectedDomainWorkspace
+          {section === 'finance' ? null : section === 'parcours' ? <StudentEnrollmentsPanel matricule={student.matricule} /> : section === 'documents' ? <StudentDocumentsWorkspace studentMatricule={student.matricule} /> : <ConnectedDomainWorkspace
             key={`workspace:${section}`}
             section={sections.find(item => item.id === section)!.native}
             studentMatricule={student.matricule}

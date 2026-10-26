@@ -14,8 +14,8 @@ import { DrawerCloseButton } from '@/components/ui/DetailDrawer';
 
 const money = (amount: number) => `${amount.toLocaleString('fr-FR')} FCFA`;
 type Selection = { action: 'cancel_payment' | 'refund_payment'; payment: AdjustmentPayment } | { action: 'credit_note'; line: CreditableLine };
-export default function PaymentAdjustmentsPanel({ matricule, revision, directory, onSaved }: {
-  matricule: string; revision: number; directory: PaymentAdjustmentDirectory; onSaved: (message: string) => void;
+export default function PaymentAdjustmentsPanel({ matricule, revision, directory, onSaved, inline = false }: {
+  matricule: string; revision: number; directory: PaymentAdjustmentDirectory; onSaved: (message: string) => void; inline?: boolean;
 }) {
   const portal = usePortal();
   const [selection, setSelection] = useState<Selection | null>(null);
@@ -51,7 +51,7 @@ export default function PaymentAdjustmentsPanel({ matricule, revision, directory
     } catch (cause) { setError(cause instanceof Error ? cause.message : 'Opération financière indisponible.'); }
     finally { setBusy(false); }
   }
-  return <SecondaryDetails title="Annulations, remboursements et avoirs">
+  return <SecondaryDetails inline={inline} title="Annulations, remboursements et avoirs">
     {printError && <p role="alert">{printError}</p>}
     {directory.payments.map(payment => <div className="card" key={payment.id}>
       <p><strong>{payment.reference}</strong> · {money(payment.amount)} · Remboursé : {money(payment.refunded)}{payment.cancelled ? ' · Annulé' : payment.pending ? ' · En attente' : ''}</p>

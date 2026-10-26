@@ -18,7 +18,7 @@ async function mount(page: Page, role: RoleName = ROLES.IT, fixture = adjustment
   });
   await page.goto('/etudiants/ESCEN-TEST-001');
   await page.getByRole('button', { name: 'Frais et versements', exact: true }).click();
-  await page.getByText('Annulations, remboursements et avoirs', { exact: true }).click();
+  await page.getByRole('button', { name: 'Versement PAY-INITIAL', exact: true }).click();
   return { ...fixture, campusReads: () => campusReads };
 }
 
@@ -33,7 +33,7 @@ for (const width of [390, 1440]) test(`Annulation relue par DG, reçu annulé et
   await expect(review.getByText('Avant : Enregistré')).toBeVisible();
   await page.getByRole('button', { name: 'Confirmer l’annulation', exact: true }).click();
   await expect(page.getByText('Paiement annulé. Le reçu est marqué annulé.', { exact: true })).toBeVisible();
-  await page.getByText('Annulations, remboursements et avoirs', { exact: true }).click();
+  await page.getByRole('button', { name: 'Versement PAY-INITIAL', exact: true }).click();
   await expect(page.getByText('Reçu REC-INITIAL · Annulé', { exact: true })).toBeVisible();
   await expect(page.getByRole('button', { name: 'Annuler PAY-INITIAL', exact: true })).toHaveCount(0);
   expect(fixture.transactions).toHaveLength(1);
@@ -54,7 +54,7 @@ for (const width of [390, 1440]) test(`Remboursement et avoir relus par RAF à $
   expect(fixture.transactions).toHaveLength(0);
   await page.getByRole('button', { name: 'Confirmer le remboursement', exact: true }).click();
   await expect(page.getByText('Remboursement enregistré et affectations ajustées.', { exact: true })).toBeVisible();
-  await page.getByText('Annulations, remboursements et avoirs', { exact: true }).click();
+  await page.getByRole('button', { name: 'Versement PAY-INITIAL', exact: true }).click();
   await expect(page.getByText(/Remboursement REF-UI · 100 FCFA/)).toBeVisible();
   await page.getByRole('button', { name: 'Créer un avoir · Frais 1', exact: true }).click();
   await page.getByLabel('Montant FCFA', { exact: true }).fill('200');

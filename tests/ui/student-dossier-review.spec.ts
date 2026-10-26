@@ -20,7 +20,7 @@ for (const width of [390, 820, 1440]) {
       await expect(tabs.getByRole('button', { name: section, exact: true })).toHaveAttribute('aria-pressed', 'true');
       await expect(page.locator('main .loading-state:visible')).toHaveCount(0);
       if (section !== 'Frais et versements') {
-        await expect(page.getByRole('heading', { name: 'Gestion des paiements', exact: true })).toHaveCount(0);
+        await expect(page.getByRole('heading', { name: 'Versements', exact: true })).toHaveCount(0);
         await expect(page.getByRole('button', { name: 'Enregistrer un paiement', exact: true })).toHaveCount(0);
       }
       await expect(page.locator('main .error-state')).toHaveCount(0);

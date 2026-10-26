@@ -30,7 +30,7 @@ test('Contrat en brouillon : approbation et continuité dans Frais et versements
  });
  await page.goto('/etudiants/ESCEN-TEST-001');
  await page.getByRole('navigation',{name:'Sections du dossier étudiant'}).getByRole('button',{name:'Frais et versements',exact:true}).click();
- await expect(page.getByRole('heading',{name:'Gestion des paiements'})).toBeVisible();
+ await expect(page.getByRole('heading',{name:'Versements'})).toBeVisible();
  await expect(page.locator('.availability-details')).toHaveCount(0);
  await page.getByRole('button',{name:'Approuver le contrat',exact:true}).click();
  await page.getByLabel('Motif',{exact:true}).fill('Contrat vérifié et validé');

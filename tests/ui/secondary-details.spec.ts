@@ -26,15 +26,39 @@ for (const width of [390, 820, 1440]) {
     await page.getByRole('button', { name: 'Frais et versements', exact: true }).click();
     await expect(page.getByRole('button', { name: 'Enregistrer un paiement', exact: true })).toBeVisible();
     await expect(page.getByRole('button', { name: 'Changer le statut scolaire', exact: true })).toHaveCount(0);
-    const history = page.getByRole('button', { name: /^Historique des versements/ });
-    await expect(history).toBeVisible();
-    await history.click();
-    const dialog = page.getByRole('dialog', { name: /^Historique des versements/ });
+    for (const name of [/^Historique des versements/, /^Affectations aux échéances$/, /^Annulations, remboursements et avoirs$/, /^Exporter les/]) {
+      await expect(page.getByRole('button', { name })).toHaveCount(0);
+    }
+    await expect(page.getByRole('combobox', { name: 'Consulter', exact: true })).toHaveCount(0);
+    await expect(page.getByText(/^Encaissements nets des remboursements/)).toHaveCount(0);
+    await expect(page.locator('main table')).toHaveCount(1);
+    await expect(page.locator('main table thead th')).toHaveText(['Date', 'Montant', 'Mode', 'Référence']);
+    await page.screenshot({ path: `tmp/screenshots/secondary-details/${width}/versements-simples.png` });
+    const reference = page.getByRole('button', { name: /^Versement / }).first();
+    await reference.click();
+    const dialog = page.getByRole('dialog', { name: /^Versement / });
     await expect(dialog).toBeVisible();
-    await expect(page.locator('main details')).toHaveCount(0);
     await page.keyboard.press('Escape');
     await expect(dialog).toHaveCount(0);
-    await expect(history).toBeFocused();
+    await expect(reference).toBeFocused();
     expect(problems).toEqual([]);
   });
 }
+
+test('Le dossier reste protégé pendant la consultation d’un versement et se réactive à la fermeture', async ({ page }) => {
+  await installResponsiveAudit(page, 'staff');
+  await page.goto('/etudiants');
+  await page.getByRole('row').filter({ hasText: 'ESCEN-TEST-001' }).getByRole('button', { name: 'Fiche & Dossier', exact: true }).click();
+  const dossier = page.getByRole('dialog', { name: 'Dossier étudiant · ESCEN-TEST-001', exact: true });
+  await dossier.getByRole('button', { name: 'Frais et versements', exact: true }).click();
+  await dossier.getByRole('button', { name: /^Versement / }).first().click();
+  await expect(page.getByRole('dialog', { name: /^Versement / })).toBeVisible();
+  await page.keyboard.press('Escape');
+  await expect(page.getByRole('dialog', { name: /^Versement / })).toHaveCount(0);
+  await expect(dossier).toBeVisible();
+  expect(await page.locator('.app-wrapper').evaluate(element => (element as HTMLElement).inert)).toBe(true);
+  await page.keyboard.press('Escape');
+  await expect(dossier).toHaveCount(0);
+  expect(await page.locator('.app-wrapper').evaluate(element => (element as HTMLElement).inert)).toBe(false);
+  await expect(page.locator('.app-wrapper')).not.toHaveAttribute('aria-hidden', 'true');
+});
