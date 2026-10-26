@@ -6,6 +6,7 @@ import ConnectedDomainWorkspace from './ConnectedDomainWorkspace';
 import StudentDocumentsWorkspace from './StudentDocumentsWorkspace';
 import HistoricalWorkspace from '@/components/modules/history/HistoricalWorkspace';
 import StudentOperationsPanel from './StudentOperationsPanel';
+import StudentEnrollmentsPanel from './StudentEnrollmentsPanel';
 import StudentProfilePanel from '@/components/modules/StudentProfilePanel';
 import LoadingState from '@/components/ui/LoadingState';
 import ResponsiveTable from '@/components/ui/ResponsiveTable';
@@ -258,7 +259,7 @@ export default function StudentRecordPanel({ studentId, embedded = false, initia
       ) : (
         <>
           {['parcours', 'finance'].includes(section) && (
-            <StudentOperationsPanel matricule={student.matricule} onChanged={() => setRetry(value => value + 1)} />
+            <StudentOperationsPanel key={section} mode={section === 'finance' ? 'finance' : 'academic'} matricule={student.matricule} onChanged={() => setRetry(value => value + 1)} />
           )}
           {section === 'notes' && studentEvaluationsSummary.length > 0 && (
             <section className="card card-full mb-2" aria-label="Synthèse des évaluations et copies de l’étudiant">
@@ -338,7 +339,7 @@ export default function StudentRecordPanel({ studentId, embedded = false, initia
               </div>
             </section>
           )}
-          {section === 'documents' ? <StudentDocumentsWorkspace studentMatricule={student.matricule} /> : <ConnectedDomainWorkspace
+          {section === 'parcours' ? <StudentEnrollmentsPanel matricule={student.matricule} /> : section === 'documents' ? <StudentDocumentsWorkspace studentMatricule={student.matricule} /> : <ConnectedDomainWorkspace
             key={section}
             section={sections.find(item => item.id === section)!.native}
             studentMatricule={student.matricule}
