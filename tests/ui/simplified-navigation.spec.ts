@@ -40,7 +40,7 @@ test('Année historique sans dates : aucun encadré à compléter et aucune écr
 });
 
 for (const width of [390, 768, 800, 820, 834, 1024, 1025, 1440]) {
-  test(`Navigation directe, pages voisines et filtres visibles à ${width}px`, async ({ page }) => {
+  test(`Navigation directe sans sous-menu supérieur et filtres visibles à ${width}px`, async ({ page }) => {
     await page.setViewportSize({ width, height: 900 });
     const { problems } = await installResponsiveAudit(page, 'staff');
     await page.goto('/mon-espace');
@@ -52,13 +52,13 @@ for (const width of [390, 768, 800, 820, 834, 1024, 1025, 1440]) {
     await menu.getByRole('link', { name: 'Dossiers étudiants', exact: true }).click();
     await expect(page).toHaveURL(/\/etudiants$/);
     if (width <= 1024) await expect(menu).not.toBeVisible();
-    const local = page.getByRole('navigation', { name: 'Pages : Dossiers étudiants' });
-    await expect(local.getByRole('link', { name: 'Dossiers et inscriptions', exact: true })).toHaveAttribute('aria-current', 'page');
+    await expect(page.locator('.workspace-page-navigation')).toHaveCount(0);
+    await expect(page.getByRole('navigation', { name: /^Pages :/ })).toHaveCount(0);
     await expect(page.getByRole('combobox', { name: 'Filière', exact: true })).toBeVisible();
     await page.getByRole('combobox', { name: 'Filière', exact: true }).selectOption({ index: 1 });
     await expect(page.getByRole('button', { name: 'Effacer les filtres', exact: true })).toBeVisible();
     await page.getByRole('button', { name: 'Effacer les filtres', exact: true }).click();
-    await local.getByRole('link', { name: 'Réinscriptions et statuts', exact: true }).click();
+    await page.goto('/etudiants/parcours');
     await expect(page).toHaveURL(/\/etudiants\/parcours$/);
     await page.goBack();
     await expect(page).toHaveURL(/\/etudiants$/);
