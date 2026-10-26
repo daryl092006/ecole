@@ -472,9 +472,9 @@ export default function WorkspaceHome({ mode = 'home' }: { mode?: 'home' | 'over
     </div>
   );
 
-  if (mode === 'reports') return <div className="workspace-home"><div className="page-intro"><div><span className="page-eyebrow">PILOTAGE</span><h1>{title}</h1></div></div><div className="home-destinations">{reports.map(report => <Link key={report.id} href={report.href}><ArrowUpRight size={18} className="destination-arrow" /><h3>{report.name}</h3><span>Consulter</span></Link>)}</div>{!reports.length && <section className="card"><p>Aucun rapport disponible.</p></section>}</div>;
+  if (mode === 'reports') return <div className="workspace-home"><div className="page-intro"><div><h1>{title}</h1></div></div><div className="home-destinations">{reports.map(report => <Link key={report.id} href={report.href}><ArrowUpRight size={18} className="destination-arrow" /><h3>{report.name}</h3><span>Consulter</span></Link>)}</div>{!reports.length && <section className="card"><p>Aucun rapport disponible.</p></section>}</div>;
   return <div className="workspace-home">
-    <div className="home-hero"><div><span className="page-eyebrow">{state.activeRole.toUpperCase()}</span><h1>{title}</h1><p>{mode === 'overview' ? 'Retrouvez les indicateurs et les dossiers utiles à votre rôle.' : state.perms.scope.ownDataOnly ? 'Retrouvez vos documents, vos résultats et le suivi de votre scolarité.' : 'Retrouvez vos activités et accédez aux services de l’établissement.'}</p></div></div>
+    <div className="home-hero"><div><h1>{title}</h1><p>{mode === 'overview' ? 'Retrouvez les indicateurs et les dossiers utiles à votre rôle.' : state.perms.scope.ownDataOnly ? 'Retrouvez vos documents, vos résultats et le suivi de votre scolarité.' : 'Retrouvez vos activités et accédez aux services de l’établissement.'}</p></div></div>
     {error && <div className="review-notice" role="alert"><span>{error}</span><IconButton className="btn btn-outline" onClick={retry} label="Réessayer" /></div>}
 
     {mode === 'home' && <>
