@@ -115,7 +115,10 @@ export function buildOperationalReferences({ source, baseline, snapshot, index, 
   assert.ok(changes.length > 0 && changes.length <= 100);
   return { version: 1, sourceName, sourceSha256: source.sql_sha256, archiveSha256, baselineSha256: baseline.sql_sha256,
     expectedRevision: snapshot.revision, actorId: actor.id, actorGrantId: grants.find(grant => grant.account_id === actor.id).id,
-    batchId: stable(source.sql_sha256, 'batch'), runId: stable(source.sql_sha256, 'run'), sourceRows, changes, mappings, deferred,
+    batchId: stable(source.sql_sha256, 'batch'), runId: stable(source.sql_sha256, 'run'), sourceTotalRows: sourceRows.length,
+    // Only evidence for the active records in this lot is transmitted. The ZIP
+    // remains the complete source; a later lot hydrates its own source evidence.
+    sourceRows: sourceRows.filter(row => mappings.some(mapping => mapping.row_id === row.id)), changes, mappings, deferred,
     counts: Object.fromEntries(operationalTables.map(table => [table, changes.filter(change => change.table === table).length])) };
 }
 
@@ -153,7 +156,7 @@ begin
       where lower(btrim(email))=lower(btrim(target->'record'->>'email'))) then raise exception 'Identité déjà présente'; end if;
   end loop;
   insert into escen_private.import_batches(id,source_name,archive_sha256,sql_sha256,source_rows)
-    values((plan->>'batchId')::uuid,plan->>'sourceName',plan->>'archiveSha256',plan->>'sourceSha256',jsonb_array_length(plan->'sourceRows'));
+    values((plan->>'batchId')::uuid,plan->>'sourceName',plan->>'archiveSha256',plan->>'sourceSha256',(plan->>'sourceTotalRows')::integer);
   insert into escen_private.legacy_rows(id,batch_id,source_table,source_id,payload,status)
     select (r->>'id')::uuid,(plan->>'batchId')::uuid,r->>'source_table',r->>'source_id',r->'payload','PENDING'
     from jsonb_array_elements(plan->'sourceRows') r;

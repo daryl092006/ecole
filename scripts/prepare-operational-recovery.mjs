@@ -30,7 +30,7 @@ await mkdir(directory, { mode: 0o700 });
 const save = (name, value) => writeFile(resolve(directory, name), value, { mode: 0o600, flag: 'wx' });
 await save('plan.json', JSON.stringify(plan));
 await save('recovery.sql', sql);
-const summary = { expectedRevision: plan.expectedRevision, counts: plan.counts, sourceRows: plan.sourceRows.length,
+const summary = { expectedRevision: plan.expectedRevision, counts: plan.counts, sourceRows: plan.sourceRows.length, sourceTotalRows: plan.sourceTotalRows,
   deferred: plan.deferred, ...validation, sqlSha256: createHash('sha256').update(sql).digest('hex'), remoteWrites: 0 };
 await save('validation.json', JSON.stringify(summary, null, 2) + '\n');
 console.log(JSON.stringify({ directory, ...summary }, null, 2));
