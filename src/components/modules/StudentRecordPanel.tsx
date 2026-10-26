@@ -23,7 +23,7 @@ import {
 import type { Student } from '@/types/student';
 import { useEffect, useState } from 'react';
 
-export default function StudentRecordPanel({ studentId, embedded = false }: { studentId: string; embedded?: boolean }) {
+export default function StudentRecordPanel({ studentId, embedded = false, initialSection = 'identity' }: { studentId: string; embedded?: boolean; initialSection?: 'identity' | 'finance' | 'parcours' }) {
   const state = usePortal();
   const current = state.students.find(item => item.matricule === studentId);
   const [loaded, setLoaded] = useState<Student | null>(null);
@@ -47,7 +47,7 @@ export default function StudentRecordPanel({ studentId, embedded = false }: { st
   }, [studentId, state.activeRole, state.academicYearSelection, current, retry]);
 
   const student = loaded || current;
-  const [section, setSection] = useState('identity');
+  const [section, setSection] = useState<string>(initialSection);
   if (!student && !error) return <LoadingState label="Chargement du dossier étudiant…" />;
   if (!student) {
     return (

@@ -27,7 +27,7 @@ export default function PortalShell({ children }: { children: ReactNode }) {
   const route = getPortalRoute(pathname);
   const tab = availableTabs.find(item => item.id === currentTab);
   const navigationGroups = getWorkspaceNavigation(availableTabs, { hideStudentPersonalPages: true });
-  const navigationGroup = navigationGroups.find(group => group.sections.includes(currentSubTab));
+  const navigationGroup = navigationGroups.find(group => group.sections.includes(['acad_resits', 'acad_assessments'].includes(currentSubTab) ? 'acad_exams' : currentSubTab));
   const routeTitle = route?.title || tab?.name || 'Mon espace';
   const aliasAllowed = !!tab && MODULE_PATHS[tab.id] === pathname;
   const authorizedSection = route && ['acad_resits', 'acad_assessments'].includes(route.section) ? 'acad_exams' : route?.section;
@@ -108,6 +108,12 @@ export default function PortalShell({ children }: { children: ReactNode }) {
             </button>
           </aside>
         )}
+        {allowed && navigationGroup && navigationGroup.pages.length > 1 && <nav className="workspace-page-navigation" aria-label={`Pages : ${navigationGroup.name}`}>
+          {navigationGroup.pages.map(page => <Link key={page.id} href={page.href}
+            aria-current={page.id === authorizedSection || page.id === currentSubTab ? 'page' : undefined}>
+            {page.name}
+          </Link>)}
+        </nav>}
         {!allowed ? <section className="card route-denied"><h1>Accès refusé</h1><p>Cette page n’est pas disponible pour votre rôle.</p><Link className="btn btn-primary" href={HOME_PATH}>Revenir à mon espace</Link></section> : <>
           {state.actionFeedback && <div className="restricted-box action-feedback" role="alert"><span>{state.actionFeedback}</span><IconButton className="btn btn-sm btn-outline" onClick={state.clearActionFeedback} label="Fermer" /></div>}
           {state.campusLoad.status === 'loading' || state.campusLoad.status === 'idle' ? <LoadingState label="Chargement des dossiers…" variant={currentTab === 'dashboard_global' || currentTab === 'espace' ? 'cards' : 'table'} />

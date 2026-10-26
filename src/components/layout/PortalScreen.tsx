@@ -73,26 +73,7 @@ export default function PortalScreen({ section }: { tab: string; section: string
             <p>Cadre institutionnel des délibérations, compensations et validations des semestres.</p>
           </div>
         </div>
-        <div className="acad-settings-grid">
-          <div className="acad-settings-card">
-            <h3>Validation des semestres</h3>
-            <p className="cell-sub">Système LMD (30 crédits ECTS par semestre)</p>
-            <ul className="acad-rules-list">
-              <li>Moyenne générale minimale : <strong>10,00 / 20</strong></li>
-              <li>Crédits semestriels requis : <strong>30 ECTS</strong></li>
-              <li>Validation d&apos;UE : moyenne minimale de 10/20 par unité d&apos;enseignement</li>
-            </ul>
-          </div>
-          <div className="acad-settings-card">
-            <h3>Compensations et seuils</h3>
-            <p className="cell-sub">Règles de passage sous conditions</p>
-            <ul className="acad-rules-list">
-              <li>Note éliminatoire standard : inférieure à <strong>07,00 / 20</strong></li>
-              <li>Compensation intra-semestre : autorisée entre matières d&apos;une même UE</li>
-              <li>Rattrapage : obligatoire pour toute matière non compensée</li>
-            </ul>
-          </div>
-        </div>
+        <p>Les seuils de validation, les compensations et les conditions de passage doivent être définis dans un règlement approuvé par la direction académique.</p>
         <aside className="acad-settings-notice">
           <strong>Processus de validation officiel :</strong>
           <p>Les règles de compensation, de validation et de délibération doivent être confirmées par la direction académique avant leur application. Aucune règle n’est appliquée automatiquement aux dossiers historiques.</p>

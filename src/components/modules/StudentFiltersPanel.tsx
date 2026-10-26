@@ -17,13 +17,13 @@ export default function StudentFiltersPanel({ students, filters, onChange, role 
   return <div className="card card-full mb-2 student-filters"><div className="student-search-row">
     <label className="form-group">Recherche<input className="input" type="search" value={filters.search} onChange={event => onChange({ ...filters, search: event.target.value })} placeholder="Nom, matricule, email…" /></label>
     {demographicFilter('nationality', 'Nationalité', 'Toutes les nationalités', 'Non renseignée')}
-  </div><details className="student-advanced-filters"><summary>Autres filtres : niveau, filière, groupe, sexe et statut{activeFilters > 0 ? ` (${activeFilters})` : ''}</summary><div className="form-row filter-grid">
+  </div><section className="workspace-filter-panel" aria-label="Filtrer les dossiers"><div className="form-row filter-grid">
     <label className="form-group">Niveau<select className="select-input" value={filters.level} onChange={event => onChange({ ...filters, level: event.target.value, groupId: '' })}><option value="">Tous les niveaux</option>{levels.map(item => <option key={item}>{item}</option>)}</select></label>
     <label className="form-group">Filière<select className="select-input" value={filters.program} onChange={event => onChange({ ...filters, program: event.target.value, groupId: '' })}><option value="">Toutes les filières</option>{programs.map(item => <option key={item}>{item}</option>)}</select></label>
     <label className="form-group">Groupe<select className="select-input" value={filters.groupId} onChange={event => onChange({ ...filters, groupId: event.target.value })}><option value="">Tous les groupes</option>{[...new Map(groups.map(item => [studentGroupFilterKey(item), item.groupe])).entries()].map(([id, name]) => <option key={id} value={id}>{name}</option>)}</select></label>
     {demographicFilter('gender', 'Sexe', 'Tous les sexes', 'Non renseigné')}
     {demographicFilter('status', 'Statut', 'Tous les statuts', 'Non renseigné')}
-  </div></details><div className="student-filter-footer"><p role="status">{results.length} résultat(s) sur {students.length} dossier(s).</p>
+  </div></section><div className="student-filter-footer"><p role="status">{results.length} résultat(s) sur {students.length} dossier(s).</p>
     <div className="btn-group">{(filters.search || activeFilters > 0) && <button className="btn btn-outline" onClick={() => onChange(EMPTY_STUDENT_FILTERS)}>Effacer les filtres</button>}<IconButton className="btn btn-outline" disabled={!results.length} onClick={() => {
       const permitted = filterRegisteredStudents(students, filters, role);
       downloadCsv('escen-etudiants.csv', ['Matricule', 'Prénom', 'Nom', 'Email', 'Nationalité', 'Sexe', 'Filière', 'Niveau', 'Groupe', 'Statut'], permitted.map(item => [item.matricule, item.firstname, item.lastname, item.email, item.nationality, item.gender, item.filiere, item.niveau, item.groupe, item.status]));

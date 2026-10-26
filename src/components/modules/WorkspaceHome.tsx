@@ -4,8 +4,7 @@ import Link from 'next/link';
 import { ArrowUpRight, GraduationCap, Wallet, BookOpen, Users, ShieldCheck, CalendarDays, TrendingUp, Award, Server, Package, Megaphone, ClipboardCheck } from 'lucide-react';
 import { usePortal } from '@/hooks/usePortal';
 import { HISTORY_TABLES, HISTORY_DOMAINS } from '@/data/historyCatalog';
-import { getWorkspaceNavigation } from '@/constants/workspaceNavigation';
-import { ROLES } from '@/types/permissions';
+import { ROLES, type RoleName } from '@/types/permissions';
 import type { HistoryDomain } from '@/types/history';
 import { netPaymentTotal } from '@/services/financialProjectionService';
 import { effectivePayments } from '@/services/paymentAllocationService';
@@ -24,7 +23,6 @@ interface RoleKpiCard {
 
 export default function WorkspaceHome({ mode = 'home' }: { mode?: 'home' | 'overview' | 'reports' }) {
   const state = usePortal(); const { catalog, error, retry } = state.history;
-  const destinations = getWorkspaceNavigation(state.availableTabs, { hideStudentPersonalPages: true }).map(group => ({ ...group, pages: group.pages.filter(page => page.id !== 'espace_dashboard') })).filter(group => group.pages.length);
   const tables = state.relationalSnapshot.tables;
   const activeRows = (table: string) => (tables[table] || []).filter(row => !row.archived_at);
   const count = (table: string) => activeRows(table).length;
@@ -364,35 +362,36 @@ export default function WorkspaceHome({ mode = 'home' }: { mode?: 'home' | 'over
 
   const showPopulationBreakdown = !state.perms.scope.ownDataOnly && canViewStudents && totalStudents > 0;
 
-  const quickActions = [
-    ...(state.perms.permissions.includes('student.update') || state.perms.permissions.includes('student.view')
-      ? [{ label: 'Dossiers étudiants', href: '/etudiants', icon: GraduationCap }]
-      : []),
-    ...(state.perms.permissions.includes('payment.record')
-      ? [{ label: 'Versements et reçus', href: '/finance/versements', icon: Wallet }]
-      : []),
-    ...(state.perms.permissions.includes('grade.enter') || state.perms.permissions.includes('grade.review')
-      ? [{ label: 'Consulter les notes', href: '/academique/notes', icon: BookOpen }]
-      : []),
-    ...(state.perms.permissions.includes('schedule.create') || state.perms.permissions.includes('attendance.record')
-      ? [{ label: 'Emploi du temps', href: '/academique/emploi-du-temps', icon: CalendarDays }]
-      : []),
-    ...(state.perms.permissions.includes('student.lifecycle.manage')
-      ? [{ label: 'Réinscriptions', href: '/etudiants/parcours', icon: ClipboardCheck }]
-      : []),
-    ...(state.perms.permissions.includes('academic.structure.manage') || state.perms.permissions.includes('academic.year.open')
-      ? [{ label: 'Préparer l’année', href: '/academique/referentiel', icon: CalendarDays }]
-      : []),
-    ...(state.perms.permissions.includes('user.manage')
-      ? [{ label: 'Comptes utilisateurs', href: '/personnel/utilisateurs', icon: Users }]
-      : []),
-    ...(state.perms.scope.ownDataOnly
-      ? [
-          { label: 'Mes documents', href: '/mon-espace/documents', icon: GraduationCap },
-          { label: 'Ma scolarité & paiements', href: '/mon-espace/scolarite', icon: Wallet },
-        ]
-      : []),
-  ].slice(0, 6);
+  const tasksByRole: Record<RoleName, string[]> = {
+    [ROLES.DG]: ['dashboard_kpis', 'stud_list', 'fin_kpis', 'acad_grades', 'comm_announcements'],
+    [ROLES.DGA]: ['dashboard_kpis', 'stud_list', 'fin_kpis', 'acad_grades', 'comm_announcements'],
+    [ROLES.DA]: ['acad_exams', 'acad_grades', 'acad_schedule', 'stud_list', 'acad_reference'],
+    [ROLES.LOG]: ['acad_schedule', 'acad_attendance', 'staff_teachers', 'acad_program'],
+    [ROLES.ENS]: ['acad_schedule', 'acad_subjects', 'acad_grades', 'acad_attendance', 'acad_complaints'],
+    [ROLES.SURV]: ['acad_exams', 'acad_attendance', 'acad_schedule'],
+    [ROLES.RAF]: ['fin_payments', 'fin_kpis', 'fin_contracts', 'fin_reports', 'stud_list'],
+    [ROLES.MKT]: ['comm_announcements', 'web_applications', 'comm_news', 'web_brochures'],
+    [ROLES.ACHATS]: ['log_purchases', 'log_suppliers', 'log_assets'],
+    [ROLES.SITE]: ['web_applications', 'web_documents', 'web_brochures', 'comm_news'],
+    [ROLES.IT]: ['staff_list', 'stud_accounts', 'sys_support', 'acad_reference', 'sys_logs'],
+    [ROLES.STUD]: ['espace_exams', 'espace_documents', 'espace_finance', 'espace_announcements', 'espace_support'],
+    [ROLES.DEL]: ['espace_exams', 'espace_documents', 'espace_finance', 'acad_complaints', 'espace_support'],
+    [ROLES.STG]: ['stud_list', 'acad_schedule', 'espace_announcements', 'espace_support'],
+  };
+  const taskIcons: Record<string, typeof Award> = {
+    dashboard_kpis: TrendingUp, stud_list: GraduationCap, fin_kpis: Wallet, fin_payments: Wallet,
+    fin_contracts: Wallet, fin_reports: TrendingUp, acad_exams: ClipboardCheck, acad_subjects: ClipboardCheck,
+    acad_grades: BookOpen, acad_schedule: CalendarDays, acad_attendance: ClipboardCheck,
+    staff_teachers: Users, staff_list: Users, stud_accounts: Users, acad_reference: CalendarDays,
+    acad_program: BookOpen, log_purchases: Package, log_suppliers: Package, log_assets: Package,
+    espace_exams: ClipboardCheck, espace_documents: GraduationCap, espace_finance: Wallet,
+    sys_logs: ShieldCheck, sys_support: Server,
+  };
+  const authorizedPages = state.availableTabs.flatMap(tab => tab.subTabs || []);
+  const quickActions = tasksByRole[state.activeRole].flatMap(id => {
+    const page = authorizedPages.find(item => item.id === id);
+    return page ? [{ label: page.name, href: page.href, icon: taskIcons[id] || Megaphone }] : [];
+  });
 
   const renderKpiCards = () => (
     roleKpiCards.length > 0 && <div className="home-bottom-grid">
@@ -478,17 +477,14 @@ export default function WorkspaceHome({ mode = 'home' }: { mode?: 'home' | 'over
     {error && <div className="review-notice" role="alert"><span>{error}</span><IconButton className="btn btn-outline" onClick={retry} label="Réessayer" /></div>}
 
     {mode === 'home' && <>
-      <div className="home-metrics">{[...(canViewStudents || state.perms.scope.ownDataOnly ? [{label:state.perms.scope.ownDataOnly?'Mon dossier':'Étudiants',value:state.students.length,icon:GraduationCap}] : []),...(state.perms.permissions.includes('user.manage') ? [{label:'Comptes du personnel',value:state.users.filter(user=>user.kind==='staff').length,icon:Users}] : []),...(canViewFinance ? [{label:'Paiements',value:count('payments'),icon:Wallet}] : []),...(canViewGrades ? [{label:'Notes',value:count('grades'),icon:BookOpen}] : [])].map(metric => <div key={metric.label}><metric.icon size={21} /><strong>{metric.value.toLocaleString('fr-FR')}</strong><span>{metric.label}</span></div>)}</div>
-
       {quickActions.length > 0 && <div className="home-quick-actions" style={{ marginBottom: '1.25rem' }}>
-        <div className="home-section-heading"><div><h2>Actions prioritaires</h2></div></div>
+        <div className="home-section-heading"><div><h2>Que souhaitez-vous faire ?</h2></div></div>
         <div className="quick-actions-bar">
           {quickActions.map(act => <Link key={act.label} href={act.href} className="quick-action-btn"><act.icon size={16} /><span>{act.label}</span><ArrowUpRight size={14} /></Link>)}
         </div>
       </div>}
 
-      <div className="home-section-heading" style={{ marginTop: '2rem' }}><div><h2>Rubriques de l’établissement</h2></div></div>
-      <div className="home-destinations home-navigation">{destinations.map(group => <section className="card" key={group.id} aria-label={group.name}><details className="home-directory-group"><summary><h3>{group.name}</h3><span>{group.pages.length} rubrique(s)</span></summary><div>{group.pages.map(page => <Link href={page.href} key={page.id}><span>{page.name}</span><ArrowUpRight size={16} /></Link>)}</div></details></section>)}</div>
+      <div className="home-metrics">{[...(canViewStudents || state.perms.scope.ownDataOnly ? [{label:state.perms.scope.ownDataOnly?'Mon dossier':'Étudiants',value:state.students.length,icon:GraduationCap}] : []),...(state.perms.permissions.includes('user.manage') ? [{label:'Comptes du personnel',value:state.users.filter(user=>user.kind==='staff').length,icon:Users}] : []),...(canViewFinance ? [{label:'Paiements',value:count('payments'),icon:Wallet}] : []),...(canViewGrades ? [{label:'Notes',value:count('grades'),icon:BookOpen}] : [])].map(metric => <div key={metric.label}><metric.icon size={21} /><strong>{metric.value.toLocaleString('fr-FR')}</strong><span>{metric.label}</span></div>)}</div>
     </>}
 
     {mode === 'overview' && <>

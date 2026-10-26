@@ -42,13 +42,13 @@ export default function WebsiteIntakeList({ data, yearLabel, canManage, filters,
     </div>
     {!data.intakes.length ? <div className="empty-state"><strong>Aucune formation pour {yearLabel}</strong><span>Préparez les formations dans « Année scolaire » avant de configurer les inscriptions du site.</span></div> : <>
       <p role="status">{rows.length} {rows.length === 1 ? 'formation affichée' : 'formations affichées'} sur {data.intakes.length}</p>
-      {programs.map(([programId, name]) => <details key={programId} className="card" open={Boolean(filters.query || filters.levelId || filters.programId || filters.status)}><summary><strong>{name}</strong> · {rows.filter(item => item.program_id === programId).length} niveau(x)</summary>
+      {programs.map(([programId, name]) => <section key={programId} className="card"><h2>{name} · {rows.filter(item => item.program_id === programId).length} niveau(x)</h2>
         <div className="table-wrap"><ResponsiveTable className="data-table"><thead><tr><th>Niveau</th><th>Année</th><th>Ouverture</th><th>Pièces</th><th>Action</th></tr></thead><tbody>{rows.filter(item => item.program_id === programId).map(item => <tr key={item.id}>
           <td>{item.level_name || data.levels.find(level => level.id === item.level_id)?.name}</td><td>{data.years?.find(year => year.id === item.academic_year_id)?.name || 'Année non renseignée'}</td>
           <td><span className={`pill ${item.active ? 'pill-success' : 'pill-default'}`}>{item.active ? 'Ouverte' : 'Fermée'}</span></td><td>Communes au niveau</td>
           <td>{canManage ? <button type="button" className="btn btn-outline" aria-label={`Configurer l’ouverture : ${item.label}`} onClick={() => onConfigure(item)}>Configurer l’ouverture</button> : 'Consultation'}</td>
         </tr>)}</tbody></ResponsiveTable></div>
-      </details>)}
+      </section>)}
       {!rows.length && <p>Aucune formation ne correspond aux filtres choisis.</p>}
     </>}
   </section></>;

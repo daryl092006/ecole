@@ -35,7 +35,7 @@ export default function ReenrollmentWorkspace() {
   return (
     <div>
       {enrolling && <EnrollmentDialog kind="reenroll" onClose={() => { setEnrolling(false); setRetry(value => value + 1); }} />}
-      {selected && <StudentRecordDialog matricule={selected} onClose={() => setSelected(null)} />}
+      {selected && <StudentRecordDialog initialSection="parcours" matricule={selected} onClose={() => setSelected(null)} />}
       <div className="page-intro">
         <h1>Réinscriptions</h1>
         {portal.perms.permissions.includes('student.lifecycle.manage') && portal.perms.permissions.includes('payment.record') && (

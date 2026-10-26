@@ -1,6 +1,5 @@
 import { getWorkspaceNavigation } from '@/constants/workspaceNavigation';
 import Link from 'next/link';
-import { useEffect, useState } from 'react';
 import {
   Globe,
   CalendarDays,
@@ -14,7 +13,6 @@ import {
   Settings,
   Users,
   Package,
-  ChevronDown,
   X,
   HelpCircle,
   type LucideIcon,
@@ -62,17 +60,12 @@ interface SidebarProps {
 export default function Sidebar({
   availableTabs,
   currentSubTab,
-  activeRole,
   onNavigate,
   menuOpen,
 }: SidebarProps) {
   const groups = getWorkspaceNavigation(availableTabs, { hideStudentPersonalPages: true });
-  const activeGroup = groups.find(group => group.sections.includes(currentSubTab))?.id || '';
-  const [expanded, setExpanded] = useState<string[]>(activeGroup ? [activeGroup] : []);
-
-  useEffect(() => {
-    setExpanded(previous => activeGroup && !previous.includes(activeGroup) ? [...previous, activeGroup] : previous);
-  }, [activeGroup, currentSubTab, activeRole]);
+  const currentSection = ['acad_resits', 'acad_assessments'].includes(currentSubTab) ? 'acad_exams' : currentSubTab;
+  const activeGroup = groups.find(group => group.sections.includes(currentSection))?.id || '';
 
   return (
     <aside
@@ -98,38 +91,14 @@ export default function Sidebar({
             <div className="nav-section-title">{category}</div>
             {groups.filter(group => group.category === category).map(group => {
               const Icon = ICONS[group.icon] || HelpCircle;
-              const isExpanded = expanded.includes(group.id);
               const isActive = activeGroup === group.id;
-              const isSingleDirect = group.pages.length === 1 && group.pages[0].name === group.name;
-              if (isSingleDirect) {
-                const page = group.pages[0];
-                return <div className="nav-group" key={group.id}>
-                  <div className="nav-group-heading">
-                    <Link href={page.href}
-                      className={`nav-item ${currentSubTab === page.id ? 'active' : ''}`}
-                      aria-current={currentSubTab === page.id ? 'page' : undefined}
-                      onClick={onNavigate}>
-                      <Icon size={18} /><span>{group.name}</span>
-                    </Link>
-                  </div>
-                </div>;
-              }
+              const landingSection = group.id === 'home' ? 'espace_dashboard' : group.id === 'results' ? 'acad_exams' : group.sections[0];
+              const destination = group.pages.find(page => page.id === landingSection) || group.pages[0];
               return <div className="nav-group" key={group.id}>
-                <div className="nav-group-heading">
-                  <button type="button" className={`nav-item ${isActive ? 'active' : ''}`}
-                    aria-label={`${isExpanded ? 'Replier' : 'Déplier'} ${group.name}`}
-                    aria-expanded={isExpanded} aria-controls={`subnav-${group.id}`}
-                    onClick={() => setExpanded(previous => previous.includes(group.id) ? previous.filter(id => id !== group.id) : [...previous, group.id])}>
-                    <Icon size={18} /><span>{group.name}</span>
-                    <ChevronDown size={16} className={isExpanded ? 'rotated' : ''} />
-                  </button>
-                </div>
-                {isExpanded && <div className="subnav-list" id={`subnav-${group.id}`}>
-                  {group.pages.map(page => <Link key={page.id} href={page.href}
-                    className={`subnav-item ${currentSubTab === page.id ? 'active' : ''}`}
-                    aria-current={currentSubTab === page.id ? 'page' : undefined}
-                    onClick={onNavigate}>{page.name}</Link>)}
-                </div>}
+                <Link href={destination.href} className={`nav-item ${isActive ? 'active' : ''}`}
+                  aria-current={isActive ? 'location' : undefined} onClick={onNavigate}>
+                  <Icon size={18} /><span>{group.name}</span>
+                </Link>
               </div>;
             })}
           </div>
