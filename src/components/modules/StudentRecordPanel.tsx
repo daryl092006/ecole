@@ -259,7 +259,7 @@ export default function StudentRecordPanel({ studentId, embedded = false, initia
       ) : (
         <>
           {['parcours', 'finance'].includes(section) && (
-            <StudentOperationsPanel key={section} mode={section === 'finance' ? 'finance' : 'academic'} matricule={student.matricule} onChanged={() => setRetry(value => value + 1)} />
+            <StudentOperationsPanel key={`operations:${section}`} mode={section === 'finance' ? 'finance' : 'academic'} matricule={student.matricule} onChanged={() => setRetry(value => value + 1)} />
           )}
           {section === 'notes' && studentEvaluationsSummary.length > 0 && (
             <section className="card card-full mb-2" aria-label="Synthèse des évaluations et copies de l’étudiant">
