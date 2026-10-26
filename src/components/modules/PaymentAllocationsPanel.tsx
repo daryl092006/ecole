@@ -1,4 +1,5 @@
 'use client';
+import SecondaryDetails from '@/components/ui/SecondaryDetails';
 import { useState } from 'react';
 import { usePortal } from '@/hooks/usePortal';
 import { studentOperations } from '@/services/remoteCampusService';
@@ -38,7 +39,7 @@ export default function PaymentAllocationsPanel({ matricule, revision, directory
     finally { setBusy(false); }
   }
   return <div>
-    <details><summary>Affectations aux échéances</summary>
+    <SecondaryDetails title="Affectations aux échéances">
       <p>Les nouveaux paiements règlent les échéances les plus anciennes. Les montants sans contrat approuvé ou excédentaires restent à affecter.</p>
       {directory.payments.map(payment => <div className="card" key={payment.id}>
         <p><strong>{payment.reference}</strong> · Affecté : {money(payment.allocated)} · Reste à affecter : {money(payment.unallocated)}{payment.cancelled ? ' · Annulé' : payment.pending ? ' · En attente' : ''}</p>
@@ -48,7 +49,7 @@ export default function PaymentAllocationsPanel({ matricule, revision, directory
         })}
         {canReallocate && !payment.pending && !payment.cancelled && payment.available > 0 && directory.installments.some(row => row.enrollmentId === payment.enrollmentId) && <button className="btn btn-outline" onClick={() => open(payment)}>Réaffecter {payment.reference}</button>}
       </div>)}
-    </details>
+    </SecondaryDetails>
     {selected && <WorkPage title={`Réaffecter · ${selected.reference}`} busy={busy} onClose={() => setSelected(null)}>
       <ReviewedForm busy={busy} error={error} confirmLabel="Confirmer la réaffectation"
         fields={[{ label: 'Paiement', value: selected.reference }, ...installments.map(row => ({ label: `${row.description} · ${row.dueOn}`, previous: money(selected.allocations.find(allocation => allocation.installmentId === row.id)?.amount || 0), value: money(Number(amounts[row.id] || 0)) })), { label: 'Reste à affecter', value: money(selected.available - total) }, { label: 'Motif', value: reason }]}

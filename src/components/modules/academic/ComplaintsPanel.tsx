@@ -1,4 +1,5 @@
 'use client';
+import SecondaryDetails from '@/components/ui/SecondaryDetails';
 import DrawerActions from '@/components/ui/DrawerActions';
 import { useEffect, useState } from 'react';
 import { usePortal } from '@/hooks/usePortal';
@@ -165,11 +166,11 @@ export default function ComplaintsPanel() {
               </button>
             )}
           </div>
-          <details><summary>Historique du traitement</summary>
+          <SecondaryDetails title="Historique du traitement">
             <p>Motif du dépôt : {String(complaint.reason || 'Non renseigné')}</p>
             {directory.events.filter(row => row.complaint_id === complaint.id).sort((a, b) => String(a.happened_at || '').localeCompare(String(b.happened_at || ''))).map(event => <p key={event.id}>{connectedRecordValue('complaint_events', 'happened_at', event.happened_at, snapshot)} · {connectedRecordValue('complaint_events', 'from_status', event.from_status, snapshot)} → {connectedRecordValue('complaint_events', 'to_status', event.to_status, snapshot)} · {String(event.reason || '')} · Auteur : {String(event.actor_id || 'Non renseigné')}</p>)}
             {directory.revisions.filter(row => row.complaint_id === complaint.id).map(revision => <p key={revision.id}>Correction : {String(revision.old_value)} → {String(revision.new_value)}/20 · {String(revision.reason || '')}</p>)}
-          </details>
+          </SecondaryDetails>
         </article>;
       })}
       {!records.length && <p>Aucune réclamation pour ce filtre dans votre périmètre.</p>}

@@ -1,3 +1,4 @@
+import SecondaryDetails from '@/components/ui/SecondaryDetails';
 import DrawerActions from '@/components/ui/DrawerActions';
 import IconButton from '@/components/ui/IconButton';
 import { useEffect, useState } from 'react';
@@ -44,7 +45,7 @@ export default function UserDirectoryPanel({ users, actor, category = 'staff' }:
         {action === 'role' && <label>Rôle principal<select className="select-input" value={target} onChange={event => setTarget(event.target.value as RoleName)}>{assignableUserRoles(actor).map(role => <option key={role}>{role}</option>)}</select></label>}
         <label>Motif<textarea className="input" required minLength={3} maxLength={1000} value={reason} onChange={event => setReason(event.target.value)} /></label><DrawerActions><button className="btn btn-primary" disabled={saving}>Vérifier les changements</button></DrawerActions>{error && <p role="alert">{error}</p>}
       </ReviewedForm>}
-      {rolesFor(selected).map(role => <details className="mt-2" key={role}><summary>{role}</summary><RolePermissionDetails summary={getRolePermissionSummary(role, actor)} /></details>)}
+      {rolesFor(selected).map(role => <SecondaryDetails className="mt-2" key={role} title={role}><RolePermissionDetails summary={getRolePermissionSummary(role, actor)} /></SecondaryDetails>)}
     </WorkPage>}
   </div>;
 }

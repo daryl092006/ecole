@@ -1,3 +1,4 @@
+import SecondaryDetails from '@/components/ui/SecondaryDetails';
 import IconButton from '@/components/ui/IconButton';
 import { focusForm } from '@/utils/formFocus';
 import { useRef, useState } from 'react';
@@ -122,13 +123,12 @@ export default function AcademicYearsPanel({ academicYears, actorRole, onChange 
           {year.status === 'BROUILLON' && hasPermission(actorRole, 'academic.year.open') && <button type="button" className="btn btn-sm btn-primary" onClick={() => openYear(year)}>Ouvrir l’année</button>}
           {['OUVERTE', 'EN_CLOTURE'].includes(year.status) && hasPermission(actorRole, 'academic.year.open') && <button type="button" className="btn btn-sm btn-outline" onClick={() => { setClosingId(year.id); setClosingReason(''); }}>{year.status === 'OUVERTE' ? 'Préparer la clôture' : 'Clôturer l’année'}</button>}
         </div>
-        <details className="academic-year-history">
-          <summary>Historique ({year.history.length})</summary>
+        <SecondaryDetails className="academic-year-history" title={`Historique (${year.history.length})`}>
           {year.history.map(entry => <div key={entry.id} className="history-entry">
             <strong>{entry.action.replaceAll('_', ' ')}</strong> · {new Date(entry.dateTime).toLocaleString('fr-FR')} · {entry.role}
             {entry.reason && <div className="cell-sub">Motif : {entry.reason}</div>}
           </div>)}
-        </details>
+        </SecondaryDetails>
       </article>)}
     </div>
     {closingId && <form className="mt-2" onSubmit={event => {

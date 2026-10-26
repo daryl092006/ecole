@@ -1,4 +1,5 @@
 'use client';
+import SecondaryDetails from '@/components/ui/SecondaryDetails';
 import DrawerActions from '@/components/ui/DrawerActions';
 import { useEffect, useState } from 'react';
 import { usePortal } from '@/hooks/usePortal';
@@ -87,7 +88,7 @@ export default function WebsiteBrochuresPanel({ onBack }: { onBack?: () => void 
           <div className="brochure-document-body">
             <h3>{row.program_name || row.title}</h3>
             <div className="brochure-document-meta"><span className={`pill ${row.status === 'PUBLIE' ? 'pill-success' : row.status === 'BROUILLON' ? 'pill-warning' : 'pill-default'}`}>{labels[row.status]}</span><span>PDF · {row.byte_size < 1024 * 1024 ? `${Math.max(1, Math.round(row.byte_size / 1024)).toLocaleString('fr-FR')} Ko` : `${(row.byte_size / 1024 / 1024).toLocaleString('fr-FR', { maximumFractionDigits: 1 })} Mo`}</span></div>
-            <details className="brochure-document-details"><summary>Détails du document<span className="sr-only"> : {row.title}</span></summary><p>{row.title}</p>{row.description && <p>{row.description}</p>}<p className="cell-sub">{row.filename}</p></details>
+            <SecondaryDetails className="brochure-document-details" title="Détails du document"><p>{row.title}</p>{row.description && <p>{row.description}</p>}<p className="cell-sub">{row.filename}</p></SecondaryDetails>
           </div>
           {canManage && <button className="btn btn-outline brochure-edit-action" aria-label={`Modifier : ${row.title}`} onClick={() => edit(row)}>Modifier</button>}
         </article>)}

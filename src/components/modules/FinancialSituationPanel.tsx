@@ -1,3 +1,4 @@
+import SecondaryDetails from '@/components/ui/SecondaryDetails';
 import IconButton from '@/components/ui/IconButton';
 import ResponsiveTable from '@/components/ui/ResponsiveTable';
 import Link from 'next/link';
@@ -42,12 +43,11 @@ export default function FinancialSituationPanel({
   return (
     <div className="card card-full">
       <h2>Situation financière des contrats & retards</h2>
-      <details className="context-details">
-        <summary>Calcul des montants et du retard</summary>
+      <SecondaryDetails className="context-details" title="Calcul des montants et du retard">
         <p>
           Contrat net après remises et avoirs, inscription et frais annexes inclus. Les encaissements déduisent les remboursements et excluent les paiements en attente ou annulés. Le retard correspond aux échéances impayées antérieures à la date choisie, plafonné au reste dû positif. Les paiements actuels sont utilisés : cette date ne reconstitue pas un solde historique.
         </p>
-      </details>
+      </SecondaryDetails>
       {pendingCount > 0 && <p>{pendingCount} dossier(s) avec des données financières à reprendre, exclus des calculs.</p>}
       <div className="form-row filter-grid">
         <label>

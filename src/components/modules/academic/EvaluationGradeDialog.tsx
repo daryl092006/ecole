@@ -1,4 +1,5 @@
 'use client';
+import SecondaryDetails from '@/components/ui/SecondaryDetails';
 import { DrawerCloseButton, useDrawer } from '@/components/ui/DetailDrawer';
 import { useEffect, useRef, useState } from 'react';
 import { usePortal } from '@/hooks/usePortal';
@@ -608,8 +609,7 @@ function EvaluationGrades({ evaluationId, busy, setBusy }: { evaluationId: strin
 
         {/* Historique des transitions et révisions */}
         {(transitions.length > 0 || revisions.length > 0) && (
-          <details className="mt-2">
-            <summary>Historique et traçabilité ({transitions.length + revisions.length} événements)</summary>
+          <SecondaryDetails className="mt-2" title={`Historique et traçabilité (${transitions.length + revisions.length} événements)`}>
             {revisions.map(r => (
               <p key={r.id} className="cell-sub" style={{ color: 'var(--primary)' }}>
                 <strong>Révision de note :</strong> {Number(r.old_value)}/20 → {Number(r.new_value)}/20 · {String(r.actor_role)} · {String(r.reason)} · {new Date(String(r.happened_at || '')).toLocaleString('fr-FR')}
@@ -621,7 +621,7 @@ function EvaluationGrades({ evaluationId, busy, setBusy }: { evaluationId: strin
                 {t.reason ? ` · Motif : ${String(t.reason)}` : ''} · {new Date(String(t.happened_at || '')).toLocaleString('fr-FR')}
               </p>
             ))}
-          </details>
+          </SecondaryDetails>
         )}
         {copyCandidateId && <PersistentExamCopies evaluationId={evaluationId} candidateId={copyCandidateId} onClose={() => setCopyCandidateId('')} />}
       </div>

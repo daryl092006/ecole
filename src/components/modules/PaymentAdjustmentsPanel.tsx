@@ -1,4 +1,5 @@
 'use client';
+import SecondaryDetails from '@/components/ui/SecondaryDetails';
 import { useState } from 'react';
 import { usePortal } from '@/hooks/usePortal';
 import { ROLES } from '@/types/permissions';
@@ -50,7 +51,7 @@ export default function PaymentAdjustmentsPanel({ matricule, revision, directory
     } catch (cause) { setError(cause instanceof Error ? cause.message : 'Opération financière indisponible.'); }
     finally { setBusy(false); }
   }
-  return <details><summary>Annulations, remboursements et avoirs</summary>
+  return <SecondaryDetails title="Annulations, remboursements et avoirs">
     {printError && <p role="alert">{printError}</p>}
     {directory.payments.map(payment => <div className="card" key={payment.id}>
       <p><strong>{payment.reference}</strong> · {money(payment.amount)} · Remboursé : {money(payment.refunded)}{payment.cancelled ? ' · Annulé' : payment.pending ? ' · En attente' : ''}</p>
@@ -81,5 +82,5 @@ export default function PaymentAdjustmentsPanel({ matricule, revision, directory
         <DrawerActions><button className="btn btn-primary">Vérifier l’opération financière</button><DrawerCloseButton className="btn btn-outline">Fermer</DrawerCloseButton></DrawerActions>
       </ReviewedForm>
     </WorkPage>}
-  </details>;
+  </SecondaryDetails>;
 }

@@ -10,13 +10,14 @@ async function mount(page: Page, role: RoleName = ROLES.IT, fixture = adjustment
   let campusReads = 0;
   await page.route('**/api/campus', route => {
     campusReads++;
-    return route.fulfill({ json: { ...fixture.snapshot, tables: { ...snapshot.tables, ...fixture.snapshot.tables, people: snapshot.tables.people, students: snapshot.tables.students }, academicContext: { currentYearId: id.year, currentYearConfigured: true, selectedYearId: id.year, selection: 'current', years: fixture.snapshot.tables.academic_years } } });
+    return route.fulfill({ json: { ...fixture.snapshot, tables: { ...snapshot.tables, ...fixture.snapshot.tables, people: snapshot.tables.people, students: fixture.snapshot.tables.students.map(student => ({ ...student, matricule: 'ESCEN-TEST-001', person_id: 'P1' })) }, academicContext: { currentYearId: id.year, currentYearConfigured: true, selectedYearId: id.year, selection: 'current', years: fixture.snapshot.tables.academic_years } } });
   });
   await page.route('**/api/students/*/operations', async route => {
     const response = route.request().method() === 'POST' ? await fixture.post(route.request().postDataJSON()) : await fixture.get();
     await route.fulfill({ status: response.status, json: await response.json() });
   });
   await page.goto('/etudiants/ESCEN-TEST-001');
+  await page.getByRole('button', { name: 'Frais et versements', exact: true }).click();
   await page.getByText('Annulations, remboursements et avoirs', { exact: true }).click();
   return { ...fixture, campusReads: () => campusReads };
 }

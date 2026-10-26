@@ -1,4 +1,6 @@
 'use client';
+import SecondaryDetails from './SecondaryDetails';
+
 import { useState } from 'react';
 export interface CalendarSession { id: string; start: string; end: string; title: string; subtitle: string; }
 export default function ScheduleCalendar({ sessions, onSelect, period }: { sessions: CalendarSession[]; onSelect: (id: string) => void; period?: { id: string; starts_on: string; ends_on: string } }) {
@@ -36,6 +38,6 @@ export default function ScheduleCalendar({ sessions, onSelect, period }: { sessi
       {Array.from({ length: count }, (_, i) => { const date = `${base}-${String(i+1).padStart(2,'0')}`; if (!inPeriod(date)) return <div className="calendar-day calendar-outside" key={date} />; return <section className="calendar-day" key={date} aria-label={date}><time dateTime={date}>{i+1}</time>{dated.filter(row => row.start.slice(0,10) === date).map(row => <button className="calendar-session" key={row.id} onClick={() => onSelect(row.id)}><strong>{row.start.slice(11,16)}{row.end ? `–${row.end.slice(11,16)}` : ''} · {row.title}</strong><span>{row.subtitle}</span></button>)}</section>; })}
     </div></div>
     {!dated.length && <p>Aucune séance datée pour ces filtres.</p>}
-    {invalid.length > 0 && <details><summary>Séances sans date valide ({invalid.length})</summary>{invalid.map(row => <button className="btn btn-outline" key={row.id} onClick={() => onSelect(row.id)}>{row.title} · Date à vérifier</button>)}</details>}
+    {invalid.length > 0 && <SecondaryDetails title={`Séances sans date valide (${invalid.length})`}>{invalid.map(row => <button className="btn btn-outline" key={row.id} onClick={() => onSelect(row.id)}>{row.title} · Date à vérifier</button>)}</SecondaryDetails>}
   </section>;
 }

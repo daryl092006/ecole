@@ -1,4 +1,5 @@
 'use client';
+import SecondaryDetails from '@/components/ui/SecondaryDetails';
 import Link from 'next/link';
 import DrawerActions from '@/components/ui/DrawerActions';
 import IconButton from '@/components/ui/IconButton';
@@ -61,6 +62,6 @@ export default function PersonnelDossiers() {
         {operation !== 'create' && <label className="form-group">Motif<textarea className="input" required minLength={3} maxLength={1000} value={reason} onChange={event => setReason(event.target.value)} /></label>}
         <DrawerActions><button className={`btn ${operation === 'archive' ? 'btn-danger' : 'btn-primary'}`}>Vérifier les informations</button></DrawerActions></fieldset>{saveError && <p role="alert">{saveError}</p>}</ReviewedForm>}
     </WorkPage>}
-    {portal.history.enabled && <details className="card mt-2"><summary>Informations et pièces historiques complémentaires</summary><div className="mt-2"><HistoricalWorkspace key={reload} section="staff_records" /></div></details>}
+    {portal.history.enabled && <SecondaryDetails className="card mt-2" title="Informations et pièces historiques complémentaires"><div className="mt-2"><HistoricalWorkspace key={reload} section="staff_records" /></div></SecondaryDetails>}
   </div>;
 }

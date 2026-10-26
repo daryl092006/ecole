@@ -6,7 +6,6 @@ import ConnectedDomainWorkspace from './ConnectedDomainWorkspace';
 import StudentDocumentsWorkspace from './StudentDocumentsWorkspace';
 import HistoricalWorkspace from '@/components/modules/history/HistoricalWorkspace';
 import StudentOperationsPanel from './StudentOperationsPanel';
-import StudentCrudActions from './StudentCrudActions';
 import StudentProfilePanel from '@/components/modules/StudentProfilePanel';
 import LoadingState from '@/components/ui/LoadingState';
 import ResponsiveTable from '@/components/ui/ResponsiveTable';
@@ -246,11 +245,6 @@ export default function StudentRecordPanel({ studentId, embedded = false, initia
             <h2>Identité et contacts</h2>
             <StudentProfilePanel key={student.matricule} student={student} />
           </section>
-          <details className="card mt-2">
-            <summary>Retirer ce dossier de l’annuaire</summary>
-            <p>L’archivage conserve les données historiques et révoque l’accès. Il demande un motif et une confirmation.</p>
-            <StudentCrudActions matricule={student.matricule} />
-          </details>
         </>
       ) : !annualEnrollments.length && student.historical && state.history.enabled ? (
         <HistoricalWorkspace

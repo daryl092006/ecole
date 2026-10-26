@@ -1,7 +1,7 @@
 import { expect, test, type Page } from '@playwright/test';
 import { authenticateFixture, snapshot } from './persistent-fixture';
 import { adjustmentFixture } from './payment-adjustments-fixture';
-import { securityContext, uuid } from './security-fixture';
+import { securityContext, securityIds as id, uuid } from './security-fixture';
 
 async function mount(page: Page, state: 'POSTED' | 'PENDING' | 'ANNULE' = 'POSTED', fail = false) {
   await page.addInitScript(() => {
@@ -25,7 +25,7 @@ async function mount(page: Page, state: 'POSTED' | 'PENDING' | 'ANNULE' = 'POSTE
   if (state === 'ANNULE') fixture.snapshot.tables.payment_reversals = [{ id: uuid(6100), payment_id: fixture.snapshot.tables.payments[0].id, reason: 'Double saisie vérifiée' }];
   else fixture.snapshot.tables.payments[0].status = state;
   let reads = 0;
-  await page.route('**/api/campus', route => route.fulfill({ json: snapshot }));
+  await page.route('**/api/campus', route => route.fulfill({ json: { ...fixture.snapshot, tables: { ...snapshot.tables, ...fixture.snapshot.tables, students: fixture.snapshot.tables.students.map(student => ({ ...student, matricule: 'ESCEN-TEST-001' })) }, academicContext: { currentYearId: id.year, currentYearConfigured: true, selectedYearId: id.year, selection: 'current', years: fixture.snapshot.tables.academic_years } } }));
   await page.route('**/api/students/*/operations*', async route => {
     const receiptId = new URL(route.request().url()).searchParams.get('receiptId');
     if (receiptId) {
@@ -37,6 +37,7 @@ async function mount(page: Page, state: 'POSTED' | 'PENDING' | 'ANNULE' = 'POSTE
     await route.fulfill({ status: response.status, json: await response.json() });
   });
   await page.goto('/etudiants/ESCEN-TEST-001');
+  await page.getByRole('button', { name: 'Frais et versements', exact: true }).click();
   await page.getByText('Annulations, remboursements et avoirs', { exact: true }).click();
   return { ...fixture, reads: () => reads };
 }
