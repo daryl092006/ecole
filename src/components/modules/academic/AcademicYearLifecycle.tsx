@@ -192,10 +192,7 @@ export default function AcademicYearLifecycle({
                   {String(year.starts_on || '').split('-').reverse().join('/')} — {String(year.ends_on || '').split('-').reverse().join('/')}
                 </p>
               </div>
-              <button type="button" className="btn btn-outline" onClick={() => setManaging(year.id)} aria-label={`Ouvrir l’année ${year.name}`}>Ouvrir</button>
-              {managing === year.id && <WorkPage title={`Année scolaire · ${year.name}`} onClose={() => setManaging(null)}>
-                <p>{String(year.starts_on || '').split('-').reverse().join('/')} — {String(year.ends_on || '').split('-').reverse().join('/')} · {isCurrent ? 'Année de travail' : YEAR_STATUS_LABELS[status] || status}</p>
-                <div className="academic-year-actions">
+              <div className="academic-year-actions">
                   {canManage && (
                     <button
                       type="button"
@@ -215,6 +212,11 @@ export default function AcademicYearLifecycle({
                       </span>
                     </button>
                   )}
+              <button type="button" className="btn btn-outline" onClick={() => setManaging(year.id)} aria-label={`Ouvrir l’année ${year.name}`}>Ouvrir</button>
+              </div>
+              {managing === year.id && <WorkPage title={`Année scolaire · ${year.name}`} onClose={() => setManaging(null)}>
+                <p>{String(year.starts_on || '').split('-').reverse().join('/')} — {String(year.ends_on || '').split('-').reverse().join('/')} · {isCurrent ? 'Année de travail' : YEAR_STATUS_LABELS[status] || status}</p>
+                <div className="academic-year-actions">
                   <div className="btn-group">
                     {onView && <button className="btn btn-outline" onClick={() => { setManaging(null); onView(year); }}>Informations détaillées</button>}
                     {onEdit && <button className="btn btn-outline" onClick={() => { setManaging(null); onEdit(year); }}>Modifier les dates et le libellé</button>}

@@ -2,7 +2,7 @@ import { expect, test } from '@playwright/test';
 import { installResponsiveAudit } from './responsive-audit-fixture';
 
 for (const width of [390, 820, 1440]) {
-  test(`Liste des années : une seule action par ligne à ${width}px`, async ({ page }) => {
+  test(`Liste des années : activation visible et accès unique par année à ${width}px`, async ({ page }) => {
     await page.setViewportSize({ width, height: 1000 });
     const { problems } = await installResponsiveAudit(page, 'staff');
     await page.goto('/academique/referentiel?collection=academic_years');
@@ -10,6 +10,15 @@ for (const width of [390, 820, 1440]) {
     const row = page.locator('.academic-year-row').filter({ hasText: '2026-2027' });
     await expect(row).toHaveCount(1);
     await expect(row.getByRole('button')).toHaveCount(1);
+    const toggle = row.getByRole('switch', { name: 'Désactiver l’année 2026-2027', exact: true });
+    await expect(toggle).toBeVisible();
+    await expect(toggle).toHaveAttribute('aria-checked', 'true');
+    await toggle.click();
+    const confirmation = page.getByRole('dialog', { name: 'Changer l’année de travail · 2026-2027', exact: true });
+    await expect(confirmation).toBeVisible();
+    await confirmation.getByRole('button', { name: 'Annuler', exact: true }).click();
+    await expect(confirmation).toHaveCount(0);
+    await expect(toggle).toHaveAttribute('aria-checked', 'true');
     await expect(page.locator('main').getByRole('button', { name: 'Voir', exact: true })).toHaveCount(0);
     await expect(page.locator('main').getByRole('button', { name: 'Modifier', exact: true })).toHaveCount(0);
     await page.screenshot({ path: `tmp/screenshots/year-overview/${width}/liste.png` });
