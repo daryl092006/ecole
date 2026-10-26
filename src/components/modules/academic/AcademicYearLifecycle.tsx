@@ -1,7 +1,6 @@
 'use client';
 import DrawerActions from '@/components/ui/DrawerActions';
 import { DrawerCloseButton } from '@/components/ui/DetailDrawer';
-import IconButton from '@/components/ui/IconButton';
 import ReviewedForm from '@/components/ui/ReviewedForm';
 import YearClosurePanel from './YearClosurePanel';
 import YearPreparationPanel from './YearPreparationPanel';
@@ -37,6 +36,7 @@ export default function AcademicYearLifecycle({
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
   const canManage = portal.globalAccess && portal.perms.permissions.includes('academic.year.open');
+  const [managing, setManaging] = useState<string | null>(null);
   const [preparing, setPreparing] = useState<string | null>(null);
   const [pendingYear, setPendingYear] = useState<DatabaseRow | null>(null);
   const [reviewing, setReviewing] = useState<DatabaseRow | null>(null);
@@ -45,9 +45,9 @@ export default function AcademicYearLifecycle({
 
   const opened = rows.filter(year => year.status === 'OUVERTE');
   const currentId = portal.academicYearContext?.currentYearId;
-  const current = rows.find(row => row.id === currentId);
 
   function openClosureCommand(next: ClosureCommand) {
+    setManaging(null);
     setClosureCommand(next);
     setClosureReason('');
     setError('');
@@ -155,25 +155,12 @@ export default function AcademicYearLifecycle({
 
   return (
     <section className="card card-full">
-      <div className="card-header">
-        <h2>Années scolaires & Cycle de gestion</h2>
-      </div>
-
       {error && (
         <div className="restricted-box" role="alert">
           <p style={{ margin: 0 }}>{error}</p>
           <button type="button" className="btn btn-sm btn-outline" onClick={() => setError('')}>Fermer</button>
         </div>
       )}
-
-      <div className="year-summary-box">
-        <p>
-          Année de travail active : <strong>{current ? String(current.name) : 'Aucune année de travail désignée'}</strong>
-        </p>
-        <p className="cell-sub">
-          Le bouton d’activation présente les changements à confirmer. Une année en brouillon doit être entièrement préparée avant son ouverture.
-        </p>
-      </div>
 
       {rows
         .filter(row => !row.archived_at)
@@ -205,59 +192,63 @@ export default function AcademicYearLifecycle({
                   {String(year.starts_on || '').split('-').reverse().join('/')} — {String(year.ends_on || '').split('-').reverse().join('/')}
                 </p>
               </div>
-              <div className="academic-year-actions">
-                {canManage && (
-                  <button
-                    type="button"
-                    role="switch"
-                    aria-checked={isCurrent}
-                    aria-label={isCurrent ? `Désactiver l’année ${year.name}` : `Activer l’année ${year.name}`}
-                    title={isCurrent ? `Désactiver l’année ${year.name}` : status === 'CLOTUREE' ? 'Année clôturée' : `Activer l’année ${year.name}`}
-                    className={`year-toggle-btn ${isCurrent ? 'active' : ''}`}
-                    disabled={status === 'CLOTUREE' || busy}
-                    onClick={() => { setError(''); setPendingYear(year); }}
-                  >
-                    <span className="year-toggle-slider">
-                      <span className="year-toggle-knob" />
-                    </span>
-                    <span className="year-toggle-text">
-                      {isCurrent ? 'Active' : status === 'CLOTUREE' ? 'Clôturée' : 'Inactive'}
-                    </span>
-                  </button>
-                )}
-                <div className="btn-group">
-                  {onView && <IconButton className="btn btn-outline" onClick={() => onView(year)} label="Voir" />}
-                  {onEdit && <IconButton className="btn btn-outline" onClick={() => onEdit(year)} label="Modifier" />}
+              <button type="button" className="btn btn-outline" onClick={() => setManaging(year.id)} aria-label={`Ouvrir l’année ${year.name}`}>Ouvrir</button>
+              {managing === year.id && <WorkPage title={`Année scolaire · ${year.name}`} onClose={() => setManaging(null)}>
+                <p>{String(year.starts_on || '').split('-').reverse().join('/')} — {String(year.ends_on || '').split('-').reverse().join('/')} · {isCurrent ? 'Année de travail' : YEAR_STATUS_LABELS[status] || status}</p>
+                <div className="academic-year-actions">
                   {canManage && (
-                    <>
-                      <button className="btn btn-outline" onClick={() => setPreparing(year.id)}>
-                        {status === 'BROUILLON' ? 'Préparer' : 'Configurer'} {String(year.name)}
-                      </button>
-                      {status === 'OUVERTE' && !isCurrent && (
-                        <button
-                          className="btn btn-outline"
-                          onClick={() =>
-                            openClosureCommand({
-                              yearId: year.id,
-                              yearName: String(year.name),
-                              status: 'EN_CLOTURE',
-                              title: `Préparer la clôture de ${year.name}`,
-                              revision,
-                            })
-                          }
-                        >
-                          Préparer la clôture de {String(year.name)}
-                        </button>
-                      )}
-                      {['OUVERTE', 'EN_CLOTURE'].includes(status) && (
-                        <button className="btn btn-outline" onClick={() => setReviewing(year)}>
-                          Bilan avant clôture de {String(year.name)}
-                        </button>
-                      )}
-                    </>
+                    <button
+                      type="button"
+                      role="switch"
+                      aria-checked={isCurrent}
+                      aria-label={isCurrent ? `Désactiver l’année ${year.name}` : `Activer l’année ${year.name}`}
+                      title={isCurrent ? `Désactiver l’année ${year.name}` : status === 'CLOTUREE' ? 'Année clôturée' : `Activer l’année ${year.name}`}
+                      className={`year-toggle-btn ${isCurrent ? 'active' : ''}`}
+                      disabled={status === 'CLOTUREE' || busy}
+                      onClick={() => { setManaging(null); setError(''); setPendingYear(year); }}
+                    >
+                      <span className="year-toggle-slider">
+                        <span className="year-toggle-knob" />
+                      </span>
+                      <span className="year-toggle-text">
+                        {isCurrent ? 'Active' : status === 'CLOTUREE' ? 'Clôturée' : 'Inactive'}
+                      </span>
+                    </button>
                   )}
+                  <div className="btn-group">
+                    {onView && <button className="btn btn-outline" onClick={() => { setManaging(null); onView(year); }}>Informations détaillées</button>}
+                    {onEdit && <button className="btn btn-outline" onClick={() => { setManaging(null); onEdit(year); }}>Modifier les dates et le libellé</button>}
+                    {canManage && (
+                      <>
+                        <button className="btn btn-outline" onClick={() => { setManaging(null); setPreparing(year.id); }}>
+                          {status === 'BROUILLON' ? 'Préparer' : 'Configurer'} {String(year.name)}
+                        </button>
+                        {status === 'OUVERTE' && !isCurrent && (
+                          <button
+                            className="btn btn-outline"
+                            onClick={() =>
+                              openClosureCommand({
+                                yearId: year.id,
+                                yearName: String(year.name),
+                                status: 'EN_CLOTURE',
+                                title: `Préparer la clôture de ${year.name}`,
+                                revision,
+                              })
+                            }
+                          >
+                            Préparer la clôture de {String(year.name)}
+                          </button>
+                        )}
+                        {['OUVERTE', 'EN_CLOTURE'].includes(status) && (
+                          <button className="btn btn-outline" onClick={() => { setManaging(null); setReviewing(year); }}>
+                            Bilan avant clôture de {String(year.name)}
+                          </button>
+                        )}
+                      </>
+                    )}
+                  </div>
                 </div>
-              </div>
+              </WorkPage>}
             </div>
           );
         })}
