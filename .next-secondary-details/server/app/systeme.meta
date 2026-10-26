@@ -1,0 +1,15 @@
+{
+  "headers": {
+    "x-nextjs-stale-time": "300",
+    "x-nextjs-prerender": "1",
+    "x-next-cache-tags": "_N_T_/layout,_N_T_/(portail)/layout,_N_T_/(portail)/systeme/layout,_N_T_/(portail)/systeme/page,_N_T_/systeme"
+  },
+  "routeCache": {
+    "key": "/route-cache/APP_PAGE/61a4483a2f72349856e3c1de3b5ca2ad23275c4c6e7d0ae1c821fe2bf12620e2/$/systeme",
+    "owner": {
+      "kind": "APP_PAGE",
+      "sourceRoute": "/(portail)/systeme/page"
+    },
+    "isFallback": false
+  }
+}

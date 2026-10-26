@@ -1,0 +1,11 @@
+{
+  "version": 1,
+  "functions": {
+    "/api/email-outbox/process": {
+      "maxDuration": 60
+    },
+    "/api/student-documents": {},
+    "/api/website-brochures": {},
+    "/api/website/[...path]": {}
+  }
+}

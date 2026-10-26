@@ -272,7 +272,7 @@ export default function SubjectStudio() {
                 <textarea className="input" maxLength={8000} value={subject.instructions} onChange={event => setSubject({ ...subject, instructions: event.target.value })} />
               </label>
 
-              <SubjectConstructor subject={subject} onChange={setSubject} disabled={saving} />
+              <SubjectConstructor subject={subject} onChange={setSubject} disabled={saving} allowJustification={directory.features?.qcmJustification === true} />
               <footer className="subject-save">
                 <strong>Barème total : {subjectPoints(subject)} points</strong>
                 <button className="btn btn-primary" disabled={saving}>

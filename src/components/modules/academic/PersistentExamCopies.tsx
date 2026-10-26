@@ -30,7 +30,12 @@ export default function PersistentExamCopies({ evaluationId, candidateId, onClos
         {selected === attempt.id && questions.map(question => {
           const response = answers.find(row => row.question_id === question.id)?.response as OnlineExamAnswer | undefined;
           const choices = response?.option_ids || [];
-          return <section className="online-exam-question" key={question.id}><SubjectRichText value={String(question.prompt)} /><p className="subject-text">{response?.text || (choices.length ? (tables.exam_options || []).filter(row => choices.includes(row.id)).map(row => String(row.label)).join(' ; ') : 'Sans réponse')}</p></section>;
+          const choiceLabels = (tables.exam_options || []).filter(row => row.question_id === question.id && choices.includes(row.id)).map(row => String(row.label));
+          return <section className="online-exam-question" key={question.id}><SubjectRichText value={String(question.prompt)} />
+            {choiceLabels.length > 0 && <p className="subject-text">Choix : {choiceLabels.join(' ; ')}</p>}
+            {!!response?.text && <p className="subject-text">{question.kind === 'TEXTE' ? response.text : `Justification : ${response.text}`}</p>}
+            {!choiceLabels.length && !response?.text && <p>Sans réponse</p>}
+          </section>;
         })}
       </article>;
     })}

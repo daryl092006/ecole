@@ -1,0 +1,1 @@
+self.__REACT_LOADABLE_MANIFEST='{"services/remoteCampusService.ts -> @/services/transcriptDocumentService":{"id":4498,"files":["static/chunks/2117.30fd3908a361deee.js"]}}';

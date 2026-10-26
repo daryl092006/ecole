@@ -1,0 +1,15 @@
+{
+  "headers": {
+    "x-nextjs-stale-time": "300",
+    "x-nextjs-prerender": "1",
+    "x-next-cache-tags": "_N_T_/layout,_N_T_/(portail)/layout,_N_T_/(portail)/communication/layout,_N_T_/(portail)/communication/page,_N_T_/communication"
+  },
+  "routeCache": {
+    "key": "/route-cache/APP_PAGE/33855a5ee91a6e256dbb5fcf3bea4fa7f2f033a989c6a5224b01565a05f22096/$/communication",
+    "owner": {
+      "kind": "APP_PAGE",
+      "sourceRoute": "/(portail)/communication/page"
+    },
+    "isFallback": false
+  }
+}

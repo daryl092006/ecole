@@ -28,7 +28,7 @@ function AdmissionsFrame({ title, onClose, children }: { title: string; onClose?
     <div className="domain-workspace admissions-workspace workspace-stack">
       <div className="page-intro">
         <div>
-          <span className="page-eyebrow">SITE WEB</span>
+
           <h1>{title}</h1>
         </div>
       </div>

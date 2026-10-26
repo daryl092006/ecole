@@ -1,0 +1,15 @@
+{
+  "headers": {
+    "x-nextjs-stale-time": "300",
+    "x-nextjs-prerender": "1",
+    "x-next-cache-tags": "_N_T_/layout,_N_T_/(portail)/layout,_N_T_/(portail)/mon-espace/layout,_N_T_/(portail)/mon-espace/annonces/layout,_N_T_/(portail)/mon-espace/annonces/page,_N_T_/mon-espace/annonces"
+  },
+  "routeCache": {
+    "key": "/route-cache/APP_PAGE/8bd0542f101d5991d257f40feaa70ce1ebeb3f3b7684ef4c3a0ce2dff31809c9/$/mon-espace/annonces",
+    "owner": {
+      "kind": "APP_PAGE",
+      "sourceRoute": "/(portail)/mon-espace/annonces/page"
+    },
+    "isFallback": false
+  }
+}

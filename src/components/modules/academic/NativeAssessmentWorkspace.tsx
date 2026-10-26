@@ -8,6 +8,7 @@ import { subjectExams, subjectExamIssue } from '@/services/subjectExamPolicy';
 import { connectedRecordName, connectedRecordValue } from '@/services/connectedRecordDisplayService';
 import type { DatabaseRow } from '@/types/persistence';
 import ResponsiveTable from '@/components/ui/ResponsiveTable';
+import ListFilters from '@/components/ui/ListFilters';
 import IconButton from '@/components/ui/IconButton';
 import WorkPage from '@/components/ui/WorkPage';
 import ExamCopies from '../history/ExamCopies';
@@ -121,9 +122,9 @@ export default function NativeAssessmentWorkspace({ category }: { category: Asse
   return <div>
     <div className="page-intro">
       <div>
-        <span className="page-eyebrow">PÉDAGOGIE</span>
+
         <h1>{ASSESSMENT_LABELS[category]}</h1>
-        <p>Épreuves et résultats de l’année consultée, classés par groupe et par matière.</p>
+
       </div>
       <div className="btn-group">
         {perms.permissions.includes('evaluation.create') && (
@@ -135,14 +136,14 @@ export default function NativeAssessmentWorkspace({ category }: { category: Asse
     </div>
     <section className="card card-full">
       {linkedKeys.size > 1 && <p role="status">Ce lien regroupe plusieurs épreuves. Choisissez celle à consulter.</p>}
-      <div className="browser-toolbar">
+      <ListFilters count={allGroupedItems.length} active={Boolean(query || groupFilter || subjectFilter || statusFilter)}><div className="browser-toolbar">
         <label className="form-group">Rechercher une épreuve<input className="input" type="search" value={query} onChange={event => { setQuery(event.target.value); setExported(false); }} placeholder="Matière, groupe ou état" /></label>
         {availableGroups.length > 0 && <label className="form-group">Filtrer par groupe<select className="select-input" value={groupFilter} onChange={e => { setGroupFilter(e.target.value); setSubjectFilter(''); setExported(false); }}><option value="">Tous les groupes ({availableGroups.length})</option>{availableGroups.map(g => <option key={g} value={g}>{g}</option>)}</select></label>}
         {availableSubjects.length > 0 && <label className="form-group">Filtrer par matière<select className="select-input" value={subjectFilter} onChange={e => { setSubjectFilter(e.target.value); setExported(false); }}><option value="">Toutes les matières ({availableSubjects.length})</option>{availableSubjects.map(s => <option key={s} value={s}>{s}</option>)}</select></label>}
         <label className="form-group">État de l’épreuve<select className="select-input" value={statusFilter} onChange={event => { setStatusFilter(event.target.value); setExported(false); }}><option value="">Tous les états</option>{[...new Set(allGroupedItems.map(item => item.statusLabel))].sort().map(status => <option key={status}>{status}</option>)}</select></label>
-        <IconButton className="btn btn-outline" label="Exporter les épreuves" disabled={!rows.length} onClick={() => { downloadCsv('epreuves.csv', ['Épreuve', 'Matière', 'Groupe', 'Notes et moyenne', 'État de l’épreuve'], rows.map(item => [String(item.primary.name), item.subjectLabel, item.groupLabel, item.statsLabel, item.statusLabel])); setExported(true); }} />
-      </div>
-      <label className="checkbox-field"><input type="checkbox" checked={withdrawn} onChange={event => { setWithdrawn(event.target.checked); setStatusFilter(''); setExported(false); }} /> Épreuves retirées</label>
+        {rows.length > 1 && <IconButton className="btn btn-outline" label="Exporter les épreuves" disabled={!rows.length} onClick={() => { downloadCsv('epreuves.csv', ['Épreuve', 'Matière', 'Groupe', 'Notes et moyenne', 'État de l’épreuve'], rows.map(item => [String(item.primary.name), item.subjectLabel, item.groupLabel, item.statsLabel, item.statusLabel])); setExported(true); }} />}
+      </div></ListFilters>
+      {(withdrawn || allEvaluations.some(row => row.cancelled_at || row.archived_at)) && <label className="checkbox-field"><input type="checkbox" checked={withdrawn} onChange={event => { setWithdrawn(event.target.checked); setStatusFilter(''); setExported(false); }} /> Épreuves retirées</label>}
       {exported && <p role="status">{rows.length} épreuve(s) exportée(s).</p>}
       <ResponsiveTable className="data-table"><thead><tr><th>Épreuve</th><th>Matière</th><th>Groupe</th><th>Notes et moyenne</th><th>État de l’épreuve</th><th>Actions</th></tr></thead><tbody>{rows.map(item => <tr key={item.primary.id}><td>{String(item.primary.name)}</td><td>{item.subjectLabel}</td><td>{item.groupLabel}</td><td>{item.statsLabel}</td><td>{item.statusLabel}</td><td><div className="btn-group"><IconButton className="btn btn-outline" label="Ouvrir le détail" onClick={() => { setSelectedId(item.primary.id); setCopies(false); }} />{(perms.permissions.includes('grade.enter') || perms.permissions.includes('grade.review') || perms.permissions.includes('grade.approve') || perms.permissions.includes('grade.publish')) && <IconButton className="btn btn-primary" label="Saisir / Gérer" onClick={() => setManagingEvalIds(item.members.map(m => String(m.id)))} />}</div></td></tr>)}{!rows.length && <tr><td colSpan={6}>Aucune épreuve pour cette catégorie et ces filtres.</td></tr>}</tbody></ResponsiveTable>
     </section>

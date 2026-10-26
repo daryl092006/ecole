@@ -4,12 +4,12 @@ import { usePortal } from '@/hooks/usePortal';
 import ResponsiveTable from '@/components/ui/ResponsiveTable';
 import { connectedRecordName, connectedRecordValue } from '@/services/connectedRecordDisplayService';
 
-export default function StudentEnrollmentsPanel({ matricule }: { matricule: string }) {
+export default function StudentEnrollmentsPanel({ matricule, embedded = false }: { matricule: string; embedded?: boolean }) {
   const { relationalSnapshot: snapshot } = usePortal();
   const student = snapshot.tables.students?.find(row => row.matricule === matricule);
   const enrollments = (snapshot.tables.enrollments || []).filter(row => student && row.student_id === student.id && !row.archived_at);
-  return <section className="card card-full">
-    <h2>Inscriptions et groupes</h2>
+  return <section className={embedded ? undefined : "card card-full"}>
+    {!embedded && <h2>Inscriptions et groupes</h2>}
     <div className="table-wrap"><ResponsiveTable className="data-table">
       <thead><tr><th>Année</th><th>Formation</th><th>Groupes et affectations</th><th>Date d’inscription</th><th>Statut</th></tr></thead>
       <tbody>{enrollments.map(enrollment => {

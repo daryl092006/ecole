@@ -13,7 +13,7 @@ for (const width of [390, 820, 1440]) {
     await expect(page.getByRole('button', { name: 'Modifier les informations civiles', exact: true })).toBeVisible();
     await page.screenshot({ path: `tmp/screenshots/secondary-details/${width}/dossier.png` });
     await page.getByRole('button', { name: 'Années et groupes', exact: true }).click();
-    await expect(page.getByRole('heading', { name: 'Inscriptions et groupes', exact: true })).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'Années et groupes', exact: true })).toBeVisible();
     await expect(page.getByRole('columnheader', { name: 'Groupes et affectations', exact: true, includeHidden: true })).toHaveCount(1);
     await expect(page.getByRole('button', { name: 'Changer le statut scolaire', exact: true })).toBeVisible();
     await expect(page.getByRole('button', { name: 'Enregistrer un paiement', exact: true })).toHaveCount(0);

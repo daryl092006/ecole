@@ -3,6 +3,32 @@ import { subjectProgrammingFixture } from './subject-programming-fixture';
 import { installResponsiveAudit } from './responsive-audit-fixture';
 import { securityContext, securityIds as id, uuid } from './security-fixture';
 import { ROLES } from '../../src/types/permissions';
+import { assessmentProgress } from '../../src/services/assessmentDisplayService';
+
+test('La publication de la programmation source ne publie pas les résultats', () => {
+  const now = new Date('2026-10-26T12:00:00Z');
+  expect(assessmentProgress({ published: '1', date: '2026-10-08', correction_submission_date: null }, now)).toBe('En attente de correction');
+  expect(assessmentProgress({ published: '1', date: '2026-10-08', correction_submission_date: '2026-10-20' }, now)).toBe('Correction soumise');
+  expect(assessmentProgress({ published: '1', date: '2026-11-08' }, now)).toBe('Programmée');
+  expect(assessmentProgress({ status: 'PUBLIEES' }, now)).toBe('Résultats publiés');
+});
+
+test('Justification QCM : protocole étudiant disponible avant autorisation du sujet', async () => {
+  const fixture = subjectProgrammingFixture();
+  const parts = [{ title: 'Analyse', instructions: 'Étudiez la situation.', caseStudy: true, questions: [{
+    prompt: 'Choisissez et justifiez.', kind: 'QCM_SIMPLE' as const, requiresJustification: true, points: 20,
+    options: [{ label: 'Choix A', correct: true }, { label: 'Choix B', correct: false }], correction: 'Argumenter.',
+  }] }];
+  expect((await (await fixture.get()).json()).features.qcmJustification).toBe(false);
+  expect((await fixture.post({ parts, authorize: true })).status).toBe(409);
+  expect(fixture.transactions).toHaveLength(0);
+  fixture.enableJustification();
+  expect((await (await fixture.get()).json()).features.qcmJustification).toBe(true);
+  expect((await fixture.post({ parts, authorize: true })).status).toBe(201);
+  const changes = fixture.transactions[0];
+  expect(changes.find(change => change.table === 'exam_parts')?.record.context).toEqual({ caseStudy: true });
+  expect(changes.find(change => change.table === 'exam_questions')?.record.configuration).toMatchObject({ requiresJustification: true });
+});
 
 test('Le sujet appartient à un examen programmé et conserve ses horaires', async () => {
   const fixture = subjectProgrammingFixture();

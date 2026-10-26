@@ -10,6 +10,17 @@ import type { RelationalSnapshot, PersistentContext, DatabaseRow } from '@/types
 
 export const dynamic = 'force-dynamic';
 
+async function subjectFeatures(client: Awaited<ReturnType<typeof requireAccount>>['client']) {
+  // Older databases do not expose this capability. Never offer a response format
+  // that the student save RPC cannot accept yet.
+  try {
+    const result = await client.rpc('escen_subject_features');
+    return { qcmJustification: !result.error && result.data?.qcmJustification === true };
+  } catch {
+    return { qcmJustification: false };
+  }
+}
+
 const privileged = (context: PersistentContext) =>
   [ROLES.IT, ROLES.DG, ROLES.DA].includes(context.role as typeof ROLES.IT) &&
   context.grants.some(g => !g.site_id && !g.group_id && !g.academic_year_id);
@@ -35,7 +46,7 @@ export async function GET(request: Request) {
     );
     return Response.json(
       { revision: snapshot.revision, subjects: projectSubjects(scoped, visible(scoped, context)),
-        exams: year.selectedYearId ? subjectExams(filterRelationalSnapshot(scoped, context)) : [] },
+        exams: year.selectedYearId ? subjectExams(filterRelationalSnapshot(scoped, context)) : [], features: await subjectFeatures(client) },
       { headers: { 'Cache-Control': 'no-store' } }
     );
   } catch (error) {
@@ -109,6 +120,10 @@ export async function POST(request: Request) {
       }
     }
 
+    if (body.subject.parts.some(part => part.questions.some(question => question.requiresJustification))
+      && !(await subjectFeatures(client)).qcmJustification) {
+      throw new RequestError(409, 'La justification des réponses QCM n’est pas disponible pour cette épreuve. Le sujet n’a pas été enregistré.');
+    }
     const prepared = buildSubjectChanges(body.subject, context.accountId, body.reason, previous as DatabaseRow | undefined);
     prepared.changes[0].record.academic_year_id = year.selectedYearId;
 

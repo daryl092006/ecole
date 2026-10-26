@@ -77,7 +77,7 @@ export default function TeachersWorkspace() {
   ];
   const filtered = directory.teachers.filter(teacher => `${teacher.name} ${teacher.employeeNumber} ${teacher.specialty}`.toLocaleLowerCase('fr').includes(query.toLocaleLowerCase('fr')));
   return <div>
-    <div className="page-intro"><div><span className="page-eyebrow">PERSONNEL ENSEIGNANT</span><h1>Enseignants et affectations</h1><p>Profils pédagogiques et affectations de l’année sélectionnée.</p></div><div className="btn-group">
+    <div className="page-intro"><div><h1>Enseignants et affectations</h1></div><div className="btn-group">
       {directory.canManageProfiles && <button className="btn btn-primary" onClick={() => open({ kind: 'create_profile' })}>Créer un profil enseignant</button>}
       {directory.canManageAssignments && <button className="btn btn-primary" onClick={() => open({ kind: 'create_assignment' })}>Nouvelle affectation</button>}
     </div></div>

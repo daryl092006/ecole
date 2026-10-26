@@ -1,0 +1,15 @@
+{
+  "headers": {
+    "x-nextjs-stale-time": "300",
+    "x-nextjs-prerender": "1",
+    "x-next-cache-tags": "_N_T_/layout,_N_T_/(portail)/layout,_N_T_/(portail)/systeme/layout,_N_T_/(portail)/systeme/journal/layout,_N_T_/(portail)/systeme/journal/page,_N_T_/systeme/journal"
+  },
+  "routeCache": {
+    "key": "/route-cache/APP_PAGE/6c06ce3b048bfab8e86e853926c71de2a200b359977c9e218d2ac6e68d5f1e22/$/systeme/journal",
+    "owner": {
+      "kind": "APP_PAGE",
+      "sourceRoute": "/(portail)/systeme/journal/page"
+    },
+    "isFallback": false
+  }
+}

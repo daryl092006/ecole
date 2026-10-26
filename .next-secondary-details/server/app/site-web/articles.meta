@@ -1,0 +1,15 @@
+{
+  "headers": {
+    "x-nextjs-stale-time": "300",
+    "x-nextjs-prerender": "1",
+    "x-next-cache-tags": "_N_T_/layout,_N_T_/(portail)/layout,_N_T_/(portail)/site-web/layout,_N_T_/(portail)/site-web/articles/layout,_N_T_/(portail)/site-web/articles/page,_N_T_/site-web/articles"
+  },
+  "routeCache": {
+    "key": "/route-cache/APP_PAGE/843fb1746e8d9cbb21fae6d932728cd7e19ac3e3005c6f136e9b50ca4414a310/$/site-web/articles",
+    "owner": {
+      "kind": "APP_PAGE",
+      "sourceRoute": "/(portail)/site-web/articles/page"
+    },
+    "isFallback": false
+  }
+}

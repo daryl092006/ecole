@@ -96,9 +96,14 @@ export default function Sidebar({
               const destination = group.pages.find(page => page.id === landingSection) || group.pages[0];
               return <div className="nav-group" key={group.id}>
                 <Link href={destination.href} className={`nav-item ${isActive ? 'active' : ''}`}
-                  aria-current={isActive ? 'location' : undefined} onClick={onNavigate}>
+                  aria-current={currentSection === destination.id ? 'page' : isActive ? 'location' : undefined} onClick={onNavigate}>
                   <Icon size={18} /><span>{group.name}</span>
                 </Link>
+                {isActive && group.pages.length > 1 && <div className="subnav-list">
+                  {group.pages.filter(page => page.id !== destination.id).map(page => <Link key={page.id} href={page.href}
+                    className={`subnav-item ${currentSection === page.id ? 'active' : ''}`}
+                    aria-current={currentSection === page.id ? 'page' : undefined} onClick={onNavigate}>{page.name}</Link>)}
+                </div>}
               </div>;
             })}
           </div>

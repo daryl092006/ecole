@@ -32,7 +32,7 @@ export default function FinanceOverview() {
     { label: 'Montant payé', value: known.reduce((sum, student) => sum + student.financials.paid, 0) },
     { label: 'Reste à payer', value: known.reduce((sum, student) => sum + student.financials.remaining, 0) },
   ];
-  return <div><div className="page-intro"><div><span className="page-eyebrow">FINANCE</span><h1>Situation financière</h1><p>Contrats et règlements de l’année consultée. Les paiements en attente ne comptent pas dans les montants payés.</p></div><Link className="btn btn-outline" href="/finance/versements">Versements et reçus</Link></div>
+  return <div><div className="page-intro"><div><h1>Situation financière</h1><p>Contrats et règlements de l’année consultée. Les paiements en attente ne comptent pas dans les montants payés.</p></div><Link className="btn btn-outline" href="/finance/versements">Versements et reçus</Link></div>
     <section className="card card-full"><label className="form-group">Rechercher un étudiant ou une formation<input className="input" type="search" value={query} onChange={event => { setQuery(event.target.value); setExported(false); }} /></label>
       <dl className="data-summary">{totals.map(total => <div key={total.label}><dt>{total.label}</dt><dd>{known.length ? money(total.value) : 'Non établi'}</dd></div>)}</dl>
       <p>{known.length} dossier(s) avec une situation financière établie sur {rows.length} résultat(s). Les totaux portent sur ces dossiers.</p>

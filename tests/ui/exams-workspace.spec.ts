@@ -3,6 +3,27 @@ import { ACCOUNT_IDS, authenticateFixture, snapshot } from './persistent-fixture
 import { ROLES } from '../../src/types/permissions';
 import { installResponsiveAudit } from './responsive-audit-fixture';
 
+test('Une copie QCM présente ensemble le choix et sa justification sans note inventée', async ({ page }) => {
+  await authenticateFixture(page);
+  const campus = structuredClone(snapshot);
+  campus.tables.evaluations = [{ id: 'E', name: 'Analyse financière', kind: 'EXAMEN', status: 'SAISIES' }];
+  campus.tables.evaluation_candidates = [{ id: 'C', evaluation_id: 'E', enrollment_id: 'N', eligibility: 'ELIGIBLE' }];
+  campus.tables.exam_deliveries = [{ id: 'D', evaluation_id: 'E', access_opens_at: '2026-10-01T08:00:00Z', access_closes_at: '2026-10-01T10:00:00Z', duration_minutes: 120 }];
+  campus.tables.exam_attempts = [{ id: 'A', evaluation_id: 'E', candidate_id: 'C', paper_id: 'P', status: 'REMISE', completion_status: 'PARTIELLE' }];
+  campus.tables.exam_questions = [{ id: 'Q', paper_id: 'P', kind: 'QCM_SIMPLE', prompt: 'Choisissez un financement.' }];
+  campus.tables.exam_options = [{ id: 'O', question_id: 'Q', label: 'Financement bancaire' }];
+  campus.tables.exam_answers = [{ id: 'R', attempt_id: 'A', question_id: 'Q', response: { text: 'La trésorerie est préservée.', option_ids: ['O'] } }];
+  campus.tables.grades = [];
+  await page.route('**/api/campus', route => route.fulfill({ json: campus }));
+  await page.goto('/academique/examens');
+  await page.getByRole('button', { name: 'Ouvrir le détail', exact: true }).click();
+  await page.getByRole('button', { name: 'Copies en ligne', exact: true }).click();
+  await page.getByRole('button', { name: 'Lire les réponses', exact: true }).click();
+  await expect(page.getByText('Choix : Financement bancaire', { exact: true })).toBeVisible();
+  await expect(page.getByText('Justification : La trésorerie est préservée.', { exact: true })).toBeVisible();
+  await expect(page.getByRole('article').getByText('Copie remise · À corriger', { exact: true })).toBeVisible();
+});
+
 for (const width of [390, 1440]) for (const [path, session] of [['evaluations', 'controle'], ['rattrapages', 'rattrapage']]) {
   test(`Entrée directe ${path} conserve les filtres à ${width}px`, async ({ page }) => {
     await page.setViewportSize({ width, height: 960 });

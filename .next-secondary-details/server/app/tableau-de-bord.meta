@@ -1,0 +1,15 @@
+{
+  "headers": {
+    "x-nextjs-stale-time": "300",
+    "x-nextjs-prerender": "1",
+    "x-next-cache-tags": "_N_T_/layout,_N_T_/(portail)/layout,_N_T_/(portail)/tableau-de-bord/layout,_N_T_/(portail)/tableau-de-bord/page,_N_T_/tableau-de-bord"
+  },
+  "routeCache": {
+    "key": "/route-cache/APP_PAGE/148853fe85246859fbb67ea3f8e0b6d4cffd0816e4831581e12504bc5dd85e13/$/tableau-de-bord",
+    "owner": {
+      "kind": "APP_PAGE",
+      "sourceRoute": "/(portail)/tableau-de-bord/page"
+    },
+    "isFallback": false
+  }
+}

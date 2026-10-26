@@ -1,0 +1,15 @@
+{
+  "headers": {
+    "x-nextjs-stale-time": "300",
+    "x-nextjs-prerender": "1",
+    "x-next-cache-tags": "_N_T_/layout,_N_T_/(portail)/layout,_N_T_/(portail)/logistique/layout,_N_T_/(portail)/logistique/page,_N_T_/logistique"
+  },
+  "routeCache": {
+    "key": "/route-cache/APP_PAGE/2a711e715bb989e259482cec618713eb4184a56767412f2054ae38b94ba19b3b/$/logistique",
+    "owner": {
+      "kind": "APP_PAGE",
+      "sourceRoute": "/(portail)/logistique/page"
+    },
+    "isFallback": false
+  }
+}

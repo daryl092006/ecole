@@ -1,0 +1,159 @@
+[
+  {
+    "section": "Identité et contacts",
+    "headings": [
+      "Élise Étudiante au nom composé",
+      "Identité et contacts"
+    ],
+    "buttons": [
+      "Identité et contacts",
+      "Années et groupes",
+      "Assiduité et présences",
+      "Frais et versements",
+      "Notes",
+      "Pièces du dossier",
+      "Modifier les informations civiles"
+    ],
+    "fields": [
+      "Année consultée"
+    ],
+    "tables": [],
+    "text": "Accueil/Dossiers étudiants/Dossier ESCEN-TEST-001Année consultéeAnnée de travail : 2026-2027Toutes les années · consultation2025-2026 · OuverteGérer← Revenir aux étudiantsDOSSIER ÉTUDIANT · ESCEN-TEST-001Élise Étudiante au nom composéIngénierie informatique et cybersécurité · Licence 1 · Groupe 1Identité et contactsAnnées et groupesAssiduité et présencesFrais et versementsNotesPièces du dossierIdentité et contactsPrénomÉliseNomÉtudiante au nom composéEmailprivate@example.testTéléphone (+228)Non renseignéDate de naissanceNon renseignéNationalitéNon renseignéAdresseNon renseignéVilleNon renseignéPaysNon renseignéGenreNon renseignéModifier les informations civiles"
+  },
+  {
+    "section": "Années et groupes",
+    "headings": [
+      "Élise Étudiante au nom composé",
+      "Années et groupes"
+    ],
+    "buttons": [
+      "Identité et contacts",
+      "Années et groupes",
+      "Assiduité et présences",
+      "Frais et versements",
+      "Notes",
+      "Pièces du dossier",
+      "Changer le statut scolaire"
+    ],
+    "fields": [
+      "Année consultée"
+    ],
+    "tables": [
+      [
+        "Année",
+        "Formation",
+        "Groupes et affectations",
+        "Date d’inscription",
+        "Statut"
+      ]
+    ],
+    "text": "Accueil/Dossiers étudiants/Dossier ESCEN-TEST-001Année consultéeAnnée de travail : 2026-2027Toutes les années · consultation2025-2026 · OuverteGérer← Revenir aux étudiantsDOSSIER ÉTUDIANT · ESCEN-TEST-001Élise Étudiante au nom composéIngénierie informatique et cybersécurité · Licence 1 · Groupe 1Identité et contactsAnnées et groupesAssiduité et présencesFrais et versementsNotesPièces du dossierAnnées et groupesChanger le statut scolaireAnnéeFormationGroupes et affectationsDate d’inscriptionStatut2026-2027Ingénierie informatique et cybersécurité · Licence 1 · 2026-2027Groupe 1Depuis le 01/01/2026Non renseignéInscrit"
+  },
+  {
+    "section": "Assiduité et présences",
+    "headings": [
+      "Élise Étudiante au nom composé",
+      "Présences"
+    ],
+    "buttons": [
+      "Identité et contacts",
+      "Années et groupes",
+      "Assiduité et présences",
+      "Frais et versements",
+      "Notes",
+      "Pièces du dossier"
+    ],
+    "fields": [
+      "Année consultée"
+    ],
+    "tables": [
+      [
+        "Date",
+        "Matière",
+        "Présence",
+        "Justificatif"
+      ]
+    ],
+    "text": "Accueil/Dossiers étudiants/Dossier ESCEN-TEST-001Année consultéeAnnée de travail : 2026-2027Toutes les années · consultation2025-2026 · OuverteGérer← Revenir aux étudiantsDOSSIER ÉTUDIANT · ESCEN-TEST-001Élise Étudiante au nom composéIngénierie informatique et cybersécurité · Licence 1 · Groupe 1Identité et contactsAnnées et groupesAssiduité et présencesFrais et versementsNotesPièces du dossierPrésencesDateMatièrePrésenceJustificatif19/10/2026 08:00:00Analyse annuelleAbsentEn attenteCertificat médical"
+  },
+  {
+    "section": "Frais et versements",
+    "headings": [
+      "Élise Étudiante au nom composé",
+      "Versements"
+    ],
+    "buttons": [
+      "Identité et contacts",
+      "Années et groupes",
+      "Assiduité et présences",
+      "Frais et versements",
+      "Notes",
+      "Pièces du dossier",
+      "Enregistrer un paiement",
+      "PAY-INITIAL"
+    ],
+    "fields": [
+      "Année consultée"
+    ],
+    "tables": [
+      [
+        "Date",
+        "Montant",
+        "Mode",
+        "Référence"
+      ]
+    ],
+    "text": "Accueil/Dossiers étudiants/Dossier ESCEN-TEST-001Année consultéeAnnée de travail : 2026-2027Toutes les années · consultation2025-2026 · OuverteGérer← Revenir aux étudiantsDOSSIER ÉTUDIANT · ESCEN-TEST-001Élise Étudiante au nom composéIngénierie informatique et cybersécurité · Licence 1 · Groupe 1Identité et contactsAnnées et groupesAssiduité et présencesFrais et versementsNotesPièces du dossierPayé : 400 FCFA · Reste à payer : 800 FCFAVersementsEnregistrer un paiementDateMontantModeRéférence01/09/2026400 FCFANon renseignéPAY-INITIAL"
+  },
+  {
+    "section": "Notes",
+    "headings": [
+      "Élise Étudiante au nom composé",
+      "Notes"
+    ],
+    "buttons": [
+      "Identité et contacts",
+      "Années et groupes",
+      "Assiduité et présences",
+      "Frais et versements",
+      "Notes",
+      "Pièces du dossier",
+      "Ouvrir l’évaluation"
+    ],
+    "fields": [
+      "Année consultée"
+    ],
+    "tables": [
+      [
+        "Matière",
+        "Évaluation",
+        "État épreuve",
+        "Note / 20",
+        "Présence & Correction",
+        "Actions"
+      ]
+    ],
+    "text": "Accueil/Dossiers étudiants/Dossier ESCEN-TEST-001Année consultéeAnnée de travail : 2026-2027Toutes les années · consultation2025-2026 · OuverteGérer← Revenir aux étudiantsDOSSIER ÉTUDIANT · ESCEN-TEST-001Élise Étudiante au nom composéIngénierie informatique et cybersécurité · Licence 1 · Groupe 1Identité et contactsAnnées et groupesAssiduité et présencesFrais et versementsNotesPièces du dossierNotesMatièreÉvaluationÉtat épreuveNote / 20Présence & CorrectionActionsAnalyse annuelleExamen de conception des systèmes distribuésEXAMENBrouillon12 / 20Présent · Copie corrigéeRéclamation : NouvelleOuvrir l’évaluation"
+  },
+  {
+    "section": "Pièces du dossier",
+    "headings": [
+      "Élise Étudiante au nom composé",
+      "Pièces du dossier"
+    ],
+    "buttons": [
+      "Identité et contacts",
+      "Années et groupes",
+      "Assiduité et présences",
+      "Frais et versements",
+      "Notes",
+      "Pièces du dossier",
+      "Ajouter une pièce"
+    ],
+    "fields": [
+      "Année consultée"
+    ],
+    "tables": [],
+    "text": "Accueil/Dossiers étudiants/Dossier ESCEN-TEST-001Année consultéeAnnée de travail : 2026-2027Toutes les années · consultation2025-2026 · OuverteGérer← Revenir aux étudiantsDOSSIER ÉTUDIANT · ESCEN-TEST-001Élise Étudiante au nom composéIngénierie informatique et cybersécurité · Licence 1 · Groupe 1Identité et contactsAnnées et groupesAssiduité et présencesFrais et versementsNotesPièces du dossierPièces du dossierAjouter une pièceAucune pièce déposée."
+  }
+]

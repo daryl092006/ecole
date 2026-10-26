@@ -27,7 +27,7 @@ for (const width of [800, 820, 834, 1024]) {
       await page.screenshot({ path: `tmp/screenshots/tablet-layout/${width}/${path.slice(1).replaceAll('/', '-')}.png` });
     }
     await page.goto('/finance/versements');
-    await page.getByRole('button', { name: 'Choisir le dossier pour encaisser', exact: true }).click();
+    await page.getByRole('button', { name: 'Enregistrer un paiement', exact: true }).click();
     await page.getByRole('button', { name: 'Consulter le dossier', exact: true }).click();
     const drawer = page.getByRole('dialog', { name: 'Dossier étudiant · ESCEN-TEST-001' });
     await expect(drawer).toBeVisible();

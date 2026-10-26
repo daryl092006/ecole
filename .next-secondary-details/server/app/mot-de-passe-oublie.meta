@@ -1,0 +1,15 @@
+{
+  "headers": {
+    "x-nextjs-stale-time": "300",
+    "x-nextjs-prerender": "1",
+    "x-next-cache-tags": "_N_T_/layout,_N_T_/(auth)/layout,_N_T_/(auth)/mot-de-passe-oublie/layout,_N_T_/(auth)/mot-de-passe-oublie/page,_N_T_/mot-de-passe-oublie"
+  },
+  "routeCache": {
+    "key": "/route-cache/APP_PAGE/7e8645d159ed86048f67052eee73bd66ba970b0619c8fbde532ac0c023e55e3b/$/mot-de-passe-oublie",
+    "owner": {
+      "kind": "APP_PAGE",
+      "sourceRoute": "/(auth)/mot-de-passe-oublie/page"
+    },
+    "isFallback": false
+  }
+}

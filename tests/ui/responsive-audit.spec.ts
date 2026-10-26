@@ -28,7 +28,7 @@ const screens: Screen[] = [
     href: `${PORTAL_ROUTES.find(route => route.section === section)!.href}?collection=${key}`, account: 'staff' as const,
   }))),
 ];
-const widths = [360, 390, 768, 1024, 1440];
+const widths = process.env.ESCEN_AUDIT_WIDTHS ? process.env.ESCEN_AUDIT_WIDTHS.split(',').map(Number) : [360, 390, 768, 1024, 1440];
 const artifactRoot = process.env.ESCEN_AUDIT_ARTIFACT_ROOT || 'tmp/screenshots/responsive-audit';
 const stage = process.env.ESCEN_RESPONSIVE_STAGE || 'before';
 if (!['before', 'after'].includes(stage)) throw new Error('Étape responsive invalide.');

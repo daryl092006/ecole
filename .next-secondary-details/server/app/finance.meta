@@ -1,0 +1,15 @@
+{
+  "headers": {
+    "x-nextjs-stale-time": "300",
+    "x-nextjs-prerender": "1",
+    "x-next-cache-tags": "_N_T_/layout,_N_T_/(portail)/layout,_N_T_/(portail)/finance/layout,_N_T_/(portail)/finance/page,_N_T_/finance"
+  },
+  "routeCache": {
+    "key": "/route-cache/APP_PAGE/f9430453d9a8959b352cc0c7b6616348a41f060d720c924cdac76eaf90fd7fa3/$/finance",
+    "owner": {
+      "kind": "APP_PAGE",
+      "sourceRoute": "/(portail)/finance/page"
+    },
+    "isFallback": false
+  }
+}

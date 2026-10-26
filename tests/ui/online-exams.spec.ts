@@ -3,7 +3,7 @@ import { authenticateFixture, fixtureCapabilities, snapshot } from './persistent
 import { ROLES } from '../../src/types/permissions';
 import type { OnlineExamCommand, OnlineExamView } from '../../src/types/onlineExam';
 
-async function setup(page: Page, seconds = 180) {
+async function setup(page: Page, seconds = 180, paper?: OnlineExamView['paper']) {
   await authenticateFixture(page);
   await page.route('**/api/session', route => route.fulfill({ json: { capabilities: fixtureCapabilities, accountId: 'exam-account', name: 'Candidat Test', email: 'student@example.test', role: ROLES.STUD, availableRoles: [ROLES.STUD], studentId: 'S1', teacherId: null, matricule: 'EXAM', mustChangePassword: false } }));
   await page.route('**/api/campus', route => route.fulfill({ json: snapshot }));
@@ -15,6 +15,7 @@ async function setup(page: Page, seconds = 180) {
     answers: {},
   };
   const commands: OnlineExamCommand[] = [];
+  if (paper) view.paper = paper;
   let fail = false;
   let dropResponse = false;
   function seal() {
@@ -47,6 +48,29 @@ async function setup(page: Page, seconds = 180) {
   await page.getByRole('button', { name: 'Reprendre ma copie' }).click();
   return { commands, get view() { return view; }, setOffline(value: boolean) { fail = value; }, dropNextResponse() { dropResponse = true; }, concurrentUpdate() { view = { ...view, attempt: { ...view.attempt, revision: view.attempt.revision + 1, lastSaveId: 'other-tab' } }; } };
 }
+
+for (const width of [390, 1440]) test(`Étude de cas, types de réponses et justification conservés à ${width}px`, async ({ page }) => {
+  await page.setViewportSize({ width, height: 950 });
+  const fixture = await setup(page, 180, { id: 'paper', title: 'Cas de finance', parts: [{ id: 'part', title: 'Décision de financement',
+    caseStudy: true, instructions: 'Analysez les deux options avant de répondre.', questions: [
+      { id: 'q1', kind: 'QCM_SIMPLE', prompt: 'Quel financement retenir ?', points: 10, requiresJustification: true,
+        options: [{ id: 'a', label: 'Option A' }, { id: 'b', label: 'Option B' }] },
+      { id: 'q2', kind: 'TEXTE', prompt: 'Définissez le risque.', presentation: 'SHORT_TEXT', points: 5, options: [] },
+      { id: 'q3', kind: 'TEXTE', prompt: 'Développez votre analyse.', presentation: 'LONG_TEXT', points: 5, options: [] },
+    ] }] });
+  await expect(page.getByRole('heading', { name: 'Étude de cas : Décision de financement' })).toBeVisible();
+  await page.getByRole('radio', { name: 'Option A', exact: true }).check();
+  await page.getByRole('textbox', { name: 'Justifiez votre réponse' }).fill('Ce choix conserve la trésorerie.');
+  await page.getByRole('radio', { name: 'Option B', exact: true }).check();
+  await expect(page.getByRole('textbox', { name: 'Justifiez votre réponse' })).toHaveValue('Ce choix conserve la trésorerie.');
+  await expect(page.getByRole('textbox', { name: 'Votre réponse', exact: true }).nth(0)).toHaveAttribute('rows', '2');
+  await expect(page.getByRole('textbox', { name: 'Votre réponse', exact: true }).nth(1)).toHaveAttribute('rows', '6');
+  await expect.poll(() => fixture.view.answers.q1).toEqual({ text: 'Ce choix conserve la trésorerie.', option_ids: ['b'] });
+  await page.reload();
+  await page.getByRole('button', { name: 'Reprendre ma copie' }).click();
+  await expect(page.getByRole('radio', { name: 'Option B', exact: true })).toBeChecked();
+  await expect(page.getByRole('textbox', { name: 'Justifiez votre réponse' })).toHaveValue('Ce choix conserve la trésorerie.');
+});
 
 test('Sauvegarde, reprise et remise volontaire avec récapitulatif à 390 px', async ({ page }) => {
   const fixture = await setup(page);

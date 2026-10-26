@@ -1,0 +1,15 @@
+{
+  "headers": {
+    "x-nextjs-stale-time": "300",
+    "x-nextjs-prerender": "1",
+    "x-next-cache-tags": "_N_T_/layout,_N_T_/(portail)/layout,_N_T_/(portail)/tableau-de-bord/layout,_N_T_/(portail)/tableau-de-bord/rapports/layout,_N_T_/(portail)/tableau-de-bord/rapports/page,_N_T_/tableau-de-bord/rapports"
+  },
+  "routeCache": {
+    "key": "/route-cache/APP_PAGE/fd3d324ed4e7daf137e424838ac54f6bd9cec63b8214e5d054cafa1cf150955e/$/tableau-de-bord/rapports",
+    "owner": {
+      "kind": "APP_PAGE",
+      "sourceRoute": "/(portail)/tableau-de-bord/rapports/page"
+    },
+    "isFallback": false
+  }
+}

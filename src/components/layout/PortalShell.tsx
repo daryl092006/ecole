@@ -115,15 +115,7 @@ export default function PortalShell({ children }: { children: ReactNode }) {
               : <>
                 {state.actionOutcome && <ActionResult title={state.actionOutcome.title} href={state.actionOutcome.href && isRouteAllowed(state.actionOutcome.href.split('?')[0], activeRole) ? state.actionOutcome.href : undefined} nextLabel={state.actionOutcome.nextLabel} onDismiss={state.clearActionOutcome}>{state.actionOutcome.detail}</ActionResult>}
                 <div key={`${state.academicYearSelection}:${state.academicYearContext?.selectedYearId || ''}`}>{state.academicYearContext && !state.academicYearContext.selectedYearId && state.academicYearSelection !== 'all' && !['acad_reference', 'acad_program', 'staff_records', 'staff_list', 'staff_permissions', 'staff_roles', 'espace_profile', 'sys_roles', 'sys_permissions', 'sys_data', 'sys_logs', 'sys_backups', 'sys_settings', 'log_assets', 'log_suppliers'].includes(currentSubTab) ? <section className="card card-full"><h1>Choisir une année scolaire</h1><p>Sélectionnez une année dans le champ Année pour consulter les activités, dossiers et résultats correspondants. Aucune donnée sans rattachement confirmé ne sera ajoutée à cette année.</p>{state.globalAccess && (perms.permissions.includes('academic.year.open') || perms.permissions.includes('academic.structure.manage')) && <Link className="btn btn-primary" href="/academique/referentiel?collection=academic_years">Configurer les années scolaires</Link>}</section> : children}</div>
-                <footer className="connected-data-bar workspace-data-footer" aria-label="État des données">
-                  <div className="workspace-footer-inner">
-                    <span>ESCEN · École Supérieure de Commerce et d’Économie Numérique</span>
-                    <span className="footer-system-status">
-                      <span className="status-dot-pulse" aria-hidden="true" />
-                      Portail académique synchronisé ({currentYear?.name || '2025-2026'})
-                    </span>
-                  </div>
-                </footer>
+
               </>}
 
         </>}

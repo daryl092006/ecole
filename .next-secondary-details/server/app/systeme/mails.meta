@@ -1,0 +1,15 @@
+{
+  "headers": {
+    "x-nextjs-stale-time": "300",
+    "x-nextjs-prerender": "1",
+    "x-next-cache-tags": "_N_T_/layout,_N_T_/(portail)/layout,_N_T_/(portail)/systeme/layout,_N_T_/(portail)/systeme/mails/layout,_N_T_/(portail)/systeme/mails/page,_N_T_/systeme/mails"
+  },
+  "routeCache": {
+    "key": "/route-cache/APP_PAGE/d93e56e31f74ada8a01bb042c286f3fe0f5fe88022e58efac794ea4bf5684eae/$/systeme/mails",
+    "owner": {
+      "kind": "APP_PAGE",
+      "sourceRoute": "/(portail)/systeme/mails/page"
+    },
+    "isFallback": false
+  }
+}

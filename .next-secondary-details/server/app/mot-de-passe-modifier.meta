@@ -1,0 +1,15 @@
+{
+  "headers": {
+    "x-nextjs-stale-time": "300",
+    "x-nextjs-prerender": "1",
+    "x-next-cache-tags": "_N_T_/layout,_N_T_/(auth)/layout,_N_T_/(auth)/mot-de-passe-modifier/layout,_N_T_/(auth)/mot-de-passe-modifier/page,_N_T_/mot-de-passe-modifier"
+  },
+  "routeCache": {
+    "key": "/route-cache/APP_PAGE/cb1394531101fb32bcec688eee6ff6bd55d2ae8650fdc961fc2c302419a960fc/$/mot-de-passe-modifier",
+    "owner": {
+      "kind": "APP_PAGE",
+      "sourceRoute": "/(auth)/mot-de-passe-modifier/page"
+    },
+    "isFallback": false
+  }
+}

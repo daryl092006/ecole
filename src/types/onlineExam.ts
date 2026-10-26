@@ -1,6 +1,8 @@
 export interface OnlineExamAnswer { text: string; option_ids: string[]; }
 export interface OnlineExamQuestion {
   id: string; kind: string; prompt: string; points: number;
+  presentation?: 'TRUE_FALSE' | 'SHORT_TEXT' | 'LONG_TEXT';
+  requiresJustification?: boolean;
   options: { id: string; label: string }[];
 }
 export interface OnlineExamView {
@@ -13,7 +15,7 @@ export interface OnlineExamView {
     submissionKind: 'MANUAL' | 'AUTO_DEADLINE' | null;
     completionStatus: 'NON_TRAITE' | 'PARTIELLE' | 'COMPLETE' | null;
   };
-  paper: { id: string; title: string; parts: { id: string; title: string; instructions: string | null; questions: OnlineExamQuestion[] }[] };
+  paper: { id: string; title: string; parts: { id: string; title: string; instructions: string | null; caseStudy?: boolean; questions: OnlineExamQuestion[] }[] };
   answers: Record<string, OnlineExamAnswer>;
   lastSavedAt: string | null;
 }

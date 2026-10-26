@@ -1,0 +1,15 @@
+{
+  "headers": {
+    "x-nextjs-stale-time": "300",
+    "x-nextjs-prerender": "1",
+    "x-next-cache-tags": "_N_T_/layout,_N_T_/(auth)/layout,_N_T_/(auth)/mot-de-passe-reinitialiser/layout,_N_T_/(auth)/mot-de-passe-reinitialiser/page,_N_T_/mot-de-passe-reinitialiser"
+  },
+  "routeCache": {
+    "key": "/route-cache/APP_PAGE/bb8559962b9f48781dee541cd817d161f7cfc0314abf7c5f7da49ff973e6ef55/$/mot-de-passe-reinitialiser",
+    "owner": {
+      "kind": "APP_PAGE",
+      "sourceRoute": "/(auth)/mot-de-passe-reinitialiser/page"
+    },
+    "isFallback": false
+  }
+}

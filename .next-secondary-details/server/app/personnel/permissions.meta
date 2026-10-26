@@ -1,0 +1,15 @@
+{
+  "headers": {
+    "x-nextjs-stale-time": "300",
+    "x-nextjs-prerender": "1",
+    "x-next-cache-tags": "_N_T_/layout,_N_T_/(portail)/layout,_N_T_/(portail)/personnel/layout,_N_T_/(portail)/personnel/permissions/layout,_N_T_/(portail)/personnel/permissions/page,_N_T_/personnel/permissions"
+  },
+  "routeCache": {
+    "key": "/route-cache/APP_PAGE/d4bab0cd0638c1093e6a24c9538f54c71fe86872b8394be3dab295b548edcaeb/$/personnel/permissions",
+    "owner": {
+      "kind": "APP_PAGE",
+      "sourceRoute": "/(portail)/personnel/permissions/page"
+    },
+    "isFallback": false
+  }
+}

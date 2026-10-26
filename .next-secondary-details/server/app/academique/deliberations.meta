@@ -1,0 +1,15 @@
+{
+  "headers": {
+    "x-nextjs-stale-time": "300",
+    "x-nextjs-prerender": "1",
+    "x-next-cache-tags": "_N_T_/layout,_N_T_/(portail)/layout,_N_T_/(portail)/academique/layout,_N_T_/(portail)/academique/deliberations/layout,_N_T_/(portail)/academique/deliberations/page,_N_T_/academique/deliberations"
+  },
+  "routeCache": {
+    "key": "/route-cache/APP_PAGE/91428dc9e30677eb2156cc3f22443c07359324daa0328e8dac85654adca5ef12/$/academique/deliberations",
+    "owner": {
+      "kind": "APP_PAGE",
+      "sourceRoute": "/(portail)/academique/deliberations/page"
+    },
+    "isFallback": false
+  }
+}

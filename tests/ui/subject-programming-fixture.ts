@@ -14,7 +14,9 @@ export function subjectProgrammingFixture(context: PersistentContext = securityC
   tables.exam_deliveries = [{ id: uuid(980), evaluation_id: id.evaluation(0), session_id: tables.sessions[0].id,
     access_opens_at: start.toISOString(), access_closes_at: end.toISOString(), duration_minutes: 120 }];
   const transactions: PersistentChange[][] = [];
+  let qcmJustification = false;
   const client = { async rpc(name: string, args: Record<string, unknown> = {}) {
+    if (name === 'escen_subject_features') return { data: { qcmJustification }, error: null };
     if (name === 'escen_backend_snapshot') return { data: snapshot, error: null };
     if (name === 'escen_academic_year_context') return { data: { currentYearId: id.year }, error: null };
     if (name !== 'escen_subject_transaction') throw new Error(`Unexpected RPC: ${name}`);
@@ -36,5 +38,5 @@ export function subjectProgrammingFixture(context: PersistentContext = securityC
     method: 'POST', headers: { 'Content-Type': 'application/json', 'x-escen-year': id.year },
     body: JSON.stringify({ revision: snapshot.revision, reason: 'Composition du sujet programmé', subject: { ...subject, ...patch }, previousId }),
   }));
-  return { snapshot, route, subject, transactions, get, post };
+  return { snapshot, route, subject, transactions, get, post, enableJustification() { qcmJustification = true; } };
 }

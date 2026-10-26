@@ -1,0 +1,15 @@
+{
+  "headers": {
+    "x-nextjs-stale-time": "300",
+    "x-nextjs-prerender": "1",
+    "x-next-cache-tags": "_N_T_/layout,_N_T_/(portail)/layout,_N_T_/(portail)/mon-espace/layout,_N_T_/(portail)/mon-espace/support/layout,_N_T_/(portail)/mon-espace/support/page,_N_T_/mon-espace/support"
+  },
+  "routeCache": {
+    "key": "/route-cache/APP_PAGE/8c481ed56bd38194147904ef7dd7eb9a9a66dbe6ae9edc956a6fd0df0369897e/$/mon-espace/support",
+    "owner": {
+      "kind": "APP_PAGE",
+      "sourceRoute": "/(portail)/mon-espace/support/page"
+    },
+    "isFallback": false
+  }
+}

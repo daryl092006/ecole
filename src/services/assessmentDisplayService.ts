@@ -13,7 +13,7 @@ export const ASSESSMENT_LABELS={control:'Contrôles continus',exam:'Examens',res
 /** Correction progress is separate from the institutional grade workflow. */
 export function assessmentProgress(values: Record<string, unknown>, now = new Date()): string {
   if (values.cancelled_at || values.archived_at || values.deleted_at) return 'Retirée';
-  if (values.status === 'PUBLIEES' || [true, 1, '1'].includes(values.published as boolean | number | string)) return 'Résultats publiés';
+  if (values.status === 'PUBLIEES') return 'Résultats publiés';
   if (values.status === 'VALIDEES') return 'Notes validées';
   if (values.status === 'A_CONTROLER') return 'À contrôler';
   if (values.status === 'SOUMISES') return 'Correction soumise';
@@ -26,6 +26,7 @@ export function assessmentProgress(values: Record<string, unknown>, now = new Da
     if (date < today) return 'En attente de correction';
     return 'Prévue aujourd’hui';
   }
+  if ([true, 1, '1'].includes(values.published as boolean | number | string)) return 'Programmation publiée';
   return values.status === 'BROUILLON' ? 'Brouillon' : 'État non renseigné';
 }
 

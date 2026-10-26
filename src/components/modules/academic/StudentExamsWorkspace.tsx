@@ -175,11 +175,13 @@ function OnlineExamEditor({ initial, onBack }: { initial: OnlineExamView; onBack
       try { const next = await readOnlineExam(portal.activeRole, initial.attempt.id); pending.current = null; draft.current = next.answers; setAnswers(next.answers); blocked.current = false; setConflict(false); setError(''); apply(next); }
       catch (cause) { setError(cause instanceof Error ? cause.message : 'Rechargement impossible.'); }
     }}>Recharger la version enregistrée</button>}
-    {view.paper.parts.map(part => <section key={part.id}><h2>{part.title}</h2>{part.instructions && <p>{part.instructions}</p>}{part.questions.map((question, index) => {
+    {view.paper.parts.map(part => <section key={part.id}><h2>{part.caseStudy ? `Étude de cas : ${part.title}` : part.title}</h2>{part.instructions && <p className="subject-text">{part.instructions}</p>}{part.questions.map((question, index) => {
       const answer = answers[question.id] || emptyExamAnswer();
       return <fieldset className="online-exam-question" disabled={locked} key={question.id}><legend>{index + 1}. ({question.points} points)</legend><SubjectRichText value={question.prompt} />
-        {question.kind.startsWith('QCM') ? question.options.map(option => <label className="checkbox-field" key={option.id}><input type={question.kind === 'QCM_SIMPLE' ? 'radio' : 'checkbox'} name={question.id} checked={answer.option_ids.includes(option.id)} onChange={event => update(question.id, { text: '', option_ids: question.kind === 'QCM_SIMPLE' ? [option.id] : event.target.checked ? [...answer.option_ids, option.id] : answer.option_ids.filter(id => id !== option.id) })} />{option.label}</label>)
-          : <label className="form-group">Votre réponse<textarea className="input" rows={6} maxLength={20000} value={answer.text} onChange={event => update(question.id, { text: event.target.value, option_ids: [] })} /></label>}
+        {question.kind.startsWith('QCM') ? <>
+          {question.options.map(option => <label className="checkbox-field" key={option.id}><input type={question.kind === 'QCM_SIMPLE' ? 'radio' : 'checkbox'} name={question.id} checked={answer.option_ids.includes(option.id)} onChange={event => update(question.id, { text: question.requiresJustification ? answer.text : '', option_ids: question.kind === 'QCM_SIMPLE' ? [option.id] : event.target.checked ? [...answer.option_ids, option.id] : answer.option_ids.filter(id => id !== option.id) })} />{option.label}</label>)}
+          {question.requiresJustification && <label className="form-group">Justifiez votre réponse<textarea className="input" rows={3} maxLength={20000} value={answer.text} onChange={event => update(question.id, { ...answer, text: event.target.value })} /></label>}
+        </> : <label className="form-group">Votre réponse<textarea className="input" rows={question.presentation === 'SHORT_TEXT' ? 2 : 6} maxLength={20000} value={answer.text} onChange={event => update(question.id, { text: event.target.value, option_ids: [] })} /></label>}
       </fieldset>;
     })}</section>)}
     {review && !terminal && <ReviewedForm reviewInitially busy={submitting} error={error} confirmLabel="Confirmer la remise de ma copie"

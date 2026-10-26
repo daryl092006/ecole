@@ -54,11 +54,9 @@ for (const width of [390, 768, 800, 820, 834, 1024, 1025, 1440]) {
     if (width <= 1024) await expect(menu).not.toBeVisible();
     await expect(page.locator('.workspace-page-navigation')).toHaveCount(0);
     await expect(page.getByRole('navigation', { name: /^Pages :/ })).toHaveCount(0);
-    await expect(page.getByRole('combobox', { name: 'Filière', exact: true })).toBeVisible();
-    await page.getByRole('combobox', { name: 'Filière', exact: true }).selectOption({ index: 1 });
-    await expect(page.getByRole('button', { name: 'Effacer les filtres', exact: true })).toBeVisible();
-    await page.getByRole('button', { name: 'Effacer les filtres', exact: true }).click();
-    await page.goto('/etudiants/parcours');
+    await expect(page.getByRole('combobox', { name: 'Filière', exact: true })).toHaveCount(0);
+    if (width <= 1024) await page.getByRole('button', { name: 'Ouvrir la navigation', exact: true }).click();
+    await menu.getByRole('link', { name: 'Réinscriptions et statuts', exact: true }).click();
     await expect(page).toHaveURL(/\/etudiants\/parcours$/);
     await page.goBack();
     await expect(page).toHaveURL(/\/etudiants$/);
@@ -72,7 +70,7 @@ for (const width of [390, 1440]) {
     await page.setViewportSize({ width, height: 900 });
     const { problems } = await installResponsiveAudit(page, 'staff');
     await page.goto('/finance/versements');
-    await page.getByRole('button', { name: 'Choisir le dossier pour encaisser', exact: true }).click();
+    await page.getByRole('button', { name: 'Enregistrer un paiement', exact: true }).click();
     await page.getByRole('button', { name: 'Consulter le dossier', exact: true }).click();
     const dossier = page.getByRole('dialog', { name: 'Dossier étudiant · ESCEN-TEST-001' });
     await expect(dossier).toBeVisible();

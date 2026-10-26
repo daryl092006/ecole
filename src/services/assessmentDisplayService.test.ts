@@ -8,7 +8,10 @@ assert.equal(assessmentProgress({ correction_end_date: '2026-10-15' }, now), 'É
 assert.equal(assessmentProgress({ correction_submission_date: '2026-10-15' }, now), 'Correction soumise');
 assert.equal(assessmentProgress({ status: 'SAISIES' }, now), 'Notes saisies');
 assert.equal(assessmentProgress({ published: '0' }, now), 'État non renseigné');
-assert.equal(assessmentProgress({ published: '1' }, now), 'Résultats publiés');
+assert.equal(assessmentProgress({ published: '1' }, now), 'Programmation publiée');
+assert.equal(assessmentProgress({ published: '1', date: '2026-10-15' }, now), 'En attente de correction');
+assert.equal(assessmentProgress({ published: '1', correction_submission_date: '2026-10-15' }, now), 'Correction soumise');
+assert.equal(assessmentProgress({ status: 'PUBLIEES' }, now), 'Résultats publiés');
 assert.equal(assessmentProgress({ status: 'VALIDEES' }, now), 'Notes validées');
 assert.equal(combinedAssessmentProgress([{ status: 'PUBLIEES' }, { status: 'BROUILLON' }]), 'États différents');
 assert.equal(combinedAssessmentProgress([{ status: 'PUBLIEES' }], 1), 'Notes incomplètes');

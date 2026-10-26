@@ -81,3 +81,5 @@ next-env.d.ts
 /tmp/screenshots/page-*/
 /tmp/screenshots/loading-feedback/
 /tmp/screenshots/personnel-review/
+/tmp/next-subject-programming/
+/tmp/screenshots/subject-programming-*.png

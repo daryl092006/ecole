@@ -10,8 +10,10 @@ export default function StudentFiltersPanel({ students, filters, onChange, role 
   const levels = [...new Set(students.map(item => item.niveau))].sort();
   const groups = students.filter(item => (!filters.program || item.filiere === filters.program) && (!filters.level || item.niveau === filters.level));
   const activeFilters = [filters.level, filters.program, filters.groupId, filters.nationality, filters.gender, filters.status].filter(Boolean).length;
+  if (students.length <= 1 && !filters.search && !activeFilters) return null;
   const demographicFilter = (key: 'nationality' | 'gender' | 'status', label: string, all: string, missing: string) => {
     const options = [...new Map(students.map(student => [studentFilterValue(student[key]), student[key].trim() || missing])).entries()].sort((a, b) => a[1].localeCompare(b[1], 'fr'));
+    if (options.length <= 1 && !filters[key]) return null;
     return <label className="form-group">{label}<select className="select-input" value={filters[key]} onChange={event => onChange({ ...filters, [key]: event.target.value })}><option value="">{all}</option>{options.map(([value, text]) => <option key={value} value={value}>{value === MISSING_STUDENT_VALUE ? missing : text}</option>)}</select></label>;
   };
   return <div className="card card-full mb-2 student-filters"><div className="student-search-row">
@@ -24,9 +26,9 @@ export default function StudentFiltersPanel({ students, filters, onChange, role 
     {demographicFilter('gender', 'Sexe', 'Tous les sexes', 'Non renseigné')}
     {demographicFilter('status', 'Statut', 'Tous les statuts', 'Non renseigné')}
   </div></section><div className="student-filter-footer"><p role="status">{results.length} résultat(s) sur {students.length} dossier(s).</p>
-    <div className="btn-group">{(filters.search || activeFilters > 0) && <button className="btn btn-outline" onClick={() => onChange(EMPTY_STUDENT_FILTERS)}>Effacer les filtres</button>}<IconButton className="btn btn-outline" disabled={!results.length} onClick={() => {
+    <div className="btn-group">{(filters.search || activeFilters > 0) && <button className="btn btn-outline" onClick={() => onChange(EMPTY_STUDENT_FILTERS)}>Effacer les filtres</button>}{results.length > 0 && <IconButton className="btn btn-outline" onClick={() => {
       const permitted = filterRegisteredStudents(students, filters, role);
       downloadCsv('escen-etudiants.csv', ['Matricule', 'Prénom', 'Nom', 'Email', 'Nationalité', 'Sexe', 'Filière', 'Niveau', 'Groupe', 'Statut'], permitted.map(item => [item.matricule, item.firstname, item.lastname, item.email, item.nationality, item.gender, item.filiere, item.niveau, item.groupe, item.status]));
-    }} label="Exporter les résultats CSV" /></div></div>
+    }} label="Exporter les résultats CSV" />}</div></div>
   </div>;
 }

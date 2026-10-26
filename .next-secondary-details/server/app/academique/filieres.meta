@@ -1,0 +1,15 @@
+{
+  "headers": {
+    "x-nextjs-stale-time": "300",
+    "x-nextjs-prerender": "1",
+    "x-next-cache-tags": "_N_T_/layout,_N_T_/(portail)/layout,_N_T_/(portail)/academique/layout,_N_T_/(portail)/academique/filieres/layout,_N_T_/(portail)/academique/filieres/page,_N_T_/academique/filieres"
+  },
+  "routeCache": {
+    "key": "/route-cache/APP_PAGE/b3a88f903e5e3d3f825a65de7d819fcd16c91ead4863f05b080f401acadf6a4c/$/academique/filieres",
+    "owner": {
+      "kind": "APP_PAGE",
+      "sourceRoute": "/(portail)/academique/filieres/page"
+    },
+    "isFallback": false
+  }
+}

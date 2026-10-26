@@ -35,7 +35,8 @@ for (const width of [390, 1440]) test(`Personnel : création, historique et ense
   await expect(dialog).not.toBeVisible();
   const member = page.getByRole('row').filter({ hasText: 'Marie Comptable' });
   await expect(member).toContainText('Personnel administratif');
-  await member.getByRole('button', { name: 'Modifier', exact: true }).click();
+  await member.getByRole('button', { name: 'Ouvrir', exact: true }).click();
+  await dialog.getByRole('button', { name: 'Modifier le dossier', exact: true }).click();
   await dialog.getByLabel('Fonction', { exact: true }).fill('Secrétaire');
   await dialog.getByLabel('Motif', { exact: true }).fill('Changement de fonction validé');
   await dialog.getByRole('button', { name: 'Vérifier les informations', exact: true }).click();

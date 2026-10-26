@@ -5,7 +5,7 @@ import { changeQuestionType, questionType, questionTypes, questionCompletionIssu
 import { subjectPoints } from '@/services/subjectCompositionService';
 import SubjectRichEditor from '@/components/ui/SubjectRichEditor';
 
-export default function SubjectConstructor({ subject, onChange, disabled }: { subject: SubjectInput; onChange: (subject: SubjectInput) => void; disabled: boolean }) {
+export default function SubjectConstructor({ subject, onChange, disabled, allowJustification = false }: { subject: SubjectInput; onChange: (subject: SubjectInput) => void; disabled: boolean; allowJustification?: boolean }) {
   const [partIndex, setPartIndex] = useState(0);
   const [questionIndex, setQuestionIndex] = useState(0);
   const [removal, setRemoval] = useState<'part' | 'question' | null>(null);
@@ -34,7 +34,7 @@ export default function SubjectConstructor({ subject, onChange, disabled }: { su
         {part && <section className="subject-constructor-part-form">
           <label className="form-group">Titre de la partie<input className="input" required maxLength={160} value={part.title} onChange={event => updatePart({ title: event.target.value })} /></label>
           <label className="checkbox-field"><input type="checkbox" checked={!!part.caseStudy} onChange={event => updatePart({ caseStudy: event.target.checked })} />C’est une étude de cas</label>
-          <label className="form-group">{part.caseStudy ? 'Présentation du cas' : 'Consignes de la partie'}<textarea className="input" maxLength={8000} value={part.instructions} onChange={event => updatePart({ instructions: event.target.value })} /></label>
+          <label className="form-group">{part.caseStudy ? 'Présentation du cas' : 'Consignes de la partie'}<textarea className="input" maxLength={4000} value={part.instructions} onChange={event => updatePart({ instructions: event.target.value })} /></label>
           <button type="button" className="btn btn-outline" onClick={() => setRemoval('part')}>Retirer cette partie</button>
         </section>}
       </aside>
@@ -53,6 +53,7 @@ export default function SubjectConstructor({ subject, onChange, disabled }: { su
                   {question.presentation !== 'TRUE_FALSE' && <button type="button" className="btn btn-outline" disabled={question.options.length <= 2} onClick={() => updateQuestion({ options: question.options.filter((_, i) => i !== index) })}>Retirer le choix {index + 1}</button>}
                 </div>)}
                 {question.presentation !== 'TRUE_FALSE' && <button type="button" className="btn btn-outline" disabled={question.options.length >= 8} onClick={() => updateQuestion({ options: [...question.options, { label: '', correct: false }] })}>Ajouter un choix</button>}
+                {(allowJustification || question.requiresJustification) && <label className="checkbox-field"><input type="checkbox" disabled={!allowJustification} checked={!!question.requiresJustification} onChange={event => updateQuestion({ requiresJustification: event.target.checked })} />Demander une justification</label>}
               </section>}
               <label className="form-group">Corrigé et indications de correction<textarea className="input" maxLength={8000} value={question.correction} onChange={event => updateQuestion({ correction: event.target.value })} /></label>
               {questionCompletionIssue(question) && <p className="subject-question-hint">{questionCompletionIssue(question)}</p>}

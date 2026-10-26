@@ -1,0 +1,15 @@
+{
+  "headers": {
+    "x-nextjs-stale-time": "300",
+    "x-nextjs-prerender": "1",
+    "x-next-cache-tags": "_N_T_/layout,_N_T_/(portail)/layout,_N_T_/(portail)/personnel/layout,_N_T_/(portail)/personnel/roles/layout,_N_T_/(portail)/personnel/roles/page,_N_T_/personnel/roles"
+  },
+  "routeCache": {
+    "key": "/route-cache/APP_PAGE/b95ec62a107b3f93955ef094d44b17f0225b2217890b3e46d9158368cf2d6294/$/personnel/roles",
+    "owner": {
+      "kind": "APP_PAGE",
+      "sourceRoute": "/(portail)/personnel/roles/page"
+    },
+    "isFallback": false
+  }
+}

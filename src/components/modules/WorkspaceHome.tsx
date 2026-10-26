@@ -30,8 +30,6 @@ export default function WorkspaceHome({ mode = 'home' }: { mode?: 'home' | 'over
   const reports = state.availableTabs.flatMap(tab => tab.subTabs || []).filter(section => ['fin_reports', 'sys_backups', 'sys_data'].includes(section.id));
   const title = mode === 'overview' ? 'Vue d’ensemble' : mode === 'reports' ? 'Rapports de pilotage' : state.perms.scope.ownDataOnly ? 'Mon espace étudiant' : 'Mon espace ESCEN';
 
-  const canViewFinance = state.perms.permissions.includes('finance.view');
-  const canViewGrades = state.perms.permissions.includes('grade.view');
   const canViewStudents = state.perms.permissions.includes('student.view');
 
   // Financial aggregates
@@ -473,7 +471,7 @@ export default function WorkspaceHome({ mode = 'home' }: { mode?: 'home' | 'over
 
   if (mode === 'reports') return <div className="workspace-home"><div className="page-intro"><div><h1>{title}</h1></div></div><div className="home-destinations">{reports.map(report => <Link key={report.id} href={report.href}><ArrowUpRight size={18} className="destination-arrow" /><h3>{report.name}</h3><span>Consulter</span></Link>)}</div>{!reports.length && <section className="card"><p>Aucun rapport disponible.</p></section>}</div>;
   return <div className="workspace-home">
-    <div className="home-hero"><div><h1>{title}</h1><p>{mode === 'overview' ? 'Retrouvez les indicateurs et les dossiers utiles à votre rôle.' : state.perms.scope.ownDataOnly ? 'Retrouvez vos documents, vos résultats et le suivi de votre scolarité.' : 'Retrouvez vos activités et accédez aux services de l’établissement.'}</p></div></div>
+    <div className="home-hero"><div><h1>{title}</h1></div></div>
     {error && <div className="review-notice" role="alert"><span>{error}</span><IconButton className="btn btn-outline" onClick={retry} label="Réessayer" /></div>}
 
     {mode === 'home' && <>
@@ -484,7 +482,7 @@ export default function WorkspaceHome({ mode = 'home' }: { mode?: 'home' | 'over
         </div>
       </div>}
 
-      <div className="home-metrics">{[...(canViewStudents || state.perms.scope.ownDataOnly ? [{label:state.perms.scope.ownDataOnly?'Mon dossier':'Étudiants',value:state.students.length,icon:GraduationCap}] : []),...(state.perms.permissions.includes('user.manage') ? [{label:'Comptes du personnel',value:state.users.filter(user=>user.kind==='staff').length,icon:Users}] : []),...(canViewFinance ? [{label:'Paiements',value:count('payments'),icon:Wallet}] : []),...(canViewGrades ? [{label:'Notes',value:count('grades'),icon:BookOpen}] : [])].map(metric => <div key={metric.label}><metric.icon size={21} /><strong>{metric.value.toLocaleString('fr-FR')}</strong><span>{metric.label}</span></div>)}</div>
+
     </>}
 
     {mode === 'overview' && <>

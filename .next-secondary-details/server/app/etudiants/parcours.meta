@@ -1,0 +1,15 @@
+{
+  "headers": {
+    "x-nextjs-stale-time": "300",
+    "x-nextjs-prerender": "1",
+    "x-next-cache-tags": "_N_T_/layout,_N_T_/(portail)/layout,_N_T_/(portail)/etudiants/layout,_N_T_/(portail)/etudiants/parcours/layout,_N_T_/(portail)/etudiants/parcours/page,_N_T_/etudiants/parcours"
+  },
+  "routeCache": {
+    "key": "/route-cache/APP_PAGE/3cde608638a3a8b4c0a94a49152357655aabcb95ae7a781fd10366c232ddcfef/$/etudiants/parcours",
+    "owner": {
+      "kind": "APP_PAGE",
+      "sourceRoute": "/(portail)/etudiants/parcours/page"
+    },
+    "isFallback": false
+  }
+}

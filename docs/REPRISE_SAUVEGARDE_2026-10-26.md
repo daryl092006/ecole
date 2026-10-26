@@ -1,5 +1,8 @@
 # Sauvegarde du 26 octobre 2026 : contrôle préalable à la reprise opérationnelle
 
+Suite de cet audit : voir [la première phase appliquée et son reste à faire](REPRISE_OPERATIONNELLE_2026-10-26.md).
+Le présent document conserve les constats de l’audit avant application.
+
 ## Consigne et état
 
 L’utilisateur demande de reprendre les données réelles de l’ancienne solution dans

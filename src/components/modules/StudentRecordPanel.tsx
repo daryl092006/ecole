@@ -19,7 +19,6 @@ import {
   evaluationCandidateStatusLabel,
   evaluationGradeNoteLabel,
   evaluationGradeValue,
-  evaluationGradeIsComplete,
 } from '@/services/evaluationGradePolicy';
 import type { Student } from '@/types/student';
 import { useEffect, useState } from 'react';
@@ -69,15 +68,6 @@ export default function StudentRecordPanel({ studentId, embedded = false, initia
       .filter(row => nativeStudent && row.student_id === nativeStudent.id)
       .map(row => String(row.id)),
   );
-  const studentAttendances = (snapshot.tables.attendances || []).filter(row =>
-    studentEnrollmentIds.has(String(row.enrollment_id)),
-  );
-  const studentAbsencesCount = studentAttendances.filter(row =>
-    ['ABSENT', 'ABSENT_JUSTIFIE'].includes(String(row.status || '')),
-  ).length;
-  const studentLatesCount = studentAttendances.filter(row =>
-    ['RETARD', 'RETARD_JUSTIFIE'].includes(String(row.status || '')),
-  ).length;
   const studentCandidates = (snapshot.tables.evaluation_candidates || []).filter(row =>
     studentEnrollmentIds.has(String(row.enrollment_id)),
   );
@@ -102,7 +92,6 @@ export default function StudentRecordPanel({ studentId, embedded = false, initia
       evaluationKind: ev ? String(ev.kind || '') : '',
       evaluationStatus: ev ? String(ev.status || '') : '',
       gradeVal,
-      gradeComplete: evaluationGradeIsComplete(grade),
       noteLabel: evaluationGradeNoteLabel(grade, lastAttempt?.status),
       statusLabel: evaluationCandidateStatusLabel(grade, lastAttempt?.status),
       absenceStatus: grade?.absence_status ? String(grade.absence_status) : null,
@@ -110,16 +99,8 @@ export default function StudentRecordPanel({ studentId, embedded = false, initia
       complaintStatus: complaint ? String(complaint.status) : null,
     };
   });
-  const numericStudentGrades = studentEvaluationsSummary
-    .filter(item => item.gradeComplete)
-    .map(item => item.gradeVal)
-    .filter((v): v is number => v !== null);
-  const pendingCorrectionStudentCount = studentEvaluationsSummary.filter(
-    item => !item.gradeComplete,
-  ).length;
 
   const annualEnrollments = state.campus.data.enrollments.filter(item => item.studentId === student.matricule);
-  const selectedYear = state.academicYearContext?.years.find(item => item.id === state.academicYearContext?.selectedYearId);
   const sections = [
     { id: 'identity', name: 'Identité et contacts', table: '', native: '' },
     { id: 'parcours', name: 'Années et groupes', table: 'etudiant_group', native: 'stud_status' },
@@ -156,77 +137,8 @@ export default function StudentRecordPanel({ studentId, embedded = false, initia
         </div>
       </div>
 
-      <section className="card card-full" aria-label="Situation scolaire et financière">
-        <h2>Situation {selectedYear ? `en ${selectedYear.name}` : 'dans les années consultées'}</h2>
-        <dl className="data-summary">
-          <div>
-            <dt>Inscription annuelle</dt>
-            <dd>
-              {annualEnrollments.length
-                ? annualEnrollments.map(item => (
-                    <p key={item.id}>
-                      {state.campus.data.academicYears.find(year => year.id === item.academicYearId)?.label} ·{' '}
-                      {item.status === 'REINSCRIT' ? 'Réinscrit' : item.status === 'INSCRIT' ? 'Inscrit' : item.status}
-                    </p>
-                  ))
-                : 'Aucune inscription enregistrée pour l’année consultée'}
-            </dd>
-          </div>
-          {state.perms.permissions.includes('finance.view') && (
-            <>
-              <div>
-                <dt>Montant payé</dt>
-                <dd>
-                  {student.financials?.available === true
-                    ? `${student.financials.paid.toLocaleString('fr-FR')} FCFA`
-                    : 'Montant non établi : paiements et rattachements à vérifier'}
-                </dd>
-              </div>
-              <div>
-                <dt>Reste à payer</dt>
-                <dd>
-                  {student.financials?.available === true
-                    ? `${student.financials.remaining.toLocaleString('fr-FR')} FCFA`
-                    : 'Solde non établi'}
-                </dd>
-              </div>
-            </>
-          )}
-          {state.perms.permissions.includes('attendance.view') && studentAttendances.length > 0 && (
-            <div>
-              <dt>Assiduité</dt>
-              <dd>
-                {studentAttendances.length} pointage(s) · {studentAbsencesCount} absence(s)
-                {studentLatesCount > 0 ? ` · ${studentLatesCount} retard(s)` : ''}
-              </dd>
-            </div>
-          )}
-          {state.perms.permissions.includes('grade.view') && studentEvaluationsSummary.length > 0 && (
-            <div>
-              <dt>Évaluations & Notes</dt>
-              <dd>
-                {numericStudentGrades.length} notée(s)
-                {pendingCorrectionStudentCount > 0 ? ` · ${pendingCorrectionStudentCount} à corriger` : ''}
-              </dd>
-            </div>
-          )}
-        </dl>
-        {!annualEnrollments.length && (
-          <p className="cell-sub">L’inscription pour cette année doit être enregistrée avant un encaissement.</p>
-        )}
-        {state.history.error && (
-          <p role="alert">
-            {state.history.error}
-            <IconButton className="btn btn-outline" onClick={state.history.retry} label="Réessayer l’historique" />
-          </p>
-        )}
-        {error && (
-          <p role="alert">
-            {error}
-            <IconButton className="btn btn-outline" onClick={() => setRetry(value => value + 1)} label="Réessayer le dossier" />
-          </p>
-        )}
-      </section>
+      {state.history.error && <p role="alert">{state.history.error}<IconButton className="btn btn-outline" onClick={state.history.retry} label="Réessayer l’historique" /></p>}
+      {error && <p role="alert">{error}<IconButton className="btn btn-outline" onClick={() => setRetry(value => value + 1)} label="Réessayer le dossier" /></p>}
 
       <nav className="record-sections" aria-label="Sections du dossier étudiant">
         {sections.map(item => (
@@ -260,16 +172,20 @@ export default function StudentRecordPanel({ studentId, embedded = false, initia
       ) : (
         <>
           {['parcours', 'finance'].includes(section) && (
-            <StudentOperationsPanel key={`operations:${section}`} mode={section === 'finance' ? 'finance' : 'academic'} matricule={student.matricule} onChanged={() => setRetry(value => value + 1)} />
+            <>
+              {section === 'finance' && state.perms.permissions.includes('finance.view') && <p className="student-record-context">
+                {student.financials?.available === true ? `Payé : ${student.financials.paid.toLocaleString('fr-FR')} FCFA · Reste à payer : ${student.financials.remaining.toLocaleString('fr-FR')} FCFA` : 'Situation financière non établie.'}
+              </p>}
+              <StudentOperationsPanel key={`operations:${section}`} mode={section === 'finance' ? 'finance' : 'academic'} matricule={student.matricule} onChanged={() => setRetry(value => value + 1)}>
+                {section === 'parcours' && <StudentEnrollmentsPanel embedded matricule={student.matricule} />}
+              </StudentOperationsPanel>
+            </>
           )}
           {section === 'notes' && studentEvaluationsSummary.length > 0 && (
             <section className="card card-full mb-2" aria-label="Synthèse des évaluations et copies de l’étudiant">
               <div className="card-header">
                 <div>
-                  <h2>Évaluations, copies et résultats ({studentEvaluationsSummary.length})</h2>
-                  <p className="cell-sub">
-                    Vue consolidée des épreuves, de l’état de correction par l’enseignant, des copies en ligne et des réclamations.
-                  </p>
+                  <h2>Notes</h2>
                 </div>
               </div>
               <div className="table-wrap">
@@ -340,7 +256,8 @@ export default function StudentRecordPanel({ studentId, embedded = false, initia
               </div>
             </section>
           )}
-          {section === 'finance' ? null : section === 'assiduite' ? <StudentAttendancePanel matricule={student.matricule} /> : section === 'parcours' ? <StudentEnrollmentsPanel matricule={student.matricule} /> : section === 'documents' ? <StudentDocumentsWorkspace studentMatricule={student.matricule} /> : <ConnectedDomainWorkspace
+          {section === 'notes' && !studentEvaluationsSummary.length && <section className="card"><h2>Notes</h2><p>Aucune évaluation renseignée pour l’année consultée.</p></section>}
+          {['finance', 'notes', 'parcours'].includes(section) ? null : section === 'assiduite' ? <StudentAttendancePanel matricule={student.matricule} /> : section === 'documents' ? <StudentDocumentsWorkspace studentMatricule={student.matricule} /> : <ConnectedDomainWorkspace
             key={`workspace:${section}`}
             section={sections.find(item => item.id === section)!.native}
             studentMatricule={student.matricule}
