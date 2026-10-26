@@ -1,4 +1,4 @@
-/* Responsive breakpoints: 480px (small phones), 768px (mobile navigation and record tables), 1024px (compact desktop). */
+/* Responsive breakpoints: 480px (small phones), 768px (mobile record tables), 1024px (collapsible navigation). */
 /* Brochure layouts preserve the existing desktop flow without utility classes. */
 .brochure-card-header { display: flex; gap: .5rem; }
 .brochure-context { font-size: inherit; font-weight: inherit; color: inherit; }
@@ -98,8 +98,8 @@
 
   /* Breakpoints de référence uniques :
      --bp-mobile:  480px (mobile compact)
-     --bp-tablet:  768px (tablette / rupture navigation)
-     --bp-desktop: 1024px (desktop intermédiaire)
+     --bp-tablet:  768px (fiches et formulaires mobiles)
+     --bp-desktop: 1024px (navigation escamotable sur tablette)
   */
   --bp-mobile: 480px;
   --bp-tablet: 768px;
@@ -3582,4 +3582,25 @@ body.transcript-print-body { page: transcript; display: block; width: 190mm; hei
 @media (max-width: 768px) {
   .workspace-page-navigation { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 6px; }
   .workspace-page-navigation a { padding: 8px 10px; font-size: 13px; }
+}
+
+/* Les tablettes gardent toute la largeur de travail ; le menu devient un volet. */
+@media (max-width: 1024px) {
+  .sidebar { display: none; }
+  .mobile-menu-toggle, .sidebar-close { display: flex; min-width: 44px; min-height: 44px; }
+  .sidebar-heading { display: flex; }
+  .navigation-open .sidebar { display: flex; position: fixed; inset: 0 auto 0 0; width: min(290px, 82vw); z-index: 100; box-shadow: var(--shadow-lg); padding-top: 1.5rem; }
+  .navigation-open .navigation-backdrop { display: block; position: fixed; inset: 0; border: 0; background: rgba(21, 34, 55, .45); z-index: 99; }
+  .topbar { height: auto; min-height: 68px; flex-wrap: wrap; padding: .65rem 1rem; }
+  .topbar-logo { min-width: 0; }
+  .topbar-center { min-width: 0; flex: 1 1 220px; }
+  .main-content { width: 100%; min-width: 0; }
+  .table-wrap { max-width: 100%; overflow-x: auto; }
+  .data-table th, .data-table td { overflow-wrap: anywhere; }
+}
+
+.data-table.grades-subject-summary { min-width: 960px; }
+.grades-subject-summary th:first-child, .grades-subject-summary td:first-child { min-width: 150px; }
+@media (max-width: 768px) {
+  .data-table.grades-subject-summary { min-width: 0; }
 }

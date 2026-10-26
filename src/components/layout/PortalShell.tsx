@@ -59,7 +59,7 @@ export default function PortalShell({ children }: { children: ReactNode }) {
       if (event.shiftKey && document.activeElement === first) { event.preventDefault(); last?.focus(); }
       else if (!event.shiftKey && document.activeElement === last) { event.preventDefault(); first?.focus(); }
     };
-    const resize = () => { if (window.innerWidth > 768) setMenuOpen(false); };
+    const resize = () => { if (window.innerWidth > 1024) setMenuOpen(false); };
     document.addEventListener('keydown', containFocus);
     window.addEventListener('resize', resize);
     return () => {

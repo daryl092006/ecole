@@ -280,7 +280,8 @@ export default function GroupSubjectGradesPanel({ snapshot, canViewStudents, onS
       {subjectSummaries.length > 0 && (
         <div className="mb-2">
           <h3>Matières ({activeGroup.name})</h3>
-          <ResponsiveTable className="data-table">
+          <div className="table-wrap">
+          <ResponsiveTable className="data-table grades-subject-summary">
             <thead>
               <tr>
                 <th>Matière</th>
@@ -314,6 +315,7 @@ export default function GroupSubjectGradesPanel({ snapshot, canViewStudents, onS
               ))}
             </tbody>
           </ResponsiveTable>
+          </div>
         </div>
       )}
 
