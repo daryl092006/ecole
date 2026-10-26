@@ -250,7 +250,7 @@ export default function StudentRecordPanel({ studentId, embedded = false, initia
       ) : !annualEnrollments.length && student.historical && state.history.enabled ? (
         <HistoricalWorkspace
           embedded
-          key={section}
+          key={`history:${section}`}
           section={`student_${section}`}
           initialTable={sections.find(item => item.id === section)?.table}
           studentId={student.historical.sourceId}
@@ -340,7 +340,7 @@ export default function StudentRecordPanel({ studentId, embedded = false, initia
             </section>
           )}
           {section === 'parcours' ? <StudentEnrollmentsPanel matricule={student.matricule} /> : section === 'documents' ? <StudentDocumentsWorkspace studentMatricule={student.matricule} /> : <ConnectedDomainWorkspace
-            key={section}
+            key={`workspace:${section}`}
             section={sections.find(item => item.id === section)!.native}
             studentMatricule={student.matricule}
           />}
