@@ -91,16 +91,15 @@ export default function AttendanceWorkspace() {
       { label: 'Décision', value: justificationStatus[operation.decision], previous: 'En attente' },
     ] : [];
   return <div className="attendance-workspace workspace-stack">
-    <header className="page-intro"><div><h1>Feuilles de présence</h1></div></header>
-    {portal.history.enabled && <button className="btn btn-outline" onClick={() => setArchives(true)}>Consulter les séances historiques</button>}
+    <header className="page-intro"><div><h1>Feuilles de présence</h1></div>{portal.history.enabled && <button className="btn btn-outline" onClick={() => setArchives(true)}>Consulter les séances historiques</button>}</header>
     {success && <p role="status" className="restricted-box">{success}</p>}
     {fileError && <p role="alert" className="restricted-box">{fileError}</p>}
-    <section className="card"><label className="form-group">Séance<select className="select-input" value={session?.id || ''} onChange={event => setSelectedId(event.target.value)}>
+    <section className="card attendance-session-sheet"><label className="form-group">Séance<select className="select-input" value={session?.id || ''} onChange={event => setSelectedId(event.target.value)}>
       {!directory.sessions.length && <option value="">Aucune séance</option>}{directory.sessions.map(row => <option key={row.id} value={row.id}>{date(row.startsAt)} · {row.label}</option>)}
-    </select></label>{!directory.selectedYearId && <p>Choisissez une année précise pour enregistrer des présences.</p>}{!session && <p>Aucune séance dans cette année et votre périmètre.</p>}</section>
+    </select></label>{!directory.selectedYearId && <p>Choisissez une année précise pour enregistrer des présences.</p>}{!session && <p>Aucune séance dans cette année et votre périmètre.</p>}
     {session && <>
-      <section className="card card-full"><h2>{session.label}</h2><p>{date(session.startsAt)} → {date(session.endsAt)} · {session.teacherName} · {session.status}</p>
-        {session.canRecordStudents && <button className="btn btn-primary" onClick={() => open({ kind: 'students' })}>Saisir ou corriger les présences</button>}
+      <div className="card-header"><div><h2>{session.label}</h2><p>{date(session.startsAt)} → {date(session.endsAt)} · {session.teacherName} · {session.status}</p></div>
+        {session.canRecordStudents && <button className="btn btn-primary" onClick={() => open({ kind: 'students' })}>Saisir ou corriger les présences</button>}</div>
         <ResponsiveTable className="data-table"><thead><tr><th>Étudiant</th><th>Présence</th><th>Horaires</th><th>Commentaire</th></tr></thead><tbody>{session.students.map(student => {
           const attendance = session.attendances.find(row => row.enrollmentId === student.enrollmentId);
           return <tr key={student.enrollmentId}><td>
@@ -117,7 +116,9 @@ export default function AttendanceWorkspace() {
             )}
           </td><td>{attendance ? ATTENDANCE_LABELS[attendance.status] : 'Non renseignée'}</td><td>{date(attendance?.arrivedAt || null)} → {date(attendance?.leftAt || null)}{attendance?.lateMinutes != null && <div>{attendance.lateMinutes} min de retard</div>}</td><td>{attendance?.comment || '—'}{attendance?.reason && <div className="cell-sub">Motif : {attendance.reason}</div>}</td></tr>;
         })}{!session.students.length && <tr><td colSpan={4}>Aucun étudiant rattaché à ce groupe à la date de la séance.</td></tr>}</tbody></ResponsiveTable>
-      </section>
+    </>}
+    </section>
+    {session && <>
       <section className="card"><h2>Présence enseignante</h2>{session.canRecordTeacher && <button className="btn btn-outline" onClick={() => open({ kind: 'teacher' })}>Enregistrer la présence enseignante</button>}
         {session.teacherAttendances.map(row => <p key={row.id}>{row.teacherName} · {date(row.arrivedAt)} → {date(row.leftAt)}{row.comment && ` · ${row.comment}`}</p>)}{!session.teacherAttendances.length && <p>Aucun horaire enseignant enregistré.</p>}
       </section>
