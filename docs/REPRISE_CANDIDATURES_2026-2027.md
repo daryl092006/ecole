@@ -119,3 +119,17 @@ propositions en attente), relire l’état et la révision, appliquer la transac
 auditée et comparer les dossiers, pièces, admissions, anomalies et collections
 préexistantes à leur état avant import. Ne pas annoncer l’import terminé avant
 ce contrôle distant.
+
+### Stockage privé vérifié
+
+Le transfert autorisé des pièces est terminé : 125 fichiers créés dans le bucket
+privé existant `escen-online-applications`, aucun écrasement, puis 125 empreintes
+SHA-256 comparées après retéléchargement. Le rapport privé `files-remote.json`
+confirme `verified=125`, `uploaded=125`, `reused=0`. Ces objets sont prêts pour
+la transaction ; ils ne constituent pas encore des dossiers importés et ne sont
+pas accessibles par le parcours public de candidature.
+
+Le SQL métier reste non exécuté et la proposition de migration reste en attente
+de l’accord spécifique demandé à l’utilisateur. Dernier commit de préparation :
+`25b736c`. Ne pas confondre les 125 écritures de fichiers autorisées avec une
+application de migration ou l’import des 93 candidatures.
