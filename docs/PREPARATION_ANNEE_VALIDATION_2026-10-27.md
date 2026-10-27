@@ -30,12 +30,12 @@ confirmation et sans bouton de validation globale.
 
 ## Frais pour plusieurs filières ou groupes
 
-Demande conservée, en attente de la précision demandée à l’utilisateur : tarif
-identique pour plusieurs filières/niveaux, comme la sélection des formations
-d’un groupe, ou tarif attaché à des groupes précis. Le modèle actuel porte sur
-année, catégorie, filière, niveau et mode ; il ne porte pas de groupe.
-Aucune règle nouvelle, sélection multiple fictive ou migration n’est appliquée
-avant de connaître le périmètre voulu.
+La demande a ensuite été précisée : cocher plusieurs filières pour un même tarif,
+avec le niveau et le mode choisis. L’utilisateur a également demandé de revenir
+aux icônes seules pour les actions de liste. Cette suite est décrite dans
+[la mise en place des cases à cocher](TARIFS_FILIERES_2026-10-27.md).
+Les constats et vérifications ci-dessous décrivent le premier lot, avant cette
+précision ; ils ne décrivent pas le rendu final des actions de liste.
 
 ## Vérifications
 

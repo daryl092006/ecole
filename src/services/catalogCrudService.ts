@@ -48,6 +48,23 @@ export function parseCatalogRecord(key: string, input: unknown): Record<string, 
 export function canManageCatalog(context: PersistentContext, key: string): boolean {
   return context.permissions.includes(catalogSpec(key).write) && context.grants.some(grant => !grant.site_id && !grant.group_id && !grant.academic_year_id);
 }
+export function annualFeeScheduleChanges(snapshot: RelationalSnapshot, input: Record<string, unknown>, reason: string, targetId?: string): PersistentChange[] {
+  const { program_ids: rawIds, ...values } = input;
+  if ('program_id' in values) throw new Error('Utilisez une seule sélection de filières.');
+  const ids = z.array(z.uuid().nullable()).min(1).max(50).parse(rawIds);
+  if (new Set(ids).size !== ids.length || (ids.includes(null) && ids.length > 1)) throw new Error('Choisissez toutes les filières ou une liste de filières distinctes.');
+  const target = targetId ? snapshot.tables.annual_fee_schedules?.find(row => row.id === targetId && !row.archived_at) : undefined;
+  if (targetId && !target) throw new Error('Le tarif à modifier est introuvable ou archivé.');
+  return ids.map((programId, index) => {
+    const record = parseCatalogRecord('annual_fee_schedules', { ...values, program_id: programId });
+    validateCatalogReferences('annual_fee_schedules', record, snapshot);
+    if (target && target.academic_year_id !== record.academic_year_id) throw new Error('Le tarif doit rester dans son année d’origine.');
+    if (snapshot.tables.annual_fee_schedules?.some(row => row.id !== targetId && !row.archived_at && ['academic_year_id', 'category', 'program_id', 'level_id', 'delivery_mode'].every(key => (row[key] || null) === (record[key] || null)))) {
+      throw new Error('Un tarif existe déjà pour une filière sélectionnée, ce niveau et ce mode. Modifiez le tarif existant. Aucun tarif enregistré.');
+    }
+    return { table: 'annual_fee_schedules', operation: index === 0 && targetId ? 'update' : 'insert', record: { ...record, id: index === 0 && targetId ? targetId : crypto.randomUUID(), reason } };
+  });
+}
 export function validateCatalogReferences(key: string, values: Record<string,unknown>, snapshot: RelationalSnapshot) {
   for (const field of catalogSpec(key).fields.filter(field => field.reference)) {
     if (field.required === false && !values[field.key]) continue;

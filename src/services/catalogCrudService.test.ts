@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
-import { catalogSpec, parseCatalogRecord, programLevelChanges } from './catalogCrudService';
-import type { RelationalSnapshot } from '@/types/persistence';
+import { catalogSpec, parseCatalogRecord, programLevelChanges, annualFeeScheduleChanges } from './catalogCrudService';
+import type { DatabaseRow, RelationalSnapshot } from '@/types/persistence';
 
 const uuid = '00000000-0000-4000-8000-000000000035';
 const samples = [
@@ -56,3 +56,30 @@ assert.equal(restored[0].operation, 'insert');
 assert.equal(restored[0].record.version, 2);
 assert.equal(restored[0].record.level_id, 'L2');
 console.log('Catalogue : crédits au centième, coefficients au millième, bornes SQL et positions entières vérifiés.');
+
+const feeIds = [1, 2, 3, 4].map(value => `00000000-0000-4000-8000-${String(value).padStart(12, '0')}`);
+const feeSnapshot: RelationalSnapshot = { revision: 1, tables: {
+  academic_years: [{ id: feeIds[0] }], programs: [{ id: feeIds[1] }, { id: feeIds[2] }],
+  levels: [{ id: feeIds[3] }], annual_fee_schedules: [],
+} };
+const feeInput = { academic_year_id: feeIds[0], category: 'SCOLARITE', level_id: feeIds[3], delivery_mode: 'Présentiel', amount: 480000, program_ids: [feeIds[1], feeIds[2]] };
+const feeBatch = annualFeeScheduleChanges(feeSnapshot, feeInput, 'Tarif commun à deux filières');
+assert.equal(feeBatch.length, 2);
+assert.deepEqual(feeBatch.map(change => change.record.program_id), feeIds.slice(1, 3));
+assert.equal(new Set(feeBatch.map(change => change.record.id)).size, 2);
+assert.ok(feeBatch.every(change => change.operation === 'insert' && change.record.amount === 480000));
+assert.equal(annualFeeScheduleChanges(feeSnapshot, { ...feeInput, program_ids: [null] }, 'Tarif général')[0].record.program_id, null);
+for (const ids of [[], [null, feeIds[1]], [feeIds[1], feeIds[1]], [uuid], Array(51).fill(feeIds[1])]) {
+  assert.throws(() => annualFeeScheduleChanges(feeSnapshot, { ...feeInput, program_ids: ids }, 'Sélection invalide'));
+}
+assert.throws(() => annualFeeScheduleChanges(feeSnapshot, { ...feeInput, program_id: feeIds[1] }, 'Sélection ambiguë'));
+const savedFee = { ...feeBatch[0].record, id: uuid } as DatabaseRow;
+const existingFees = { ...feeSnapshot, tables: { ...feeSnapshot.tables, annual_fee_schedules: [savedFee] } };
+assert.throws(() => annualFeeScheduleChanges(existingFees, feeInput, 'Doublon'), /existe déjà/);
+const editedFees = annualFeeScheduleChanges(existingFees, { ...feeInput, amount: 500000 }, 'Montant corrigé', uuid);
+assert.deepEqual(editedFees.map(change => change.operation), ['update', 'insert']);
+assert.equal(editedFees[0].record.id, uuid);
+assert.equal(existingFees.tables.annual_fee_schedules[0].amount, 480000);
+assert.throws(() => annualFeeScheduleChanges(existingFees, { ...feeInput, academic_year_id: feeIds[1] }, 'Autre année', uuid));
+assert.throws(() => annualFeeScheduleChanges({ ...feeSnapshot, tables: { ...feeSnapshot.tables, programs: [{ id: feeIds[1] }, { id: feeIds[2], archived_at: '2026-10-27' }] } }, feeInput, 'Filière archivée'));
+console.log('Tarifs : sélection multiple bornée, tarif général explicite, doublons, archivage et modification vérifiés.');

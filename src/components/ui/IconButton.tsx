@@ -1,10 +1,10 @@
 import type { ButtonHTMLAttributes } from 'react';
 import { Archive, Check, ChevronLeft, ChevronRight, Download, Eye, Pencil, Plus, RefreshCw, Settings2, Trash2, X } from 'lucide-react';
 
-type Props = ButtonHTMLAttributes<HTMLButtonElement> & { label: string; showLabel?: boolean };
+type Props = ButtonHTMLAttributes<HTMLButtonElement> & { label: string };
 
 /** Compact actions retain their full accessible name and a visible hover label. */
-export default function IconButton({ label, showLabel = false, className = '', ...props }: Props) {
+export default function IconButton({ label, className = '', ...props }: Props) {
   const Icon = /fermer|annuler/i.test(label) ? X
     : /modifier|compléter/i.test(label) ? Pencil
     : /archiver/i.test(label) ? Archive
@@ -16,5 +16,5 @@ export default function IconButton({ label, showLabel = false, className = '', .
     : /précédent|retour/i.test(label) ? ChevronLeft
     : /suivant/i.test(label) ? ChevronRight
     : /valider|confirmer|enregistrer/i.test(label) ? Check : Eye;
-  return <button type="button" {...props} className={`${className} icon-action${showLabel ? ' icon-action-with-label' : ''}`.trim()} aria-label={props['aria-label'] || label} title={props.title || label}><Icon size={17} aria-hidden="true" /><span className={showLabel ? undefined : 'sr-only'}>{label}</span></button>;
+  return <button type="button" {...props} className={`${className} icon-action`.trim()} aria-label={props['aria-label'] || label} title={props.title || label}><Icon size={17} aria-hidden="true" /><span className="sr-only">{label}</span></button>;
 }

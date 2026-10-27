@@ -4,7 +4,7 @@ import { z } from 'zod';
 import { requireAccount, requirePermission, RequestError } from '@/server/auth';
 import { ROLES } from '@/types/permissions';
 import { CRUD_CATALOG } from '@/data/crudCatalog';
-import { catalogSpec, parseCatalogRecord, canManageCatalog, validateCatalogReferences, programLevelChanges } from '@/services/catalogCrudService';
+import { catalogSpec, parseCatalogRecord, canManageCatalog, validateCatalogReferences, programLevelChanges, annualFeeScheduleChanges } from '@/services/catalogCrudService';
 import { buildReconductChanges } from '@/services/yearPreparationService';
 import { annualOfferingChanges, archiveAnnualOfferings } from '@/services/annualOfferingService';
 import { resaoSubjectChanges } from '@/services/resaoCodeService';
@@ -32,6 +32,17 @@ export async function writeCatalog(request: Request, key: string, id?: string) {
   const target = id ? snapshot.tables[key]?.find(row => row.id === z.uuid().parse(id)) : undefined;
   if (id && !target) throw new RequestError(404,'Enregistrement introuvable.');
   if (target?.archived_at) throw new RequestError(409,'Cet enregistrement est archivé.');
+  if (key === 'annual_fee_schedules' && !archive && body.values?.program_ids !== undefined) {
+    if (body.sourceRowId) throw new RequestError(400, 'Enregistrez la reprise historique avant de sélectionner plusieurs filières.');
+    let changes: PersistentChange[];
+    try { changes = annualFeeScheduleChanges(snapshot, body.values, body.reason, id); }
+    catch (error) { throw new RequestError(400, error instanceof z.ZodError ? 'Vérifiez les filières sélectionnées et le format du tarif.' : error instanceof Error ? error.message : 'Vérifiez les filières sélectionnées.'); }
+    const year = await resolveAcademicYear(request, client, context, snapshot);
+    if (!year.selectedYearId || changes.some(change => change.record.academic_year_id !== year.selectedYearId)) throw new RequestError(409, 'Choisissez l’année précise à préparer.');
+    const response = await client.rpc('escen_backend_transaction', { p_actor_id: context.accountId, p_expected_revision: snapshot.revision, p_changes: changes });
+    if (response.error) throw new RequestError(409, 'Enregistrement refusé : doublon ou modification concurrente. Aucun tarif enregistré.');
+    return Response.json({ id: changes[0].record.id, revision: response.data, count: changes.length }, { status: id ? 200 : 201, headers: { 'Cache-Control': 'no-store' } });
+  }
   if (key === 'academic_offerings' && !id && !archive && body.values?.archive_ids !== undefined) {
     if (body.sourceRowId) throw new RequestError(400, 'Reprise historique incompatible avec un retrait.');
     const values = z.object({ academic_year_id: z.uuid(), archive_ids: z.array(z.uuid()).min(1).max(100) }).strict().parse(body.values);

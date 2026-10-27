@@ -67,7 +67,7 @@ for (const width of [390, 1440]) test(`Encaissement : validation individuelle, s
   await expect(search).toBeVisible();
   await expect(dialog.getByRole('cell', { name: /Aucun résultat/ })).toHaveAttribute('colspan', '4');
   await search.fill('');
-  await expect(row('TMoney').getByRole('button', { name: 'Valider', exact: true })).toHaveText('Valider');
+  await expect(row('TMoney').getByRole('button', { name: 'Valider', exact: true })).toHaveAttribute('title', 'Valider');
   expect(await dialog.evaluate(element => element.scrollWidth <= element.clientWidth)).toBe(true);
   await page.screenshot({ path: `tmp/screenshots/annual-offerings/${width}/encaissement-liste.png` });
   await row('TMoney').getByRole('button', { name: 'Valider', exact: true }).click();
@@ -156,7 +156,7 @@ for (const width of [390, 1440]) test(`Le dernier moyen d’encaissement fait pa
   await expect(page.getByText('À vérifier', { exact: true })).toBeVisible();
   await page.getByRole('button', { name: 'Configurer encaissement', exact: true }).click();
   const validate = page.getByRole('button', { name: 'Valider', exact: true });
-  await expect(validate).toHaveText('Valider');
+  await expect(validate).toHaveAttribute('title', 'Valider');
   await validate.click();
   expect(writes).toBe(0);
   await page.getByRole('button', { name: 'Confirmer l’enregistrement', exact: true }).click();

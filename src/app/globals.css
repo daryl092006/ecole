@@ -3624,7 +3624,6 @@ body.transcript-print-body { page: transcript; display: block; width: 190mm; hei
 /* Une recherche masquée sur une liste courte ne laisse pas de barre vide. */
 .browser-toolbar:empty { display: none; }
 .attendance-session-sheet > .card-header { margin-top: 16px; }
-.btn.icon-action.icon-action-with-label { width: auto; height: auto; min-width: 44px; min-height: 44px; padding: .5rem .75rem; flex: 0 1 auto; }
 .year-preparation-help { margin-bottom: 16px; color: var(--text-secondary); line-height: 1.6; }
 .browser-toolbar:empty { display: none; }
 .student-record-context { margin: 0 0 12px; color: var(--text-secondary); }

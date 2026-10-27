@@ -74,7 +74,7 @@ for (const category of ['SCOLARITE', 'INSCRIPTION'] as const) for (const width o
   await search.fill('');
   await page.screenshot({ path: `tmp/screenshots/annual-offerings/${width}/frais-${artifactName}-liste.png` });
   const common = dialog.getByRole('row').filter({ hasText: 'Toutes les filières' });
-  await expect(common.getByRole('button', { name: 'Valider', exact: true })).toHaveText('Valider');
+  await expect(common.getByRole('button', { name: 'Valider', exact: true })).toHaveAttribute('title', 'Valider');
   expect(await dialog.evaluate(element => element.scrollWidth <= element.clientWidth)).toBe(true);
   await common.getByRole('button', { name: 'Valider', exact: true }).click();
   await expect(dialog.getByRole('region', { name: 'Vérification avant enregistrement' })).toContainText(/480\s000 FCFA/);
@@ -90,7 +90,7 @@ for (const category of ['SCOLARITE', 'INSCRIPTION'] as const) for (const width o
   await expect(dialog.getByText('1 proposition non enregistrée', { exact: true })).toBeVisible();
   await dialog.getByRole('row').filter({ hasText: 'Finance Digitale' }).getByRole('button', { name: 'Modifier', exact: true }).click();
   await expect(dialog.getByLabel('Montant FCFA', { exact: true })).toHaveValue('700000');
-  await expect(dialog.getByRole('combobox', { name: 'Filière (facultative)', exact: true })).toHaveValue('FIN');
+  await expect(dialog.getByRole('checkbox', { name: 'Finance Digitale', exact: true })).toBeChecked();
   await dialog.getByLabel('Montant FCFA', { exact: true }).fill('720000');
   await page.screenshot({ path: `tmp/screenshots/annual-offerings/${width}/frais-${artifactName}-formulaire.png` });
   await dialog.getByRole('button', { name: 'Enregistrer le tarif', exact: true }).click();
