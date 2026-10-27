@@ -19,7 +19,7 @@ import HistoricalWorkspace from '@/components/modules/history/HistoricalWorkspac
 type Kind = 'all' | 'staff' | 'teacher';
 const CONTRACT_LABELS: Record<StaffContractType, string> = { PERMANENT: 'Permanent', VACATAIRE: 'Vacataire', STAGIAIRE: 'Stagiaire' };
 /** Fonctions proposées ; la saisie reste libre pour les fonctions propres à l'établissement. */
-const SUGGESTED_POSITIONS = ['Directeur général', 'Directeur des études', 'Responsable administratif et financier', 'Comptable', 'Caissier', 'Secrétaire', 'Chargé de scolarité', 'Responsable logistique', 'Responsable des achats', 'Informaticien', 'Chargé de communication', 'Surveillant', 'Agent d’entretien', 'Gardien', 'Chauffeur'];
+const SUGGESTED_POSITIONS = ['Directeur général', 'Directeur des études', 'Responsable administratif et financier', 'Comptable', 'Caissier', 'Secrétaire', 'Chargé de scolarité', 'Chargé de clientèle', 'Responsable logistique', 'Responsable des achats', 'Informaticien', 'Chargé de communication', 'Surveillant', 'Agent d’entretien', 'Gardien', 'Chauffeur'];
 const emptyForm = (isTeacher = false): PersonnelForm => ({ firstname: '', lastname: '', email: '', phone: '', employeeNumber: '', isTeacher, teacherSpecialty: '', position: '', contractType: 'PERMANENT', startsOn: '' });
 const currentContract = (record: PersonnelRecord | null) => record?.contracts.find(contract => !contract.endsOn) || null;
 const profileLabel = (record: PersonnelRecord) => record.isTeacher ? (currentContract(record) ? 'Enseignant et personnel' : 'Enseignant') : 'Personnel administratif';

@@ -59,24 +59,15 @@ for (const width of [390, 1440]) {
     await expect.poll(() => page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
     await page.screenshot({ path: `tmp/screenshots/annual-offerings/${width}/articles-site.png`, fullPage: true });
   });
-  test(`Dossiers du site : lecture, pièces, suivi confirmé et erreurs à ${width}px`, async ({ page }) => {
+  test(`Dossiers historiques : consultation sans contournement du nouveau circuit à ${width}px`, async ({ page }) => {
     await page.setViewportSize({ width, height: 950 }); const fixture = await manageFixture(page);
     await page.goto('/site-web/demandes');
     await expect(page.getByText('WEB-RECETTE', { exact: false })).toBeVisible();
     await page.getByRole('button', { name: 'Ouvrir le dossier', exact: true }).click();
     await expect(page.getByRole('button', { name: 'Télécharger diplome.pdf', exact: true })).toBeVisible();
-    await page.getByLabel('Suivi du dossier', { exact: true }).selectOption('EN_ANALYSE');
-    await page.getByLabel('Motif du suivi', { exact: true }).fill('Vérification des documents');
-    await page.getByRole('button', { name: 'Relire le changement', exact: true }).click();
+    await expect(page.getByLabel('Suivi du dossier', { exact: true })).toHaveCount(0);
+    await expect(page.getByRole('button', { name: 'Admettre et créer le dossier étudiant', exact: true })).toHaveCount(0);
     expect(fixture.commands).toHaveLength(0);
-    await page.getByRole('button', { name: 'Confirmer le suivi', exact: true }).click();
-    expect(fixture.commands[0]).toMatchObject({ id: applicationId, version: 1, status: 'EN_ANALYSE' });
-    await page.getByRole('button', { name: 'Ouvrir le dossier', exact: true }).click();
-    await page.getByLabel('Motif du suivi', { exact: true }).fill('Autre contrôle conservé'); fixture.fail();
-    await page.getByRole('button', { name: 'Relire le changement', exact: true }).click();
-    await page.getByRole('button', { name: 'Confirmer le suivi', exact: true }).click();
-    await expect(page.getByRole('alert').filter({ hasText: 'Version concurrente' })).toBeVisible();
-    await expect(page.getByLabel('Motif du suivi', { exact: true })).toHaveValue('Autre contrôle conservé');
     await page.screenshot({ path: `tmp/screenshots/annual-offerings/${width}/demandes-en-ligne.png`, fullPage: true });
   });
 }

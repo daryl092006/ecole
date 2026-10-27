@@ -65,7 +65,7 @@ export const ROLE_COLORS: Record<string, string> = {
   [ROLES.RAF]: '#eab308', [ROLES.MKT]: '#8b5cf6', [ROLES.IT]: '#3b82f6',
   [ROLES.STUD]: '#64748b', [ROLES.DEL]: '#64748b',
   [ROLES.SURV]: '#0891b2', [ROLES.ACHATS]: '#d97706',
-  [ROLES.SITE]: '#0f766e', [ROLES.STG]: '#64748b',
+  [ROLES.CC]: '#0369a1', [ROLES.SITE]: '#0f766e', [ROLES.STG]: '#64748b',
 };
 
 // ─── hook ────────────────────────────────────────────────────────────────────

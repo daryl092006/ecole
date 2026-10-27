@@ -53,6 +53,8 @@ next-env.d.ts
 /test-results/
 /playwright-report/
 /tmp/next-annual-offerings/
+/tmp/next-admissions-development/
+/tmp/next-admissions-tests/
 /tmp/screenshots/annual-offerings/
 
 # Local Supabase CLI connection metadata

@@ -19,6 +19,20 @@ async function readResponse(response: Response) {
   if (!response.ok) throw new RemoteRequestError(response.status, data.error || 'Service temporairement indisponible.');
   return data;
 }
+export async function admissionsOperation(role: RoleName, body?: Record<string, unknown> | FormData, signal?: AbortSignal): Promise<unknown> {
+  const multipart = body instanceof FormData;
+  return readResponse(await fetch('/api/admissions', { method: body ? 'POST' : 'GET', headers: { ...await headers(role), ...(body && !multipart ? { 'Content-Type': 'application/json' } : {}) },
+    ...(body ? { body: multipart ? body : JSON.stringify(body) } : {}), signal, cache: 'no-store' }));
+}
+export async function admissionNotices(role: RoleName, signal?: AbortSignal): Promise<{ notices: import('@/types/admissions').ApplicationNotice[] }> {
+  return readResponse(await fetch('/api/admissions?view=notifications', { headers: await headers(role), cache: 'no-store', signal }));
+}
+export async function downloadAdmissionLetter(id: string, reference: string, role: RoleName) {
+  const response = await fetch(`/api/admissions?letter=${encodeURIComponent(id)}`, { headers: await headers(role), cache: 'no-store' });
+  if (!response.ok) { await readResponse(response); return; }
+  const url = URL.createObjectURL(await response.blob()); const anchor = document.createElement('a');
+  anchor.href = url; anchor.download = `${reference}.html`; anchor.click(); setTimeout(() => URL.revokeObjectURL(url), 1000);
+}
 const snapshotSchema = z.object({
   revision: z.number().int().nonnegative(),
   tables: z.record(z.string(), z.array(z.object({ id: z.string().min(1) }).passthrough())),
@@ -214,4 +228,9 @@ export async function reviewStudentDocument(input: import('zod').infer<typeof im
 }
 export async function studentDocumentUrl(id: string, role: RoleName): Promise<string> {
   return (await readResponse(await fetch(`/api/student-documents?file=${encodeURIComponent(id)}`, { headers: await headers(role), cache: 'no-store' }))).url;
+}
+
+export async function downloadAdmissionDocument(id: string, role: RoleName): Promise<string> {
+  const result = await readResponse(await fetch(`/api/admissions?document=${encodeURIComponent(id)}`, { headers: await headers(role), cache: 'no-store' }));
+  return result.url;
 }

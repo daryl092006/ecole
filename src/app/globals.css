@@ -3631,3 +3631,64 @@ body.transcript-print-body { page: transcript; display: block; width: 190mm; hei
 @media (max-width: 480px) { .phone-input-row { grid-template-columns: minmax(0, 1fr); } }
 .browser-toolbar:empty { display: none; }
 .student-record-context { margin: 0 0 12px; color: var(--text-secondary); }
+.candidate-public-page { min-height: 100vh; background: var(--bg-main, #f4f6fa); color: var(--text-primary, #182333); }
+.candidate-public-header { max-width: 1120px; margin: 0 auto; padding: 24px; display: flex; align-items: center; gap: 18px; }
+.candidate-public-header p { margin: 4px 0 0; color: var(--text-secondary); }
+.candidate-public-content { max-width: 1060px; margin: 0 auto; padding: 0 24px 48px; display: grid; gap: 20px; }
+.candidate-public-content h1 { margin-bottom: 16px; }
+.candidate-public-content h2 { margin: 16px 0; }
+.candidate-steps { list-style: none; padding: 0; margin: 0 0 24px; display: grid; grid-template-columns: repeat(3,minmax(0,1fr)); gap: 12px; }
+.candidate-steps li { display: flex; gap: 10px; align-items: center; padding: 14px 12px; border-bottom: 3px solid var(--border-color, #dfe4ec); color: var(--text-secondary); min-width: 0; overflow-wrap: anywhere; }
+.candidate-steps li[aria-current="step"] { border-color: var(--primary, #4f46e5); color: var(--text-primary); font-weight: 800; }
+.candidate-steps li > span { border: 1px solid var(--border-color, #dfe4ec); border-radius: 50%; min-width: 28px; height: 28px; display: grid; place-items: center; }
+.candidate-guardian { border: 1px solid var(--border-color, #dfe4ec); padding: 18px; margin: 18px 0; border-radius: 12px; min-width: 0; }
+.candidate-consent { display: flex; align-items: flex-start; gap: 10px; margin: 16px 0; line-height: 1.6; }
+.candidate-consent input { flex: 0 0 auto; margin-top: 6px; }
+.candidate-form-actions { margin-top: 24px; justify-content: flex-end; }
+.candidate-history { padding-left: 24px; display: grid; gap: 14px; }
+.candidate-history p { margin: 6px 0; white-space: pre-wrap; overflow-wrap: anywhere; }
+.candidate-preserve-text { white-space: pre-wrap; }
+.admissions-summary { display: grid; grid-template-columns: repeat(5,minmax(0,1fr)); gap: 12px; }
+.admissions-summary > button { display: flex; flex-direction: column; align-items: flex-start; gap: 8px; color: var(--text-primary); text-align: left; cursor: pointer; }
+.admissions-summary strong { font-size: 1.6rem; }
+.admissions-summary > button[aria-pressed="true"] { outline: 2px solid var(--primary, #4f46e5); }
+@media (max-width: 1024px) { .admissions-summary { grid-template-columns: repeat(3,minmax(0,1fr)); } }
+@media (max-width: 768px) {
+  .candidate-public-header { padding: 18px 14px; }
+  .candidate-public-content { padding: 0 12px 24px; }
+  .candidate-steps { gap: 4px; }
+  .candidate-steps li { padding: 10px 3px; flex-direction: column; text-align: center; font-size: .8rem; }
+  .admissions-summary { grid-template-columns: repeat(2,minmax(0,1fr)); }
+  .candidate-public-content input[type="file"] { max-width: 100%; }
+}
+
+/* Candidatures : distinguer les étapes et rendre les transitions explicites. */
+.admission-status { white-space: normal; }
+.admission-status--draft { background: #eef2f6; color: #475569; }
+.admission-status--historical, .admission-status--warning { background: #fff4d6; color: #805000; }
+.admission-status--active { background: #e6efff; color: #234b91; }
+.admission-status--success { background: #dcf5e7; color: #16633b; }
+.admission-status--danger { background: #fde8e8; color: #a12626; }
+.admission-process { margin-block: 20px; padding: 18px; border: 1px solid var(--border-color, #d7dee8); border-radius: 12px; }
+.admission-process > p { margin-block: 12px; line-height: 1.6; }
+.admission-actions { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 240px), 1fr)); gap: 12px; }
+.admission-action { padding: 12px; background: var(--bg-secondary); border-radius: 8px; }
+.admission-action p { margin-top: 8px; line-height: 1.5; font-size: .875rem; }
+.admission-action .btn { white-space: normal; }
+
+/* Parcours des candidatures : responsable, progression et prochaine action. */
+.admissions-stepper { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 12px; padding: 0; margin: 0 0 24px; list-style: none; }
+.admissions-stepper li { display: flex; align-items: flex-start; gap: 8px; padding: 12px; border: 1px solid var(--border); border-radius: 10px; font-size: .85rem; overflow-wrap: anywhere; }
+.admissions-stepper li > span { display: grid; place-items: center; min-width: 24px; height: 24px; border-radius: 50%; background: #e8edf3; color: #334155; }
+.admissions-stepper .admissions-step-current { border-color: #2563eb; background: #eff6ff; color: #1e40af; font-weight: 700; }
+.admissions-stepper .admissions-step-done > span { background: #dcfce7; color: #166534; }
+.admission-next-action { margin: 20px 0; padding: 16px; background: #f1f5f9; border-radius: 10px; }
+.admissions-other-actions { margin: 16px 0; }
+.admissions-other-actions > summary { cursor: pointer; padding: 12px 0; font-weight: 600; }
+.admissions-action-form { scroll-margin-top: 24px; margin: 20px 0; border: 2px solid #2563eb; }
+.admissions-work-guide p { margin: 8px 0; }
+@media (max-width: 768px) {
+  .admissions-stepper { grid-template-columns: 1fr; gap: 6px; }
+  .admissions-stepper li { align-items: center; padding: 8px 12px; }
+  .admission-next-action .btn { width: 100%; }
+}

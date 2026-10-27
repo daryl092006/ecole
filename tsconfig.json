@@ -34,6 +34,7 @@
     "**/*.tsx",
     ".next-resao-tests/types/**/*.ts",
     ".next-responsive-audit/types/**/*.ts",
+    ".next-secondary-details/types/**/*.ts",
     ".next-ui-tests/types/**/*.ts",
     ".next-verification/types/**/*.ts",
     ".next/dev/types/**/*.ts",
@@ -45,6 +46,7 @@
     ".tmp/next-development/types/**/*.ts",
     ".tmp/next-ui-development/types/**/*.ts",
     "next-env.d.ts",
+    "tmp/next-admissions-development/types/**/*.ts",
     "tmp/next-annual-offerings/types/**/*.ts",
     "tmp/next-business-review/types/**/*.ts",
     "tmp/next-github-build/types/**/*.ts",
@@ -55,7 +57,7 @@
     "tmp/next-subject-programming/types/**/*.ts",
     "tmp/next-visual-refresh/types/**/*.ts",
     "tmp/next-website-preview/types/**/*.ts",
-    ".next-secondary-details/types/**/*.ts"
+    "tmp/next-admissions-tests/types/**/*.ts"
   ],
   "exclude": [
     "node_modules",

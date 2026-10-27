@@ -3,6 +3,7 @@ export const ROLES = {
   DGA: 'Directeur Général Adjoint',
   DA: 'Directeur Académique',
   LOG: 'Logisticien académique',
+  CC: 'Chargé de clientèle',
   ENS: 'Enseignant',
   SURV: 'Surveillant',
   RAF: 'Responsable Administratif et Financier',
@@ -18,6 +19,11 @@ export const ROLES = {
 export type RoleName = typeof ROLES[keyof typeof ROLES];
 
 export type Permission =
+  | 'application.view'
+  | 'application.review'
+  | 'application.decide'
+  | 'application.payment.confirm'
+  | 'application.followup'
   | 'academic.view'
   | 'academic.structure.manage'
   | 'academic.year.open'

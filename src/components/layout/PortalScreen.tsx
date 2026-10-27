@@ -27,6 +27,7 @@ import RoleGuard from '@/components/ui/RoleGuard';
 import EtudiantsModule from '@/components/modules/EtudiantsModule';
 import PersonnelModule from '@/components/modules/PersonnelModule';
 import OnlineAdmissionsPanel from '@/components/modules/website/OnlineAdmissionsPanel';
+import AdmissionsWorkflowPanel from '@/components/modules/website/AdmissionsWorkflowPanel';
 import WebsiteBrochuresPanel from '@/components/modules/website/WebsiteBrochuresPanel';
 import WebsiteArticlesPanel from '@/components/modules/website/WebsiteArticlesPanel';
 import ConnectedDomainWorkspace from '@/components/modules/ConnectedDomainWorkspace';
@@ -56,7 +57,7 @@ export default function PortalScreen({ section }: { tab: string; section: string
   if (state.session && section === 'stud_status') return <ReenrollmentWorkspace />;
   if (state.session && section === 'fin_contracts') return <AnnualFeesWorkspace />;
   if (state.session && section === 'fin_kpis') return <FinanceOverview />;
-  if (state.session && section === 'web_applications') return <OnlineAdmissionsPanel mode="applications" />;
+  if (state.session && section === 'web_applications') return <AdmissionsWorkflowPanel />;
   if (state.session && section === 'web_documents') return <OnlineAdmissionsPanel mode="configuration" />;
   if (state.session && section === 'web_brochures') return <WebsiteBrochuresPanel />;
   if (state.session && section === 'comm_news') return <WebsiteArticlesPanel />;

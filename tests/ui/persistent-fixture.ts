@@ -29,6 +29,9 @@ export const snapshot: RelationalSnapshot = { revision: 1, tables: {
   role_grants: [{ id: 'G1', account_id: ACCOUNT_IDS[0], role_id: 'R1', valid_from: '2020-01-01T00:00:00Z', valid_until: null }, { id: 'G2', account_id: ACCOUNT_IDS[1], role_id: 'R2', valid_from: '2020-01-01T00:00:00Z', valid_until: null }],
 } };
 export async function authenticateFixture(page: Page) {
+  // Individual workflow tests override this after authentication. Never let a
+  // fixture token reach the live admissions API while testing another module.
+  await page.route('**/api/admissions*', route => route.fulfill({ json: { enabled: false, notices: [] } }));
   await page.addInitScript(() => {
     localStorage.setItem('sb-zmxapemyktxhppdxenzb-auth-token', JSON.stringify({ access_token: 'fixture-auth-token', refresh_token: 'fixture-refresh', token_type: 'bearer', expires_at: Math.floor(Date.now() / 1000) + 3600, user: { id: 'auth-fixture', aud: 'authenticated', role: 'authenticated', email: 'it@example.test', app_metadata: {}, user_metadata: {}, created_at: '2026-01-01T00:00:00Z' } }));
   });

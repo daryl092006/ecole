@@ -41,13 +41,16 @@ function AdmissionsFrame({ title, onClose, children }: { title: string; onClose?
 export default function OnlineAdmissionsPanel({
   onClose,
   mode = 'applications',
+  readOnly = false,
 }: {
   onClose?: () => void;
   mode?: 'applications' | 'configuration';
+  readOnly?: boolean;
 }) {
   const state = usePortal();
   const role = state.activeRole;
   const canManage =
+    !readOnly &&
     (!state.academicYearContext || !!state.academicYearContext.selectedYearId) &&
     state.perms.permissions.includes('student.lifecycle.manage') &&
     state.session?.capabilities?.[role]?.globalAccess;
@@ -228,7 +231,7 @@ export default function OnlineAdmissionsPanel({
                     <div className="empty-state">
                       <strong>Aucune demande pour {yearLabel}</strong>
                       <span>Les dossiers apparaissent ici après leur envoi final depuis le formulaire du site.</span>
-                      {canManage && (
+                      {state.perms.permissions.includes('academic.structure.manage') && (
                         <Link className="btn btn-outline" href="/site-web/documents">
                           Vérifier les formations ouvertes
                         </Link>

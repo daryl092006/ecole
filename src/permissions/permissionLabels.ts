@@ -1,5 +1,8 @@
 import type { Permission } from '@/types';
 export const PERMISSION_LABELS: Record<Permission, string> = {
+  'application.view': 'Consulter les candidatures autorisées', 'application.review': 'Vérifier et transmettre les candidatures',
+  'application.decide': 'Prendre une décision académique', 'application.payment.confirm': 'Confirmer les frais d’inscription des candidats',
+  'application.followup': 'Accompagner les candidatures à compléter',
   'academic.view': 'Consulter les enseignements', 'academic.structure.manage': 'Gérer le référentiel académique',
   'academic.year.open': 'Ouvrir et clôturer les années', 'academic.group.manage': 'Gérer les groupes',
   'academic.assignment.manage': 'Affecter les enseignants', 'schedule.view': 'Consulter le planning',

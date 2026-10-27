@@ -4,6 +4,7 @@ import { ROLE_ACCESS, hasPermission } from '@/permissions/rolePermissions';
 import { PERMISSION_LABELS } from '@/permissions/permissionLabels';
 
 export const PERMISSION_DOMAINS = [
+  { id: 'admissions', label: 'Candidatures et admissions', prefixes: ['application'] },
   { id: 'academic', label: 'Référentiel académique', prefixes: ['academic'] },
   { id: 'students', label: 'Dossiers étudiants', prefixes: ['student'] },
   { id: 'planning', label: 'Planning et présences', prefixes: ['schedule', 'attendance'] },
@@ -20,6 +21,7 @@ export function roleScopeDescription(role: RoleName): string {
   if (role === ROLES.SURV) return 'Uniquement les séances dont il assure la surveillance.';
   if (role === ROLES.STUD || role === ROLES.DEL) return 'Uniquement ses propres données et les séances de ses groupes.';
   if (role === ROLES.IT) return 'Tout l’établissement : tous les modules et actions, avec validations et audit.';
+  if (role === ROLES.CC) return 'Candidatures de l’établissement : contrôle, suivi, frais d’inscription et création du dossier étudiant ; décision académique réservée à la direction académique.';
   if (role === ROLES.STG) return 'Aucune permission métier automatique.';
   return 'Périmètre de l’établissement, limité aux actions attribuées à ce rôle.';
 }

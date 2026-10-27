@@ -18,6 +18,6 @@ for (const scenario of ['admitted', 'draft', 'unresolved'] as const) {
     if (scenario === 'admitted') await expect(page.getByText('Admission historique conservée.', { exact: false })).toBeVisible();
     if (scenario === 'draft') await expect(page.getByText('Ce dossier n’avait pas été envoyé.', { exact: false })).toBeVisible();
     if (scenario === 'unresolved') await expect(page.getByText('La filière d’origine est absente de la sauvegarde.', { exact: false })).toBeVisible();
-    await expect(page.getByRole('button', { name: 'Admettre et créer le dossier étudiant', exact: true })).toHaveCount(scenario === 'unresolved' ? 1 : 0);
+    await expect(page.getByRole('button', { name: 'Admettre et créer le dossier étudiant', exact: true })).toHaveCount(0);
   });
 }
