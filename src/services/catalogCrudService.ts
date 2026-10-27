@@ -60,6 +60,7 @@ export function annualFeeScheduleChanges(snapshot: RelationalSnapshot, input: Re
   if (new Set(ids).size !== ids.length || (ids.includes(null) && ids.length > 1)) throw new Error('Choisissez toutes les filières ou une liste de filières distinctes.');
   const target = targetId ? snapshot.tables.annual_fee_schedules?.find(row => row.id === targetId && !row.archived_at) : undefined;
   if (targetId && !target) throw new Error('Le tarif à modifier est introuvable ou archivé.');
+  if (targetId && ids.length !== 1) throw new Error('Modifier met à jour un seul tarif. Utilisez Ajouter pour créer des tarifs pour plusieurs filières.');
   return ids.map((programId, index) => {
     const record = parseCatalogRecord('annual_fee_schedules', { ...values, program_id: programId });
     validateCatalogReferences('annual_fee_schedules', record, snapshot);

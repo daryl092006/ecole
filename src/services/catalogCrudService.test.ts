@@ -77,8 +77,9 @@ assert.throws(() => annualFeeScheduleChanges(feeSnapshot, { ...feeInput, program
 const savedFee = { ...feeBatch[0].record, id: uuid } as DatabaseRow;
 const existingFees = { ...feeSnapshot, tables: { ...feeSnapshot.tables, annual_fee_schedules: [savedFee] } };
 assert.throws(() => annualFeeScheduleChanges(existingFees, feeInput, 'Doublon'), /existe déjà/);
-const editedFees = annualFeeScheduleChanges(existingFees, { ...feeInput, amount: 500000 }, 'Montant corrigé', uuid);
-assert.deepEqual(editedFees.map(change => change.operation), ['update', 'insert']);
+assert.throws(() => annualFeeScheduleChanges(existingFees, feeInput, 'Modification sans création', uuid), /un seul tarif/);
+const editedFees = annualFeeScheduleChanges(existingFees, { ...feeInput, program_ids: [feeIds[1]], amount: 500000 }, 'Montant corrigé', uuid);
+assert.deepEqual(editedFees.map(change => change.operation), ['update']);
 assert.equal(editedFees[0].record.id, uuid);
 assert.equal(existingFees.tables.annual_fee_schedules[0].amount, 480000);
 assert.throws(() => annualFeeScheduleChanges(existingFees, { ...feeInput, academic_year_id: feeIds[1] }, 'Autre année', uuid));

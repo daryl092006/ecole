@@ -44,11 +44,11 @@ function fixture(context: PersistentContext = securityContext()) {
     method: 'POST', headers: { 'Content-Type': 'application/json', 'x-escen-year': selectedYear },
     body: JSON.stringify({ revision, reason: 'Tarif validé pour les filières choisies', values: input }),
   }), { params: Promise.resolve({ collection: 'annual_fee_schedules' }) });
-  const patch = (id: string) => itemApi.PATCH(new Request(`http://localhost/api/catalog/annual_fee_schedules/${id}`, {
+  const patch = (id: string, input: Record<string, unknown> = values) => itemApi.PATCH(new Request(`http://localhost/api/catalog/annual_fee_schedules/${id}`, {
     method: 'PATCH', headers: { 'Content-Type': 'application/json', 'x-escen-year': yearId },
-    body: JSON.stringify({ revision: snapshot.revision, reason: 'Étendre le tarif aux filières cochées', values }),
+    body: JSON.stringify({ revision: snapshot.revision, reason: 'Modifier le tarif existant', values: input }),
   }), { params: Promise.resolve({ collection: 'annual_fee_schedules', id }) });
-  return { snapshot, transactions, api, values, post, patch, reject: (value: boolean) => { reject = value; } };
+  return { snapshot, transactions, api, itemApi, values, post, patch, reject: (value: boolean) => { reject = value; } };
 }
 
 test('Tarifs multiples : autorisation, année, révision, doublons et échec du lot', async () => {
@@ -77,10 +77,13 @@ test('Tarifs multiples : autorisation, année, révision, doublons et échec du 
   const editing = fixture();
   expect((await editing.post({ ...editing.values, program_ids: [firstProgram] })).status).toBe(201);
   const originalId = editing.snapshot.tables.annual_fee_schedules[0].id;
-  expect((await editing.patch(originalId)).status).toBe(200);
-  expect(editing.transactions[1].map(change => change.operation)).toEqual(['update', 'insert']);
-  expect(editing.snapshot.tables.annual_fee_schedules).toHaveLength(2);
+  expect((await editing.patch(originalId)).status).toBe(400);
+  expect(editing.transactions).toHaveLength(1);
+  expect((await editing.patch(originalId, { ...editing.values, program_ids: [secondProgram], amount: 500000 })).status).toBe(200);
+  expect(editing.transactions[1].map(change => change.operation)).toEqual(['update']);
+  expect(editing.snapshot.tables.annual_fee_schedules).toHaveLength(1);
   expect(editing.snapshot.tables.annual_fee_schedules[0].id).toBe(originalId);
+  expect(editing.snapshot.tables.annual_fee_schedules[0]).toMatchObject({ program_id: secondProgram, amount: 500000 });
 });
 
 for (const width of [390, 1440]) test(`Cocher plusieurs filières, vérifier et enregistrer un tarif à ${width}px`, async ({ page }) => {
@@ -89,11 +92,13 @@ for (const width of [390, 1440]) test(`Cocher plusieurs filières, vérifier et 
   await authenticateFixture(page);
   await page.route('**/api/campus', route => route.fulfill({ json: { ...base, academicContext: { selection: 'current', currentYearId: yearId, selectedYearId: yearId, years: f.snapshot.tables.academic_years } } }));
   await page.route('**/api/year-preparation', route => route.fulfill({ json: { checks: [{ key: 'tuition', label: 'Scolarité', ready: f.snapshot.tables.annual_fee_schedules.length > 0, href: '' }] } }));
-  await page.route('**/api/catalog/*', async route => {
+  await page.route('**/api/catalog/**', async route => {
     const req = route.request();
-    const collection = new URL(req.url()).pathname.split('/').at(-1)!;
-    const request = new Request(req.url(), { method: req.method(), headers: req.headers(), ...(req.method() === 'POST' ? { body: req.postData()! } : {}) });
-    const response = await f.api[req.method() === 'POST' ? 'POST' : 'GET'](request, { params: Promise.resolve({ collection }) });
+    const [, , , collection, id] = new URL(req.url()).pathname.split('/');
+    const request = new Request(req.url(), { method: req.method(), headers: req.headers(), ...(req.method() !== 'GET' ? { body: req.postData()! } : {}) });
+    const response = req.method() === 'PATCH'
+      ? await f.itemApi.PATCH(request, { params: Promise.resolve({ collection, id }) })
+      : await f.api[req.method() === 'POST' ? 'POST' : 'GET'](request, { params: Promise.resolve({ collection }) });
     await route.fulfill({ status: response.status, json: await response.json() });
   });
   await page.goto('/academique/referentiel');
@@ -145,4 +150,24 @@ for (const width of [390, 1440]) test(`Cocher plusieurs filières, vérifier et 
   const edit = page.getByRole('button', { name: 'Modifier', exact: true }).first();
   await expect(edit.locator('span')).toHaveClass('sr-only');
   expect(await page.getByRole('dialog').evaluate(element => element.scrollWidth <= element.clientWidth)).toBe(true);
+  const originalId = f.snapshot.tables.annual_fee_schedules.find(row => row.program_id === firstProgram)!.id;
+  await edit.click();
+  const finance = page.getByRole('checkbox', { name: 'Finance Digitale', exact: true });
+  const marketing = page.getByRole('checkbox', { name: 'Marketing Digital', exact: true });
+  await expect(finance).toBeChecked();
+  await marketing.check();
+  await expect(finance).not.toBeChecked();
+  await finance.check();
+  await expect(marketing).not.toBeChecked();
+  await page.getByLabel('Montant FCFA', { exact: true }).fill('500000');
+  await page.getByLabel('Motif', { exact: true }).fill('Correction du tarif existant');
+  await page.getByRole('button', { name: 'Enregistrer le tarif', exact: true }).click();
+  await expect(review).toContainText('Le tarif existant sera mis à jour en conservant son identifiant');
+  expect(f.transactions).toHaveLength(2);
+  await page.getByRole('button', { name: 'Confirmer l’enregistrement', exact: true }).click();
+  await expect(page.getByRole('row').filter({ hasText: 'Finance Digitale' })).toContainText(/500\s000 FCFA/);
+  expect(f.snapshot.tables.annual_fee_schedules).toHaveLength(2);
+  expect(f.snapshot.tables.annual_fee_schedules.find(row => row.id === originalId)?.amount).toBe(500000);
+  expect(f.transactions[2]).toHaveLength(1);
+  expect(f.transactions[2][0]).toMatchObject({ operation: 'update', record: { id: originalId } });
 });

@@ -13,9 +13,11 @@ pour les actions des listes.
 - Le récapitulatif affiche les filières concernées avant confirmation. Un tarif
   distinct est enregistré pour chaque filière cochée, avec le même montant,
   niveau et mode. L’option générale conserve une seule ligne à portée commune.
-- La modification conserve l’identifiant du tarif initial et ajoute les autres
-  tarifs choisis. Les conflits avec des tarifs déjà présents sont refusés avant
-  écriture. Les contrats et paiements existants ne sont pas recalculés.
+- La modification conserve l’identifiant du tarif initial et met à jour cette
+  seule ligne. Le choix d’une autre filière remplace le choix actuel. La sélection
+  de plusieurs filières pour créer des tarifs est réservée à « Ajouter ».
+  Les conflits avec des tarifs déjà présents sont refusés avant écriture.
+  Les contrats et paiements existants ne sont pas recalculés.
 - Les actions de liste reviennent aux icônes seules, avec noms accessibles et
   infobulles. À la demande complémentaire de l’utilisateur, elles restent sur une
   seule ligne, sans retour à la ligne dans les listes du référentiel. Les
@@ -50,6 +52,22 @@ Les consultations et archivages des anciennes lignes restent possibles.
 Les tests couvrent Licence 1 face à une filière de Master, le changement de niveau,
 l’absence de sélection cachée, les références archivées et le refus serveur avant
 transaction, en plus des sauvegardes, confirmations et actions sur une seule ligne.
+
+## Modifier ne crée pas de tarif supplémentaire
+
+Le traitement initial de sélection multiple pouvait produire une mise à jour puis
+des insertions pendant la modification d’un tarif. Ce comportement a été retiré
+à la demande de l’utilisateur. La route de modification refuse désormais une
+liste de plusieurs filières ; une modification valide produit exactement une
+opération `update`, avec l’identifiant d’origine. Le formulaire d’un tarif déjà
+enregistré remplace la filière sélectionnée plutôt que d’en cumuler plusieurs.
+Le récapitulatif annonce la mise à jour du tarif existant.
+
+Les tests API et UI vérifient le refus d’une modification multiple, le changement
+de filière ou de montant, la conservation de l’identifiant et un nombre de lignes
+inchangé après confirmation. Les tarifs supplémentaires restent créables depuis
+l’action d’ajout. Aucune suppression ou correction de données réelles n’a été
+effectuée dans cette intervention.
 
 ## Vérification
 
