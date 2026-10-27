@@ -6,6 +6,7 @@ import { verifyCurriculumCatalog } from './verify-curriculum-catalog.mjs';
 import { verifyEvaluationWorkflow } from './verify-evaluation-workflow.mjs';
 import { verifyTeacherManagement } from './verify-teacher-management.mjs';
 import { verifyAttendanceManagement } from './verify-attendance-management.mjs';
+import { verifyDelegateAttendance } from './verify-delegate-attendance.mjs';
 import { verifyPaymentAllocations } from './verify-payment-allocations.mjs';
 import { verifyPaymentAdjustments } from './verify-payment-adjustments.mjs';
 import { verifyNetFinances } from './verify-net-finances.mjs';
@@ -286,6 +287,7 @@ try {
   await verifyScheduleManagement(db, check, { year, site, level });
   await verifyEvaluationWorkflow(db, check, { year, offering, assignment, level, site });
   await verifyAttendanceManagement(db, check, { year, offering, assignment, group, enrollment, session, teacher });
+  await verifyDelegateAttendance(db, check, { year, offering, group, enrollment, session, teacher });
   await verifyPaymentAllocations(db, check, { year, offering });
   await verifyPaymentAdjustments(db, check, { year, offering });
   await verifyNetFinances(db, check, { year, offering });
@@ -457,6 +459,7 @@ try {
     await reject("select public.escen_website_manage($1,'IT','articles')",[account.id],/permission/i);
     await reject("select public.escen_website_rate($1,1)",['c'.repeat(64)],/permission/i);
     await reject('select public.escen_history_exam($1)',[randomUUID()],/permission/i);
+    await reject('select public.escen_delegate_attendance_transaction($1,0,$2,$3,$4::jsonb)',[account.id,session.id,year.id,JSON.stringify([])],/permission/i);
     await reject('select count(*) from escen_private.history_catalog',[],/permission/i);
     await db.exec('reset role');
     await reject('delete from escen.academic_years where id = $1', [year.id], /Suppression/i);

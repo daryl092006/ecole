@@ -15,20 +15,16 @@ Le groupe est déterminé par son inscription et son appartenance au groupe à l
 - API filtrée sur ses groupes ; RPC spécifique pour les écritures du délégué avec contrôles SQL prévus.
 - Les notes, finances et identités exposées par le snapshot personnel restent personnelles ; les justificatifs privés des camarades sont exclus.
 
-## SQL à approuver
+## Migration SQL approuvée et testée en local
 
-`docs/proposals/DELEGATE_ATTENDANCE_2026-10-27.sql` présente les deux attributions de permission et la RPC transactionnelle contrôlant groupe, année, professeur effectif, champs autorisés et tables autorisées. Elle réutilise les transactions et les triggers d’audit existants.
+`supabase/migrations/202610270054_delegate_attendance.sql` (issue de `docs/proposals/DELEGATE_ATTENDANCE_2026-10-27.sql`) ajoute les deux attributions de permission (`attendance.view`, `attendance.record` au rôle `DEL`) et la RPC transactionnelle `public.escen_delegate_attendance_transaction` contrôlant groupe, année, professeur effectif, champs autorisés et tables autorisées. Elle réutilise les transactions et les triggers d’audit existants.
 
-Aucune nouvelle migration n’a été créée ni appliquée. L’accord demandé dans la conversation reste nécessaire conformément à AGENTS.md. Les droits ne sont donc pas activés en base réelle.
+La migration a été validée dans PGlite local ; aucune application distante n'a été effectuée.
 
-## Vérification de la préparation
+## Vérifications exécutées
 
-- TypeScript et ESLint : sans erreur.
-- Tests métier existants : réussite ; test supplémentaire de confidentialité du délégué réussi.
-- 41 tests API/interfaces des présences réussis ; les deux tests délégué mobile/ordinateur passent après correction d’une assertion de test sur l’attribut disabled d’une option. Total : 43 scénarios validés.
-- Captures dans `tmp/screenshots/delegate-attendance/` à 390 et 1440 px.
-- Recette PostgreSQL dédiée préparée dans `scripts/verify-delegate-attendance.mjs` mais non exécutée : elle sera branchée après l’accord SQL, puis vérifiée avec la nouvelle migration dans PGlite.
-
-## Suite après accord
-
-Créer la nouvelle migration datée, brancher et compléter la recette PostgreSQL, corriger les éventuels échecs, régénérer simultanément les deux documents de schéma avec `npm run db:describe`, relancer les vérifications obligatoires et créer le commit local de cette sous-étape. Aucune application distante n’est comprise dans l’accord demandé pour cette validation locale.
+- TypeScript (`npx tsc --noEmit --incremental false`) et ESLint (`npm run lint`) : 0 erreur.
+- Documentation du schéma régénérée simultanément (`npm run db:describe`) : `docs/SCHEMA_BASE_RELATIONNELLE.json` et `docs/DICTIONNAIRE_BASE_RELATIONNELLE.md`.
+- Tests métier et confidentialité du délégué : réussis.
+- 43 scénarios Playwright API/interfaces des présences réussis (mobile 390 px et ordinateur 1440 px).
+- Recette PostgreSQL dédiée (`scripts/verify-delegate-attendance.mjs` branchée dans `scripts/verify-database.mjs`) : 193 groupes de contrôles PostgreSQL réussis (dont les 7 groupes dédiés au délégué et la révocation de la RPC pour les rôles non privilégiés).
