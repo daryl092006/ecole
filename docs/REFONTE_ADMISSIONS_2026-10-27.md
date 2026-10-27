@@ -42,6 +42,22 @@ La migration a été exécutée uniquement dans les bases PGlite éphémères de
 - Tests navigateur/API : 46 réussis, 3 ignorés (parcours externes du site, hors configuration de cette recette). Interfaces vérifiées à 390 et 1440 px.
 - Documentation du schéma régénérée simultanément par `npm run db:describe` ; aucun changement structurel de table à documenter pour cette migration.
 
-## Activation restante
+## Activation distante — 27 octobre 2026
 
-Le rôle est défini et testé dans le dépôt ; il n’est pas activé sur la base distante. L’application distante de la migration et l’attribution du rôle à un compte réel restent des opérations distinctes, non effectuées pendant cette phase locale.
+Après le bilan local, l’utilisateur a autorisé l’activation réelle (« vas y »). La migration `202610270053_customer_admissions.sql` a été appliquée seule sur le projet Supabase lié, dans une transaction avec délais bornés, contrôles avant/après et inscription dans l’historique `supabase_migrations.schema_migrations`. Les autres migrations absentes à distance n’ont pas été appliquées.
+
+Le script de déploiement a été validé sur PGlite avant exécution distante. Les empreintes des candidatures, comptes, attributions de rôles, paiements, notes et inscriptions sont identiques avant/après la transaction. Aucune candidature n’a été déplacée dans le circuit, aucun paiement enregistré, aucun mail envoyé.
+
+Contrôle distant après activation :
+
+- Migration 053 enregistrée ; contexte admissions IT actif ; 94 candidatures présentes.
+- CC possède exactement les quatre permissions de consultation, vérification, suivi et confirmation des frais.
+- LOG et RAF n’ont plus de permission `application.*` ; les comptes réels de ces rôles sont refusés par le contrôle métier admissions.
+- DA conserve consultation et décision ; DG/DGA conservent la consultation ; IT conserve toutes les actions ; MKT conserve consultation et suivi limités.
+- Protection `no_delete` du catalogue rétablie.
+- Téléchargement des pièces interdit à `anon` et `authenticated`, autorisé à `service_role` sous contrôle du périmètre métier.
+- Aucun rôle CC n’a été attribué à un compte automatiquement. L’ancien titulaire historique a été identifié ; le choix du compte actuel est demandé à l’utilisateur avant attribution.
+
+## Reste à décider
+
+Confirmer le compte devant recevoir CC, en précisant si ses autres rôles doivent être conservés. Aucune attribution nominative ni retrait de rôle individuel n’a été effectué pendant l’activation technique.
