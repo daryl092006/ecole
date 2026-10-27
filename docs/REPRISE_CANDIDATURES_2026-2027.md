@@ -26,8 +26,10 @@ campagnes préexistants. La révision du portail est passée de **37 à 38**.
 | Correspondances sources vers les dossiers et pièces | 218 |
 | Événements d’audit INSERT avec l’auteur prévu | 220 |
 
-Les neuf candidatures dont la filière source est absente restent consultables
-sans filière inventée. Les 21 pièces introuvables dans le ZIP restent signalées
+Sur les neuf candidatures dont la filière source était absente, cinq dossiers
+de Licence sont désormais rattachés à MPN après vérification dans les sauvegardes
+antérieures ; les quatre dossiers de Master attendent une décision explicite
+(voir le complément ci-dessous). Les 21 pièces introuvables dans le ZIP restent signalées
 par des anomalies ; leurs références sources sont conservées. Le chevauchement
 d’email est également signalé, sans fusion des identités différentes.
 
@@ -54,6 +56,48 @@ Les vérifications TypeScript, ESLint, les 186 groupes de contrôles PostgreSQL,
 les recettes métier existantes et les neuf contrôles locaux du lot complet
 passent avec la nouvelle migration. Les deux documents de schéma ont été
 régénérés ensemble avec `npm run db:describe`.
+
+### Complément : filière MPN retrouvée dans les sauvegardes antérieures
+
+Après la demande de poursuivre, les quatre archives ZIP disponibles et le dump
+SQL d’août ont été relus. La filière `3` existe dans les sauvegardes du 27 août
+et du 29 septembre : « Management de Projet Numérique », code `MPN`.
+La filière actuelle « Management de Projets Numériques » porte ce même code,
+unique dans les deux états de référence. Sa configuration 2026-2027 comporte
+les niveaux Licence 1, 2 et 3.
+
+Les cinq candidatures concernées de Licence ont été rattachées aux campagnes
+MPN existantes de leur niveau, dans une transaction auditée. Aucune formation
+n’a été créée ou ouverte. La preuve source du 29 septembre est conservée dans
+`escen_private.recovery_candidates`, avec le nom de l’archive, son empreinte
+SQL et la ligne historique de la filière. Les cinq anomalies correspondantes
+sont résolues avec auteur et motif. Les versions des dossiers ont été incrémentées.
+
+La révision est passée de **38 à 39**. Le contrôle distant confirme cinq UPDATE
+audités, cinq anomalies résolues et une seule opération de reprise complémentaire.
+Les 107 collections du snapshot, les 89 autres candidatures (dont le brouillon
+préexistant), les campagnes et toutes les pièces sont inchangées. Les statuts,
+admissions, années, identités et liens étudiants des cinq dossiers sont préservés.
+
+Les quatre autres candidatures concernent Master 1 ou Master 2. La filière MPN
+ne possède aucune campagne de Master dans l’année cible ; la filière
+« Management de Projets & Transformation Digitale » en possède. Aucun changement
+automatique de filière ni aucune ouverture de Master MPN n’a été effectué.
+Une question a été adressée à l’utilisateur sur ce rattachement métier et reste
+en attente de réponse.
+
+Les 21 fichiers manquants sont absents des quatre ZIP disponibles, y compris
+après recherche par nom de fichier. Leurs références et anomalies sont conservées.
+
+Recette : `prepare-application-recovery.mjs --follow-up <plan privé>` rejoue
+l’import initial puis la correction locale : erreur tardive avec rollback,
+réussite des cinq rattachements, audit, autres dossiers inchangés et refus de
+seconde application. TypeScript, ESLint et `npm test` passent.
+Preuves privées complémentaires : `additional-backup-check.json`,
+`missing-files-all-backups.json`, `program-follow-up.json`,
+`program-follow-up.sql`, `before-program-recovery.json`,
+`after-program-recovery.json`, `program-recovery-verification.json` et
+`program-audit-response.json` dans le même répertoire privé.
 
 ## Historique de la préparation, avant l’accord et l’application
 

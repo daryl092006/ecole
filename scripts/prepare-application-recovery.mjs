@@ -8,7 +8,7 @@ import { createDatabase, applyMigrations } from './database-engine.mjs';
 
 // Offline only: the state is an explicitly captured, private remote read.
 // No credentials, storage upload or remote apply option in this preparer.
-const { values } = parseArgs({ options: Object.fromEntries(['source','state','out'].map(key => [key,{ type:'string' }])) });
+const { values } = parseArgs({ options: Object.fromEntries(['source','state','out','follow-up'].map(key => [key,{ type:'string' }])) });
 for (const key of ['source','state','out']) assert.ok(values[key], `--${key} requis`);
 const source = JSON.parse(execFileSync('python3', ['-c', `
 import importlib.util,pathlib,json,sys,zipfile,hashlib
@@ -218,6 +218,33 @@ try {
   await assert.rejects(db.exec(sql),/CONCURRENT_UPDATE|déjà reprises/);
   const audits=(await db.query('select count(*)::int n from escen_private.audit_events where actor_id=$1 and action=\'INSERT\' and entity_id=any($2::uuid[])',[actor.id,[...applications,...documents,...intakes].map(x => x.id)])).rows[0].n;
   assert.equal(audits,applications.length+documents.length+intakes.length);
+  if (values['follow-up']) {
+    const followUp=JSON.parse(await readFile(values['follow-up'],'utf8'));
+    const snapshot=async()=>({
+      applications:(await db.query('select * from escen.online_applications order by id')).rows,
+      issues:(await db.query('select * from escen_private.import_issues order by row_id,code')).rows,
+      revision:(await db.query('select revision from escen_private.portal_revision where singleton')).rows[0].revision,
+      audits:(await db.query('select count(*)::int n from escen_private.audit_events')).rows[0].n,
+    });
+    const before=await snapshot();
+    await assert.rejects(db.exec(followUp.sql.replace('changed_count<>5','changed_count<>6')),/Rattachement incomplet/);
+    assert.deepEqual(await snapshot(),before);
+    await db.exec(followUp.sql);
+    const after=await snapshot();
+    assert.equal(Number(after.revision),Number(before.revision)+1);
+    assert.equal(after.audits,before.audits+5);
+    assert.equal(after.applications.length,before.applications.length);
+    for (const update of followUp.updates) {
+      const row=after.applications.find(x=>x.id===update.id);
+      assert.equal(row.intake_id,update.intake_id);
+      assert.equal(row.legacy_state.program_unresolved,false);
+      assert.equal(row.version,update.version+1);
+      assert.equal(row.status,before.applications.find(x=>x.id===row.id).status);
+    }
+    for (const old of before.applications.filter(x=>!followUp.updates.some(u=>u.id===x.id))) assert.deepEqual(after.applications.find(x=>x.id===old.id),old);
+    await assert.rejects(db.exec(followUp.sql),/CONCURRENT_UPDATE|déjà/);
+    console.log(JSON.stringify({followUpChecks:5,correctedApplications:5,unrelatedApplicationsChanged:0,remoteWrites:0}));
+  }
   const validation={...counts,sqlSha256:hash(sql),proposalSha256:hash(await readFile('docs/proposals/RECOVER_APPLICATIONS_2026-10-27.sql')),sourceSha256:source.sql_sha256,expectedRevision:state.revision,localChecks:9,auditEvents:audits,remoteWrites:0};
   await writeFile(`${out}/application-validation.json`,JSON.stringify(validation,null,2)+'\n',{mode:0o600});
   console.log(JSON.stringify(validation,null,2));
