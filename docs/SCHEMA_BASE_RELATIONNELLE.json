@@ -2,9 +2,9 @@
   "stats": {
     "businessTables": 114,
     "privateTables": 13,
-    "columns": 988,
-    "foreignKeys": 269,
-    "checks": 234,
+    "columns": 991,
+    "foreignKeys": 271,
+    "checks": 235,
     "exclusions": 4
   },
   "tables": [
@@ -5743,6 +5743,33 @@
       "schema": "escen",
       "table": "online_applications",
       "name": "academic_year_id",
+      "type": "uuid",
+      "nullable": "YES",
+      "default": null,
+      "generated": "NEVER"
+    },
+    {
+      "schema": "escen",
+      "table": "online_applications",
+      "name": "legacy_source_row_id",
+      "type": "uuid",
+      "nullable": "YES",
+      "default": null,
+      "generated": "NEVER"
+    },
+    {
+      "schema": "escen",
+      "table": "online_applications",
+      "name": "legacy_state",
+      "type": "jsonb",
+      "nullable": "YES",
+      "default": null,
+      "generated": "NEVER"
+    },
+    {
+      "schema": "escen",
+      "table": "online_applications",
+      "name": "legacy_student_id",
       "type": "uuid",
       "nullable": "YES",
       "default": null,
@@ -15555,16 +15582,16 @@
     {
       "schema": "escen",
       "table": "online_applications",
-      "name": "online_applications_academic_year_id_fkey",
-      "type": "f",
-      "definition": "FOREIGN KEY (academic_year_id) REFERENCES escen.academic_years(id) ON DELETE RESTRICT"
+      "name": "application_submission_origin",
+      "type": "c",
+      "definition": "CHECK (((status = 'BROUILLON'::text) OR ((submitted_at IS NOT NULL) AND ((intake_id IS NOT NULL) OR (legacy_source_row_id IS NOT NULL)))))"
     },
     {
       "schema": "escen",
       "table": "online_applications",
-      "name": "online_applications_check",
-      "type": "c",
-      "definition": "CHECK (((status = 'BROUILLON'::text) OR ((submitted_at IS NOT NULL) AND (intake_id IS NOT NULL))))"
+      "name": "online_applications_academic_year_id_fkey",
+      "type": "f",
+      "definition": "FOREIGN KEY (academic_year_id) REFERENCES escen.academic_years(id) ON DELETE RESTRICT"
     },
     {
       "schema": "escen",
@@ -15628,6 +15655,34 @@
       "name": "online_applications_intake_id_fkey",
       "type": "f",
       "definition": "FOREIGN KEY (intake_id) REFERENCES escen.website_intakes(id) ON DELETE RESTRICT"
+    },
+    {
+      "schema": "escen",
+      "table": "online_applications",
+      "name": "online_applications_legacy_source_row_id_fkey",
+      "type": "f",
+      "definition": "FOREIGN KEY (legacy_source_row_id) REFERENCES escen_private.legacy_rows(id) ON DELETE RESTRICT"
+    },
+    {
+      "schema": "escen",
+      "table": "online_applications",
+      "name": "online_applications_legacy_source_row_id_key",
+      "type": "u",
+      "definition": "UNIQUE (legacy_source_row_id)"
+    },
+    {
+      "schema": "escen",
+      "table": "online_applications",
+      "name": "online_applications_legacy_state_check",
+      "type": "c",
+      "definition": "CHECK (((legacy_state IS NULL) OR (jsonb_typeof(legacy_state) = 'object'::text)))"
+    },
+    {
+      "schema": "escen",
+      "table": "online_applications",
+      "name": "online_applications_legacy_student_id_fkey",
+      "type": "f",
+      "definition": "FOREIGN KEY (legacy_student_id) REFERENCES escen.students(id) ON DELETE RESTRICT"
     },
     {
       "schema": "escen",
@@ -21879,6 +21934,18 @@
       "table": "offering_semesters",
       "name": "offering_semesters_pkey",
       "definition": "CREATE UNIQUE INDEX offering_semesters_pkey ON escen.offering_semesters USING btree (id)"
+    },
+    {
+      "schema": "escen",
+      "table": "online_applications",
+      "name": "application_legacy_student_fk",
+      "definition": "CREATE INDEX application_legacy_student_fk ON escen.online_applications USING btree (legacy_student_id)"
+    },
+    {
+      "schema": "escen",
+      "table": "online_applications",
+      "name": "online_applications_legacy_source_row_id_key",
+      "definition": "CREATE UNIQUE INDEX online_applications_legacy_source_row_id_key ON escen.online_applications USING btree (legacy_source_row_id)"
     },
     {
       "schema": "escen",

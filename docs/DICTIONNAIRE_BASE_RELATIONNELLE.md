@@ -2,7 +2,7 @@
 
 Généré avec `npm run db:describe` en exécutant les migrations dans PostgreSQL local (PGlite). Aucun accès à Supabase ou aux données de la sauvegarde.
 
-114 tables métier, 13 tables privées, 988 colonnes, 269 clés étrangères, 234 CHECK de tables et 4 exclusions. Les domaines ajoutent les bornes des notes, des montants FCFA et des textes obligatoires.
+114 tables métier, 13 tables privées, 991 colonnes, 271 clés étrangères, 235 CHECK de tables et 4 exclusions. Les domaines ajoutent les bornes des notes, des montants FCFA et des textes obligatoires.
 
 Toutes les tables ont RLS activée, sans accès applicatif permis à ce stade. Les noms techniques ne sont pas des libellés à afficher dans l’interface.
 
@@ -78,7 +78,7 @@ Toutes les tables ont RLS activée, sans accès applicatif permis à ce stade. L
 | escen | jury_members | 4 | 2 | Oui |
 | escen | levels | 8 | 2 | Oui |
 | escen | offering_semesters | 6 | 2 | Oui |
-| escen | online_applications | 12 | 2 | Oui |
+| escen | online_applications | 15 | 4 | Oui |
 | escen | payment_allocations | 10 | 6 | Oui |
 | escen | payment_documents | 3 | 2 | Oui |
 | escen | payment_reversals | 5 | 2 | Oui |
@@ -2934,12 +2934,15 @@ CREATE UNIQUE INDEX offering_semesters_pkey ON escen.offering_semesters USING bt
 | submitted_at | timestamptz | YES | — | NEVER |
 | reason | text | NO | 'Dossier commencé sur le site'::text | NEVER |
 | academic_year_id | uuid | YES | — | NEVER |
+| legacy_source_row_id | uuid | YES | — | NEVER |
+| legacy_state | jsonb | YES | — | NEVER |
+| legacy_student_id | uuid | YES | — | NEVER |
 
 Contraintes :
 
 ```sql
+application_submission_origin: CHECK (((status = 'BROUILLON'::text) OR ((submitted_at IS NOT NULL) AND ((intake_id IS NOT NULL) OR (legacy_source_row_id IS NOT NULL)))))
 online_applications_academic_year_id_fkey: FOREIGN KEY (academic_year_id) REFERENCES escen.academic_years(id) ON DELETE RESTRICT
-online_applications_check: CHECK (((status = 'BROUILLON'::text) OR ((submitted_at IS NOT NULL) AND (intake_id IS NOT NULL))))
 online_applications_created_at_not_null: NOT NULL created_at
 online_applications_diploma_check: CHECK ((jsonb_typeof(diploma) = 'object'::text))
 online_applications_diploma_not_null: NOT NULL diploma
@@ -2949,6 +2952,10 @@ online_applications_id_not_null: NOT NULL id
 online_applications_identity_check: CHECK (((jsonb_typeof(identity) = 'object'::text) AND (length(COALESCE((identity ->> 'nom'::text), ''::text)) > 0) AND (length(COALESCE((identity ->> 'prenom'::text), ''::text)) > 0) AND (length(COALESCE((identity ->> 'email'::text), ''::text)) > 0)))
 online_applications_identity_not_null: NOT NULL identity
 online_applications_intake_id_fkey: FOREIGN KEY (intake_id) REFERENCES escen.website_intakes(id) ON DELETE RESTRICT
+online_applications_legacy_source_row_id_fkey: FOREIGN KEY (legacy_source_row_id) REFERENCES escen_private.legacy_rows(id) ON DELETE RESTRICT
+online_applications_legacy_source_row_id_key: UNIQUE (legacy_source_row_id)
+online_applications_legacy_state_check: CHECK (((legacy_state IS NULL) OR (jsonb_typeof(legacy_state) = 'object'::text)))
+online_applications_legacy_student_id_fkey: FOREIGN KEY (legacy_student_id) REFERENCES escen.students(id) ON DELETE RESTRICT
 online_applications_pkey: PRIMARY KEY (id)
 online_applications_reason_not_null: NOT NULL reason
 online_applications_reference_key: UNIQUE (reference)
@@ -2961,6 +2968,8 @@ online_applications_version_not_null: NOT NULL version
 Index :
 
 ```sql
+CREATE INDEX application_legacy_student_fk ON escen.online_applications USING btree (legacy_student_id)
+CREATE UNIQUE INDEX online_applications_legacy_source_row_id_key ON escen.online_applications USING btree (legacy_source_row_id)
 CREATE UNIQUE INDEX online_applications_pkey ON escen.online_applications USING btree (id)
 CREATE UNIQUE INDEX online_applications_reference_key ON escen.online_applications USING btree (reference)
 CREATE INDEX website_application_intake_fk ON escen.online_applications USING btree (intake_id)

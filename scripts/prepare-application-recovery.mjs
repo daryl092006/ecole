@@ -171,7 +171,8 @@ await writeFile(`${out}/application-import.sql`,sql,{mode:0o600});
 const db=createDatabase();
 try {
   await applyMigrations(db);
-  await db.exec(await readFile('docs/proposals/RECOVER_APPLICATIONS_2026-10-27.sql','utf8'));
+  const recoveryInstalled=(await db.query("select 1 from information_schema.columns where table_schema='escen' and table_name='online_applications' and column_name='legacy_state'")).rows.length>0;
+  if (!recoveryInstalled) await db.exec(await readFile('docs/proposals/RECOVER_APPLICATIONS_2026-10-27.sql','utf8'));
   const insert=async(table,rows) => { if(rows.length) await db.exec(recordsSql('escen',table,rows)); };
   await insert('people',t.people);
   await insert('accounts',t.accounts.map(row => {const copy={...row};delete copy.account_type;return copy;}));

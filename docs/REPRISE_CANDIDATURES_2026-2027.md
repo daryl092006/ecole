@@ -1,5 +1,62 @@
 # Année cible des candidatures de la sauvegarde
 
+## État actuel : import appliqué et vérifié le 27 octobre 2026
+
+Après accord explicite de l’utilisateur sur le SQL et son application distante,
+la migration `202610270051_application_recovery.sql` a été créée à l’identique
+de la proposition approuvée, puis appliquée au projet Supabase lié
+`zmxapemyktxhppdxenzb`. Son enregistrement dans l’historique est dans la même
+transaction que les changements de schéma. Les migrations 049 et 050 restent
+absentes de la base distante : elles n’ont pas été appliquées par cette opération.
+
+Le lot métier a ensuite été appliqué dans une opération atomique, avec contrôle
+de la révision et de l’auteur, verrouillage et comparaison des dossiers et des
+campagnes préexistants. La révision du portail est passée de **37 à 38**.
+
+| Résultat vérifié dans la base active | Nombre |
+| --- | ---: |
+| Candidatures importées, toutes en 2026-2027 | 93 |
+| Dossiers envoyés | 38 |
+| Brouillons conservés et consultables | 55 |
+| Admissions historiques conservées | 20 |
+| Liens exacts avec un étudiant existant | 3 |
+| Pièces disponibles importées | 125 |
+| Campagnes supplémentaires, conservées fermées | 2 |
+| Preuves sources conservées | 271 |
+| Correspondances sources vers les dossiers et pièces | 218 |
+| Événements d’audit INSERT avec l’auteur prévu | 220 |
+
+Les neuf candidatures dont la filière source est absente restent consultables
+sans filière inventée. Les 21 pièces introuvables dans le ZIP restent signalées
+par des anomalies ; leurs références sources sont conservées. Le chevauchement
+d’email est également signalé, sans fusion des identités différentes.
+
+La comparaison après import confirme chaque champ prévu des 93 dossiers,
+125 pièces et deux campagnes. Les 107 collections du snapshot général sont
+identiques à leur état avant import après comparaison canonique des lignes.
+Le brouillon de 2025-2026 déjà présent est intact. Aucun étudiant, compte,
+paiement ou inscription annuelle n’a été ajouté par cette reprise.
+
+La lecture authentifiée distante renvoie **93 candidatures pour 2026-2027** ;
+l’accès anonyme est refusé (`42501`). Un téléchargement signé a été retesté
+avec comparaison de son empreinte. Les 125 empreintes de fichiers avaient déjà
+été vérifiées après leur transfert privé. Derniers contrôles distants :
+27 octobre 2026, 12:48:32 UTC.
+
+Preuves privées dans `/private/tmp/escen-admissions-20261027/` :
+`before-response.json`, `migration-response.json`, `import-response.json`,
+`after-response.json`, `remote-verification.json`, `audit-response.json`,
+`api-verification.json` et `files-remote.json`. Les données nominatives restent
+hors dépôt. Pour rafraîchir un écran ouvert avant l’import, utiliser
+« Actualiser les dossiers » dans **Scolarité → Candidatures**.
+
+Les vérifications TypeScript, ESLint, les 186 groupes de contrôles PostgreSQL,
+les recettes métier existantes et les neuf contrôles locaux du lot complet
+passent avec la nouvelle migration. Les deux documents de schéma ont été
+régénérés ensemble avec `npm run db:describe`.
+
+## Historique de la préparation, avant l’accord et l’application
+
 Décision utilisateur du 27 octobre 2026 : reprendre **toutes les candidatures
 de la sauvegarde du 26 octobre dans l’année 2026-2027**. Ne pas déduire leur
 année cible de l’année scolaire historique de la ligne source.
