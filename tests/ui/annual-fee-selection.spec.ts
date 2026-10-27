@@ -3,12 +3,17 @@ import { authenticateFixture, snapshot as base } from './persistent-fixture';
 import { loadSecurityApi, securityContext, uuid } from './security-fixture';
 import type { PersistentChange, PersistentContext, RelationalSnapshot } from '../../src/types/persistence';
 
-const yearId = uuid(1), levelId = uuid(10), firstProgram = uuid(11), secondProgram = uuid(12);
+const yearId = uuid(1), levelId = uuid(10), firstProgram = uuid(11), secondProgram = uuid(12), masterProgram = uuid(13), masterLevel = uuid(14);
 function fixture(context: PersistentContext = securityContext()) {
   const snapshot: RelationalSnapshot = { revision: 1, tables: {
     academic_years: [{ id: yearId, name: '2026-2027', status: 'BROUILLON', starts_on: '2026-10-12', ends_on: '2027-06-30' }],
-    programs: [{ id: firstProgram, name: 'Finance Digitale' }, { id: secondProgram, name: 'Marketing Digital' }],
-    levels: [{ id: levelId, name: 'Licence 1' }], annual_fee_schedules: [],
+    programs: [{ id: firstProgram, name: 'Finance Digitale' }, { id: secondProgram, name: 'Marketing Digital' }, { id: masterProgram, name: 'Management de Projets & Transformation Digitale' }],
+    levels: [{ id: levelId, name: 'Licence 1' }, { id: masterLevel, name: 'Master 1' }], annual_fee_schedules: [],
+    curricula: [
+      { id: uuid(20), program_id: firstProgram, level_id: levelId },
+      { id: uuid(21), program_id: secondProgram, level_id: levelId },
+      { id: uuid(22), program_id: masterProgram, level_id: masterLevel },
+    ],
   } };
   const transactions: PersistentChange[][] = [];
   let reject = false;
@@ -52,6 +57,10 @@ test('Tarifs multiples : autorisation, année, révision, doublons et échec du 
   expect((await f.post(f.values, 1, 'all')).status).toBe(409);
   expect((await f.post({ ...f.values, program_ids: [firstProgram, firstProgram] })).status).toBe(400);
   expect((await f.post({ ...f.values, program_ids: [firstProgram, uuid(99)] })).status).toBe(400);
+  expect((await f.post({ ...f.values, program_ids: [masterProgram] })).status).toBe(400);
+  const { program_ids: _programIds, ...singleValues } = f.values;
+  void _programIds;
+  expect((await f.post({ ...singleValues, program_id: masterProgram })).status).toBe(400);
   expect(f.transactions).toHaveLength(0);
   f.reject(true);
   expect((await f.post()).status).toBe(409);
@@ -93,6 +102,13 @@ for (const width of [390, 1440]) test(`Cocher plusieurs filières, vérifier et 
   await page.getByRole('button', { name: 'Configurer frais de scolarité', exact: true }).click();
   const all = page.getByRole('checkbox', { name: 'Toutes les filières', exact: true });
   await expect(all).toBeChecked();
+  const level = page.getByRole('combobox', { name: 'Niveau (facultatif)', exact: true });
+  const master = page.getByRole('checkbox', { name: 'Management de Projets & Transformation Digitale', exact: true });
+  await expect(master).toBeVisible();
+  await master.check();
+  await level.selectOption(levelId);
+  await expect(master).toHaveCount(0);
+  await expect(all).not.toBeChecked();
   await all.uncheck();
   await page.getByLabel('Montant FCFA', { exact: true }).fill('480000');
   await page.getByRole('button', { name: 'Enregistrer le tarif', exact: true }).click();
@@ -100,7 +116,13 @@ for (const width of [390, 1440]) test(`Cocher plusieurs filières, vérifier et 
   await page.getByRole('checkbox', { name: 'Finance Digitale', exact: true }).check();
   await page.getByRole('checkbox', { name: 'Marketing Digital', exact: true }).check();
   await expect(all).not.toBeChecked();
-  await page.getByRole('combobox', { name: 'Niveau (facultatif)', exact: true }).selectOption(levelId);
+  await level.selectOption(masterLevel);
+  await expect(page.getByRole('checkbox', { name: 'Finance Digitale', exact: true })).toHaveCount(0);
+  await expect(master).not.toBeChecked();
+  await level.selectOption(levelId);
+  await expect(page.getByRole('checkbox', { name: 'Finance Digitale', exact: true })).not.toBeChecked();
+  await page.getByRole('checkbox', { name: 'Finance Digitale', exact: true }).check();
+  await page.getByRole('checkbox', { name: 'Marketing Digital', exact: true }).check();
   await page.getByRole('combobox', { name: 'Mode de formation (facultatif)', exact: true }).selectOption('Présentiel');
   await page.screenshot({ path: `tmp/screenshots/annual-offerings/${width}/frais-filieres-cochees.png` });
   await page.getByRole('button', { name: 'Enregistrer le tarif', exact: true }).click();

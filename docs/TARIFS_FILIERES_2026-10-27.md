@@ -32,19 +32,37 @@ L’audit et la transaction existants s’appliquent ; aucune série de sauvegar
 indépendantes n’est déclenchée depuis le navigateur. Le portail s’actualise après
 succès et conserve le récapitulatif en cas d’échec.
 
+## Filtrage des filières par niveau
+
+Le premier formulaire à cases proposait toutes les filières actives, sans tenir
+compte du niveau : une filière réservée au Master pouvait donc être proposée
+en Licence 1. Le niveau est maintenant placé avant les cases et filtre la liste
+selon les rattachements actifs du catalogue des programmes de cours. Le filtre
+ne déduit aucun niveau du nom d’une filière.
+
+Changer de niveau retire de la sélection les filières devenues incompatibles,
+sans les remplacer implicitement par « Toutes les filières ». Si la sélection
+devient vide, il faut la compléter. Les deux protocoles d’enregistrement serveur,
+tarif simple et sélection multiple, refusent une filière ne proposant pas le
+niveau choisi. Une relation de programme archivée ne rend pas ce niveau disponible.
+Les consultations et archivages des anciennes lignes restent possibles.
+
+Les tests couvrent Licence 1 face à une filière de Master, le changement de niveau,
+l’absence de sélection cachée, les références archivées et le refus serveur avant
+transaction, en plus des sauvegardes, confirmations et actions sur une seule ligne.
+
 ## Vérification
 
-- TypeScript sans émission incrémentale et ESLint.
+- TypeScript sans émission incrémentale et ESLint : réussis après les corrections.
 - `npm test` : workflows et 185 groupes de contrôles PostgreSQL réussis, ainsi
   que les contrôles enseignants et reprise. Les nouvelles assertions de sélection,
   tarif général, modification, borne de lot, doublons et archivage ont ensuite
   été validées par `node scripts/verify-workflows.cjs`.
-- La campagne annuelle comporte 32 scénarios distincts. Le premier passage en
-  valide 29 ; les deux nouveaux tests de formulaire sont corrigés pour cibler
-  l’alerte de la fenêtre plutôt que l’annonceur Next.js. Le test de présentation
-  à 1440 px est repris après un chargement de développement interrompu. Les cinq
-  scénarios ciblés passent ensuite. La création et la modification sont vérifiées
-  avec les vraies routes API, Auth et transport RPC simulés localement.
+- Dernière campagne annuelle après filtrage par niveau : 34 tests réussis,
+  configuration `annual-offerings.config.ts`. La création et la modification
+  sont vérifiées avec les vraies routes API, Auth et transport RPC simulés
+  localement. Les scénarios de tarif couvrent 360, 390 et 1440 px ; le choix des
+  filières par niveau est vérifié à 390 et 1440 px.
 - Mobile et ordinateur : plusieurs filières, sélection vide refusée, récapitulatif,
   absence d’écriture avant confirmation, refus RPC sans tarif partiel et reprise
   après échec. La liste finale affiche chaque filière et les icônes restent

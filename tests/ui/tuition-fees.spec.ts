@@ -17,7 +17,7 @@ for (const category of ['SCOLARITE', 'INSCRIPTION'] as const) for (const width o
   ];
   const tables: Record<string, DatabaseRow[]> = {
     academic_years: years,
-    programs: [{ id: 'FIN', name: 'Finance Digitale' }],
+    programs: [{ id: 'FIN', name: 'Finance Digitale', level_ids: ['L1'] }],
     levels: [{ id: 'L1', name: 'Licence 1' }],
     annual_fee_schedules: [],
   };

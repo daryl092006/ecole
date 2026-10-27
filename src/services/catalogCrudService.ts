@@ -48,6 +48,11 @@ export function parseCatalogRecord(key: string, input: unknown): Record<string, 
 export function canManageCatalog(context: PersistentContext, key: string): boolean {
   return context.permissions.includes(catalogSpec(key).write) && context.grants.some(grant => !grant.site_id && !grant.group_id && !grant.academic_year_id);
 }
+export function programLevelIds(snapshot: Pick<RelationalSnapshot, 'tables'>, programId: string): string[] {
+  return [...new Set((snapshot.tables.curricula || [])
+    .filter(row => row.program_id === programId && !row.archived_at && row.active !== false && row.status !== 'ARCHIVED')
+    .map(row => String(row.level_id || '')).filter(Boolean))];
+}
 export function annualFeeScheduleChanges(snapshot: RelationalSnapshot, input: Record<string, unknown>, reason: string, targetId?: string): PersistentChange[] {
   const { program_ids: rawIds, ...values } = input;
   if ('program_id' in values) throw new Error('Utilisez une seule sélection de filières.');
@@ -70,6 +75,9 @@ export function validateCatalogReferences(key: string, values: Record<string,unk
     if (field.required === false && !values[field.key]) continue;
     const row = snapshot.tables[field.reference!]?.find(row => row.id === values[field.key] && !row.archived_at && row.active !== false);
     if (!row) throw new Error(`${field.label} introuvable ou archivé.`);
+  }
+  if (key === 'annual_fee_schedules' && values.program_id && values.level_id && !programLevelIds(snapshot, String(values.program_id)).includes(String(values.level_id))) {
+    throw new Error('Cette filière ne propose pas le niveau sélectionné. Choisissez une filière de ce niveau.');
   }
   if (key === 'groups' && snapshot.tables.academic_years?.find(year => year.id === values.academic_year_id)?.status !== 'OUVERTE' && snapshot.tables.academic_years?.find(year => year.id === values.academic_year_id)?.status !== 'BROUILLON') throw new Error('Choisissez une année en préparation ou ouverte pour ce groupe.');
 

@@ -61,6 +61,7 @@ const feeIds = [1, 2, 3, 4].map(value => `00000000-0000-4000-8000-${String(value
 const feeSnapshot: RelationalSnapshot = { revision: 1, tables: {
   academic_years: [{ id: feeIds[0] }], programs: [{ id: feeIds[1] }, { id: feeIds[2] }],
   levels: [{ id: feeIds[3] }], annual_fee_schedules: [],
+  curricula: [{ id: 'FEE-C1', program_id: feeIds[1], level_id: feeIds[3] }, { id: 'FEE-C2', program_id: feeIds[2], level_id: feeIds[3] }],
 } };
 const feeInput = { academic_year_id: feeIds[0], category: 'SCOLARITE', level_id: feeIds[3], delivery_mode: 'Présentiel', amount: 480000, program_ids: [feeIds[1], feeIds[2]] };
 const feeBatch = annualFeeScheduleChanges(feeSnapshot, feeInput, 'Tarif commun à deux filières');
@@ -82,4 +83,9 @@ assert.equal(editedFees[0].record.id, uuid);
 assert.equal(existingFees.tables.annual_fee_schedules[0].amount, 480000);
 assert.throws(() => annualFeeScheduleChanges(existingFees, { ...feeInput, academic_year_id: feeIds[1] }, 'Autre année', uuid));
 assert.throws(() => annualFeeScheduleChanges({ ...feeSnapshot, tables: { ...feeSnapshot.tables, programs: [{ id: feeIds[1] }, { id: feeIds[2], archived_at: '2026-10-27' }] } }, feeInput, 'Filière archivée'));
+for (const invalid of [{ archived_at: '2026-10-27' }, { status: 'ARCHIVED' }, { level_id: uuid }]) {
+  assert.throws(() => annualFeeScheduleChanges({ ...feeSnapshot, tables: { ...feeSnapshot.tables,
+    curricula: feeSnapshot.tables.curricula.map(row => row.program_id === feeIds[2] ? { ...row, ...invalid } : row),
+  } }, feeInput, 'Filière sans le niveau'), /ne propose pas le niveau/);
+}
 console.log('Tarifs : sélection multiple bornée, tarif général explicite, doublons, archivage et modification vérifiés.');
