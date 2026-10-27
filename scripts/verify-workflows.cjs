@@ -186,6 +186,7 @@ assert.deepEqual(decodeArchivedAnswer(null).optionIds,[]);
 console.log('Vérification réussie : lecture des réponses JSON, choix QCM, justification et commentaires de correction.');
 const {parseCatalogRecord,validateCatalogReferences,canManageCatalog}=require('../src/services/catalogCrudService.ts');
 require('../src/services/catalogCrudService.test.ts');
+require('../src/services/phoneNumberService.test.ts');
 require('../src/services/resaoCodeService.test.ts');
 require('../src/services/transcriptDocumentService.test.ts');
 require('../src/services/transcriptAccessService.test.ts');

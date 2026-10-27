@@ -1,4 +1,5 @@
 'use client';
+import PhoneInput from '@/components/ui/PhoneInput';
 import DrawerActions from '@/components/ui/DrawerActions';
 import IconButton from '@/components/ui/IconButton';
 import CatalogTaskDialog from '@/components/modules/academic/CatalogTaskDialog';
@@ -641,14 +642,7 @@ export default function OnlineAdmissionsPanel({
                     onChange={e => setConvEmail(e.target.value)}
                   />
                 </label>
-                <label className="form-group">
-                  Numéro de téléphone
-                  <input
-                    className="input"
-                    value={convPhone}
-                    onChange={e => setConvPhone(e.target.value)}
-                  />
-                </label>
+                <PhoneInput label="Numéro de téléphone" value={convPhone} onChange={setConvPhone} />
               </div>
 
               <div className="form-grid">

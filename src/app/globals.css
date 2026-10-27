@@ -3625,5 +3625,9 @@ body.transcript-print-body { page: transcript; display: block; width: 190mm; hei
 .browser-toolbar:empty { display: none; }
 .attendance-session-sheet > .card-header { margin-top: 16px; }
 .year-preparation-help { margin-bottom: 16px; color: var(--text-secondary); line-height: 1.6; }
+.phone-field > label { display: block; margin-bottom: .35rem; }
+.phone-input-row { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: .5rem; }
+.phone-input-row > :is(input, select) { min-width: 0; width: 100%; }
+@media (max-width: 480px) { .phone-input-row { grid-template-columns: minmax(0, 1fr); } }
 .browser-toolbar:empty { display: none; }
 .student-record-context { margin: 0 0 12px; color: var(--text-secondary); }

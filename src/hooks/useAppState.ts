@@ -1,4 +1,5 @@
 'use client';
+import { isPhoneNumber } from '@/services/phoneNumberService';
 
 import { getVisibleExamRecords, getVisibleExamAuditLogs, examTime } from '@/services/examQueryService';
 import { useExamClock } from '@/hooks/useExamClock';
@@ -591,7 +592,7 @@ export function useAppState() {
     if (session) { await saveStudentProfile(studentId, input, activeRole, expectedRevision ?? campusRevision); refreshCampus(); return; }
     if (!input.firstname.trim() || !input.lastname.trim()) throw new Error('Prénom et nom obligatoires.');
     if (input.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(input.email)) throw new Error('Email invalide.');
-    if (input.phone && !/^(?:\+228[ -]?)?[0-9 -]{8,15}$/.test(input.phone)) throw new Error('Numéro de téléphone invalide.');
+    if (!isPhoneNumber(input.phone)) throw new Error('Numéro de téléphone invalide.');
     if (input.birthDate && (Number.isNaN(Date.parse(input.birthDate)) || input.birthDate > new Date().toISOString().slice(0, 10))) throw new Error('Date de naissance invalide.');
     const student = students.find(item => item.matricule === studentId); if (!student) throw new Error('Dossier introuvable.');
     const updated = { ...student, ...input, firstname: input.firstname.trim(), lastname: input.lastname.trim(), history: [...student.history, { date: new Date().toISOString(), text: `Informations civiles mises à jour par ${activeRole}.` }] };
