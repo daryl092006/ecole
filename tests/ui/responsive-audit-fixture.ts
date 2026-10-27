@@ -60,6 +60,29 @@ export async function installResponsiveAudit(page: Page, account: AuditAccount) 
     if (name === 'escen_backend_snapshot') return { data: campus, error: null };
     if (name === 'escen_email_page') return { data: { yearId: id.year, records: [], total: 0, offset: 0, limit: 50 }, error: null };
     if (name === 'escen_academic_year_context') return { data: { currentYearId: id.year }, error: null };
+    if (name === 'escen_application_notices') return { data: [], error: null };
+    if (name === 'escen_admissions_context') return { data: {
+      enabled: true,
+      applications: [{
+        id: uuid(7952), academic_year_id: id.year, academic_year_name: '2026-2027', reference: 'CAND-2026-001',
+        identity: { nom: 'Mensah', prenom: 'Koffi', email: 'koffi@example.test', tel: '+22890000000' },
+        diploma: { type_diplome_id: 'Baccalauréat déclaré' }, guardians: [], documents: [],
+        intake_id: uuid(7953), intake_label: 'Licence professionnelle en informatique',
+        status: 'RECU', version: 1, workflow_stage: 'RECUE', entry_channel: 'WEB', requested_changes: null,
+        registration_fee_due: null, registration_fee_paid: 0, student_id: null,
+        required_documents: ['diplome_file'], events: [], letters: [], registration_payments: [],
+      }],
+      intakes: [{ id: uuid(7953), academic_year_id: id.year, level_id: uuid(88), program_id: uuid(89), label: 'Licence professionnelle en informatique', level_name: 'Licence 1', program_name: 'Informatique', active: true, required_documents: ['diplome_file'], version: 1 }],
+      capabilities: {
+        review: context.permissions.includes('application.review'),
+        decide: context.permissions.includes('application.decide'),
+        payment: context.permissions.includes('application.payment.confirm'),
+        followup: context.permissions.includes('application.followup'),
+      },
+      payment_channels: [{ id: uuid(7954), name: 'Caisse ESCEN', method: 'ESPECES' }],
+      notices: [],
+      mail_configured: true,
+    }, error: null };
     if (['escen_catalog_history_links', 'escen_history_student_ids_year'].includes(name)) return { data: [], error: null };
     if (['escen_history_catalog', 'escen_history_catalog_year'].includes(name)) return { data: { totalSourceRows: 0, datasets: [], references: {} }, error: null };
     throw new Error(`RPC non prévue pendant la lecture : ${name}`);
