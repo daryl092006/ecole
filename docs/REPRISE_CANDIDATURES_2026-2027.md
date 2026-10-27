@@ -54,3 +54,68 @@ transfert vérifié des pièces, transaction auditée et contrôle après applic
 Le parcours actuel masque les brouillons et n’offre que les états Brouillon,
 Reçu, En analyse et Classé ; ne pas transformer les 55 brouillons en dossiers
 envoyés pour contourner cette limite d’affichage.
+
+## Lot transactionnel préparé après autorisation de reprise
+
+L’utilisateur a demandé de procéder à l’import. Le lot complet a été construit
+et rejoué en local le 27 octobre, à partir d’une lecture distante de révision 37.
+Le brouillon déjà en base partage un email avec une candidature source mais
+porte des noms différents : il reste intact et une anomalie de rapprochement
+est créée, sans fusion automatique fondée sur le seul email.
+
+- 93 candidatures, dont 38 envoyées et 55 brouillons ; les 20 admissions
+  restent explicitement identifiées comme historiques, sans création d’étudiant.
+- Les trois relations étudiantes sont résolues par les correspondances sources.
+- Neuf candidatures envoyées pointent vers la filière source `3`, absente de
+  la sauvegarde et des correspondances opérationnelles. Elles doivent conserver
+  leur état, avec une formation non attribuée et une anomalie explicite.
+- Deux campagnes absentes sont préparées fermées ; les autres sont réutilisées.
+- 146 références de documents sont conservées. Le ZIP contient 125 de ces
+  fichiers ; les 21 absents donnent lieu à des anomalies, sans faux téléchargement.
+- Les 32 tuteurs sont conservés dans les dossiers et comme preuves sources.
+
+Le schéma actuel interdit les dossiers envoyés sans campagne et masque tous les
+brouillons. Le SQL proposé dans
+`docs/proposals/RECOVER_APPLICATIONS_2026-10-27.sql` ajoute une provenance source,
+un état historique et un lien étudiant, autorise uniquement les dossiers
+historiques tracés sans campagne, puis inclut leurs brouillons dans la lecture
+authentifiée existante. Les brouillons ordinaires restent exclus.
+Les permissions existantes sont vérifiées avant toute lecture ; les chemins
+privés des pièces restent exclus des listes et leur téléchargement est signé.
+
+**Cette adaptation de schéma reste une proposition : aucune migration nouvelle
+n’a été créée et aucune modification de schéma distante n’a été appliquée.**
+L’accord spécifique prévu dans `AGENTS.md` est requis avant ces opérations.
+
+Outils préparés :
+
+- `scripts/prepare-application-recovery.mjs` : préparation hors ligne depuis le
+  ZIP et une lecture privée de la base, sans accès distant. Produit le plan et
+  la transaction dans le répertoire privé puis vérifie les 93 dossiers en PGlite.
+- `scripts/upload-application-recovery-files.mjs` : contrôle des empreintes des
+  125 fichiers ; `--upload` transfère uniquement dans le stockage privé du projet
+  attendu, sans écrasement, puis retélécharge et compare chaque empreinte.
+
+Preuves privées : `application-plan.json`, `application-import.sql`,
+`application-validation.json`, `files-local.json`, puis `files-remote.json`
+dans `/private/tmp/escen-admissions-20261027/`.
+
+Recette locale : révision périmée et auteur non autorisé refusés, échec tardif
+annulant tout le lot, seconde application refusée, 93 dossiers visibles dans
+l’année cible, 125 pièces accessibles à la lecture autorisée, 220 événements
+d’audit INSERT. Les gardes SQL sont actifs durant la transaction de reprise.
+Les références historiques existantes sont copiées dans la base locale ; seul
+le garde d’ouverture des campagnes est temporairement suspendu pendant leur
+copie initiale, car certaines avaient été ouvertes avant la clôture de leur année.
+
+Contrôles complémentaires réussis : TypeScript sans écriture incrémentale,
+ESLint, `npm test` (186 groupes PostgreSQL et recettes existantes), cinq tests
+Playwright du menu et des fiches historiques. Aucun compte, aucune inscription
+annuelle, aucun paiement et aucune notification ne sont créés par ce lot.
+
+Après accord : créer une nouvelle migration reprenant exactement le SQL approuvé,
+vérifier sa compatibilité avec les migrations distantes (sans appliquer les autres
+propositions en attente), relire l’état et la révision, appliquer la transaction
+auditée et comparer les dossiers, pièces, admissions, anomalies et collections
+préexistantes à leur état avant import. Ne pas annoncer l’import terminé avant
+ce contrôle distant.

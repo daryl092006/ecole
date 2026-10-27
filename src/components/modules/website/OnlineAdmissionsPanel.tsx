@@ -186,7 +186,7 @@ export default function OnlineAdmissionsPanel({
           <p>
             {mode === 'configuration'
               ? `Ouverture des inscriptions et pièces demandées pour ${yearLabel}.`
-              : `Candidatures reçues pour ${yearLabel}.`}
+              : `Candidatures pour ${yearLabel}.`}
           </p>
           {message && !selected && !intake && !levelGroup && <p role="alert" className="auth-error">{message}</p>}
           <IconButton className="btn btn-outline mb-2" onClick={() => setRevision(value => value + 1)} label={mode === 'configuration' ? 'Actualiser les formations' : 'Actualiser les dossiers'} />
@@ -257,7 +257,7 @@ export default function OnlineAdmissionsPanel({
                                 <div className="cell-sub">{item.identity.email}</div>
                               </td>
                               <td>{item.reference}</td>
-                              <td>{item.intake_label || 'Formation non renseignée'}</td>
+                              <td>{item.intake_label || (item.legacy_state?.program_unresolved ? 'Filière à vérifier' : 'Formation non renseignée')}</td>
                               <td>
                                 {(data.years || []).find(year => year.id === item.academic_year_id)?.name ||
                                   'Année à rattacher'}
@@ -266,7 +266,7 @@ export default function OnlineAdmissionsPanel({
                                 <span
                                   className={`pill ${item.status === 'RECU' ? 'pill-warning' : 'pill-default'}`}
                                 >
-                                  {statusLabels[item.status]}
+                                  {item.legacy_state?.admitted ? 'Admis · historique' : statusLabels[item.status]}
                                 </span>
                               </td>
                               <td>
@@ -318,9 +318,12 @@ export default function OnlineAdmissionsPanel({
                   p => String(p.email || '').toLowerCase() === selected.identity.email.toLowerCase()
                 )
               : null;
-            const existingStudent = existingPerson
-              ? (state.relationalSnapshot.tables.students || []).find(s => s.person_id === existingPerson.id)
+            const linkedStudent = selected.legacy_student_id
+              ? (state.relationalSnapshot.tables.students || []).find(s => s.id === selected.legacy_student_id)
               : null;
+            const existingStudent = linkedStudent || (existingPerson
+              ? (state.relationalSnapshot.tables.students || []).find(s => s.person_id === existingPerson.id)
+              : null);
 
             return (
               <div className="card">
@@ -329,8 +332,17 @@ export default function OnlineAdmissionsPanel({
                   {selected.identity.prenom} {selected.identity.nom}
                 </h2>
                 <p>
-                  {selected.intake_label} · {selected.status}
+                  {selected.intake_label || (selected.legacy_state?.program_unresolved ? 'Filière à vérifier' : 'Formation non renseignée')} · {selected.legacy_state?.admitted ? 'Admis · historique' : statusLabels[selected.status]}
                 </p>
+                {selected.legacy_source_row_id && (
+                  <div className="card" role="status">
+                    <p>Dossier repris pour 2026-2027. Année d’origine : {selected.legacy_state?.source_year || 'Non renseignée'}.</p>
+                    {selected.legacy_state?.program_unresolved && <p>La filière d’origine est absente de la sauvegarde. Aucune autre filière n’a été attribuée.</p>}
+                    {!!selected.legacy_state?.missing_documents && <p>{selected.legacy_state.missing_documents} pièce(s) référencée(s) manquante(s) dans la sauvegarde.</p>}
+                    {selected.legacy_state?.admitted && <p>Admission historique conservée. La reprise ne crée pas une nouvelle inscription annuelle.</p>}
+                    {selected.status === 'BROUILLON' && <p>Ce dossier n’avait pas été envoyé. La reprise conserve son état de brouillon.</p>}
+                  </div>
+                )}
 
                 {existingStudent ? (
                   <div className="card mb-2" style={{ backgroundColor: 'var(--surface-sunken)' }}>
@@ -349,7 +361,7 @@ export default function OnlineAdmissionsPanel({
                     </div>
                   </div>
                 ) : (
-                  canManage && (
+                  canManage && !selected.legacy_state?.admitted && ['RECU', 'EN_ANALYSE'].includes(selected.status) && (
                     <div className="card mb-2" style={{ backgroundColor: 'var(--surface-sunken)' }}>
                       <p>
                         <strong>Décision d’admission :</strong> Ce dossier est recevable. Vous pouvez admettre ce candidat
@@ -420,7 +432,7 @@ export default function OnlineAdmissionsPanel({
                   </p>
                 ))}
 
-                {canManage && (
+                {canManage && selected.status !== 'BROUILLON' && !selected.legacy_state?.admitted && (
                   <form
                     onSubmit={event => {
                       event.preventDefault();
