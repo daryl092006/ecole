@@ -119,7 +119,7 @@ for (const width of [390, 1440]) {
     await expect(dialog.locator('.annual-offering-footer')).toContainText('1 filière enregistrée');
     await expect(dialog.locator('.annual-offering-footer')).toContainText('1 proposition non enregistrée');
     await page.screenshot({ path: `tmp/screenshots/annual-offerings/${width}/apres-enregistrement.png` });
-    await dialog.getByRole('button', { name: 'Retour à la préparation', exact: true }).click();
+    await dialog.getByRole('button', { name: 'Terminer la rubrique', exact: true }).click();
     await expect(page.getByRole('heading', { name: 'Préparer l’année · 2026-2027', exact: true })).toBeVisible();
     await expect(page.getByRole('heading', { name: 'Quitter sans enregistrer ?', exact: true })).toHaveCount(0);
     expect(writes).toHaveLength(4);

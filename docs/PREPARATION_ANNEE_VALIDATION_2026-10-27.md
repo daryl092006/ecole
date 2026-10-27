@@ -28,6 +28,25 @@ l’année cible. Le passage de 4 à 5 après confirmation du dernier moyen
 d’encaissement est vérifié sur téléphone et ordinateur, sans écriture avant
 confirmation et sans bouton de validation globale.
 
+## Fin de rubrique explicitée
+
+Après la question complémentaire sur l’encaissement et les autres sections,
+le bouton commun « Retour à la préparation » devient « Terminer la rubrique ».
+Le nombre d’éléments enregistrés et de propositions non enregistrées reste visible.
+L’aide des listes rappelle que chaque élément est sauvegardé après confirmation ;
+le formulaire indique aussi de vérifier puis confirmer le récapitulatif.
+
+Le parcours est : Ajouter ou Modifier, enregistrer dans le formulaire, confirmer,
+puis terminer la rubrique depuis la liste. Le bilan recharge les contrôles serveur.
+Terminer ne marque pas artificiellement une rubrique prête et ne valide pas les
+propositions encore en attente. Les tests d’encaissement vérifient le retour
+à 4 sur 5 sans écriture, puis à 5 sur 5 après une confirmation réelle, et enfin
+la consultation d’un moyen enregistré suivie d’une fin de rubrique sans nouvelle
+écriture. Le même bouton est vérifié dans les formations proposées.
+Recette de cette clarification : 34 tests Playwright réussis, TypeScript sans
+émission incrémentale et ESLint réussis. Les contrôles métier/base avaient aussi
+réussi pour la correction précédente empêchant les créations pendant une modification.
+
 ## Frais pour plusieurs filières ou groupes
 
 La demande a ensuite été précisée : cocher plusieurs filières pour un même tarif,

@@ -155,6 +155,10 @@ for (const width of [390, 1440]) test(`Le dernier moyen d’encaissement fait pa
   await expect(page.getByText('4 sur 5', { exact: true })).toBeVisible();
   await expect(page.getByText('À vérifier', { exact: true })).toBeVisible();
   await page.getByRole('button', { name: 'Configurer encaissement', exact: true }).click();
+  await page.getByRole('button', { name: 'Terminer la rubrique', exact: true }).click();
+  await expect(page.getByText('4 sur 5', { exact: true })).toBeVisible();
+  expect(writes).toBe(0);
+  await page.getByRole('button', { name: 'Configurer encaissement', exact: true }).click();
   const validate = page.getByRole('button', { name: 'Valider', exact: true });
   await expect(validate).toHaveAttribute('title', 'Valider');
   await validate.click();
@@ -162,5 +166,10 @@ for (const width of [390, 1440]) test(`Le dernier moyen d’encaissement fait pa
   await page.getByRole('button', { name: 'Confirmer l’enregistrement', exact: true }).click();
   await expect(page.getByText('5 sur 5', { exact: true })).toBeVisible();
   await expect(page.getByRole('button', { name: 'Consulter encaissement', exact: true })).toBeVisible();
+  expect(writes).toBe(1);
+  await page.getByRole('button', { name: 'Consulter encaissement', exact: true }).click();
+  await expect(page.getByText('1 moyen de paiement enregistré', { exact: true })).toBeVisible();
+  await page.getByRole('button', { name: 'Terminer la rubrique', exact: true }).click();
+  await expect(page.getByText('5 sur 5', { exact: true })).toBeVisible();
   expect(writes).toBe(1);
 });
