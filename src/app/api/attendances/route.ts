@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { ROLES } from '@/types/permissions';
 import { requireAccount, requirePermission, RequestError, errorResponse } from '@/server/auth';
 import { resolveAcademicYear } from '@/server/academicYearContext';
 import { attendanceDirectory } from '@/services/attendanceManagementService';
@@ -60,12 +61,16 @@ export async function POST(request: Request) {
     if (!session) throw new RequestError(404, 'Séance ou justificatif introuvable dans votre périmètre et cette année.');
     const changes: PersistentChange[] = [];
     if (body.action === 'record_students') {
-      if (!session.canRecordStudents) throw new RequestError(403, 'La saisie est réservée aux enseignants de la séance, aux surveillants affectés et à IT, dans une année ouverte ou en clôture.');
+      if (!session.canRecordStudents) throw new RequestError(403, 'Votre rôle ne permet pas de saisir les présences de cette séance dans cette année.');
       if (new Set(body.entries.map(row => row.enrollmentId)).size !== body.entries.length) throw new RequestError(400, 'Un étudiant ne peut être présent qu’une fois dans le lot.');
       for (const entry of body.entries) {
         if (!session.students.some(row => row.enrollmentId === entry.enrollmentId)) throw new RequestError(400, 'Cet étudiant ne fait pas partie du groupe à la date de la séance.');
         if (entry.leftAt && (!entry.arrivedAt || Date.parse(entry.leftAt) < Date.parse(entry.arrivedAt))) throw new RequestError(400, 'Le départ doit suivre ou être égal à l’arrivée.');
         const existing = session.attendances.find(row => row.enrollmentId === entry.enrollmentId);
+        if (data.context.role === ROLES.DEL && entry.status !== existing?.status
+          && (!['PRESENT','ABSENT','RETARD'].includes(entry.status) || ['ABSENT_JUSTIFIE','RETARD_JUSTIFIE','DISPENSE'].includes(existing?.status || ''))) {
+          throw new RequestError(403, 'Le délégué ne peut pas attribuer ni modifier une justification ou une dispense.');
+        }
         if (existing && !body.reason) throw new RequestError(400, 'Un motif de 3 à 1000 caractères est obligatoire pour corriger une présence.');
         if (['ABSENT_JUSTIFIE', 'RETARD_JUSTIFIE'].includes(entry.status) && existing?.status !== entry.status) throw new RequestError(409, 'Acceptez un justificatif pour enregistrer une absence ou un retard justifié.');
         changes.push({ table: 'attendances', operation: existing ? 'update' : 'insert', record: {
@@ -76,7 +81,7 @@ export async function POST(request: Request) {
         } });
       }
     } else if (body.action === 'record_teacher') {
-      if (!session.canRecordTeacher) throw new RequestError(403, 'Seuls les surveillants affectés et IT peuvent enregistrer la présence enseignante, sans auto-émargement.');
+      if (!session.canRecordTeacher) throw new RequestError(403, 'Votre rôle ne permet pas de saisir la présence du professeur de cette séance, ou il s’agirait d’un auto-émargement.');
       if (body.leftAt && Date.parse(body.leftAt) <= Date.parse(body.arrivedAt)) throw new RequestError(400, 'Le départ enseignant doit être postérieur à son arrivée.');
       const existing = session.teacherAttendances.find(row => row.teacherId === session.teacherId);
       changes.push({ table: 'teacher_attendances', operation: existing ? 'update' : 'insert', record: {
@@ -93,8 +98,10 @@ export async function POST(request: Request) {
         id: justification.id, status: body.decision, review_reason: body.reason,
       } });
     }
-    const saved = await data.client.rpc('escen_attendance_transaction', {
+    const delegate = data.context.role === ROLES.DEL;
+    const saved = await data.client.rpc(delegate ? 'escen_delegate_attendance_transaction' : 'escen_attendance_transaction', {
       p_actor_id: data.context.accountId, p_expected_revision: body.revision, p_changes: changes,
+      ...(delegate ? { p_session_id: session.id, p_year_id: data.year.selectedYearId } : {}),
     });
     if (saved.error) throw new RequestError(409, 'Enregistrement refusé : vérifiez les données ou une modification concurrente. Aucune modification partielle n’est conservée.');
     return Response.json({ revision: saved.data }, { headers: { 'Cache-Control': 'no-store' } });

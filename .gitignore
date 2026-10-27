@@ -55,6 +55,7 @@ next-env.d.ts
 /tmp/next-annual-offerings/
 /tmp/next-admissions-development/
 /tmp/next-admissions-tests/
+/tmp/next-delegate-attendance/
 /tmp/screenshots/annual-offerings/
 
 # Local Supabase CLI connection metadata

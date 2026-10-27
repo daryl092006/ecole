@@ -374,7 +374,7 @@ export default function WorkspaceHome({ mode = 'home' }: { mode?: 'home' | 'over
     [ROLES.SITE]: ['web_applications', 'web_documents', 'web_brochures', 'comm_news'],
     [ROLES.IT]: ['staff_list', 'stud_accounts', 'sys_support', 'acad_reference', 'sys_logs'],
     [ROLES.STUD]: ['espace_exams', 'espace_documents', 'espace_finance', 'espace_announcements', 'espace_support'],
-    [ROLES.DEL]: ['espace_exams', 'espace_documents', 'espace_finance', 'acad_complaints', 'espace_support'],
+    [ROLES.DEL]: ['acad_attendance', 'espace_exams', 'espace_documents', 'espace_finance', 'acad_complaints', 'espace_support'],
     [ROLES.STG]: ['stud_list', 'acad_schedule', 'espace_announcements', 'espace_support'],
   };
   const taskIcons: Record<string, typeof Award> = {

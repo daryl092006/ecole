@@ -21,6 +21,7 @@ export function attendanceFixture(context: PersistentContext = securityContext()
   t.absence_justifications = [{ id: attendanceId.proof, attendance_id: attendanceId.presence, file_id: attendanceId.file, reason: 'Certificat médical', status: 'EN_ATTENTE' }];
   t.file_objects = [{ id: attendanceId.file, bucket: 'private-attendance', object_path: 'secret/proof.pdf', original_name: 'certificat.pdf' }];
   const transactions: PersistentChange[][] = [];
+  const transactionCalls: { name: string; args: Record<string, unknown> }[] = [];
   const failures = { write: false, file: false, read: false };
   const downloads: string[] = [];
   const client = { storage: { from: (bucket: string) => ({ createSignedUrl: async (path: string) => {
@@ -29,7 +30,8 @@ export function attendanceFixture(context: PersistentContext = securityContext()
   } }) }, rpc: async (rpc: string, args: Record<string, unknown> = {}) => {
     if (rpc === 'escen_backend_snapshot') return failures.read ? { data: null, error: new Error('Read unavailable') } : { data: snapshot, error: null };
     if (rpc === 'escen_academic_year_context') return { data: { currentYearId: id.year }, error: null };
-    if (rpc !== 'escen_attendance_transaction') throw new Error(`RPC inattendue : ${rpc}`);
+    if (!['escen_attendance_transaction', 'escen_delegate_attendance_transaction'].includes(rpc)) throw new Error(`RPC inattendue : ${rpc}`);
+    transactionCalls.push({ name: rpc, args });
     const changes = args.p_changes as PersistentChange[];
     transactions.push(changes);
     if (failures.write) return { data: null, error: new Error('Concurrent update') };
@@ -55,5 +57,5 @@ export function attendanceFixture(context: PersistentContext = securityContext()
   const post = (body: Record<string, unknown>, year = id.year) => api.POST(new Request('http://local.test/api/attendances', { method: 'POST', headers: { 'x-escen-year': year }, body: JSON.stringify({ revision: snapshot.revision, ...body }) }));
   const get = (year = id.year, query = '') => api.GET(new Request(`http://local.test/api/attendances${query}`, { headers: { 'x-escen-year': year } }));
   const entry = (status = 'PRESENT') => ({ enrollmentId: attendanceId.enrollment, status, arrivedAt: null, leftAt: null, lateMinutes: null, comment: '' });
-  return { snapshot, transactions, failures, downloads, api, post, get, entry };
+  return { snapshot, transactions, transactionCalls, failures, downloads, api, post, get, entry };
 }

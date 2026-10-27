@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import { ROLES } from '@/types/permissions';
 import { usePortal } from '@/hooks/usePortal';
 import { loadAttendances, manageAttendance, loadAttendanceJustification } from '@/services/remoteCampusService';
 import { ATTENDANCE_LABELS, ATTENDANCE_STATUSES, type AttendanceDirectory, type AttendanceEntry, type AttendanceJustification, type AttendanceStatus, type AttendanceCommand } from '@/types/attendanceManagement';
@@ -91,8 +92,9 @@ export default function AttendanceWorkspace() {
       { label: 'Décision', value: justificationStatus[operation.decision], previous: 'En attente' },
     ] : [];
   return <div className="attendance-workspace workspace-stack">
-    <header className="page-intro"><div><h1>Feuilles de présence</h1></div>{portal.history.enabled && <button className="btn btn-outline" onClick={() => setArchives(true)}>Consulter les séances historiques</button>}</header>
-    {success && <p role="status" className="restricted-box">{success}</p>}
+    <header className="page-intro"><div><h1>Feuilles de présence</h1></div>{portal.history.enabled && activeRole !== ROLES.DEL && <button className="btn btn-outline" onClick={() => setArchives(true)}>Consulter les séances historiques</button>}</header>
+    {activeRole === ROLES.DEL && <p className="info-box">Vous pouvez faire l’appel de votre groupe et enregistrer les horaires du professeur prévu ou de son remplaçant. Les justificatifs sont traités par la direction académique.</p>}
+    {success && <p role="status" className="attendance-success">{success}</p>}
     {fileError && <p role="alert" className="restricted-box">{fileError}</p>}
     <section className="card attendance-session-sheet"><label className="form-group">Séance<select className="select-input" value={session?.id || ''} onChange={event => setSelectedId(event.target.value)}>
       {!directory.sessions.length && <option value="">Aucune séance</option>}{directory.sessions.map(row => <option key={row.id} value={row.id}>{date(row.startsAt)} · {row.label}</option>)}
@@ -122,12 +124,12 @@ export default function AttendanceWorkspace() {
       <section className="card"><h2>Présence enseignante</h2>{session.canRecordTeacher && <button className="btn btn-outline" onClick={() => open({ kind: 'teacher' })}>Enregistrer la présence enseignante</button>}
         {session.teacherAttendances.map(row => <p key={row.id}>{row.teacherName} · {date(row.arrivedAt)} → {date(row.leftAt)}{row.comment && ` · ${row.comment}`}</p>)}{!session.teacherAttendances.length && <p>Aucun horaire enseignant enregistré.</p>}
       </section>
-      <section className="card card-full"><h2>Justificatifs</h2><ResponsiveTable className="data-table"><thead><tr><th>Étudiant</th><th>Justificatif</th><th>Décision</th><th>Actions</th></tr></thead><tbody>{session.justifications.map(row => <tr key={row.id}>
+      {activeRole !== ROLES.DEL && <section className="card card-full"><h2>Justificatifs</h2><ResponsiveTable className="data-table"><thead><tr><th>Étudiant</th><th>Justificatif</th><th>Décision</th><th>Actions</th></tr></thead><tbody>{session.justifications.map(row => <tr key={row.id}>
         <td>{row.studentName}</td><td>{row.reason}</td><td>{justificationStatus[row.status]}{row.reviewReason && <div className="cell-sub">{row.reviewReason} · {date(row.reviewedAt)}</div>}</td>
         <td><div className="btn-group">{row.hasFile && <button className="btn btn-sm btn-outline" onClick={() => { setFileError(''); void loadAttendanceJustification(activeRole, row.id).then(({ url }) => { const link = document.createElement('a'); link.href = url; link.rel = 'noopener noreferrer'; link.click(); }).catch(cause => setFileError(cause instanceof Error ? cause.message : 'Téléchargement impossible.')); }}>Télécharger la pièce</button>}
           {session.canReview && row.status === 'EN_ATTENTE' && <><button className="btn btn-sm btn-outline" onClick={() => open({ kind: 'review', justification: row, decision: 'VALIDE' })}>Accepter</button><button className="btn btn-sm btn-outline" onClick={() => open({ kind: 'review', justification: row, decision: 'REFUSE' })}>Refuser</button></>}
         </div></td></tr>)}{!session.justifications.length && <tr><td colSpan={4}>Aucun justificatif enregistré pour cette séance.</td></tr>}</tbody></ResponsiveTable>
-      </section>
+      </section>}
       {operation && <WorkPage busy={saving} title={title} onClose={() => setOperation(null)}><ReviewedForm busy={saving} error={saveError} validate={validate} confirmLabel={`Confirmer : ${title.toLocaleLowerCase('fr')}`}
         fields={[{ label: 'Séance', value: `${session.label} · ${date(session.startsAt)}` }, ...fields, ...(operation.kind !== 'teacher' ? [{ label: 'Motif', value: reason }] : [])]}
         consequence={operation.kind === 'students' ? 'Les présences renseignées ou modifiées seront enregistrées ensemble. Les corrections conserveront leur motif, leur auteur et les valeurs avant/après.' : operation.kind === 'teacher' ? 'Les horaires enseignants seront enregistrés pour cette séance. Leur historique et leur auteur seront conservés.' : operation.decision === 'VALIDE' ? 'Le justificatif sera accepté et l’absence ou le retard deviendra justifié dans la même transaction. La décision sera conservée ; sa révision n’est pas disponible dans ce parcours.' : 'Le justificatif sera refusé avec ce motif. Le statut de présence actuel sera conservé. La décision ne pourra pas être révisée dans ce parcours.'}
@@ -148,7 +150,7 @@ export default function AttendanceWorkspace() {
             const draft = drafts[student.enrollmentId];
             const update = (value: Partial<Draft>) => setDrafts(current => ({ ...current, [student.enrollmentId]: { ...current[student.enrollmentId], ...value } }));
             return <fieldset key={student.enrollmentId}><legend>{student.name} · {student.matricule}</legend>
-              <label className="form-group">Présence de {student.name}<select className="select-input" value={draft.status} onChange={event => update({ status: event.target.value as Draft['status'] })}><option value="">Non renseignée</option>{ATTENDANCE_STATUSES.map(status => <option key={status} value={status} disabled={status.endsWith('_JUSTIFIE') && previous(student.enrollmentId).status !== status}>{ATTENDANCE_LABELS[status]}</option>)}</select></label>
+              <label className="form-group">Présence de {student.name}<select className="select-input" value={draft.status} onChange={event => update({ status: event.target.value as Draft['status'] })}><option value="">Non renseignée</option>{ATTENDANCE_STATUSES.map(status => <option key={status} value={status} disabled={status.endsWith('_JUSTIFIE') && previous(student.enrollmentId).status !== status || activeRole === ROLES.DEL && status !== previous(student.enrollmentId).status && (!['PRESENT','ABSENT','RETARD'].includes(status) || ['ABSENT_JUSTIFIE','RETARD_JUSTIFIE','DISPENSE'].includes(previous(student.enrollmentId).status))}>{ATTENDANCE_LABELS[status]}</option>)}</select></label>
               <label className="form-group">Arrivée de {student.name}<input className="input" type="datetime-local" step={1} value={draft.arrivedAt} onChange={event => update({ arrivedAt: event.target.value })} /></label>
               <label className="form-group">Départ de {student.name}<input className="input" type="datetime-local" step={1} value={draft.leftAt} onChange={event => update({ leftAt: event.target.value })} /></label>
               <label className="form-group">Retard de {student.name} (minutes)<input className="input" type="number" min={0} max={2147483647} step={1} value={draft.lateMinutes} onChange={event => update({ lateMinutes: event.target.value })} /></label>

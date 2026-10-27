@@ -154,3 +154,22 @@ assert.ok(teacherReader.tables.communications.some(row => row.id === 'group'));
 assert.ok(!teacherReader.tables.communications.some(row => row.id === 'other-group'));
 assert.equal(communicationSnapshot.tables.communication_audiences.length,14);
 console.log('Communications : administration, audiences exactes, états, année, lectures privées et pièces protégées vérifiés.');
+
+const delegateSnapshot: RelationalSnapshot = { ...attendanceSnapshot, tables: { ...attendanceSnapshot.tables,
+  enrollment_groups: [
+    { id: 'delegate-member', enrollment_id: 'n1', offering_id: 'o1', group_id: 'g1', valid_from: '2026-01-01' },
+    { id: 'classmate-member', enrollment_id: 'n2', offering_id: 'o1', group_id: 'g1', valid_from: '2026-01-01' },
+  ],
+  sessions: [{ id: 'own-session', offering_id: 'o1', group_id: 'g1', assignment_id: 'a1', teacher_id: 't1', starts_at: '2026-11-01T08:00:00Z' }],
+  attendances: [{ id: 'own-presence', session_id: 'own-session', enrollment_id: 'n1' }, { id: 'peer-presence', session_id: 'own-session', enrollment_id: 'n2' }],
+  absence_justifications: [{ id: 'own-proof', attendance_id: 'own-presence' }, { id: 'peer-proof', attendance_id: 'peer-presence', reason: 'Santé privée du camarade' }],
+  evaluation_candidates: [...snapshot.tables.evaluation_candidates, { id: 'peer-candidate', evaluation_id: 'e1', enrollment_id: 'n2' }],
+  grades: [...snapshot.tables.grades, { id: 'peer-mark', candidate_id: 'peer-candidate', value: 19 }],
+} };
+const delegate = filterRelationalSnapshot(delegateSnapshot, context(ROLES.DEL, { personId: 'p1', studentId: 's1', roleCode: 'DEL' })).tables;
+assert.deepEqual(delegate.grades.map(row => row.id), ['mark1']);
+assert.deepEqual(delegate.students.map(row => row.id), ['s1']);
+assert.deepEqual(delegate.payments.map(row => row.id), ['payment1']);
+assert.deepEqual(delegate.absence_justifications.map(row => row.id), ['own-proof']);
+assert.equal(JSON.stringify(delegate).includes('Santé privée du camarade'), false);
+console.log('Délégué : présences du groupe sans élargir les notes, finances, identités ou justificatifs privés des camarades.');

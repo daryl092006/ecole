@@ -3692,3 +3692,5 @@ body.transcript-print-body { page: transcript; display: block; width: 190mm; hei
   .admissions-stepper li { align-items: center; padding: 8px 12px; }
   .admission-next-action .btn { width: 100%; }
 }
+
+.attendance-success { padding: 16px; border: 1px solid var(--success); border-radius: 10px; background: var(--success-light); color: var(--success); }

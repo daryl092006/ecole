@@ -24,6 +24,14 @@ export function attendanceSessions(snapshot: RelationalSnapshot, context: Persis
       && (!grant.academic_year_id || grant.academic_year_id === offering.academic_year_id))) return false;
     if (context.role === ROLES.ENS) return !!context.teacherId && (session.replacement_teacher_id || session.teacher_id) === context.teacherId;
     if (context.role === ROLES.SURV) return supervised.has(session.id);
+    if (context.role === ROLES.DEL) {
+      const day = text(session.starts_at).slice(0, 10);
+      return !!context.studentId && rows('enrollment_groups').some(link => link.group_id === session.group_id
+        && link.offering_id === session.offering_id && text(link.valid_from) <= day
+        && (!link.valid_until || text(link.valid_until) > day)
+        && rows('enrollments').some(enrollment => enrollment.id === link.enrollment_id
+          && enrollment.student_id === context.studentId && enrollment.offering_id === session.offering_id));
+    }
     return ![ROLES.STUD, ROLES.DEL].includes(context.role as typeof ROLES.STUD);
   });
 }
@@ -70,14 +78,14 @@ export function attendanceDirectory(snapshot: RelationalSnapshot, context: Persi
           id: row.id, teacherId: text(row.teacher_id), teacherName: name(teacherPerson(text(row.teacher_id))),
           arrivedAt: timestamp(row.arrived_at), leftAt: timestamp(row.left_at), comment: text(row.comment),
         })),
-        justifications: rows('absence_justifications').flatMap(row => {
+        justifications: (context.role === ROLES.DEL ? [] : rows('absence_justifications')).flatMap(row => {
           const attendance = attendances.find(item => item.id === row.attendance_id);
           return attendance ? [{ id: row.id, attendanceId: attendance.id, studentName: attendance.studentName, reason: text(row.reason),
             status: row.status as 'EN_ATTENTE' | 'VALIDE' | 'REFUSE', reviewReason: text(row.review_reason), reviewedAt: timestamp(row.reviewed_at),
             hasFile: rows('file_objects').some(file => file.id === row.file_id) }] : [];
         }),
-        canRecordStudents: writable && context.permissions.includes('attendance.record') && [ROLES.ENS, ROLES.SURV, ROLES.IT].includes(context.role as typeof ROLES.ENS),
-        canRecordTeacher: writable && context.permissions.includes('attendance.record') && [ROLES.SURV, ROLES.IT].includes(context.role as typeof ROLES.SURV) && !!person && person.id !== context.personId,
+        canRecordStudents: writable && context.permissions.includes('attendance.record') && [ROLES.ENS, ROLES.SURV, ROLES.DEL, ROLES.IT].includes(context.role as typeof ROLES.ENS),
+        canRecordTeacher: writable && context.permissions.includes('attendance.record') && [ROLES.SURV, ROLES.DEL, ROLES.IT].includes(context.role as typeof ROLES.SURV) && !!person && person.id !== context.personId,
         canReview: writable && context.permissions.includes('attendance.review') && [ROLES.DA, ROLES.IT].includes(context.role as typeof ROLES.DA),
       };
     }) };
