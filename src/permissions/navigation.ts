@@ -88,7 +88,7 @@ export const ALL_TABS = [
   {
     id: 'website', name: 'Site web', icon: 'Globe',
     subTabs: [
-      { id: 'web_applications', name: 'Demandes en ligne' },
+      { id: 'web_applications', name: 'Candidatures' },
       { id: 'web_documents', name: 'Formations et pièces' },
       { id: 'web_brochures', name: 'Brochures' },
       { id: 'comm_news', name: 'Articles' },

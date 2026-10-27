@@ -180,7 +180,7 @@ export default function OnlineAdmissionsPanel({
       )}
       {!selected && !intake && !convertingApp && !levelGroup && (
         <AdmissionsFrame
-          title={mode === 'configuration' ? 'Formations et pièces' : 'Demandes en ligne'}
+          title={mode === 'configuration' ? 'Formations et pièces' : 'Candidatures'}
           onClose={onClose}
         >
           <p>

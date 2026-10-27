@@ -33,8 +33,8 @@ for (const width of [390, 1440]) {
     expect(commands[0]).toMatchObject({ action: 'intake-save', id, level_id: level, academic_year_id: year, required_documents: ['diplome_file', 'naissance_file'] });
     if (width < 800) await page.getByRole('button', { name: /Ouvrir (la navigation|le menu)/ }).click();
     const nav = page.locator('#application-navigation');
-    await expect(nav.getByRole('button', { name: /Site web/ })).toBeVisible();
-    for (const label of ['Demandes en ligne', 'Formations et pièces', 'Brochures', 'Articles']) await expect(nav.getByRole('link', { name: label, exact: true })).toHaveCount(1);
+    await expect(nav.getByRole('link', { name: 'Site web', exact: true })).toHaveAttribute('href', '/site-web/documents');
+    for (const label of ['Candidatures', 'Brochures', 'Articles']) await expect(nav.getByRole('link', { name: label, exact: true })).toHaveCount(1);
     await page.screenshot({ path: `tmp/screenshots/annual-offerings/${width}/site-web-menu.png`, fullPage: true });
   });
 }

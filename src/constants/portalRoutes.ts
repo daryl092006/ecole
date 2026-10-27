@@ -35,7 +35,7 @@ export const PORTAL_ROUTES: PortalRoute[] = [
   { tab: 'personnel', section: 'staff_records', href: '/personnel', title: 'Dossiers du personnel' },
   { tab: 'marketing', section: 'comm_announcements', href: '/communication/annonces', title: 'Annonces' },
   { tab: 'website', section: 'comm_news', href: '/site-web/articles', title: 'Articles' },
-  { tab: 'website', section: 'web_applications', href: '/site-web/demandes', title: 'Demandes en ligne' },
+  { tab: 'website', section: 'web_applications', href: '/site-web/demandes', title: 'Candidatures' },
   { tab: 'website', section: 'web_documents', href: '/site-web/documents', title: 'Formations et pièces' },
   { tab: 'website', section: 'web_brochures', href: '/site-web/brochures', title: 'Brochures' },
   { tab: 'logistique', section: 'log_purchases', href: '/logistique/achats', title: 'Demandes d’achat' },
