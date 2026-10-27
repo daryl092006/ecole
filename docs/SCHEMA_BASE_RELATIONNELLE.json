@@ -1,10 +1,10 @@
 {
   "stats": {
-    "businessTables": 114,
+    "businessTables": 118,
     "privateTables": 13,
-    "columns": 991,
-    "foreignKeys": 271,
-    "checks": 235,
+    "columns": 1037,
+    "foreignKeys": 293,
+    "checks": 245,
     "exclusions": 4
   },
   "tables": [
@@ -61,6 +61,26 @@
     {
       "schema": "escen",
       "name": "application_documents",
+      "rls": true
+    },
+    {
+      "schema": "escen",
+      "name": "application_events",
+      "rls": true
+    },
+    {
+      "schema": "escen",
+      "name": "application_letters",
+      "rls": true
+    },
+    {
+      "schema": "escen",
+      "name": "application_notifications",
+      "rls": true
+    },
+    {
+      "schema": "escen",
+      "name": "application_registration_payments",
       "rls": true
     },
     {
@@ -1471,6 +1491,366 @@
       "type": "text",
       "nullable": "NO",
       "default": "'Pièce reçue depuis le site'::text",
+      "generated": "NEVER"
+    },
+    {
+      "schema": "escen",
+      "table": "application_events",
+      "name": "id",
+      "type": "uuid",
+      "nullable": "NO",
+      "default": "gen_random_uuid()",
+      "generated": "NEVER"
+    },
+    {
+      "schema": "escen",
+      "table": "application_events",
+      "name": "application_id",
+      "type": "uuid",
+      "nullable": "NO",
+      "default": null,
+      "generated": "NEVER"
+    },
+    {
+      "schema": "escen",
+      "table": "application_events",
+      "name": "academic_year_id",
+      "type": "uuid",
+      "nullable": "NO",
+      "default": null,
+      "generated": "NEVER"
+    },
+    {
+      "schema": "escen",
+      "table": "application_events",
+      "name": "actor_id",
+      "type": "uuid",
+      "nullable": "YES",
+      "default": null,
+      "generated": "NEVER"
+    },
+    {
+      "schema": "escen",
+      "table": "application_events",
+      "name": "action",
+      "type": "text",
+      "nullable": "NO",
+      "default": null,
+      "generated": "NEVER"
+    },
+    {
+      "schema": "escen",
+      "table": "application_events",
+      "name": "from_stage",
+      "type": "text",
+      "nullable": "YES",
+      "default": null,
+      "generated": "NEVER"
+    },
+    {
+      "schema": "escen",
+      "table": "application_events",
+      "name": "to_stage",
+      "type": "text",
+      "nullable": "YES",
+      "default": null,
+      "generated": "NEVER"
+    },
+    {
+      "schema": "escen",
+      "table": "application_events",
+      "name": "reason",
+      "type": "text",
+      "nullable": "NO",
+      "default": null,
+      "generated": "NEVER"
+    },
+    {
+      "schema": "escen",
+      "table": "application_events",
+      "name": "metadata",
+      "type": "jsonb",
+      "nullable": "NO",
+      "default": "'{}'::jsonb",
+      "generated": "NEVER"
+    },
+    {
+      "schema": "escen",
+      "table": "application_events",
+      "name": "visible_to_candidate",
+      "type": "bool",
+      "nullable": "NO",
+      "default": "true",
+      "generated": "NEVER"
+    },
+    {
+      "schema": "escen",
+      "table": "application_events",
+      "name": "created_at",
+      "type": "timestamptz",
+      "nullable": "NO",
+      "default": "clock_timestamp()",
+      "generated": "NEVER"
+    },
+    {
+      "schema": "escen",
+      "table": "application_letters",
+      "name": "id",
+      "type": "uuid",
+      "nullable": "NO",
+      "default": "gen_random_uuid()",
+      "generated": "NEVER"
+    },
+    {
+      "schema": "escen",
+      "table": "application_letters",
+      "name": "application_id",
+      "type": "uuid",
+      "nullable": "NO",
+      "default": null,
+      "generated": "NEVER"
+    },
+    {
+      "schema": "escen",
+      "table": "application_letters",
+      "name": "academic_year_id",
+      "type": "uuid",
+      "nullable": "NO",
+      "default": null,
+      "generated": "NEVER"
+    },
+    {
+      "schema": "escen",
+      "table": "application_letters",
+      "name": "event_id",
+      "type": "uuid",
+      "nullable": "NO",
+      "default": null,
+      "generated": "NEVER"
+    },
+    {
+      "schema": "escen",
+      "table": "application_letters",
+      "name": "kind",
+      "type": "text",
+      "nullable": "NO",
+      "default": null,
+      "generated": "NEVER"
+    },
+    {
+      "schema": "escen",
+      "table": "application_letters",
+      "name": "reference",
+      "type": "text",
+      "nullable": "NO",
+      "default": null,
+      "generated": "NEVER"
+    },
+    {
+      "schema": "escen",
+      "table": "application_letters",
+      "name": "content",
+      "type": "text",
+      "nullable": "NO",
+      "default": null,
+      "generated": "NEVER"
+    },
+    {
+      "schema": "escen",
+      "table": "application_letters",
+      "name": "issued_by",
+      "type": "uuid",
+      "nullable": "YES",
+      "default": null,
+      "generated": "NEVER"
+    },
+    {
+      "schema": "escen",
+      "table": "application_letters",
+      "name": "created_at",
+      "type": "timestamptz",
+      "nullable": "NO",
+      "default": "clock_timestamp()",
+      "generated": "NEVER"
+    },
+    {
+      "schema": "escen",
+      "table": "application_notifications",
+      "name": "id",
+      "type": "uuid",
+      "nullable": "NO",
+      "default": "gen_random_uuid()",
+      "generated": "NEVER"
+    },
+    {
+      "schema": "escen",
+      "table": "application_notifications",
+      "name": "application_id",
+      "type": "uuid",
+      "nullable": "NO",
+      "default": null,
+      "generated": "NEVER"
+    },
+    {
+      "schema": "escen",
+      "table": "application_notifications",
+      "name": "academic_year_id",
+      "type": "uuid",
+      "nullable": "NO",
+      "default": null,
+      "generated": "NEVER"
+    },
+    {
+      "schema": "escen",
+      "table": "application_notifications",
+      "name": "event_id",
+      "type": "uuid",
+      "nullable": "NO",
+      "default": null,
+      "generated": "NEVER"
+    },
+    {
+      "schema": "escen",
+      "table": "application_notifications",
+      "name": "account_id",
+      "type": "uuid",
+      "nullable": "NO",
+      "default": null,
+      "generated": "NEVER"
+    },
+    {
+      "schema": "escen",
+      "table": "application_notifications",
+      "name": "role_code",
+      "type": "text",
+      "nullable": "NO",
+      "default": null,
+      "generated": "NEVER"
+    },
+    {
+      "schema": "escen",
+      "table": "application_notifications",
+      "name": "message",
+      "type": "text",
+      "nullable": "NO",
+      "default": null,
+      "generated": "NEVER"
+    },
+    {
+      "schema": "escen",
+      "table": "application_notifications",
+      "name": "read_at",
+      "type": "timestamptz",
+      "nullable": "YES",
+      "default": null,
+      "generated": "NEVER"
+    },
+    {
+      "schema": "escen",
+      "table": "application_notifications",
+      "name": "created_at",
+      "type": "timestamptz",
+      "nullable": "NO",
+      "default": "clock_timestamp()",
+      "generated": "NEVER"
+    },
+    {
+      "schema": "escen",
+      "table": "application_registration_payments",
+      "name": "id",
+      "type": "uuid",
+      "nullable": "NO",
+      "default": "gen_random_uuid()",
+      "generated": "NEVER"
+    },
+    {
+      "schema": "escen",
+      "table": "application_registration_payments",
+      "name": "application_id",
+      "type": "uuid",
+      "nullable": "NO",
+      "default": null,
+      "generated": "NEVER"
+    },
+    {
+      "schema": "escen",
+      "table": "application_registration_payments",
+      "name": "academic_year_id",
+      "type": "uuid",
+      "nullable": "NO",
+      "default": null,
+      "generated": "NEVER"
+    },
+    {
+      "schema": "escen",
+      "table": "application_registration_payments",
+      "name": "kind",
+      "type": "text",
+      "nullable": "NO",
+      "default": null,
+      "generated": "NEVER"
+    },
+    {
+      "schema": "escen",
+      "table": "application_registration_payments",
+      "name": "amount",
+      "type": "escen.xof_amount",
+      "nullable": "NO",
+      "default": null,
+      "generated": "NEVER"
+    },
+    {
+      "schema": "escen",
+      "table": "application_registration_payments",
+      "name": "channel_id",
+      "type": "uuid",
+      "nullable": "NO",
+      "default": null,
+      "generated": "NEVER"
+    },
+    {
+      "schema": "escen",
+      "table": "application_registration_payments",
+      "name": "reference",
+      "type": "text",
+      "nullable": "NO",
+      "default": null,
+      "generated": "NEVER"
+    },
+    {
+      "schema": "escen",
+      "table": "application_registration_payments",
+      "name": "reversal_of",
+      "type": "uuid",
+      "nullable": "YES",
+      "default": null,
+      "generated": "NEVER"
+    },
+    {
+      "schema": "escen",
+      "table": "application_registration_payments",
+      "name": "recorded_by",
+      "type": "uuid",
+      "nullable": "NO",
+      "default": null,
+      "generated": "NEVER"
+    },
+    {
+      "schema": "escen",
+      "table": "application_registration_payments",
+      "name": "reason",
+      "type": "text",
+      "nullable": "NO",
+      "default": null,
+      "generated": "NEVER"
+    },
+    {
+      "schema": "escen",
+      "table": "application_registration_payments",
+      "name": "created_at",
+      "type": "timestamptz",
+      "nullable": "NO",
+      "default": "clock_timestamp()",
       "generated": "NEVER"
     },
     {
@@ -5770,6 +6150,60 @@
       "schema": "escen",
       "table": "online_applications",
       "name": "legacy_student_id",
+      "type": "uuid",
+      "nullable": "YES",
+      "default": null,
+      "generated": "NEVER"
+    },
+    {
+      "schema": "escen",
+      "table": "online_applications",
+      "name": "workflow_stage",
+      "type": "text",
+      "nullable": "YES",
+      "default": null,
+      "generated": "NEVER"
+    },
+    {
+      "schema": "escen",
+      "table": "online_applications",
+      "name": "entry_channel",
+      "type": "text",
+      "nullable": "NO",
+      "default": "'WEB'::text",
+      "generated": "NEVER"
+    },
+    {
+      "schema": "escen",
+      "table": "online_applications",
+      "name": "requested_changes",
+      "type": "text",
+      "nullable": "YES",
+      "default": null,
+      "generated": "NEVER"
+    },
+    {
+      "schema": "escen",
+      "table": "online_applications",
+      "name": "registration_fee_due",
+      "type": "escen.xof_amount",
+      "nullable": "YES",
+      "default": null,
+      "generated": "NEVER"
+    },
+    {
+      "schema": "escen",
+      "table": "online_applications",
+      "name": "registration_fee_schedule_id",
+      "type": "uuid",
+      "nullable": "YES",
+      "default": null,
+      "generated": "NEVER"
+    },
+    {
+      "schema": "escen",
+      "table": "online_applications",
+      "name": "student_id",
       "type": "uuid",
       "nullable": "YES",
       "default": null,
@@ -10426,6 +10860,496 @@
       "name": "application_documents_sha256_not_null",
       "type": "n",
       "definition": "NOT NULL sha256"
+    },
+    {
+      "schema": "escen",
+      "table": "application_events",
+      "name": "application_events_academic_year_id_fkey",
+      "type": "f",
+      "definition": "FOREIGN KEY (academic_year_id) REFERENCES escen.academic_years(id) ON DELETE RESTRICT"
+    },
+    {
+      "schema": "escen",
+      "table": "application_events",
+      "name": "application_events_academic_year_id_not_null",
+      "type": "n",
+      "definition": "NOT NULL academic_year_id"
+    },
+    {
+      "schema": "escen",
+      "table": "application_events",
+      "name": "application_events_action_not_null",
+      "type": "n",
+      "definition": "NOT NULL action"
+    },
+    {
+      "schema": "escen",
+      "table": "application_events",
+      "name": "application_events_actor_id_fkey",
+      "type": "f",
+      "definition": "FOREIGN KEY (actor_id) REFERENCES escen.accounts(id) ON DELETE RESTRICT"
+    },
+    {
+      "schema": "escen",
+      "table": "application_events",
+      "name": "application_events_application_id_academic_year_id_fkey",
+      "type": "f",
+      "definition": "FOREIGN KEY (application_id, academic_year_id) REFERENCES escen.online_applications(id, academic_year_id) ON DELETE RESTRICT"
+    },
+    {
+      "schema": "escen",
+      "table": "application_events",
+      "name": "application_events_application_id_fkey",
+      "type": "f",
+      "definition": "FOREIGN KEY (application_id) REFERENCES escen.online_applications(id) ON DELETE RESTRICT"
+    },
+    {
+      "schema": "escen",
+      "table": "application_events",
+      "name": "application_events_application_id_not_null",
+      "type": "n",
+      "definition": "NOT NULL application_id"
+    },
+    {
+      "schema": "escen",
+      "table": "application_events",
+      "name": "application_events_created_at_not_null",
+      "type": "n",
+      "definition": "NOT NULL created_at"
+    },
+    {
+      "schema": "escen",
+      "table": "application_events",
+      "name": "application_events_id_not_null",
+      "type": "n",
+      "definition": "NOT NULL id"
+    },
+    {
+      "schema": "escen",
+      "table": "application_events",
+      "name": "application_events_metadata_not_null",
+      "type": "n",
+      "definition": "NOT NULL metadata"
+    },
+    {
+      "schema": "escen",
+      "table": "application_events",
+      "name": "application_events_pkey",
+      "type": "p",
+      "definition": "PRIMARY KEY (id)"
+    },
+    {
+      "schema": "escen",
+      "table": "application_events",
+      "name": "application_events_reason_check",
+      "type": "c",
+      "definition": "CHECK (((length(btrim(reason)) >= 3) AND (length(btrim(reason)) <= 1000)))"
+    },
+    {
+      "schema": "escen",
+      "table": "application_events",
+      "name": "application_events_reason_not_null",
+      "type": "n",
+      "definition": "NOT NULL reason"
+    },
+    {
+      "schema": "escen",
+      "table": "application_events",
+      "name": "application_events_visible_to_candidate_not_null",
+      "type": "n",
+      "definition": "NOT NULL visible_to_candidate"
+    },
+    {
+      "schema": "escen",
+      "table": "application_letters",
+      "name": "application_letters_academic_year_id_fkey",
+      "type": "f",
+      "definition": "FOREIGN KEY (academic_year_id) REFERENCES escen.academic_years(id) ON DELETE RESTRICT"
+    },
+    {
+      "schema": "escen",
+      "table": "application_letters",
+      "name": "application_letters_academic_year_id_not_null",
+      "type": "n",
+      "definition": "NOT NULL academic_year_id"
+    },
+    {
+      "schema": "escen",
+      "table": "application_letters",
+      "name": "application_letters_application_id_academic_year_id_fkey",
+      "type": "f",
+      "definition": "FOREIGN KEY (application_id, academic_year_id) REFERENCES escen.online_applications(id, academic_year_id) ON DELETE RESTRICT"
+    },
+    {
+      "schema": "escen",
+      "table": "application_letters",
+      "name": "application_letters_application_id_fkey",
+      "type": "f",
+      "definition": "FOREIGN KEY (application_id) REFERENCES escen.online_applications(id) ON DELETE RESTRICT"
+    },
+    {
+      "schema": "escen",
+      "table": "application_letters",
+      "name": "application_letters_application_id_not_null",
+      "type": "n",
+      "definition": "NOT NULL application_id"
+    },
+    {
+      "schema": "escen",
+      "table": "application_letters",
+      "name": "application_letters_content_check",
+      "type": "c",
+      "definition": "CHECK (((length(content) >= 20) AND (length(content) <= 20000)))"
+    },
+    {
+      "schema": "escen",
+      "table": "application_letters",
+      "name": "application_letters_content_not_null",
+      "type": "n",
+      "definition": "NOT NULL content"
+    },
+    {
+      "schema": "escen",
+      "table": "application_letters",
+      "name": "application_letters_created_at_not_null",
+      "type": "n",
+      "definition": "NOT NULL created_at"
+    },
+    {
+      "schema": "escen",
+      "table": "application_letters",
+      "name": "application_letters_event_id_fkey",
+      "type": "f",
+      "definition": "FOREIGN KEY (event_id) REFERENCES escen.application_events(id) ON DELETE RESTRICT"
+    },
+    {
+      "schema": "escen",
+      "table": "application_letters",
+      "name": "application_letters_event_id_key",
+      "type": "u",
+      "definition": "UNIQUE (event_id)"
+    },
+    {
+      "schema": "escen",
+      "table": "application_letters",
+      "name": "application_letters_event_id_not_null",
+      "type": "n",
+      "definition": "NOT NULL event_id"
+    },
+    {
+      "schema": "escen",
+      "table": "application_letters",
+      "name": "application_letters_id_not_null",
+      "type": "n",
+      "definition": "NOT NULL id"
+    },
+    {
+      "schema": "escen",
+      "table": "application_letters",
+      "name": "application_letters_issued_by_fkey",
+      "type": "f",
+      "definition": "FOREIGN KEY (issued_by) REFERENCES escen.accounts(id) ON DELETE RESTRICT"
+    },
+    {
+      "schema": "escen",
+      "table": "application_letters",
+      "name": "application_letters_kind_check",
+      "type": "c",
+      "definition": "CHECK ((kind = ANY (ARRAY['ADMISSIBILITE'::text, 'REFUS'::text, 'ADMISSION'::text])))"
+    },
+    {
+      "schema": "escen",
+      "table": "application_letters",
+      "name": "application_letters_kind_not_null",
+      "type": "n",
+      "definition": "NOT NULL kind"
+    },
+    {
+      "schema": "escen",
+      "table": "application_letters",
+      "name": "application_letters_pkey",
+      "type": "p",
+      "definition": "PRIMARY KEY (id)"
+    },
+    {
+      "schema": "escen",
+      "table": "application_letters",
+      "name": "application_letters_reference_key",
+      "type": "u",
+      "definition": "UNIQUE (reference)"
+    },
+    {
+      "schema": "escen",
+      "table": "application_letters",
+      "name": "application_letters_reference_not_null",
+      "type": "n",
+      "definition": "NOT NULL reference"
+    },
+    {
+      "schema": "escen",
+      "table": "application_notifications",
+      "name": "application_notifications_academic_year_id_fkey",
+      "type": "f",
+      "definition": "FOREIGN KEY (academic_year_id) REFERENCES escen.academic_years(id) ON DELETE RESTRICT"
+    },
+    {
+      "schema": "escen",
+      "table": "application_notifications",
+      "name": "application_notifications_academic_year_id_not_null",
+      "type": "n",
+      "definition": "NOT NULL academic_year_id"
+    },
+    {
+      "schema": "escen",
+      "table": "application_notifications",
+      "name": "application_notifications_account_id_fkey",
+      "type": "f",
+      "definition": "FOREIGN KEY (account_id) REFERENCES escen.accounts(id) ON DELETE RESTRICT"
+    },
+    {
+      "schema": "escen",
+      "table": "application_notifications",
+      "name": "application_notifications_account_id_not_null",
+      "type": "n",
+      "definition": "NOT NULL account_id"
+    },
+    {
+      "schema": "escen",
+      "table": "application_notifications",
+      "name": "application_notifications_application_id_academic_year_id_fkey",
+      "type": "f",
+      "definition": "FOREIGN KEY (application_id, academic_year_id) REFERENCES escen.online_applications(id, academic_year_id) ON DELETE RESTRICT"
+    },
+    {
+      "schema": "escen",
+      "table": "application_notifications",
+      "name": "application_notifications_application_id_fkey",
+      "type": "f",
+      "definition": "FOREIGN KEY (application_id) REFERENCES escen.online_applications(id) ON DELETE RESTRICT"
+    },
+    {
+      "schema": "escen",
+      "table": "application_notifications",
+      "name": "application_notifications_application_id_not_null",
+      "type": "n",
+      "definition": "NOT NULL application_id"
+    },
+    {
+      "schema": "escen",
+      "table": "application_notifications",
+      "name": "application_notifications_created_at_not_null",
+      "type": "n",
+      "definition": "NOT NULL created_at"
+    },
+    {
+      "schema": "escen",
+      "table": "application_notifications",
+      "name": "application_notifications_event_id_account_id_role_code_key",
+      "type": "u",
+      "definition": "UNIQUE (event_id, account_id, role_code)"
+    },
+    {
+      "schema": "escen",
+      "table": "application_notifications",
+      "name": "application_notifications_event_id_fkey",
+      "type": "f",
+      "definition": "FOREIGN KEY (event_id) REFERENCES escen.application_events(id) ON DELETE RESTRICT"
+    },
+    {
+      "schema": "escen",
+      "table": "application_notifications",
+      "name": "application_notifications_event_id_not_null",
+      "type": "n",
+      "definition": "NOT NULL event_id"
+    },
+    {
+      "schema": "escen",
+      "table": "application_notifications",
+      "name": "application_notifications_id_not_null",
+      "type": "n",
+      "definition": "NOT NULL id"
+    },
+    {
+      "schema": "escen",
+      "table": "application_notifications",
+      "name": "application_notifications_message_not_null",
+      "type": "n",
+      "definition": "NOT NULL message"
+    },
+    {
+      "schema": "escen",
+      "table": "application_notifications",
+      "name": "application_notifications_pkey",
+      "type": "p",
+      "definition": "PRIMARY KEY (id)"
+    },
+    {
+      "schema": "escen",
+      "table": "application_notifications",
+      "name": "application_notifications_role_code_not_null",
+      "type": "n",
+      "definition": "NOT NULL role_code"
+    },
+    {
+      "schema": "escen",
+      "table": "application_registration_payments",
+      "name": "application_registration_paym_application_id_academic_year_fkey",
+      "type": "f",
+      "definition": "FOREIGN KEY (application_id, academic_year_id) REFERENCES escen.online_applications(id, academic_year_id) ON DELETE RESTRICT"
+    },
+    {
+      "schema": "escen",
+      "table": "application_registration_payments",
+      "name": "application_registration_payments_academic_year_id_fkey",
+      "type": "f",
+      "definition": "FOREIGN KEY (academic_year_id) REFERENCES escen.academic_years(id) ON DELETE RESTRICT"
+    },
+    {
+      "schema": "escen",
+      "table": "application_registration_payments",
+      "name": "application_registration_payments_academic_year_id_not_null",
+      "type": "n",
+      "definition": "NOT NULL academic_year_id"
+    },
+    {
+      "schema": "escen",
+      "table": "application_registration_payments",
+      "name": "application_registration_payments_amount_check",
+      "type": "c",
+      "definition": "CHECK (((amount)::numeric > (0)::numeric))"
+    },
+    {
+      "schema": "escen",
+      "table": "application_registration_payments",
+      "name": "application_registration_payments_amount_not_null",
+      "type": "n",
+      "definition": "NOT NULL amount"
+    },
+    {
+      "schema": "escen",
+      "table": "application_registration_payments",
+      "name": "application_registration_payments_application_id_fkey",
+      "type": "f",
+      "definition": "FOREIGN KEY (application_id) REFERENCES escen.online_applications(id) ON DELETE RESTRICT"
+    },
+    {
+      "schema": "escen",
+      "table": "application_registration_payments",
+      "name": "application_registration_payments_application_id_not_null",
+      "type": "n",
+      "definition": "NOT NULL application_id"
+    },
+    {
+      "schema": "escen",
+      "table": "application_registration_payments",
+      "name": "application_registration_payments_channel_id_fkey",
+      "type": "f",
+      "definition": "FOREIGN KEY (channel_id) REFERENCES escen.annual_payment_channels(id) ON DELETE RESTRICT"
+    },
+    {
+      "schema": "escen",
+      "table": "application_registration_payments",
+      "name": "application_registration_payments_channel_id_not_null",
+      "type": "n",
+      "definition": "NOT NULL channel_id"
+    },
+    {
+      "schema": "escen",
+      "table": "application_registration_payments",
+      "name": "application_registration_payments_check",
+      "type": "c",
+      "definition": "CHECK ((((kind = 'PAYMENT'::text) AND (reversal_of IS NULL)) OR ((kind = 'REVERSAL'::text) AND (reversal_of IS NOT NULL))))"
+    },
+    {
+      "schema": "escen",
+      "table": "application_registration_payments",
+      "name": "application_registration_payments_created_at_not_null",
+      "type": "n",
+      "definition": "NOT NULL created_at"
+    },
+    {
+      "schema": "escen",
+      "table": "application_registration_payments",
+      "name": "application_registration_payments_id_not_null",
+      "type": "n",
+      "definition": "NOT NULL id"
+    },
+    {
+      "schema": "escen",
+      "table": "application_registration_payments",
+      "name": "application_registration_payments_kind_check",
+      "type": "c",
+      "definition": "CHECK ((kind = ANY (ARRAY['PAYMENT'::text, 'REVERSAL'::text])))"
+    },
+    {
+      "schema": "escen",
+      "table": "application_registration_payments",
+      "name": "application_registration_payments_kind_not_null",
+      "type": "n",
+      "definition": "NOT NULL kind"
+    },
+    {
+      "schema": "escen",
+      "table": "application_registration_payments",
+      "name": "application_registration_payments_pkey",
+      "type": "p",
+      "definition": "PRIMARY KEY (id)"
+    },
+    {
+      "schema": "escen",
+      "table": "application_registration_payments",
+      "name": "application_registration_payments_reason_check",
+      "type": "c",
+      "definition": "CHECK (((length(btrim(reason)) >= 3) AND (length(btrim(reason)) <= 1000)))"
+    },
+    {
+      "schema": "escen",
+      "table": "application_registration_payments",
+      "name": "application_registration_payments_reason_not_null",
+      "type": "n",
+      "definition": "NOT NULL reason"
+    },
+    {
+      "schema": "escen",
+      "table": "application_registration_payments",
+      "name": "application_registration_payments_recorded_by_fkey",
+      "type": "f",
+      "definition": "FOREIGN KEY (recorded_by) REFERENCES escen.accounts(id) ON DELETE RESTRICT"
+    },
+    {
+      "schema": "escen",
+      "table": "application_registration_payments",
+      "name": "application_registration_payments_recorded_by_not_null",
+      "type": "n",
+      "definition": "NOT NULL recorded_by"
+    },
+    {
+      "schema": "escen",
+      "table": "application_registration_payments",
+      "name": "application_registration_payments_reference_check",
+      "type": "c",
+      "definition": "CHECK (((length(btrim(reference)) >= 3) AND (length(btrim(reference)) <= 160)))"
+    },
+    {
+      "schema": "escen",
+      "table": "application_registration_payments",
+      "name": "application_registration_payments_reference_not_null",
+      "type": "n",
+      "definition": "NOT NULL reference"
+    },
+    {
+      "schema": "escen",
+      "table": "application_registration_payments",
+      "name": "application_registration_payments_reversal_of_fkey",
+      "type": "f",
+      "definition": "FOREIGN KEY (reversal_of) REFERENCES escen.application_registration_payments(id) ON DELETE RESTRICT"
+    },
+    {
+      "schema": "escen",
+      "table": "application_registration_payments",
+      "name": "application_registration_payments_reversal_of_key",
+      "type": "u",
+      "definition": "UNIQUE (reversal_of)"
     },
     {
       "schema": "escen",
@@ -15589,6 +16513,13 @@
     {
       "schema": "escen",
       "table": "online_applications",
+      "name": "application_year_identity",
+      "type": "u",
+      "definition": "UNIQUE (id, academic_year_id)"
+    },
+    {
+      "schema": "escen",
+      "table": "online_applications",
       "name": "online_applications_academic_year_id_fkey",
       "type": "f",
       "definition": "FOREIGN KEY (academic_year_id) REFERENCES escen.academic_years(id) ON DELETE RESTRICT"
@@ -15613,6 +16544,20 @@
       "name": "online_applications_diploma_not_null",
       "type": "n",
       "definition": "NOT NULL diploma"
+    },
+    {
+      "schema": "escen",
+      "table": "online_applications",
+      "name": "online_applications_entry_channel_check",
+      "type": "c",
+      "definition": "CHECK ((entry_channel = ANY (ARRAY['WEB'::text, 'ACCUEIL'::text])))"
+    },
+    {
+      "schema": "escen",
+      "table": "online_applications",
+      "name": "online_applications_entry_channel_not_null",
+      "type": "n",
+      "definition": "NOT NULL entry_channel"
     },
     {
       "schema": "escen",
@@ -15715,6 +16660,13 @@
     {
       "schema": "escen",
       "table": "online_applications",
+      "name": "online_applications_registration_fee_schedule_id_fkey",
+      "type": "f",
+      "definition": "FOREIGN KEY (registration_fee_schedule_id) REFERENCES escen.annual_fee_schedules(id) ON DELETE RESTRICT"
+    },
+    {
+      "schema": "escen",
+      "table": "online_applications",
       "name": "online_applications_status_check",
       "type": "c",
       "definition": "CHECK ((status = ANY (ARRAY['BROUILLON'::text, 'RECU'::text, 'EN_ANALYSE'::text, 'CLASSE'::text])))"
@@ -15729,9 +16681,23 @@
     {
       "schema": "escen",
       "table": "online_applications",
+      "name": "online_applications_student_id_fkey",
+      "type": "f",
+      "definition": "FOREIGN KEY (student_id) REFERENCES escen.students(id) ON DELETE RESTRICT"
+    },
+    {
+      "schema": "escen",
+      "table": "online_applications",
       "name": "online_applications_version_not_null",
       "type": "n",
       "definition": "NOT NULL version"
+    },
+    {
+      "schema": "escen",
+      "table": "online_applications",
+      "name": "online_applications_workflow_stage_check",
+      "type": "c",
+      "definition": "CHECK ((workflow_stage = ANY (ARRAY['NOUVELLE'::text, 'RECUE'::text, 'VERIFICATION_ADMISSION'::text, 'INCOMPLET'::text, 'A_COMPLETER'::text, 'COMPLET'::text, 'TRANSMIS_ACADEMIE'::text, 'ETUDE_ACADEMIQUE'::text, 'ADMISSIBLE'::text, 'ATTENTE_PAIEMENT'::text, 'ADMIS_OFFICIEL'::text, 'REFUSE'::text])))"
     },
     {
       "schema": "escen",
@@ -20305,6 +21271,144 @@
     },
     {
       "schema": "escen",
+      "table": "application_events",
+      "name": "application_event_actor",
+      "definition": "CREATE INDEX application_event_actor ON escen.application_events USING btree (actor_id)"
+    },
+    {
+      "schema": "escen",
+      "table": "application_events",
+      "name": "application_event_app",
+      "definition": "CREATE INDEX application_event_app ON escen.application_events USING btree (application_id, created_at)"
+    },
+    {
+      "schema": "escen",
+      "table": "application_events",
+      "name": "application_event_year",
+      "definition": "CREATE INDEX application_event_year ON escen.application_events USING btree (academic_year_id)"
+    },
+    {
+      "schema": "escen",
+      "table": "application_events",
+      "name": "application_events_pkey",
+      "definition": "CREATE UNIQUE INDEX application_events_pkey ON escen.application_events USING btree (id)"
+    },
+    {
+      "schema": "escen",
+      "table": "application_letters",
+      "name": "application_letter_actor",
+      "definition": "CREATE INDEX application_letter_actor ON escen.application_letters USING btree (issued_by)"
+    },
+    {
+      "schema": "escen",
+      "table": "application_letters",
+      "name": "application_letter_app",
+      "definition": "CREATE INDEX application_letter_app ON escen.application_letters USING btree (application_id)"
+    },
+    {
+      "schema": "escen",
+      "table": "application_letters",
+      "name": "application_letter_year",
+      "definition": "CREATE INDEX application_letter_year ON escen.application_letters USING btree (academic_year_id)"
+    },
+    {
+      "schema": "escen",
+      "table": "application_letters",
+      "name": "application_letters_event_id_key",
+      "definition": "CREATE UNIQUE INDEX application_letters_event_id_key ON escen.application_letters USING btree (event_id)"
+    },
+    {
+      "schema": "escen",
+      "table": "application_letters",
+      "name": "application_letters_pkey",
+      "definition": "CREATE UNIQUE INDEX application_letters_pkey ON escen.application_letters USING btree (id)"
+    },
+    {
+      "schema": "escen",
+      "table": "application_letters",
+      "name": "application_letters_reference_key",
+      "definition": "CREATE UNIQUE INDEX application_letters_reference_key ON escen.application_letters USING btree (reference)"
+    },
+    {
+      "schema": "escen",
+      "table": "application_notifications",
+      "name": "application_notice_app",
+      "definition": "CREATE INDEX application_notice_app ON escen.application_notifications USING btree (application_id)"
+    },
+    {
+      "schema": "escen",
+      "table": "application_notifications",
+      "name": "application_notice_event",
+      "definition": "CREATE INDEX application_notice_event ON escen.application_notifications USING btree (event_id)"
+    },
+    {
+      "schema": "escen",
+      "table": "application_notifications",
+      "name": "application_notice_recipient",
+      "definition": "CREATE INDEX application_notice_recipient ON escen.application_notifications USING btree (account_id, role_code, read_at)"
+    },
+    {
+      "schema": "escen",
+      "table": "application_notifications",
+      "name": "application_notice_year",
+      "definition": "CREATE INDEX application_notice_year ON escen.application_notifications USING btree (academic_year_id)"
+    },
+    {
+      "schema": "escen",
+      "table": "application_notifications",
+      "name": "application_notifications_event_id_account_id_role_code_key",
+      "definition": "CREATE UNIQUE INDEX application_notifications_event_id_account_id_role_code_key ON escen.application_notifications USING btree (event_id, account_id, role_code)"
+    },
+    {
+      "schema": "escen",
+      "table": "application_notifications",
+      "name": "application_notifications_pkey",
+      "definition": "CREATE UNIQUE INDEX application_notifications_pkey ON escen.application_notifications USING btree (id)"
+    },
+    {
+      "schema": "escen",
+      "table": "application_registration_payments",
+      "name": "application_payment_reference",
+      "definition": "CREATE UNIQUE INDEX application_payment_reference ON escen.application_registration_payments USING btree (academic_year_id, channel_id, lower(reference)) WHERE (kind = 'PAYMENT'::text)"
+    },
+    {
+      "schema": "escen",
+      "table": "application_registration_payments",
+      "name": "application_registration_actor",
+      "definition": "CREATE INDEX application_registration_actor ON escen.application_registration_payments USING btree (recorded_by)"
+    },
+    {
+      "schema": "escen",
+      "table": "application_registration_payments",
+      "name": "application_registration_app",
+      "definition": "CREATE INDEX application_registration_app ON escen.application_registration_payments USING btree (application_id)"
+    },
+    {
+      "schema": "escen",
+      "table": "application_registration_payments",
+      "name": "application_registration_channel",
+      "definition": "CREATE INDEX application_registration_channel ON escen.application_registration_payments USING btree (channel_id)"
+    },
+    {
+      "schema": "escen",
+      "table": "application_registration_payments",
+      "name": "application_registration_payments_pkey",
+      "definition": "CREATE UNIQUE INDEX application_registration_payments_pkey ON escen.application_registration_payments USING btree (id)"
+    },
+    {
+      "schema": "escen",
+      "table": "application_registration_payments",
+      "name": "application_registration_payments_reversal_of_key",
+      "definition": "CREATE UNIQUE INDEX application_registration_payments_reversal_of_key ON escen.application_registration_payments USING btree (reversal_of)"
+    },
+    {
+      "schema": "escen",
+      "table": "application_registration_payments",
+      "name": "application_registration_year",
+      "definition": "CREATE INDEX application_registration_year ON escen.application_registration_payments USING btree (academic_year_id)"
+    },
+    {
+      "schema": "escen",
       "table": "assessment_weights",
       "name": "assessment_component_fk",
       "definition": "CREATE INDEX assessment_component_fk ON escen.assessment_weights USING btree (component_id, curriculum_id)"
@@ -21940,6 +23044,30 @@
       "table": "online_applications",
       "name": "application_legacy_student_fk",
       "definition": "CREATE INDEX application_legacy_student_fk ON escen.online_applications USING btree (legacy_student_id)"
+    },
+    {
+      "schema": "escen",
+      "table": "online_applications",
+      "name": "application_registration_schedule_fk",
+      "definition": "CREATE INDEX application_registration_schedule_fk ON escen.online_applications USING btree (registration_fee_schedule_id)"
+    },
+    {
+      "schema": "escen",
+      "table": "online_applications",
+      "name": "application_student_fk",
+      "definition": "CREATE INDEX application_student_fk ON escen.online_applications USING btree (student_id)"
+    },
+    {
+      "schema": "escen",
+      "table": "online_applications",
+      "name": "application_workflow_year",
+      "definition": "CREATE INDEX application_workflow_year ON escen.online_applications USING btree (academic_year_id, workflow_stage, submitted_at DESC)"
+    },
+    {
+      "schema": "escen",
+      "table": "online_applications",
+      "name": "application_year_identity",
+      "definition": "CREATE UNIQUE INDEX application_year_identity ON escen.online_applications USING btree (id, academic_year_id)"
     },
     {
       "schema": "escen",

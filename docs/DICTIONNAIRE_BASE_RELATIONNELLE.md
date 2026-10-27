@@ -2,7 +2,7 @@
 
 Généré avec `npm run db:describe` en exécutant les migrations dans PostgreSQL local (PGlite). Aucun accès à Supabase ou aux données de la sauvegarde.
 
-114 tables métier, 13 tables privées, 991 colonnes, 271 clés étrangères, 235 CHECK de tables et 4 exclusions. Les domaines ajoutent les bornes des notes, des montants FCFA et des textes obligatoires.
+118 tables métier, 13 tables privées, 1037 colonnes, 293 clés étrangères, 245 CHECK de tables et 4 exclusions. Les domaines ajoutent les bornes des notes, des montants FCFA et des textes obligatoires.
 
 Toutes les tables ont RLS activée, sans accès applicatif permis à ce stade. Les noms techniques ne sont pas des libellés à afficher dans l’interface.
 
@@ -19,6 +19,10 @@ Toutes les tables ont RLS activée, sans accès applicatif permis à ce stade. L
 | escen | annual_payment_channels | 6 | 1 | Oui |
 | escen | answer_corrections | 6 | 2 | Oui |
 | escen | application_documents | 11 | 1 | Oui |
+| escen | application_events | 11 | 4 | Oui |
+| escen | application_letters | 9 | 5 | Oui |
+| escen | application_notifications | 9 | 5 | Oui |
+| escen | application_registration_payments | 11 | 6 | Oui |
 | escen | assessment_weights | 5 | 1 | Oui |
 | escen | asset_movements | 8 | 4 | Oui |
 | escen | assets | 8 | 1 | Oui |
@@ -78,7 +82,7 @@ Toutes les tables ont RLS activée, sans accès applicatif permis à ce stade. L
 | escen | jury_members | 4 | 2 | Oui |
 | escen | levels | 8 | 2 | Oui |
 | escen | offering_semesters | 6 | 2 | Oui |
-| escen | online_applications | 15 | 4 | Oui |
+| escen | online_applications | 21 | 6 | Oui |
 | escen | payment_allocations | 10 | 6 | Oui |
 | escen | payment_documents | 3 | 2 | Oui |
 | escen | payment_reversals | 5 | 2 | Oui |
@@ -549,6 +553,199 @@ Index :
 CREATE UNIQUE INDEX application_documents_object_path_key ON escen.application_documents USING btree (object_path)
 CREATE UNIQUE INDEX application_documents_pkey ON escen.application_documents USING btree (id)
 CREATE INDEX website_document_application_fk ON escen.application_documents USING btree (application_id)
+```
+
+## escen.application_events
+
+| Attribut | Type | Nullable | Défaut | Généré |
+|---|---|---|---|---|
+| id | uuid | NO | gen_random_uuid() | NEVER |
+| application_id | uuid | NO | — | NEVER |
+| academic_year_id | uuid | NO | — | NEVER |
+| actor_id | uuid | YES | — | NEVER |
+| action | text | NO | — | NEVER |
+| from_stage | text | YES | — | NEVER |
+| to_stage | text | YES | — | NEVER |
+| reason | text | NO | — | NEVER |
+| metadata | jsonb | NO | '{}'::jsonb | NEVER |
+| visible_to_candidate | bool | NO | true | NEVER |
+| created_at | timestamptz | NO | clock_timestamp() | NEVER |
+
+Contraintes :
+
+```sql
+application_events_academic_year_id_fkey: FOREIGN KEY (academic_year_id) REFERENCES escen.academic_years(id) ON DELETE RESTRICT
+application_events_academic_year_id_not_null: NOT NULL academic_year_id
+application_events_action_not_null: NOT NULL action
+application_events_actor_id_fkey: FOREIGN KEY (actor_id) REFERENCES escen.accounts(id) ON DELETE RESTRICT
+application_events_application_id_academic_year_id_fkey: FOREIGN KEY (application_id, academic_year_id) REFERENCES escen.online_applications(id, academic_year_id) ON DELETE RESTRICT
+application_events_application_id_fkey: FOREIGN KEY (application_id) REFERENCES escen.online_applications(id) ON DELETE RESTRICT
+application_events_application_id_not_null: NOT NULL application_id
+application_events_created_at_not_null: NOT NULL created_at
+application_events_id_not_null: NOT NULL id
+application_events_metadata_not_null: NOT NULL metadata
+application_events_pkey: PRIMARY KEY (id)
+application_events_reason_check: CHECK (((length(btrim(reason)) >= 3) AND (length(btrim(reason)) <= 1000)))
+application_events_reason_not_null: NOT NULL reason
+application_events_visible_to_candidate_not_null: NOT NULL visible_to_candidate
+```
+
+Index :
+
+```sql
+CREATE INDEX application_event_actor ON escen.application_events USING btree (actor_id)
+CREATE INDEX application_event_app ON escen.application_events USING btree (application_id, created_at)
+CREATE INDEX application_event_year ON escen.application_events USING btree (academic_year_id)
+CREATE UNIQUE INDEX application_events_pkey ON escen.application_events USING btree (id)
+```
+
+## escen.application_letters
+
+| Attribut | Type | Nullable | Défaut | Généré |
+|---|---|---|---|---|
+| id | uuid | NO | gen_random_uuid() | NEVER |
+| application_id | uuid | NO | — | NEVER |
+| academic_year_id | uuid | NO | — | NEVER |
+| event_id | uuid | NO | — | NEVER |
+| kind | text | NO | — | NEVER |
+| reference | text | NO | — | NEVER |
+| content | text | NO | — | NEVER |
+| issued_by | uuid | YES | — | NEVER |
+| created_at | timestamptz | NO | clock_timestamp() | NEVER |
+
+Contraintes :
+
+```sql
+application_letters_academic_year_id_fkey: FOREIGN KEY (academic_year_id) REFERENCES escen.academic_years(id) ON DELETE RESTRICT
+application_letters_academic_year_id_not_null: NOT NULL academic_year_id
+application_letters_application_id_academic_year_id_fkey: FOREIGN KEY (application_id, academic_year_id) REFERENCES escen.online_applications(id, academic_year_id) ON DELETE RESTRICT
+application_letters_application_id_fkey: FOREIGN KEY (application_id) REFERENCES escen.online_applications(id) ON DELETE RESTRICT
+application_letters_application_id_not_null: NOT NULL application_id
+application_letters_content_check: CHECK (((length(content) >= 20) AND (length(content) <= 20000)))
+application_letters_content_not_null: NOT NULL content
+application_letters_created_at_not_null: NOT NULL created_at
+application_letters_event_id_fkey: FOREIGN KEY (event_id) REFERENCES escen.application_events(id) ON DELETE RESTRICT
+application_letters_event_id_key: UNIQUE (event_id)
+application_letters_event_id_not_null: NOT NULL event_id
+application_letters_id_not_null: NOT NULL id
+application_letters_issued_by_fkey: FOREIGN KEY (issued_by) REFERENCES escen.accounts(id) ON DELETE RESTRICT
+application_letters_kind_check: CHECK ((kind = ANY (ARRAY['ADMISSIBILITE'::text, 'REFUS'::text, 'ADMISSION'::text])))
+application_letters_kind_not_null: NOT NULL kind
+application_letters_pkey: PRIMARY KEY (id)
+application_letters_reference_key: UNIQUE (reference)
+application_letters_reference_not_null: NOT NULL reference
+```
+
+Index :
+
+```sql
+CREATE INDEX application_letter_actor ON escen.application_letters USING btree (issued_by)
+CREATE INDEX application_letter_app ON escen.application_letters USING btree (application_id)
+CREATE INDEX application_letter_year ON escen.application_letters USING btree (academic_year_id)
+CREATE UNIQUE INDEX application_letters_event_id_key ON escen.application_letters USING btree (event_id)
+CREATE UNIQUE INDEX application_letters_pkey ON escen.application_letters USING btree (id)
+CREATE UNIQUE INDEX application_letters_reference_key ON escen.application_letters USING btree (reference)
+```
+
+## escen.application_notifications
+
+| Attribut | Type | Nullable | Défaut | Généré |
+|---|---|---|---|---|
+| id | uuid | NO | gen_random_uuid() | NEVER |
+| application_id | uuid | NO | — | NEVER |
+| academic_year_id | uuid | NO | — | NEVER |
+| event_id | uuid | NO | — | NEVER |
+| account_id | uuid | NO | — | NEVER |
+| role_code | text | NO | — | NEVER |
+| message | text | NO | — | NEVER |
+| read_at | timestamptz | YES | — | NEVER |
+| created_at | timestamptz | NO | clock_timestamp() | NEVER |
+
+Contraintes :
+
+```sql
+application_notifications_academic_year_id_fkey: FOREIGN KEY (academic_year_id) REFERENCES escen.academic_years(id) ON DELETE RESTRICT
+application_notifications_academic_year_id_not_null: NOT NULL academic_year_id
+application_notifications_account_id_fkey: FOREIGN KEY (account_id) REFERENCES escen.accounts(id) ON DELETE RESTRICT
+application_notifications_account_id_not_null: NOT NULL account_id
+application_notifications_application_id_academic_year_id_fkey: FOREIGN KEY (application_id, academic_year_id) REFERENCES escen.online_applications(id, academic_year_id) ON DELETE RESTRICT
+application_notifications_application_id_fkey: FOREIGN KEY (application_id) REFERENCES escen.online_applications(id) ON DELETE RESTRICT
+application_notifications_application_id_not_null: NOT NULL application_id
+application_notifications_created_at_not_null: NOT NULL created_at
+application_notifications_event_id_account_id_role_code_key: UNIQUE (event_id, account_id, role_code)
+application_notifications_event_id_fkey: FOREIGN KEY (event_id) REFERENCES escen.application_events(id) ON DELETE RESTRICT
+application_notifications_event_id_not_null: NOT NULL event_id
+application_notifications_id_not_null: NOT NULL id
+application_notifications_message_not_null: NOT NULL message
+application_notifications_pkey: PRIMARY KEY (id)
+application_notifications_role_code_not_null: NOT NULL role_code
+```
+
+Index :
+
+```sql
+CREATE INDEX application_notice_app ON escen.application_notifications USING btree (application_id)
+CREATE INDEX application_notice_event ON escen.application_notifications USING btree (event_id)
+CREATE INDEX application_notice_recipient ON escen.application_notifications USING btree (account_id, role_code, read_at)
+CREATE INDEX application_notice_year ON escen.application_notifications USING btree (academic_year_id)
+CREATE UNIQUE INDEX application_notifications_event_id_account_id_role_code_key ON escen.application_notifications USING btree (event_id, account_id, role_code)
+CREATE UNIQUE INDEX application_notifications_pkey ON escen.application_notifications USING btree (id)
+```
+
+## escen.application_registration_payments
+
+| Attribut | Type | Nullable | Défaut | Généré |
+|---|---|---|---|---|
+| id | uuid | NO | gen_random_uuid() | NEVER |
+| application_id | uuid | NO | — | NEVER |
+| academic_year_id | uuid | NO | — | NEVER |
+| kind | text | NO | — | NEVER |
+| amount | escen.xof_amount | NO | — | NEVER |
+| channel_id | uuid | NO | — | NEVER |
+| reference | text | NO | — | NEVER |
+| reversal_of | uuid | YES | — | NEVER |
+| recorded_by | uuid | NO | — | NEVER |
+| reason | text | NO | — | NEVER |
+| created_at | timestamptz | NO | clock_timestamp() | NEVER |
+
+Contraintes :
+
+```sql
+application_registration_paym_application_id_academic_year_fkey: FOREIGN KEY (application_id, academic_year_id) REFERENCES escen.online_applications(id, academic_year_id) ON DELETE RESTRICT
+application_registration_payments_academic_year_id_fkey: FOREIGN KEY (academic_year_id) REFERENCES escen.academic_years(id) ON DELETE RESTRICT
+application_registration_payments_academic_year_id_not_null: NOT NULL academic_year_id
+application_registration_payments_amount_check: CHECK (((amount)::numeric > (0)::numeric))
+application_registration_payments_amount_not_null: NOT NULL amount
+application_registration_payments_application_id_fkey: FOREIGN KEY (application_id) REFERENCES escen.online_applications(id) ON DELETE RESTRICT
+application_registration_payments_application_id_not_null: NOT NULL application_id
+application_registration_payments_channel_id_fkey: FOREIGN KEY (channel_id) REFERENCES escen.annual_payment_channels(id) ON DELETE RESTRICT
+application_registration_payments_channel_id_not_null: NOT NULL channel_id
+application_registration_payments_check: CHECK ((((kind = 'PAYMENT'::text) AND (reversal_of IS NULL)) OR ((kind = 'REVERSAL'::text) AND (reversal_of IS NOT NULL))))
+application_registration_payments_created_at_not_null: NOT NULL created_at
+application_registration_payments_id_not_null: NOT NULL id
+application_registration_payments_kind_check: CHECK ((kind = ANY (ARRAY['PAYMENT'::text, 'REVERSAL'::text])))
+application_registration_payments_kind_not_null: NOT NULL kind
+application_registration_payments_pkey: PRIMARY KEY (id)
+application_registration_payments_reason_check: CHECK (((length(btrim(reason)) >= 3) AND (length(btrim(reason)) <= 1000)))
+application_registration_payments_reason_not_null: NOT NULL reason
+application_registration_payments_recorded_by_fkey: FOREIGN KEY (recorded_by) REFERENCES escen.accounts(id) ON DELETE RESTRICT
+application_registration_payments_recorded_by_not_null: NOT NULL recorded_by
+application_registration_payments_reference_check: CHECK (((length(btrim(reference)) >= 3) AND (length(btrim(reference)) <= 160)))
+application_registration_payments_reference_not_null: NOT NULL reference
+application_registration_payments_reversal_of_fkey: FOREIGN KEY (reversal_of) REFERENCES escen.application_registration_payments(id) ON DELETE RESTRICT
+application_registration_payments_reversal_of_key: UNIQUE (reversal_of)
+```
+
+Index :
+
+```sql
+CREATE UNIQUE INDEX application_payment_reference ON escen.application_registration_payments USING btree (academic_year_id, channel_id, lower(reference)) WHERE (kind = 'PAYMENT'::text)
+CREATE INDEX application_registration_actor ON escen.application_registration_payments USING btree (recorded_by)
+CREATE INDEX application_registration_app ON escen.application_registration_payments USING btree (application_id)
+CREATE INDEX application_registration_channel ON escen.application_registration_payments USING btree (channel_id)
+CREATE UNIQUE INDEX application_registration_payments_pkey ON escen.application_registration_payments USING btree (id)
+CREATE UNIQUE INDEX application_registration_payments_reversal_of_key ON escen.application_registration_payments USING btree (reversal_of)
+CREATE INDEX application_registration_year ON escen.application_registration_payments USING btree (academic_year_id)
 ```
 
 ## escen.assessment_weights
@@ -2937,15 +3134,24 @@ CREATE UNIQUE INDEX offering_semesters_pkey ON escen.offering_semesters USING bt
 | legacy_source_row_id | uuid | YES | — | NEVER |
 | legacy_state | jsonb | YES | — | NEVER |
 | legacy_student_id | uuid | YES | — | NEVER |
+| workflow_stage | text | YES | — | NEVER |
+| entry_channel | text | NO | 'WEB'::text | NEVER |
+| requested_changes | text | YES | — | NEVER |
+| registration_fee_due | escen.xof_amount | YES | — | NEVER |
+| registration_fee_schedule_id | uuid | YES | — | NEVER |
+| student_id | uuid | YES | — | NEVER |
 
 Contraintes :
 
 ```sql
 application_submission_origin: CHECK (((status = 'BROUILLON'::text) OR ((submitted_at IS NOT NULL) AND ((intake_id IS NOT NULL) OR (legacy_source_row_id IS NOT NULL)))))
+application_year_identity: UNIQUE (id, academic_year_id)
 online_applications_academic_year_id_fkey: FOREIGN KEY (academic_year_id) REFERENCES escen.academic_years(id) ON DELETE RESTRICT
 online_applications_created_at_not_null: NOT NULL created_at
 online_applications_diploma_check: CHECK ((jsonb_typeof(diploma) = 'object'::text))
 online_applications_diploma_not_null: NOT NULL diploma
+online_applications_entry_channel_check: CHECK ((entry_channel = ANY (ARRAY['WEB'::text, 'ACCUEIL'::text])))
+online_applications_entry_channel_not_null: NOT NULL entry_channel
 online_applications_guardians_check: CHECK ((jsonb_typeof(guardians) = 'array'::text))
 online_applications_guardians_not_null: NOT NULL guardians
 online_applications_id_not_null: NOT NULL id
@@ -2960,15 +3166,22 @@ online_applications_pkey: PRIMARY KEY (id)
 online_applications_reason_not_null: NOT NULL reason
 online_applications_reference_key: UNIQUE (reference)
 online_applications_reference_not_null: NOT NULL reference
+online_applications_registration_fee_schedule_id_fkey: FOREIGN KEY (registration_fee_schedule_id) REFERENCES escen.annual_fee_schedules(id) ON DELETE RESTRICT
 online_applications_status_check: CHECK ((status = ANY (ARRAY['BROUILLON'::text, 'RECU'::text, 'EN_ANALYSE'::text, 'CLASSE'::text])))
 online_applications_status_not_null: NOT NULL status
+online_applications_student_id_fkey: FOREIGN KEY (student_id) REFERENCES escen.students(id) ON DELETE RESTRICT
 online_applications_version_not_null: NOT NULL version
+online_applications_workflow_stage_check: CHECK ((workflow_stage = ANY (ARRAY['NOUVELLE'::text, 'RECUE'::text, 'VERIFICATION_ADMISSION'::text, 'INCOMPLET'::text, 'A_COMPLETER'::text, 'COMPLET'::text, 'TRANSMIS_ACADEMIE'::text, 'ETUDE_ACADEMIQUE'::text, 'ADMISSIBLE'::text, 'ATTENTE_PAIEMENT'::text, 'ADMIS_OFFICIEL'::text, 'REFUSE'::text])))
 ```
 
 Index :
 
 ```sql
 CREATE INDEX application_legacy_student_fk ON escen.online_applications USING btree (legacy_student_id)
+CREATE INDEX application_registration_schedule_fk ON escen.online_applications USING btree (registration_fee_schedule_id)
+CREATE INDEX application_student_fk ON escen.online_applications USING btree (student_id)
+CREATE INDEX application_workflow_year ON escen.online_applications USING btree (academic_year_id, workflow_stage, submitted_at DESC)
+CREATE UNIQUE INDEX application_year_identity ON escen.online_applications USING btree (id, academic_year_id)
 CREATE UNIQUE INDEX online_applications_legacy_source_row_id_key ON escen.online_applications USING btree (legacy_source_row_id)
 CREATE UNIQUE INDEX online_applications_pkey ON escen.online_applications USING btree (id)
 CREATE UNIQUE INDEX online_applications_reference_key ON escen.online_applications USING btree (reference)
