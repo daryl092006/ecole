@@ -1,6 +1,11 @@
 export type AcademicYearSelection = 'current' | 'all' | string;
 export type YearStatus = 'BROUILLON' | 'OUVERTE' | 'EN_CLOTURE' | 'CLOTUREE';
 export interface AcademicYearOption { id: string; name: string; status: YearStatus; starts_on: string; ends_on: string; }
+export interface AcademicYearChangeReview {
+  revision: number;
+  currentYearId: string | null;
+  years: AcademicYearOption[];
+}
 export interface AcademicYearContext {
   currentYearId: string | null;
   currentYearConfigured?: boolean;

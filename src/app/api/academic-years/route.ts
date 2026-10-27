@@ -9,11 +9,19 @@ export async function GET(request: Request) {
     const { client, context } = await requireAccount(request);
     requirePermission(context, 'academic.year.open');
     if (!context.grants.some(grant => !grant.site_id && !grant.group_id && !grant.academic_year_id)) throw new RequestError(403, 'Un accès global au pilotage des années est requis.');
-    const yearId = z.uuid().parse(new URL(request.url).searchParams.get('yearId'));
+    const params = new URL(request.url).searchParams;
+    const changeReview = params.get('view') === 'change';
+    const yearId = changeReview ? null : z.uuid().parse(params.get('yearId'));
     const result = await client.rpc('escen_backend_snapshot');
-    if (result.error) throw new RequestError(503, 'Bilan de clôture indisponible.');
+    if (result.error) throw new RequestError(503, changeReview ? 'Vérification de l’année indisponible.' : 'Bilan de clôture indisponible.');
+    if (changeReview) {
+      const current = await client.rpc('escen_academic_year_context');
+      if (current.error) throw new RequestError(503, 'Contexte de l’année de travail indisponible.');
+      const years = (result.data.tables.academic_years || []).filter((row: DatabaseRow) => !row.archived_at).map((row: DatabaseRow) => ({ id: row.id, name: row.name, status: row.status, starts_on: row.starts_on, ends_on: row.ends_on }));
+      return Response.json({ revision: result.data.revision, currentYearId: current.data?.currentYearId || null, years }, { headers: { 'Cache-Control': 'no-store' } });
+    }
     if (!(result.data.tables.academic_years || []).some((row: DatabaseRow) => row.id === yearId && !row.archived_at)) throw new RequestError(404, 'Année introuvable.');
-    return Response.json(academicYearClosureReview(result.data, yearId), { headers: { 'Cache-Control': 'no-store' } });
+    return Response.json(academicYearClosureReview(result.data, yearId!), { headers: { 'Cache-Control': 'no-store' } });
   } catch (error) { return errorResponse(error); }
 }
 export async function POST(request: Request) {

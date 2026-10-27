@@ -3,6 +3,7 @@ import { expect, test, type Page } from '@playwright/test';
 import { authenticateFixture, snapshot } from './persistent-fixture';
 import { filterSnapshotForAcademicYear } from '../../src/services/academicYearScopeService';
 import type { DatabaseRow, RelationalSnapshot } from '../../src/types/persistence';
+import { loadSecurityApi, securityContext } from './security-fixture';
 const oldId = '10000000-0000-4000-8000-000000000001';
 const currentId = '10000000-0000-4000-8000-000000000002';
 const futureId = '10000000-0000-4000-8000-000000000003';
@@ -27,18 +28,21 @@ async function annualFixture(page: Page, configured = true) {
     return route.fulfill({ json: { ...filterSnapshotForAcademicYear({ ...source, revision }, selectedYearId), academicContext: { selection, selectedYearId, currentYearId, years } } });
   });
   await page.route('**/api/catalog/*', route => route.fulfill({ json: { revision, tables: { academic_years: years }, historyLinks: [] } }));
-  await page.route('**/api/year-preparation', route => route.fulfill({ json: { ready: true, checks: [] } }));
-  await page.route('**/api/academic-years?*', route => route.fulfill({ json: academicYearClosureReview({ ...source, revision }, new URL(route.request().url()).searchParams.get('yearId')!) }));
+  await page.route('**/api/year-preparation', route => route.fulfill({ json: { ready: true, checks: [{ key: 'payments', label: 'Encaissement', ready: true, href: '' }] } }));
+  await page.route('**/api/academic-years?*', route => {
+    const params = new URL(route.request().url()).searchParams;
+    return route.fulfill({ json: params.get('view') === 'change' ? { revision, currentYearId, years } : academicYearClosureReview({ ...source, revision }, params.get('yearId')!) });
+  });
   await page.route('**/api/academic-years', async route => {
     const body = route.request().postDataJSON(); commands.push(body);
-    if (fail) return route.fulfill({ status: 409, json: { error: 'Modification concurrente : actualisez.' } });
+    if (fail || body.revision !== revision) return route.fulfill({ status: 409, json: { error: 'Modification concurrente : actualisez.' } });
     expect(body.revision).toBe(revision);
     if (body.action === 'current') currentYearId = body.yearId;
     else { years.find(year => year.id === body.yearId)!.status = body.status; }
     revision++;
     return route.fulfill({ json: { revision } });
   });
-  return { commands, source, fail: () => { fail = true; } };
+  return { commands, source, advance: () => { revision++; }, fail: () => { fail = true; }, resume: () => { fail = false; } };
 }
 for (const width of [390, 1440]) {
   test(`Année consultée : filtre, historique et préférence après rechargement à ${width}px`, async ({ page }) => {
@@ -56,7 +60,7 @@ for (const width of [390, 1440]) {
     await expect(page.getByRole('row').filter({ hasText: 'ESCEN-TEST-001' })).toContainText('Licence 2');
     expect(fixture.commands).toHaveLength(0); expect(fixture.source.tables.enrollments).toHaveLength(2);
     await expect.poll(() => page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
-    await page.screenshot({ path: `.tmp/interface/${width}/annee-de-travail.png`, fullPage: true });
+    await page.screenshot({ path: `tmp/screenshots/academic-year-context/${width}/annee-de-travail.png`, fullPage: true });
   });
   test(`Année institutionnelle : ouverture et désignation confirmées, erreur conservée à ${width}px`, async ({ page }) => {
     await page.setViewportSize({ width, height: 1000 }); const fixture = await annualFixture(page);
@@ -90,6 +94,75 @@ for (const width of [390, 1440]) {
 }
 test('Commande annuelle refusée sans session', async ({ request }) => {
   expect((await request.post('/api/academic-years', { data: { action: 'current', yearId: currentId, revision: 0, reason: 'Interdit' } })).status()).toBe(401);
+  expect((await request.get('/api/academic-years?view=change')).status()).toBe(401);
+});
+
+test('Bilan de changement : révision et contexte frais, lecture globale autorisée uniquement', async () => {
+  const context = securityContext();
+  const calls: string[] = [];
+  const client = { rpc: async (name: string) => {
+    calls.push(name);
+    if (name === 'escen_backend_snapshot') return { data: { revision: 17, tables: { academic_years: [
+      { id: currentId, name: '2026-2027', status: 'OUVERTE', starts_on: '2026-09-01', ends_on: '2027-07-31' },
+      { id: oldId, name: 'Archive', archived_at: '2026-10-01' },
+    ] } }, error: null };
+    if (name === 'escen_academic_year_context') return { data: { currentYearId: currentId }, error: null };
+    throw new Error(`RPC inattendue : ${name}`);
+  } };
+  const api = (ctx = context) => loadSecurityApi('app/api/academic-years/route.ts', client, ctx) as { GET(request: Request): Promise<Response> };
+  const request = () => new Request('http://localhost/api/academic-years?view=change');
+  const response = await api().GET(request());
+  expect(response.status).toBe(200);
+  expect(await response.json()).toMatchObject({ revision: 17, currentYearId: currentId, years: [{ id: currentId }] });
+  expect(response.headers.get('Cache-Control')).toBe('no-store');
+  expect(calls).toEqual(['escen_backend_snapshot', 'escen_academic_year_context']);
+  calls.length = 0;
+  expect((await api({ ...context, permissions: ['finance.view'] }).GET(request())).status).toBe(403);
+  expect((await api({ ...context, grants: context.grants.map(grant => ({ ...grant, site_id: oldId })) }).GET(request())).status).toBe(403);
+  expect(calls).toHaveLength(0);
+});
+
+for (const width of [390, 1440]) test(`Année : révision actualisée avant confirmation et conflit conservé après à ${width}px`, async ({ page }) => {
+  await page.setViewportSize({ width, height: 1000 });
+  const fixture = await annualFixture(page);
+  await page.goto('/academique/referentiel?collection=academic_years');
+  await expect(page.getByRole('switch', { name: 'Désactiver l’année 2026-2027' })).toBeVisible();
+  fixture.advance();
+  await page.getByRole('switch', { name: 'Désactiver l’année 2026-2027' }).click();
+  await expect(page.getByRole('dialog')).toContainText('cessera d’être l’année de travail');
+  expect(fixture.commands).toHaveLength(0);
+  await page.getByRole('button', { name: 'Confirmer le changement d’année', exact: true }).click();
+  await expect(page.getByRole('switch', { name: 'Activer l’année 2026-2027' })).toBeVisible();
+  expect(fixture.commands[0]).toMatchObject({ action: 'current', yearId: null, revision: 2 });
+  await page.getByRole('switch', { name: 'Activer l’année 2026-2027' }).click();
+  await expect(page.getByRole('dialog')).toContainText('deviendra l’année de travail');
+  fixture.advance();
+  await page.getByRole('button', { name: 'Confirmer le changement d’année', exact: true }).click();
+  await expect(page.getByRole('dialog').getByRole('alert')).toContainText('Modification concurrente');
+  expect(fixture.commands).toHaveLength(2);
+  await page.getByRole('button', { name: 'Actualiser les informations', exact: true }).click();
+  await expect(page.getByRole('dialog').getByRole('alert')).toHaveCount(0);
+  expect(fixture.commands).toHaveLength(2);
+  await page.getByRole('button', { name: 'Confirmer le changement d’année', exact: true }).click();
+  await expect(page.getByRole('switch', { name: 'Désactiver l’année 2026-2027' })).toBeChecked();
+  expect(fixture.commands[2]).toMatchObject({ action: 'current', yearId: currentId, revision: 4 });
+});
+
+for (const width of [390, 1440]) test(`Ouvrir une année depuis la préparation utilise la révision courante à ${width}px`, async ({ page }) => {
+  await page.setViewportSize({ width, height: 1000 });
+  const fixture = await annualFixture(page);
+  await page.goto('/academique/referentiel?collection=academic_years');
+  await page.getByRole('button', { name: 'Ouvrir l’année 2027-2028', exact: true }).click();
+  await page.getByRole('button', { name: 'Préparer 2027-2028', exact: true }).click();
+  await expect(page.getByRole('heading', { name: 'Préparer l’année · 2027-2028', exact: true })).toBeVisible();
+  fixture.advance();
+  await page.getByRole('dialog').getByRole('button', { name: 'Ouvrir l’année 2027-2028', exact: true }).click();
+  await expect(page.getByRole('dialog')).toContainText('En clôture');
+  expect(fixture.commands).toHaveLength(0);
+  await page.getByRole('button', { name: 'Confirmer le changement d’année', exact: true }).click();
+  await expect(page.getByRole('switch', { name: 'Désactiver l’année 2027-2028' })).toBeChecked();
+  expect(fixture.commands.map(command => command.revision)).toEqual([2, 3, 4, 5]);
+  expect(fixture.commands).toHaveLength(4);
 });
 
 test('Une erreur de préparation bloque tout changement annuel et permet la reprise', async ({ page }) => {

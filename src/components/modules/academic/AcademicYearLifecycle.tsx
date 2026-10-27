@@ -7,8 +7,8 @@ import YearPreparationPanel from './YearPreparationPanel';
 import WorkPage from '@/components/ui/WorkPage';
 import { useState } from 'react';
 import { usePortal } from '@/hooks/usePortal';
-import { changeAcademicYear, loadYearPreparation } from '@/services/remoteCampusService';
-import { YEAR_STATUS_LABELS, type YearStatus } from '@/types/academicYearContext';
+import { changeAcademicYear, loadYearPreparation, loadAcademicYearChangeReview } from '@/services/remoteCampusService';
+import { YEAR_STATUS_LABELS, type YearStatus, type AcademicYearOption, type AcademicYearChangeReview } from '@/types/academicYearContext';
 import type { DatabaseRow } from '@/types/persistence';
 
 interface ClosureCommand {
@@ -38,13 +38,29 @@ export default function AcademicYearLifecycle({
   const canManage = portal.globalAccess && portal.perms.permissions.includes('academic.year.open');
   const [managing, setManaging] = useState<string | null>(null);
   const [preparing, setPreparing] = useState<string | null>(null);
-  const [pendingYear, setPendingYear] = useState<DatabaseRow | null>(null);
+  const [pendingYear, setPendingYear] = useState<AcademicYearOption | null>(null);
+  const [changeReview, setChangeReview] = useState<AcademicYearChangeReview | null>(null);
   const [reviewing, setReviewing] = useState<DatabaseRow | null>(null);
   const [closureCommand, setClosureCommand] = useState<ClosureCommand | null>(null);
   const [closureReason, setClosureReason] = useState('');
 
   const opened = rows.filter(year => year.status === 'OUVERTE');
   const currentId = portal.academicYearContext?.currentYearId;
+  const reviewedCurrentId = changeReview ? changeReview.currentYearId : currentId;
+  const reviewedOpened = changeReview ? changeReview.years.filter(year => year.status === 'OUVERTE') : opened;
+
+  async function beginYearChange(yearId: string) {
+    if (busy) return;
+    setManaging(null); setBusy(true); setError('');
+    try {
+      const fresh = await loadAcademicYearChangeReview(portal.activeRole);
+      const year = fresh.years.find(item => item.id === yearId);
+      if (!year) throw new Error('Cette année est introuvable. Actualisez la liste.');
+      if (year.status === 'CLOTUREE') throw new Error('Cette année est clôturée et ne peut plus devenir l’année de travail.');
+      setChangeReview(fresh); setPendingYear(year);
+    } catch (cause) { setError(cause instanceof Error ? cause.message : 'Vérification de l’année indisponible.'); }
+    finally { setBusy(false); }
+  }
 
   function openClosureCommand(next: ClosureCommand) {
     setManaging(null);
@@ -53,15 +69,15 @@ export default function AcademicYearLifecycle({
     setError('');
   }
 
-  async function handleToggle(year: DatabaseRow) {
-    const isCurrent = year.id === currentId;
+  async function handleToggle(year: AcademicYearOption) {
+    const isCurrent = year.id === reviewedCurrentId;
     const status = year.status as YearStatus;
     if (status === 'CLOTUREE' || busy) return;
     setBusy(true);
     setError('');
 
     try {
-      let currentRev = revision;
+      let currentRev = changeReview?.revision ?? revision;
 
       if (isCurrent) {
         // Désactivation directe de l'année active
@@ -85,9 +101,9 @@ export default function AcademicYearLifecycle({
             return;
           }
 
-          const otherOpened = opened.find(y => y.id !== year.id);
+          const otherOpened = reviewedOpened.find(y => y.id !== year.id);
           if (otherOpened) {
-            if (currentId === otherOpened.id) {
+            if (reviewedCurrentId === otherOpened.id) {
               const r1 = await changeAcademicYear(
                 {
                   action: 'current',
@@ -202,7 +218,7 @@ export default function AcademicYearLifecycle({
                       title={isCurrent ? `Désactiver l’année ${year.name}` : status === 'CLOTUREE' ? 'Année clôturée' : `Activer l’année ${year.name}`}
                       className={`year-toggle-btn ${isCurrent ? 'active' : ''}`}
                       disabled={status === 'CLOTUREE' || busy}
-                      onClick={() => { setManaging(null); setError(''); setPendingYear(year); }}
+                      onClick={() => { void beginYearChange(year.id); }}
                     >
                       <span className="year-toggle-slider">
                         <span className="year-toggle-knob" />
@@ -257,14 +273,14 @@ export default function AcademicYearLifecycle({
 
       {pendingYear && <WorkPage title={`Changer l’année de travail · ${pendingYear.name}`} busy={busy} onClose={() => setPendingYear(null)}>
         <p>Année concernée : <strong>{String(pendingYear.name)}</strong>.</p>
-        {pendingYear.id === currentId ? <p>Cette année cessera d’être l’année de travail. Elle conservera son état actuel. Les activités nécessiteront un choix explicite d’année tant qu’aucune année de travail ne sera désignée.</p> : <>
+        {pendingYear.id === reviewedCurrentId ? <p>Cette année cessera d’être l’année de travail. Elle conservera son état actuel. Les activités nécessiteront un choix explicite d’année tant qu’aucune année de travail ne sera désignée.</p> : <>
           {pendingYear.status === 'BROUILLON' && <p>La configuration sera vérifiée avant l’ouverture de cette année.</p>}
-          {pendingYear.status === 'BROUILLON' && opened.filter(year => year.id !== pendingYear.id).map(year => <p key={year.id}>L’année <strong>{String(year.name)}</strong> passera de « Ouverte » à « En clôture ». Sa clôture définitive reste une opération distincte.</p>)}
+          {pendingYear.status === 'BROUILLON' && reviewedOpened.filter(year => year.id !== pendingYear.id).map(year => <p key={year.id}>L’année <strong>{String(year.name)}</strong> passera de « Ouverte » à « En clôture ». Sa clôture définitive reste une opération distincte.</p>)}
           <p><strong>{String(pendingYear.name)}</strong> deviendra l’année de travail de l’établissement. Les inscriptions et les paiements existants conserveront leur année.</p>
         </>}
         {error && <p role="alert">{error}</p>}
         {busy && <p role="status">Vérification et changement de l’année en cours…</p>}
-        <DrawerActions><button className="btn btn-primary" disabled={busy} onClick={() => void handleToggle(pendingYear)}>Confirmer le changement d’année</button><DrawerCloseButton className="btn btn-outline" disabled={busy}>Annuler</DrawerCloseButton></DrawerActions>
+        <DrawerActions>{error && <button className="btn btn-outline" disabled={busy} onClick={() => void beginYearChange(pendingYear.id)}>Actualiser les informations</button>}<button className="btn btn-primary" disabled={busy} onClick={() => void handleToggle(pendingYear)}>Confirmer le changement d’année</button><DrawerCloseButton className="btn btn-outline" disabled={busy}>Annuler</DrawerCloseButton></DrawerActions>
       </WorkPage>}
       {preparing && (
         <YearPreparationPanel
@@ -276,12 +292,9 @@ export default function AcademicYearLifecycle({
             onSaved();
           }}
           onActivate={() => {
-            const targetYear = rows.find(year => year.id === preparing);
+            const targetYearId = preparing;
             setPreparing(null);
-            if (targetYear) {
-              setError('');
-              setPendingYear(targetYear);
-            }
+            if (targetYearId) void beginYearChange(targetYearId);
           }}
         />
       )}

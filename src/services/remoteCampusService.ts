@@ -96,6 +96,9 @@ export async function downloadApplicationDocument(id: string, role: RoleName): P
 export async function changeAcademicYear(values: { action: 'current' | 'transition'; yearId: string | null; status?: string; revision: number; reason: string }, role: RoleName): Promise<{ revision: number }> {
   return await readResponse(await fetch('/api/academic-years', {method:'POST',headers:{...await headers(role),'Content-Type':'application/json'},body:JSON.stringify(values)}));
 }
+export async function loadAcademicYearChangeReview(role: RoleName): Promise<import('@/types/academicYearContext').AcademicYearChangeReview> {
+  return readResponse(await fetch('/api/academic-years?view=change', { headers: await headers(role), cache: 'no-store' }));
+}
 
 export async function loadYearClosureReview(yearId: string, role: RoleName, signal?: AbortSignal): Promise<import('@/services/academicYearClosureService').YearClosureReview> {
   return readResponse(await fetch(`/api/academic-years?yearId=${encodeURIComponent(yearId)}`, { headers: await headers(role), cache: 'no-store', signal }));
