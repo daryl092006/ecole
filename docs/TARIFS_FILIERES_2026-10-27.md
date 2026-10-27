@@ -17,7 +17,9 @@ pour les actions des listes.
   tarifs choisis. Les conflits avec des tarifs déjà présents sont refusés avant
   écriture. Les contrats et paiements existants ne sont pas recalculés.
 - Les actions de liste reviennent aux icônes seules, avec noms accessibles et
-  infobulles. Les confirmations d’écriture restent explicites.
+  infobulles. À la demande complémentaire de l’utilisateur, elles restent sur une
+  seule ligne, sans retour à la ligne dans les listes du référentiel. Les
+  confirmations d’écriture restent explicites.
 
 ## Écriture et contrôles
 

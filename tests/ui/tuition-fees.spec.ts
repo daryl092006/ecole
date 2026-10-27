@@ -3,7 +3,7 @@ import { authenticateFixture, snapshot } from './persistent-fixture';
 import { getPreviousYearConfigSummary } from '../../src/services/yearPreparationService';
 import type { DatabaseRow } from '../../src/types/persistence';
 
-for (const category of ['SCOLARITE', 'INSCRIPTION'] as const) for (const width of [390, 1440]) test(`${category} : valider un tarif, modifier et retrouver le montant à ${width}px`, async ({ page }) => {
+for (const category of ['SCOLARITE', 'INSCRIPTION'] as const) for (const width of [360, 390, 1440]) test(`${category} : valider un tarif, modifier et retrouver le montant à ${width}px`, async ({ page }) => {
   const step = category === 'SCOLARITE' ? 'tuition' : 'registration';
   const label = category === 'SCOLARITE' ? 'frais de scolarité' : 'frais d’inscription';
   const artifactName = category === 'SCOLARITE' ? 'scolarite' : 'inscription';
@@ -63,6 +63,10 @@ for (const category of ['SCOLARITE', 'INSCRIPTION'] as const) for (const width o
   const dialog = page.getByRole('dialog');
   await expect(dialog.getByRole('columnheader')).toHaveText(['Filière', 'Niveau', 'Mode', 'Montant FCFA', 'État', 'Actions']);
   await expect(dialog.locator('tbody > tr')).toHaveCount(2);
+  for (const row of await dialog.locator('tbody > tr').all()) {
+    const tops = await row.getByRole('button').evaluateAll(buttons => buttons.map(button => Math.round(button.getBoundingClientRect().top)));
+    expect(new Set(tops).size, 'Les actions restent sur une ligne pour chaque tarif').toBe(1);
+  }
   await expect(dialog.getByRole('cell', { name: /50\s000 FCFA$/ })).toHaveCount(0);
   const search = dialog.getByRole('searchbox', { name: 'Rechercher', exact: true });
   await search.fill('480000');
@@ -76,6 +80,8 @@ for (const category of ['SCOLARITE', 'INSCRIPTION'] as const) for (const width o
   const common = dialog.getByRole('row').filter({ hasText: 'Toutes les filières' });
   await expect(common.getByRole('button', { name: 'Valider', exact: true })).toHaveAttribute('title', 'Valider');
   expect(await dialog.evaluate(element => element.scrollWidth <= element.clientWidth)).toBe(true);
+  const proposalTops = await common.getByRole('button').evaluateAll(buttons => buttons.map(button => Math.round(button.getBoundingClientRect().top)));
+  expect(new Set(proposalTops).size, 'Les quatre icônes de proposition restent sur une ligne').toBe(1);
   await common.getByRole('button', { name: 'Valider', exact: true }).click();
   await expect(dialog.getByRole('region', { name: 'Vérification avant enregistrement' })).toContainText(/480\s000 FCFA/);
   expect(writes).toHaveLength(0);
