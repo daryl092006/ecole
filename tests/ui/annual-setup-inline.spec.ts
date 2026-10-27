@@ -45,6 +45,7 @@ for (const width of [390, 1440]) {
     });
     await page.route('**/api/year-preparation', route => route.fulfill({ json: { checks: [{ key: 'offerings', label: 'Formations proposées', ready: false, href: '' }] } }));
     await page.goto('/academique/referentiel?collection=academic_years');
+    await page.getByRole('button', { name: 'Ouvrir l’année 2026-2027', exact: true }).click();
     await page.getByRole('button', { name: 'Préparer 2026-2027', exact: true }).click();
     await page.getByRole('button', { name: 'Configurer formations proposées', exact: true }).click();
     const dialog = page.getByRole('dialog');

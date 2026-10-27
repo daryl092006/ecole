@@ -61,6 +61,7 @@ for (const width of [390, 1440]) test(`Les filières du groupe sont pré-cochée
     return route.fulfill({ status: 201, json: { id: groupId, revision } });
   });
   await page.goto('/academique/referentiel');
+  await page.getByRole('button', { name: 'Ouvrir l’année 2026-2027', exact: true }).click();
   await page.getByRole('button', { name: 'Préparer 2026-2027', exact: true }).click();
   await page.getByRole('button', { name: 'Configurer groupes', exact: true }).click();
   await page.getByRole('row').filter({ hasText: 'L1 TRONC COMMUN' }).getByRole('button', { name: 'Modifier', exact: true }).click();
@@ -137,7 +138,8 @@ for(const width of [390,1440])test(`Tarifs annuels communs ou par filière à ${
  const rubriques=page.getByRole('combobox',{name:'Rubrique',exact:true});
  await expect(rubriques.locator('option[value=academic_offerings]')).toHaveCount(0);
  await expect(rubriques.locator('option[value=groups]')).toHaveCount(0);
- await page.getByRole('button',{name:'Configurer 2026-2027',exact:true}).click();
+ await page.getByRole('button', { name: 'Ouvrir l’année 2026-2027', exact: true }).click();
+  await page.getByRole('button',{name:'Configurer 2026-2027',exact:true}).click();
  await expect(page.getByText('Programme des cours',{exact:true})).toHaveCount(0);
  await page.getByRole('button',{name:'Configurer frais d’inscription',exact:true}).click();
  await page.getByLabel('Montant FCFA',{exact:true}).fill('50000');
@@ -159,6 +161,7 @@ for (const width of [390, 1440]) test(`Consulter les frais ouvre la liste avant 
   await page.route('**/api/year-preparation*', route => route.fulfill({ json: { ready: true, checks: [{ key: 'tuition', label: 'Scolarité', ready: true }] } }));
   await page.route('**/api/catalog/annual_fee_schedules', route => route.fulfill({ json: { revision: 1, tables: { academic_years: years, programs: [], levels: [], annual_fee_schedules: [{ id: 'TUITION', academic_year_id: yearId, category: 'SCOLARITE', amount: 480000 }, { id: 'REGISTRATION', academic_year_id: yearId, category: 'INSCRIPTION', amount: 50000 }] }, historyLinks: [] } }));
   await page.goto('/academique/referentiel');
+  await page.getByRole('button', { name: 'Ouvrir l’année 2026-2027', exact: true }).click();
   await page.getByRole('button', { name: 'Configurer 2026-2027', exact: true }).click();
   await page.getByRole('button', { name: 'Consulter frais de scolarité', exact: true }).click();
   const list = page.getByRole('dialog', { name: 'Frais de scolarité · 2026-2027', exact: true });
@@ -191,6 +194,7 @@ for (const width of [390, 1440]) test(`Un groupe affiche plusieurs filières du 
     academic_offerings: [{ id: 'O1', name: 'Gestion · Licence 1' }, { id: 'O2', name: 'Commerce · Licence 1' }],
   } } }));
   await page.goto('/academique/referentiel');
+  await page.getByRole('button', { name: 'Ouvrir l’année 2026-2027', exact: true }).click();
   await page.getByRole('button', { name: 'Configurer 2026-2027', exact: true }).click();
   await page.getByRole('button', { name: 'Consulter groupes', exact: true }).click();
   const list = page.getByRole('dialog', { name: 'Groupes · 2026-2027', exact: true });

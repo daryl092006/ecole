@@ -142,6 +142,7 @@ export default function YearPreparationPanel({
       ) : (
         <>
           {message && <p className="info-box" role="status">{message}</p>}
+          <p className="year-preparation-help">Le statut « Prêt » se met à jour après l’enregistrement et sa confirmation dans chaque rubrique. Les propositions de l’année précédente restent à valider.</p>
           <div className="year-preparation-overview">
             <div className="year-prep-header">
               <p className="year-prep-count">
@@ -161,7 +162,7 @@ export default function YearPreparationPanel({
                 <span className="year-preparation-index" aria-hidden="true">{index + 1}</span>
                 <div className="year-preparation-label">
                   <strong>{stepConfig?.title || check.label}</strong>
-                  <p>{stepConfig?.description}</p>
+                  <p>{!check.ready && check.detail ? check.detail : stepConfig?.description}</p>
                 </div>
                 <span className={`year-preparation-state${check.ready ? ' is-ready' : hasPrefilled ? ' is-pending' : ''}`}>
                   {check.ready ? 'Prêt' : hasPrefilled ? 'À vérifier' : 'À renseigner'}

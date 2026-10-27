@@ -52,6 +52,7 @@ for (const width of [390, 1440]) {
       return route.fulfill({ json: { previousYear: { id: '10000000-0000-4000-8000-000000000099', name: '2025-2026' }, previousSummary: { rawOfferings: proposals, offerings: proposals.map(row => row.id), groups: [], tuitionFees: [], registrationFees: [], paymentChannels: [] }, checks: [{ key: 'offerings', label: 'Formations proposées', ready: saved.length > 0, href: '' }] } });
     });
     await page.goto('/academique/referentiel?collection=academic_years');
+    await page.getByRole('button', { name: 'Ouvrir l’année 2026-2027', exact: true }).click();
     await page.getByRole('button', { name: 'Préparer 2026-2027', exact: true }).click();
     await page.getByRole('button', { name: 'Configurer formations proposées', exact: true }).click();
     const dialog = page.getByRole('dialog');
@@ -101,6 +102,7 @@ for (const width of [390, 1440]) {
     const archivedId = saved.find(row => row.delivery_mode === 'En ligne')!.id;
     expect(saved.find(row => row.id === archivedId)?.archived_at).toBeTruthy();
     await page.reload();
+    await page.getByRole('button', { name: 'Ouvrir l’année 2026-2027', exact: true }).click();
     await page.getByRole('button', { name: 'Préparer 2026-2027', exact: true }).click();
     await page.getByRole('button', { name: 'Consulter formations proposées', exact: true }).click();
     await expect(finance).not.toContainText('En ligne');

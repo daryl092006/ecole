@@ -56,6 +56,7 @@ for (const category of ['SCOLARITE', 'INSCRIPTION'] as const) for (const width o
     return route.fulfill({ status: 201, json: { id, revision } });
   });
   await page.goto('/academique/referentiel');
+  await page.getByRole('button', { name: 'Ouvrir l’année 2026-2027', exact: true }).click();
   await page.getByRole('button', { name: 'Préparer 2026-2027', exact: true }).click();
   const openFees = () => page.getByRole('button', { name: `Configurer ${label}`, exact: true }).click();
   await openFees();
@@ -73,12 +74,8 @@ for (const category of ['SCOLARITE', 'INSCRIPTION'] as const) for (const width o
   await search.fill('');
   await page.screenshot({ path: `tmp/screenshots/annual-offerings/${width}/frais-${artifactName}-liste.png` });
   const common = dialog.getByRole('row').filter({ hasText: 'Toutes les filières' });
-  const actions = await common.getByRole('button').evaluateAll(buttons => buttons.map(button => {
-    const rect = button.getBoundingClientRect();
-    return { top: rect.top, left: rect.left };
-  }));
-  expect(new Set(actions.map(action => Math.round(action.top))).size).toBe(1);
-  expect(actions[1].left).toBeGreaterThan(actions[0].left);
+  await expect(common.getByRole('button', { name: 'Valider', exact: true })).toHaveText('Valider');
+  expect(await dialog.evaluate(element => element.scrollWidth <= element.clientWidth)).toBe(true);
   await common.getByRole('button', { name: 'Valider', exact: true }).click();
   await expect(dialog.getByRole('region', { name: 'Vérification avant enregistrement' })).toContainText(/480\s000 FCFA/);
   expect(writes).toHaveLength(0);

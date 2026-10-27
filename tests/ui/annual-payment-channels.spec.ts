@@ -49,6 +49,7 @@ for (const width of [390, 1440]) test(`Encaissement : validation individuelle, s
     return route.fulfill({ json: { id, revision } });
   });
   await page.goto('/academique/referentiel');
+  await page.getByRole('button', { name: 'Ouvrir l’année 2026-2027', exact: true }).click();
   await page.getByRole('button', { name: 'Préparer 2026-2027', exact: true }).click();
   const open = () => page.getByRole('button', { name: 'Configurer encaissement', exact: true }).click();
   await open();
@@ -66,8 +67,8 @@ for (const width of [390, 1440]) test(`Encaissement : validation individuelle, s
   await expect(search).toBeVisible();
   await expect(dialog.getByRole('cell', { name: /Aucun résultat/ })).toHaveAttribute('colspan', '4');
   await search.fill('');
-  const tops = await row('TMoney').getByRole('button').evaluateAll(buttons => buttons.map(button => Math.round(button.getBoundingClientRect().top)));
-  expect(new Set(tops).size).toBe(1);
+  await expect(row('TMoney').getByRole('button', { name: 'Valider', exact: true })).toHaveText('Valider');
+  expect(await dialog.evaluate(element => element.scrollWidth <= element.clientWidth)).toBe(true);
   await page.screenshot({ path: `tmp/screenshots/annual-offerings/${width}/encaissement-liste.png` });
   await row('TMoney').getByRole('button', { name: 'Valider', exact: true }).click();
   await expect(dialog.getByRole('region', { name: 'Vérification avant enregistrement' })).toContainText('Mobile money');
@@ -117,4 +118,49 @@ for (const width of [390, 1440]) test(`Encaissement : validation individuelle, s
   expect(tables.annual_payment_channels.find(channel => channel.id === 'CASH')?.archived_at).toBeTruthy();
   expect(bulkWrites).toBe(0);
   expect(paymentWrites).toBe(0);
+});
+
+for (const width of [390, 1440]) test(`Le dernier moyen d’encaissement fait passer la préparation de 4 à 5 rubriques à ${width}px`, async ({ page }) => {
+  const { yearPreparation } = await import('../../src/services/yearPreparationService');
+  await page.setViewportSize({ width, height: 1000 });
+  await authenticateFixture(page);
+  const yearId = '10000000-0000-4000-8000-000000000001';
+  const previousYearId = '10000000-0000-4000-8000-000000000002';
+  const years = [
+    { id: yearId, name: '2026-2027', status: 'BROUILLON', starts_on: '2026-10-12', ends_on: '2027-06-30' },
+    { id: previousYearId, name: '2025-2026', status: 'CLOTUREE', starts_on: '2025-10-13', ends_on: '2026-06-30' },
+  ];
+  const tables: Record<string, DatabaseRow[]> = { academic_years: years, annual_payment_channels: [] };
+  const previousSummary = getPreviousYearConfigSummary({ revision: 1, tables: { ...tables, annual_payment_channels: [
+    { id: 'PREVIOUS-CASH', academic_year_id: previousYearId, name: 'Caisse principale', method: 'ESPECES' },
+  ] } }, previousYearId)!;
+  let revision = 1;
+  let writes = 0;
+  await page.route('**/api/campus', route => route.fulfill({ json: { ...snapshot, academicContext: { selection: 'current', selectedYearId: yearId, currentYearId: yearId, years } } }));
+  await page.route('**/api/year-preparation', route => route.fulfill({ json: {
+    checks: [...['offerings', 'groups', 'tuition', 'registration'].map(key => ({ key, label: key, ready: true, href: '' })),
+      yearPreparation({ revision, tables }, yearId).find(check => check.key === 'payments')],
+    previousYear: previousSummary.previousYear, previousSummary,
+  } }));
+  await page.route('**/api/catalog/*', route => {
+    if (route.request().method() === 'GET') return route.fulfill({ json: { revision, tables, historyLinks: [] } });
+    expect(route.request().url()).toContain('/annual_payment_channels');
+    writes++;
+    tables.annual_payment_channels.push({ id: 'CASH', ...route.request().postDataJSON().values });
+    return route.fulfill({ json: { id: 'CASH', revision: ++revision } });
+  });
+  await page.goto('/academique/referentiel');
+  await page.getByRole('button', { name: 'Ouvrir l’année 2026-2027', exact: true }).click();
+  await page.getByRole('button', { name: 'Préparer 2026-2027', exact: true }).click();
+  await expect(page.getByText('4 sur 5', { exact: true })).toBeVisible();
+  await expect(page.getByText('À vérifier', { exact: true })).toBeVisible();
+  await page.getByRole('button', { name: 'Configurer encaissement', exact: true }).click();
+  const validate = page.getByRole('button', { name: 'Valider', exact: true });
+  await expect(validate).toHaveText('Valider');
+  await validate.click();
+  expect(writes).toBe(0);
+  await page.getByRole('button', { name: 'Confirmer l’enregistrement', exact: true }).click();
+  await expect(page.getByText('5 sur 5', { exact: true })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Consulter encaissement', exact: true })).toBeVisible();
+  expect(writes).toBe(1);
 });

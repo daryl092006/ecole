@@ -13,6 +13,7 @@ for (const width of [390, 1440]) test(`Préparation sobre et cinq rubriques à $
     previousYear: { id: 'previous', name: '2025-2026' },
   } }));
   await page.goto('/academique/referentiel?collection=academic_years');
+  await page.getByRole('button', { name: 'Ouvrir l’année 2026-2027', exact: true }).click();
   await page.getByRole('button', { name: 'Préparer 2026-2027', exact: true }).click();
   const dialog = page.getByRole('dialog');
   const rows = dialog.getByRole('list', { name: 'Préparation de l’année' }).getByRole('listitem');
