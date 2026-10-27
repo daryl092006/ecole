@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { catalogSpec, parseCatalogRecord, programLevelChanges, annualFeeScheduleChanges } from './catalogCrudService';
+import { catalogSpec, parseCatalogRecord, programLevelChanges, annualFeeScheduleChanges, dismissPaymentChannelProposal } from './catalogCrudService';
 import type { DatabaseRow, RelationalSnapshot } from '@/types/persistence';
 
 const uuid = '00000000-0000-4000-8000-000000000035';
@@ -90,3 +90,19 @@ for (const invalid of [{ archived_at: '2026-10-27' }, { status: 'ARCHIVED' }, { 
   } }, feeInput, 'Filière sans le niveau'), /ne propose pas le niveau/);
 }
 console.log('Tarifs : sélection multiple bornée, tarif général explicite, doublons, archivage et modification vérifiés.');
+
+const removalSnapshot: RelationalSnapshot = { revision: 1, tables: {
+  academic_years: [{ id: 'OLD', starts_on: '2025-10-01', status: 'CLOTUREE' }, { id: 'NEW', starts_on: '2026-10-01', status: 'BROUILLON' }],
+  annual_payment_channels: [{ id: 'SOURCE', academic_year_id: 'OLD', name: 'TMoney', method: 'MOBILE_MONEY' }],
+} };
+const removal = dismissPaymentChannelProposal(removalSnapshot, 'SOURCE', 'NEW', 'Moyen non retenu');
+assert.equal(removal.length, 1);
+assert.equal(removal[0].record.academic_year_id, 'NEW');
+assert.ok(removal[0].record.archived_at);
+assert.equal(removalSnapshot.tables.annual_payment_channels.length, 1);
+assert.equal(removalSnapshot.tables.annual_payment_channels[0].archived_at, undefined);
+const removedChannel = { ...removal[0].record, id: 'REMOVAL' } as DatabaseRow;
+assert.deepEqual(dismissPaymentChannelProposal({ ...removalSnapshot, tables: { ...removalSnapshot.tables, annual_payment_channels: [...removalSnapshot.tables.annual_payment_channels, removedChannel] } }, 'SOURCE', 'NEW', 'Déjà retiré'), []);
+assert.throws(() => dismissPaymentChannelProposal({ ...removalSnapshot, tables: { ...removalSnapshot.tables, annual_payment_channels: [...removalSnapshot.tables.annual_payment_channels, { ...removedChannel, archived_at: null }] } }, 'SOURCE', 'NEW', 'Déjà actif'), /déjà enregistré/);
+assert.throws(() => dismissPaymentChannelProposal(removalSnapshot, 'SOURCE', 'OLD', 'Même année'));
+assert.throws(() => dismissPaymentChannelProposal(removalSnapshot, 'ABSENT', 'NEW', 'Source absente'));

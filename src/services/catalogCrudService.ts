@@ -53,6 +53,21 @@ export function programLevelIds(snapshot: Pick<RelationalSnapshot, 'tables'>, pr
     .filter(row => row.program_id === programId && !row.archived_at && row.active !== false && row.status !== 'ARCHIVED')
     .map(row => String(row.level_id || '')).filter(Boolean))];
 }
+export function dismissPaymentChannelProposal(snapshot: RelationalSnapshot, sourceId: string, yearId: string, reason: string): PersistentChange[] {
+  const source = snapshot.tables.annual_payment_channels?.find(row => row.id === sourceId && !row.archived_at && row.active !== false);
+  const year = snapshot.tables.academic_years?.find(row => row.id === yearId && !row.archived_at);
+  const sourceYear = snapshot.tables.academic_years?.find(row => row.id === source?.academic_year_id && !row.archived_at);
+  if (!source || !year || !sourceYear || sourceYear.id === year.id || String(sourceYear.starts_on) >= String(year.starts_on)) throw new Error('Cette proposition ne provient pas d’une année précédente valide. Actualisez la préparation.');
+  if (!['BROUILLON', 'OUVERTE'].includes(String(year.status))) throw new Error('L’année doit être en préparation ou ouverte.');
+  const matching = (snapshot.tables.annual_payment_channels || []).filter(row => row.academic_year_id === yearId && row.method === source.method && String(row.name).trim() === String(source.name).trim());
+  if (matching.some(row => !row.archived_at && row.active !== false)) throw new Error('Ce moyen est déjà enregistré. Utilisez son action d’archivage.');
+  if (matching.some(row => row.archived_at)) return [];
+  // Une définition inactive conserve le retrait annuel avec l’audit existant.
+  return [{ table: 'annual_payment_channels', operation: 'insert', record: {
+    id: crypto.randomUUID(), academic_year_id: yearId, name: source.name, method: source.method,
+    archived_at: new Date().toISOString(), reason,
+  } }];
+}
 export function annualFeeScheduleChanges(snapshot: RelationalSnapshot, input: Record<string, unknown>, reason: string, targetId?: string): PersistentChange[] {
   const { program_ids: rawIds, ...values } = input;
   if ('program_id' in values) throw new Error('Utilisez une seule sélection de filières.');

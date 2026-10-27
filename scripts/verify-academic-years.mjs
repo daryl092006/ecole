@@ -95,6 +95,20 @@ export async function verifyAcademicYears({ db, check, insert, account, year, le
     await assert.rejects(insert('enrollments',{student_id:student.id,offering_id:offer.id,status:'INSCRIT'}),/année/i);
     assert.equal(await value('select count(*)::integer as value from escen.enrollments where offering_id=$1',[offer.id]),0);
   });
+  await check('Encaissement : retrait annuel inactif, transaction atomique et audit sans modifier la source', async () => {
+    const target = await insert('academic_years', { code: '2082-2083', name: '2082-2083', starts_on: '2082-10-01', ends_on: '2083-06-30' });
+    const source = await insert('annual_payment_channels', { academic_year_id: year.id, name: 'Caisse non reconduite', method: 'ESPECES', reason: 'Moyen source conservé' });
+    const id = randomUUID();
+    const revision = await value('select revision as value from escen_private.portal_revision where singleton');
+    const removal = { table: 'annual_payment_channels', operation: 'insert', record: { id, academic_year_id: target.id, name: source.name, method: source.method, archived_at: new Date().toISOString(), reason: 'Moyen proposé non retenu' } };
+    await assert.rejects(db.query('select public.escen_backend_transaction($1,$2,$3::jsonb)', [account.id, revision, JSON.stringify([removal, { table: 'annual_payment_channels', operation: 'insert', record: { id: randomUUID(), academic_year_id: randomUUID(), name: 'Invalide', method: 'ESPECES', reason: 'Échec tardif du lot' } }]) ]));
+    assert.equal(await value('select count(*)::integer as value from escen.annual_payment_channels where id=$1', [id]), 0);
+    assert.equal(await value('select revision as value from escen_private.portal_revision where singleton'), revision);
+    await db.query('select public.escen_backend_transaction($1,$2,$3::jsonb)', [account.id, revision, JSON.stringify([removal])]);
+    assert.equal(await value('select count(*)::integer as value from escen.annual_payment_channels where academic_year_id=$1 and archived_at is null', [target.id]), 0);
+    assert.equal(await value('select archived_at is null as value from escen.annual_payment_channels where id=$1', [source.id]), true);
+    assert.ok(await value("select exists(select 1 from escen_private.audit_events where table_name='annual_payment_channels' and entity_id=$1 and actor_id=$2 and new_value->>'archived_at' is not null and reason='Moyen proposé non retenu') as value", [id, account.id]));
+  });
   await check('Années : ouverture explicite, désignation unique, concurrence et autorisations', async () => {
     fresh = await insert('academic_years', { code: '2040-TEST', name: '2040-2041 de recette', starts_on: '2040-09-01', ends_on: '2041-07-31' });
     await assert.rejects(command('current', fresh.id), /ouverte/i);

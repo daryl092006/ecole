@@ -56,6 +56,37 @@ aux icônes seules pour les actions de liste. Cette suite est décrite dans
 Les constats et vérifications ci-dessous décrivent le premier lot, avant cette
 précision ; ils ne décrivent pas le rendu final des actions de liste.
 
+## Encaissement : retrait conservé après réouverture
+
+Le retrait d’une proposition utilisait seulement l’état React
+`excludedPrefilledIds`. Fermer la rubrique détruisait cet état ; la proposition
+était alors reconstruite depuis l’année précédente. Ce retrait est désormais
+confirmé dans `ReviewedForm` puis enregistré pour l’année cible.
+
+Le schéma existant suffit : une définition inactive de ce moyen conserve le
+retrait annuel et son motif. Elle ne devient pas un moyen utilisable et ne compte
+pas dans la préparation. Le filtrage des propositions tient déjà compte des
+définitions actives ou archivées de l’année cible. La configuration source est
+relue côté serveur et reste inchangée. Le serveur refuse une source absente,
+archivée ou d’une année non antérieure, un mauvais contexte annuel, une révision
+périmée et un acteur sans droit. Un retrait déjà enregistré est sans nouvel effet.
+Un moyen actif doit passer par son archivage normal, pas par ce retrait de proposition.
+
+L’écriture utilise la RPC transactionnelle et l’audit existants. Aucun masquage
+local n’est annoncé comme réussi avant la réponse du serveur. Un échec laisse
+le récapitulatif ouvert et permet de réessayer. Aucun changement de migration,
+de permission ou de données distantes.
+
+La recette reproduit le parcours signalé : retirer, confirmer, terminer, rouvrir,
+puis recharger la page et rouvrir encore. La proposition reste absente à 390 et
+1440 px. L’archivage d’un moyen déjà enregistré est aussi suivi jusqu’à la
+réouverture. Les tests PostgreSQL vérifient la définition inactive, l’audit avec
+son auteur, la conservation de la source et le rollback en cas d’échec tardif.
+Vérifications de ce correctif : 37 tests Playwright, 186 groupes PostgreSQL,
+workflows, TypeScript sans émission incrémentale et ESLint réussis. Les anciens
+retraits purement locaux ne peuvent pas être reconstitués : leur sélection doit
+être confirmée de nouveau par l’utilisateur.
+
 ## Vérifications
 
 - TypeScript sans émission incrémentale et ESLint : réussis.

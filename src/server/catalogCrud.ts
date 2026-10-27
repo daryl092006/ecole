@@ -4,7 +4,7 @@ import { z } from 'zod';
 import { requireAccount, requirePermission, RequestError } from '@/server/auth';
 import { ROLES } from '@/types/permissions';
 import { CRUD_CATALOG } from '@/data/crudCatalog';
-import { catalogSpec, parseCatalogRecord, canManageCatalog, validateCatalogReferences, programLevelChanges, annualFeeScheduleChanges } from '@/services/catalogCrudService';
+import { catalogSpec, parseCatalogRecord, canManageCatalog, validateCatalogReferences, programLevelChanges, annualFeeScheduleChanges, dismissPaymentChannelProposal } from '@/services/catalogCrudService';
 import { buildReconductChanges } from '@/services/yearPreparationService';
 import { annualOfferingChanges, archiveAnnualOfferings } from '@/services/annualOfferingService';
 import { resaoSubjectChanges } from '@/services/resaoCodeService';
@@ -32,6 +32,19 @@ export async function writeCatalog(request: Request, key: string, id?: string) {
   const target = id ? snapshot.tables[key]?.find(row => row.id === z.uuid().parse(id)) : undefined;
   if (id && !target) throw new RequestError(404,'Enregistrement introuvable.');
   if (target?.archived_at) throw new RequestError(409,'Cet enregistrement est archivé.');
+  if (key === 'annual_payment_channels' && !id && !archive && body.values?.dismiss_proposal_id !== undefined) {
+    if (body.sourceRowId) throw new RequestError(400, 'Le retrait de proposition ne modifie pas une archive historique.');
+    const values = z.object({ academic_year_id: z.uuid(), dismiss_proposal_id: z.uuid() }).strict().parse(body.values);
+    const year = await resolveAcademicYear(request, client, context, snapshot);
+    if (!year.selectedYearId || year.selectedYearId !== values.academic_year_id) throw new RequestError(409, 'Choisissez l’année précise à préparer.');
+    let changes: PersistentChange[];
+    try { changes = dismissPaymentChannelProposal(snapshot, values.dismiss_proposal_id, values.academic_year_id, body.reason); }
+    catch (error) { throw new RequestError(409, error instanceof Error ? error.message : 'Retrait impossible.'); }
+    if (!changes.length) return Response.json({ revision: snapshot.revision, count: 0 }, { headers: { 'Cache-Control': 'no-store' } });
+    const response = await client.rpc('escen_backend_transaction', { p_actor_id: context.accountId, p_expected_revision: snapshot.revision, p_changes: changes });
+    if (response.error) throw new RequestError(409, 'Retrait non enregistré. Actualisez puis réessayez.');
+    return Response.json({ revision: response.data, count: changes.length }, { headers: { 'Cache-Control': 'no-store' } });
+  }
   if (key === 'annual_fee_schedules' && !archive && body.values?.program_ids !== undefined) {
     if (body.sourceRowId) throw new RequestError(400, 'Enregistrez la reprise historique avant de sélectionner plusieurs filières.');
     let changes: PersistentChange[];
