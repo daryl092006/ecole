@@ -97,7 +97,7 @@ export default function PortalShell({ children }: { children: ReactNode }) {
       <Sidebar availableTabs={availableTabs} currentTab={currentTab} currentSubTab={currentSubTab} activeRole={activeRole} menuOpen={menuOpen} onNavigate={() => setMenuOpen(false)} />
       <main className="main-content" id="main-content" ref={mainRef} key={activeRole + ':' + state.demoIdentity} tabIndex={-1} inert={menuOpen}>
         <div className="workspace-location">
-          <nav className="workspace-breadcrumb" aria-label="Fil d’Ariane"><Link href={HOME_PATH}>Accueil</Link>{navigationGroup && navigationGroup.id !== 'home' && <><span>/</span><span>{navigationGroup.name}</span></>}{route && <><span>/</span><strong aria-current="page">{route.studentId ? `Dossier ${route.studentId}` : route.title}</strong></>}</nav>
+          <nav className="workspace-breadcrumb" aria-label="Fil d’Ariane"><Link href={HOME_PATH}>Accueil</Link>{navigationGroup && navigationGroup.id !== 'home' && (route?.studentId || navigationGroup.name !== route?.title) && <><span>/</span><span>{navigationGroup.name}</span></>}{route && <><span>/</span><strong aria-current="page">{route.studentId ? `Dossier ${route.studentId}` : route.title}</strong></>}</nav>
           <AcademicYearControl />
         </div>
         {selectedYear && currentYear && selectedYear.id !== currentYear.id && (
