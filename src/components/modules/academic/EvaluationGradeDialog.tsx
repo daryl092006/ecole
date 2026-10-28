@@ -10,6 +10,7 @@ import IconButton from '@/components/ui/IconButton';
 import LoadingState from '@/components/ui/LoadingState';
 import ReviewedForm from '@/components/ui/ReviewedForm';
 import DrawerActions from '@/components/ui/DrawerActions';
+import { downloadCsv } from '@/utils/csv';
 import { manageEvaluation } from '@/services/remoteCampusService';
 import { connectedRecordName } from '@/services/connectedRecordDisplayService';
 import {
@@ -119,6 +120,7 @@ function EvaluationGrades({ evaluationId, busy, setBusy }: { evaluationId: strin
   const [correctionValue, setCorrectionValue] = useState('');
   const [correctionReason, setCorrectionReason] = useState('');
   const [copyCandidateId, setCopyCandidateId] = useState('');
+  const [candidateSearch, setCandidateSearch] = useState('');
   const copyCandidateIds = new Set((snapshot.tables.exam_attempts || []).filter(attempt => attempt.evaluation_id === evaluationId).map(attempt => String(attempt.candidate_id)));
 
   const status = evaluation.status as GradeWorkflowStatus;
@@ -267,6 +269,11 @@ function EvaluationGrades({ evaluationId, busy, setBusy }: { evaluationId: strin
           <div className="kpi-card">
             <span className="kpi-label">Copies corrigées (notées)</span>
             <strong className="kpi-value">{numericGrades.length - unprocessedCount} / {candidates.length}</strong>
+            {numericGrades.length > 0 && (
+              <span className="cell-sub">
+                Moy. {(numericGrades.reduce((sum, v) => sum + v, 0) / numericGrades.length).toLocaleString('fr-FR', { maximumFractionDigits: 2 })} / 20 · Min {Math.min(...numericGrades).toLocaleString('fr-FR', { maximumFractionDigits: 2 })} · Max {Math.max(...numericGrades).toLocaleString('fr-FR', { maximumFractionDigits: 2 })}
+              </span>
+            )}
           </div>
           <div className="kpi-card">
             <span className="kpi-label">En attente de correction</span>
@@ -295,6 +302,48 @@ function EvaluationGrades({ evaluationId, busy, setBusy }: { evaluationId: strin
                   : 'Notes en cours de contrôle ou validation.'}
               </p>
             </div>
+            <div className="btn-group" style={{ alignItems: 'flex-end', flexWrap: 'wrap' }}>
+              <label className="form-group" style={{ marginBottom: 0 }}>
+                Rechercher un candidat
+                <input
+                  className="input"
+                  type="search"
+                  value={candidateSearch}
+                  onChange={e => setCandidateSearch(e.target.value)}
+                  placeholder="Nom ou matricule…"
+                />
+              </label>
+              {candidates.length > 0 && (
+                <button
+                  type="button"
+                  className="btn btn-sm btn-outline"
+                  onClick={() => {
+                    const csvRows = candidates.map(c => {
+                      const enrollment = snapshot.tables.enrollments?.find(e => e.id === c.enrollment_id);
+                      const stud = snapshot.tables.students?.find(s => s.id === enrollment?.student_id);
+                      const studentName = connectedRecordName('enrollments', enrollment || { id: String(c.enrollment_id) }, snapshot);
+                      const grade = gradeMap.get(String(c.id));
+                      const item = inputGrades[String(c.id)] || { value: '', absence: '' };
+                      const lastAttempt = snapshot.tables.exam_attempts
+                        ?.filter(attempt => attempt.candidate_id === c.id)
+                        .sort((a, b) => Number(b.attempt_number) - Number(a.attempt_number))[0];
+                      const currentGradeObj = canEnter
+                        ? { value: item.absence === 'NON_TRAITE' ? 0 : item.absence || !item.value.trim() ? null : Number(item.value), absence_status: item.absence || null }
+                        : grade;
+                      return [
+                        String(stud?.matricule || ''),
+                        studentName,
+                        evaluationGradeNoteLabel(currentGradeObj, lastAttempt?.status),
+                        evaluationCandidateStatusLabel(currentGradeObj, lastAttempt?.status),
+                      ];
+                    });
+                    downloadCsv(`notes-${String(evaluation.name || evaluation.id)}.csv`, ['Matricule', 'Étudiant', 'Note / 20', 'Statut'], csvRows);
+                  }}
+                >
+                  Exporter CSV
+                </button>
+              )}
+            </div>
           </div>
 
           <ResponsiveTable className="data-table">
@@ -308,7 +357,13 @@ function EvaluationGrades({ evaluationId, busy, setBusy }: { evaluationId: strin
               </tr>
             </thead>
             <tbody>
-              {candidates.map(c => {
+              {candidates.filter(c => {
+                if (!candidateSearch.trim()) return true;
+                const enrollment = snapshot.tables.enrollments?.find(e => e.id === c.enrollment_id);
+                const stud = snapshot.tables.students?.find(s => s.id === enrollment?.student_id);
+                const studentName = connectedRecordName('enrollments', enrollment || { id: String(c.enrollment_id) }, snapshot);
+                return `${studentName} ${String(stud?.matricule || '')}`.toLocaleLowerCase('fr').includes(candidateSearch.trim().toLocaleLowerCase('fr'));
+              }).map(c => {
                 const enrollment = snapshot.tables.enrollments?.find(e => e.id === c.enrollment_id);
                 const studentName = connectedRecordName('enrollments', enrollment || { id: String(c.enrollment_id) }, snapshot);
                 const grade = gradeMap.get(String(c.id));

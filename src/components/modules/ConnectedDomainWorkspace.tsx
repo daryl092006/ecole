@@ -125,7 +125,7 @@ export default function ConnectedDomainWorkspace({ section, studentMatricule, on
       </div>
     </section>
   ) : <StudentDossierPicker students={portal.students} onSelect={selectDossier} /> : null;
-  if (contextual && !student && !studentMatricule) return <div className="domain-workspace"><div className="page-intro"><div><h1>{title}</h1></div></div>{section === 'acad_grades' ? <GroupSubjectGradesPanel snapshot={snapshot} canViewStudents={portal.perms.permissions.includes('student.view')} onSelectStudent={mat => portal.navigateToStudent(mat)} /> : dossierPicker}</div>;
+  if (contextual && !student && !studentMatricule) return <div className="domain-workspace"><div className="page-intro"><div><h1>{title}</h1></div></div>{section === 'acad_grades' && <GroupSubjectGradesPanel snapshot={snapshot} canViewStudents={portal.perms.permissions.includes('student.view')} onSelectStudent={selectDossier} />}{dossierPicker}</div>;
   return <div className="domain-workspace">{!studentMatricule && <div className="page-intro"><div><h1>{title}</h1></div>{canOpenFinancialDossier && <button className="btn btn-primary" onClick={() => setPaymentPicker(true)}>{section === 'fin_contracts' ? 'Gérer un contrat' : 'Enregistrer un paiement'}</button>}</div>}
     {dossierPicker}
 

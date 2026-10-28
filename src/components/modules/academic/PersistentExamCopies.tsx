@@ -18,7 +18,7 @@ export default function PersistentExamCopies({ evaluationId, candidateId, onClos
   const portal = usePortal();
   const snapshot = portal.relationalSnapshot;
   const tables = snapshot.tables;
-  const [selected, setSelected] = useState(candidateId ? String((tables.exam_attempts || []).find(row => row.evaluation_id === evaluationId && row.candidate_id === candidateId)?.id || '') : '');
+  const [selected, setSelected] = useState('');
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState<'ALL' | 'TO_GRADE' | 'GRADED' | 'IN_PROGRESS'>('ALL');
   const [questionScores, setQuestionScores] = useState<Record<string, Record<string, string>>>({});
@@ -158,22 +158,22 @@ export default function PersistentExamCopies({ evaluationId, candidateId, onClos
 
               return <section className="online-exam-question" key={question.id}>
                 {maxPts > 0 && (
-                  <p className="cell-sub">
+                  <div className="cell-sub">
                     <strong>Question {qIndex + 1}</strong> · Barème : {maxPts} pt(s)
                     {autoPts !== null && (
                       <span> · {autoPts > 0 ? 'QCM exact' : 'QCM incorrect'}</span>
                     )}
-                  </p>
+                  </div>
                 )}
-                <SubjectRichText value={String(question.prompt)} />
+                <h3 className="subject-text"><SubjectRichText value={String(question.prompt)} /></h3>
                 {choiceLabels.length > 0 && <p className="subject-text">Choix : {choiceLabels.join(' ; ')}</p>}
                 {!!response?.text && <p className="subject-text">{question.kind === 'TEXTE' ? response.text : `Justification : ${response.text}`}</p>}
                 {!choiceLabels.length && !response?.text && <p>Sans réponse</p>}
                 {correctLabels.length > 0 && (
-                  <p className="cell-sub">Réponse attendue : {correctLabels.join(' ; ')}</p>
+                  <div className="cell-sub">Réponse attendue : {correctLabels.join(' ; ')}</div>
                 )}
                 {!!config.correction && (
-                  <p className="cell-sub">Corrigé indicatif : {config.correction}</p>
+                  <div className="cell-sub">Corrigé indicatif : {config.correction}</div>
                 )}
                 {canGradeThisAttempt && maxPts > 0 && (
                   <label className="form-group mt-2" style={{ maxWidth: '16rem' }}>

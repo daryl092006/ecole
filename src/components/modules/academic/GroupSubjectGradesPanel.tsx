@@ -403,24 +403,20 @@ export default function GroupSubjectGradesPanel({ snapshot, canViewStudents, onS
                     </td>
                     {canViewStudents && (
                       <td>
-                        {onSelectStudent ? (
-                          <Link
-                            className="btn btn-sm btn-outline"
-                            href={studentPath(row.matricule)}
-                            onClick={e => {
-                              if (onSelectStudent) {
-                                e.preventDefault();
-                                onSelectStudent(row.matricule);
-                              }
-                            }}
-                          >
-                            Voir les notes
-                          </Link>
-                        ) : (
+                        <div className="btn-group">
+                          {onSelectStudent && (
+                            <button
+                              type="button"
+                              className="btn btn-sm btn-outline"
+                              onClick={() => onSelectStudent(row.matricule)}
+                            >
+                              Voir les notes
+                            </button>
+                          )}
                           <Link className="btn btn-sm btn-outline" href={studentPath(row.matricule)}>
                             Fiche & Dossier
                           </Link>
-                        )}
+                        </div>
                       </td>
                     )}
                   </tr>
