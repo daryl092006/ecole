@@ -94,7 +94,8 @@ onMounted(async () => {`);
   await writeFile(path.join(root, 'app/plugins/axios.ts'), `import axios from 'axios';
 import config from '../../config';
 export default defineNuxtPlugin(() => {
-  const client = axios.create({ baseURL: config.app_dev_url, timeout: 20000, headers: { Accept: 'application/json' } });
+  const baseURL = (import.meta.server && process.env.ESCEN_SSR_API_URL) ? process.env.ESCEN_SSR_API_URL : config.app_dev_url;
+  const client = axios.create({ baseURL, timeout: 20000, headers: { Accept: 'application/json' } });
   return { provide: { axios: client } };
 });
 `);

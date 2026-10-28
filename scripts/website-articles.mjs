@@ -11,7 +11,8 @@ export async function discoverPublishedArticles(portal, fetcher = fetch) {
 
 export async function prepareWebsiteArticles(root, origins) {
   let routes;
-  try { routes = await discoverPublishedArticles(origins.portal); }
+  const portalUrl = process.env.ESCEN_DISCOVERY_URL || origins.portal;
+  try { routes = await discoverPublishedArticles(portalUrl); }
   catch (error) {
     // Never publish an incomplete inventory when preparing production.
     if (origins.production) throw error;

@@ -16,7 +16,8 @@
 import config from '../../config'
 const base = config.app_dev_url
 const { data: brochures, error, refresh } = await useAsyncData('public-brochure-catalogue', async () => {
-  const response = await fetch(`${base}/public/brochures`, { signal: AbortSignal.timeout(15000) })
+  const fetchUrl = import.meta.server && process.env.ESCEN_SSR_API_URL ? `${process.env.ESCEN_SSR_API_URL}/public/brochures` : `${base}/public/brochures`
+  const response = await fetch(fetchUrl, { signal: AbortSignal.timeout(15000) })
   if (!response.ok) throw new Error('Catalogue indisponible')
   const rows = await response.json()
   if (!Array.isArray(rows)) throw new Error('Catalogue invalide')
