@@ -6,6 +6,7 @@ async function studentFixture(page: Page, phone = '90 12 34 56') {
   await authenticateFixture(page);
   const campus = structuredClone(snapshot);
   campus.tables.people.find(row => row.id === 'P1')!.phone = phone;
+  campus.tables.people.find(row => row.id === 'P1')!.nationality = 'Ancienne nationalité';
   const years = [{ id: '10000000-0000-4000-8000-000000000001', name: '2026-2027', status: 'OUVERTE', starts_on: '2026-09-01', ends_on: '2027-07-31' }];
   let campusReads = 0;
   const writes: Record<string, unknown>[] = [];
@@ -39,6 +40,9 @@ for (const width of [360, 390, 768, 1440]) test(`Téléphone international : ind
   await expect(code.locator('option[value="TG-228"]')).toHaveText('🇹🇬 Togo (+228)');
   await expect(code.locator('option[value="FR-33"]')).toHaveText('🇫🇷 France (+33)');
   await expect(code.locator('option[value="BJ-229"]')).toHaveText('🇧🇯 Bénin (+229)');
+  const nationality = dialog.getByRole('combobox', { name: 'Nationalité', exact: true });
+  await expect(nationality.locator('option[value="Togolaise"]')).toHaveText('🇹🇬 Togolaise');
+  await nationality.selectOption('Béninoise');
   await code.selectOption('FR-33');
   await phone.fill('06 12 34 56 78');
   await expect(phone).toHaveValue('612345678');
@@ -61,10 +65,12 @@ for (const width of [360, 390, 768, 1440]) test(`Téléphone international : ind
   await expect(dialog).toHaveCount(0);
   await expect.poll(f.reads).toBeGreaterThan(before);
   expect(f.writes[0].phone).toBe('+33612345678');
+  expect(f.writes[0].nationality).toBe('Béninoise');
   await page.reload();
   await page.getByRole('button', { name: 'Modifier les informations civiles', exact: true }).click();
   await expect(code).toHaveValue('FR-33');
   await expect(phone).toHaveValue('612345678');
+  await expect(nationality).toHaveValue('Béninoise');
 });
 
 test('Indicatif partagé : pays non inventé, choix conservé et téléphone effaçable', async ({ page }) => {
@@ -90,10 +96,12 @@ test('Une ancienne valeur non normalisée reste intacte si un autre champ est mo
   const f = await studentFixture(page, legacy);
   const dialog = page.getByRole('dialog');
   await expect(dialog.getByLabel('Téléphone', { exact: true })).toHaveValue(legacy);
+  await expect(dialog.getByLabel('Nationalité', { exact: true })).toHaveValue('Ancienne nationalité');
   await dialog.getByLabel('Prénom', { exact: true }).fill('Alice corrigée');
   await dialog.getByRole('button', { name: 'Vérifier les modifications', exact: true }).click();
   await dialog.getByRole('button', { name: 'Enregistrer les informations civiles', exact: true }).click();
   expect(f.writes[0].phone).toBe(legacy);
+  expect(f.writes[0].nationality).toBe('Ancienne nationalité');
 });
 
 test('Fournisseur : le champ partagé enregistre un indicatif autre que le Togo', async ({ page }) => {

@@ -1,5 +1,6 @@
 'use client';
 import PhoneInput from '@/components/ui/PhoneInput';
+import CountrySelect from '@/components/ui/CountrySelect';
 import DrawerActions from '@/components/ui/DrawerActions';
 import IconButton from '@/components/ui/IconButton';
 import CatalogTaskDialog from '@/components/modules/academic/CatalogTaskDialog';
@@ -663,15 +664,7 @@ export default function OnlineAdmissionsPanel({
                     onChange={e => setConvCity(e.target.value)}
                   />
                 </label>
-                <label className="form-group">
-                  Nationalité
-                  <input
-                    className="input"
-                    maxLength={160}
-                    value={convNationality}
-                    onChange={e => setConvNationality(e.target.value)}
-                  />
-                </label>
+                <CountrySelect value={convNationality} onChange={setConvNationality} />
               </div>
 
               <label className="form-group">

@@ -1,0 +1,582 @@
+[
+  {
+    "label": "Afghane",
+    "value": "Afghane",
+    "code": "af"
+  },
+  {
+    "label": "Sud-africaine",
+    "value": "Sud-africaine",
+    "code": "za"
+  },
+  {
+    "label": "Albanaise",
+    "value": "Albanaise",
+    "code": "al"
+  },
+  {
+    "label": "Algérienne",
+    "value": "Algérienne",
+    "code": "dz"
+  },
+  {
+    "label": "Allemande",
+    "value": "Allemande",
+    "code": "de"
+  },
+  {
+    "label": "Américaine",
+    "value": "Américaine",
+    "code": "us"
+  },
+  {
+    "label": "Angolaise",
+    "value": "Angolaise",
+    "code": "ao"
+  },
+  {
+    "label": "Argentine",
+    "value": "Argentine",
+    "code": "ar"
+  },
+  {
+    "label": "Arménienne",
+    "value": "Arménienne",
+    "code": "am"
+  },
+  {
+    "label": "Australienne",
+    "value": "Australienne",
+    "code": "au"
+  },
+  {
+    "label": "Autrichienne",
+    "value": "Autrichienne",
+    "code": "at"
+  },
+  {
+    "label": "Azerbaïdjanaise",
+    "value": "Azerbaïdjanaise",
+    "code": "az"
+  },
+  {
+    "label": "Bangladaise",
+    "value": "Bangladaise",
+    "code": "bd"
+  },
+  {
+    "label": "Belge",
+    "value": "Belge",
+    "code": "be"
+  },
+  {
+    "label": "Béninoise",
+    "value": "Béninoise",
+    "code": "bj"
+  },
+  {
+    "label": "Biélorusse",
+    "value": "Biélorusse",
+    "code": "by"
+  },
+  {
+    "label": "Bolivienne",
+    "value": "Bolivienne",
+    "code": "bo"
+  },
+  {
+    "label": "Brésilienne",
+    "value": "Brésilienne",
+    "code": "br"
+  },
+  {
+    "label": "Britannique",
+    "value": "Britannique",
+    "code": "gb"
+  },
+  {
+    "label": "Bulgare",
+    "value": "Bulgare",
+    "code": "bg"
+  },
+  {
+    "label": "Burkinabée",
+    "value": "Burkinabée",
+    "code": "bf"
+  },
+  {
+    "label": "Burundaise",
+    "value": "Burundaise",
+    "code": "bi"
+  },
+  {
+    "label": "Camerounaise",
+    "value": "Camerounaise",
+    "code": "cm"
+  },
+  {
+    "label": "Canadienne",
+    "value": "Canadienne",
+    "code": "ca"
+  },
+  {
+    "label": "Cap-Verdienne",
+    "value": "Cap-Verdienne",
+    "code": "cv"
+  },
+  {
+    "label": "Centrafricaine",
+    "value": "Centrafricaine",
+    "code": "cf"
+  },
+  {
+    "label": "Chilienne",
+    "value": "Chilienne",
+    "code": "cl"
+  },
+  {
+    "label": "Chinoise",
+    "value": "Chinoise",
+    "code": "cn"
+  },
+  {
+    "label": "Colombienne",
+    "value": "Colombienne",
+    "code": "co"
+  },
+  {
+    "label": "Comorienne",
+    "value": "Comorienne",
+    "code": "km"
+  },
+  {
+    "label": "Congolaise (RDC)",
+    "value": "Congolaise (RDC)",
+    "code": "cd"
+  },
+  {
+    "label": "Congolaise (Rép)",
+    "value": "Congolaise (Rép)",
+    "code": "cg"
+  },
+  {
+    "label": "Costaricaine",
+    "value": "Costaricaine",
+    "code": "cr"
+  },
+  {
+    "label": "Croate",
+    "value": "Croate",
+    "code": "hr"
+  },
+  {
+    "label": "Cubaine",
+    "value": "Cubaine",
+    "code": "cu"
+  },
+  {
+    "label": "Danoise",
+    "value": "Danoise",
+    "code": "dk"
+  },
+  {
+    "label": "Djiboutienne",
+    "value": "Djiboutienne",
+    "code": "dj"
+  },
+  {
+    "label": "Dominicaine",
+    "value": "Dominicaine",
+    "code": "do"
+  },
+  {
+    "label": "Égyptienne",
+    "value": "Égyptienne",
+    "code": "eg"
+  },
+  {
+    "label": "Émirienne",
+    "value": "Émirienne",
+    "code": "ae"
+  },
+  {
+    "label": "Espagnole",
+    "value": "Espagnole",
+    "code": "es"
+  },
+  {
+    "label": "Éthiopienne",
+    "value": "Éthiopienne",
+    "code": "et"
+  },
+  {
+    "label": "Finlandaise",
+    "value": "Finlandaise",
+    "code": "fi"
+  },
+  {
+    "label": "Française",
+    "value": "Française",
+    "code": "fr"
+  },
+  {
+    "label": "Gabonaise",
+    "value": "Gabonaise",
+    "code": "ga"
+  },
+  {
+    "label": "Gambienne",
+    "value": "Gambienne",
+    "code": "gm"
+  },
+  {
+    "label": "Géorgienne",
+    "value": "Géorgienne",
+    "code": "ge"
+  },
+  {
+    "label": "Ghanéenne",
+    "value": "Ghanéenne",
+    "code": "gh"
+  },
+  {
+    "label": "Grecque",
+    "value": "Grecque",
+    "code": "gr"
+  },
+  {
+    "label": "Guinéenne",
+    "value": "Guinéenne",
+    "code": "gn"
+  },
+  {
+    "label": "Équato-guinéenne",
+    "value": "Équato-guinéenne",
+    "code": "gq"
+  },
+  {
+    "label": "Bissau-guinéenne",
+    "value": "Bissau-guinéenne",
+    "code": "gw"
+  },
+  {
+    "label": "Haïtienne",
+    "value": "Haïtienne",
+    "code": "ht"
+  },
+  {
+    "label": "Hongroise",
+    "value": "Hongroise",
+    "code": "hu"
+  },
+  {
+    "label": "Indienne",
+    "value": "Indienne",
+    "code": "in"
+  },
+  {
+    "label": "Indonésienne",
+    "value": "Indonésienne",
+    "code": "id"
+  },
+  {
+    "label": "Irakienne",
+    "value": "Irakienne",
+    "code": "iq"
+  },
+  {
+    "label": "Iranienne",
+    "value": "Iranienne",
+    "code": "ir"
+  },
+  {
+    "label": "Irlandaise",
+    "value": "Irlandaise",
+    "code": "ie"
+  },
+  {
+    "label": "Israélienne",
+    "value": "Israélienne",
+    "code": "il"
+  },
+  {
+    "label": "Italienne",
+    "value": "Italienne",
+    "code": "it"
+  },
+  {
+    "label": "Ivoirienne",
+    "value": "Ivoirienne",
+    "code": "ci"
+  },
+  {
+    "label": "Jamaïcaine",
+    "value": "Jamaïcaine",
+    "code": "jm"
+  },
+  {
+    "label": "Japonaise",
+    "value": "Japonaise",
+    "code": "jp"
+  },
+  {
+    "label": "Jordanienne",
+    "value": "Jordanienne",
+    "code": "jo"
+  },
+  {
+    "label": "Kényane",
+    "value": "Kényane",
+    "code": "ke"
+  },
+  {
+    "label": "Koweïtienne",
+    "value": "Koweïtienne",
+    "code": "kw"
+  },
+  {
+    "label": "Libanaise",
+    "value": "Libanaise",
+    "code": "lb"
+  },
+  {
+    "label": "Libérienne",
+    "value": "Libérienne",
+    "code": "lr"
+  },
+  {
+    "label": "Libyenne",
+    "value": "Libyenne",
+    "code": "ly"
+  },
+  {
+    "label": "Malgache",
+    "value": "Malgache",
+    "code": "mg"
+  },
+  {
+    "label": "Malaisienne",
+    "value": "Malaisienne",
+    "code": "my"
+  },
+  {
+    "label": "Malienne",
+    "value": "Malienne",
+    "code": "ml"
+  },
+  {
+    "label": "Marocaine",
+    "value": "Marocaine",
+    "code": "ma"
+  },
+  {
+    "label": "Mauricienne",
+    "value": "Mauricienne",
+    "code": "mu"
+  },
+  {
+    "label": "Mauritanienne",
+    "value": "Mauritanienne",
+    "code": "mr"
+  },
+  {
+    "label": "Mexicaine",
+    "value": "Mexicaine",
+    "code": "mx"
+  },
+  {
+    "label": "Monégasque",
+    "value": "Monégasque",
+    "code": "mc"
+  },
+  {
+    "label": "Mozambicaine",
+    "value": "Mozambicaine",
+    "code": "mz"
+  },
+  {
+    "label": "Namibienne",
+    "value": "Namibienne",
+    "code": "na"
+  },
+  {
+    "label": "Nigérienne",
+    "value": "Nigérienne",
+    "code": "ne"
+  },
+  {
+    "label": "Nigériane",
+    "value": "Nigériane",
+    "code": "ng"
+  },
+  {
+    "label": "Norvégienne",
+    "value": "Norvégienne",
+    "code": "no"
+  },
+  {
+    "label": "Ougandaise",
+    "value": "Ougandaise",
+    "code": "ug"
+  },
+  {
+    "label": "Pakistanaise",
+    "value": "Pakistanaise",
+    "code": "pk"
+  },
+  {
+    "label": "Panaméenne",
+    "value": "Panaméenne",
+    "code": "pa"
+  },
+  {
+    "label": "Néerlandaise",
+    "value": "Néerlandaise",
+    "code": "nl"
+  },
+  {
+    "label": "Péruvienne",
+    "value": "Péruvienne",
+    "code": "pe"
+  },
+  {
+    "label": "Philippine",
+    "value": "Philippine",
+    "code": "ph"
+  },
+  {
+    "label": "Polonaise",
+    "value": "Polonaise",
+    "code": "pl"
+  },
+  {
+    "label": "Portugaise",
+    "value": "Portugaise",
+    "code": "pt"
+  },
+  {
+    "label": "Qatarienne",
+    "value": "Qatarienne",
+    "code": "qa"
+  },
+  {
+    "label": "Roumaine",
+    "value": "Roumaine",
+    "code": "ro"
+  },
+  {
+    "label": "Russe",
+    "value": "Russe",
+    "code": "ru"
+  },
+  {
+    "label": "Rwandaise",
+    "value": "Rwandaise",
+    "code": "rw"
+  },
+  {
+    "label": "Saoudienne",
+    "value": "Saoudienne",
+    "code": "sa"
+  },
+  {
+    "label": "Sénégalaise",
+    "value": "Sénégalaise",
+    "code": "sn"
+  },
+  {
+    "label": "Serbe",
+    "value": "Serbe",
+    "code": "rs"
+  },
+  {
+    "label": "Somalienne",
+    "value": "Somalienne",
+    "code": "so"
+  },
+  {
+    "label": "Soudanaise",
+    "value": "Soudanaise",
+    "code": "sd"
+  },
+  {
+    "label": "Suédoise",
+    "value": "Suédoise",
+    "code": "se"
+  },
+  {
+    "label": "Suisse",
+    "value": "Suisse",
+    "code": "ch"
+  },
+  {
+    "label": "Syrienne",
+    "value": "Syrienne",
+    "code": "sy"
+  },
+  {
+    "label": "Tanzanienne",
+    "value": "Tanzanienne",
+    "code": "tz"
+  },
+  {
+    "label": "Tchadienne",
+    "value": "Tchadienne",
+    "code": "td"
+  },
+  {
+    "label": "Tchèque",
+    "value": "Tchèque",
+    "code": "cz"
+  },
+  {
+    "label": "Thaïlandaise",
+    "value": "Thaïlandaise",
+    "code": "th"
+  },
+  {
+    "label": "Togolaise",
+    "value": "Togolaise",
+    "code": "tg"
+  },
+  {
+    "label": "Tunisienne",
+    "value": "Tunisienne",
+    "code": "tn"
+  },
+  {
+    "label": "Turque",
+    "value": "Turque",
+    "code": "tr"
+  },
+  {
+    "label": "Ukrainienne",
+    "value": "Ukrainienne",
+    "code": "ua"
+  },
+  {
+    "label": "Uruguayenne",
+    "value": "Uruguayenne",
+    "code": "uy"
+  },
+  {
+    "label": "Vénézuélienne",
+    "value": "Vénézuélienne",
+    "code": "ve"
+  },
+  {
+    "label": "Vietnamienne",
+    "value": "Vietnamienne",
+    "code": "vn"
+  },
+  {
+    "label": "Zambienne",
+    "value": "Zambienne",
+    "code": "zm"
+  },
+  {
+    "label": "Zimbabwéenne",
+    "value": "Zimbabwéenne",
+    "code": "zw"
+  }
+]

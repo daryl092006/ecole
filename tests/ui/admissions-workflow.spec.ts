@@ -33,7 +33,7 @@ async function fixture(page: Page, stage: ApplicationStage, role: RoleName = ROL
 async function fillCandidate(page: Page) {
   await page.getByRole('textbox',{name:'Nom',exact:true}).fill('Candidat'); await page.getByRole('textbox',{name:'Prénom',exact:true}).fill('Local');
   await page.getByRole('combobox',{name:'Sexe',exact:true}).selectOption('M'); await page.getByLabel('Date de naissance',{exact:true}).fill('2000-01-01');
-  await page.getByLabel('Lieu de naissance',{exact:true}).fill('Lomé'); await page.getByLabel('Nationalité',{exact:true}).fill('Togo');
+  await page.getByLabel('Lieu de naissance',{exact:true}).fill('Lomé'); await page.getByLabel('Nationalité',{exact:true}).selectOption('Togolaise');
   await page.getByLabel('Adresse email',{exact:true}).fill('candidate@example.test'); await page.getByLabel('Téléphone du candidat',{exact:true}).fill('+22890000000');
   await page.getByRole('textbox',{name:'Adresse de résidence',exact:true}).fill('Adresse locale'); await page.getByRole('combobox',{name:'Formation souhaitée',exact:true}).selectOption(intakeId);
   await page.getByLabel('Dernier diplôme ou niveau obtenu',{exact:true}).fill('Baccalauréat'); await page.getByRole('button',{name:'Suivant',exact:true}).click();
@@ -236,15 +236,15 @@ for (const width of [390, 1440]) {
     const f = await fixture(page, 'COMPLET', ROLES.CC);
     await page.goto('/site-web/demandes');
     await page.getByRole('button', { name: 'Ouvrir le dossier', exact: true }).click();
-    await expect(page.getByText('Responsable : Chargé de clientèle', { exact: true })).toBeVisible();
+    await expect(page.locator('.dossier-owner-tag').getByText('Chargé de clientèle', { exact: true })).toBeVisible();
     await page.getByRole('button', { name: 'Passer à l’académie', exact: true }).click();
     const actionReason3 = page.getByLabel('Motif de l’action', { exact: true });
     if (await actionReason3.count()) await actionReason3.fill('Pièces vérifiées, dossier transmis');
     await page.getByRole('button', { name: 'Relire avant de confirmer', exact: true }).click();
     expect(f.commands).toHaveLength(0);
     await page.getByRole('button', { name: 'Confirmer : passer à l’académie', exact: true }).click();
-    await expect(page.getByText('Responsable : Direction académique', { exact: true })).toBeVisible();
-    await expect(page.getByText('Ce dossier attend l’intervention du responsable indiqué ci-dessus.', { exact: false })).toBeVisible();
+    await expect(page.locator('.dossier-owner-tag').getByText('Direction académique', { exact: true })).toBeVisible();
+    await expect(page.getByText('Ce dossier attend l’intervention du responsable indiqué ci-dessus', { exact: false })).toBeVisible();
     await expect(page.getByRole('button', { name: 'Commencer l’étude académique', exact: true })).toHaveCount(0);
     expect(f.commands).toHaveLength(1);
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);

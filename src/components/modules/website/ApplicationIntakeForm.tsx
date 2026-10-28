@@ -2,6 +2,7 @@
 import { useState } from 'react';
 import type { z } from 'zod';
 import PhoneInput from '@/components/ui/PhoneInput';
+import CountrySelect from '@/components/ui/CountrySelect';
 import ReviewedForm from '@/components/ui/ReviewedForm';
 import { applicationIntakeSchema } from '@/services/admissionsService';
 import { identitySchema, diplomaSchema, guardianSchema, DOCUMENT_LABELS } from '@/services/websiteService';
@@ -46,7 +47,7 @@ export default function ApplicationIntakeForm({ intakes, initial, busy, error, o
     <section hidden={step !== 0} aria-label="Informations personnelles"><h2>Informations personnelles et formation</h2><div className="form-grid">
       {field('nom','Nom')}{field('prenom','Prénom')}
       <label className="form-group">Sexe<select required className="select-input" value={identity.genre} onChange={event => setIdentity(value => ({ ...value, genre: event.target.value }))}><option value="">Choisir</option><option value="M">Masculin</option><option value="F">Féminin</option></select></label>
-      {field('date_naissance','Date de naissance','date')}{field('lieu_naissance','Lieu de naissance')}{field('nationalite','Nationalité')}
+      {field('date_naissance','Date de naissance','date')}{field('lieu_naissance','Lieu de naissance')}<CountrySelect required value={identity.nationalite} onChange={nationalite => setIdentity(value => ({ ...value, nationalite }))} />
       {field('email','Adresse email','email')}<PhoneInput label="Téléphone du candidat" required value={identity.tel} onChange={tel => setIdentity(value => ({ ...value, tel }))} />
       {field('adresse','Adresse de résidence')}
       <label className="form-group">Formation souhaitée<select required className="select-input" value={intakeId} onChange={event => setIntakeId(event.target.value)}><option value="">Choisir une formation</option>{intakes.filter(item => item.active || item.id === initial?.intake_id).map(item => <option key={item.id} value={item.id}>{item.label}</option>)}</select></label>
