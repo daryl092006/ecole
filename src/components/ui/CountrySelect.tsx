@@ -1,6 +1,7 @@
 'use client';
 
 import { useId } from 'react';
+import FlagSelect from './FlagSelect';
 import nationalities from '@/data/nationalities.json';
 import { PHONE_COUNTRIES } from '@/services/phoneNumberService';
 
@@ -13,7 +14,6 @@ interface Props {
   disabled?: boolean;
 }
 
-const flag = (code: string) => String.fromCodePoint(...Array.from(code.toUpperCase(), character => character.charCodeAt(0) + 127397));
 const countries = PHONE_COUNTRIES.filter(country => /^[A-Z]{2}$/.test(country.region))
   .filter((country, index, all) => all.findIndex(item => item.region === country.region) === index)
   .map(country => ({ value: country.name, label: country.name, code: country.region }));
@@ -24,10 +24,10 @@ export default function CountrySelect({ label = 'Nationalité', kind = 'national
   // Keep historical spellings intact until the user explicitly selects a new value.
   const known = options.some(option => option.value === value);
   return <div className="form-group"><label htmlFor={id}>{label}</label>
-    <select id={id} className="select-input" value={value} required={required} disabled={disabled} onChange={event => onChange(event.target.value)}>
-      <option value="">{kind === 'nationality' ? 'Sélectionner une nationalité' : 'Sélectionner un pays'}</option>
-      {value && !known && <option value={value}>{value}</option>}
-      {options.map(option => <option key={option.code} value={option.value}>{flag(option.code)} {option.label}</option>)}
-    </select>
+    <FlagSelect id={id} label={label} value={value} required={required} disabled={disabled} onChange={onChange} options={[
+      { value: '', label: kind === 'nationality' ? 'Sélectionner une nationalité' : 'Sélectionner un pays' },
+      ...(value && !known ? [{ value, label: value }] : []),
+      ...options,
+    ]} />
   </div>;
 }

@@ -33,7 +33,7 @@ async function fixture(page: Page, stage: ApplicationStage, role: RoleName = ROL
 async function fillCandidate(page: Page) {
   await page.getByRole('textbox',{name:'Nom',exact:true}).fill('Candidat'); await page.getByRole('textbox',{name:'Prénom',exact:true}).fill('Local');
   await page.getByRole('combobox',{name:'Sexe',exact:true}).selectOption('M'); await page.getByLabel('Date de naissance',{exact:true}).fill('2000-01-01');
-  await page.getByLabel('Lieu de naissance',{exact:true}).fill('Lomé'); await page.getByLabel('Nationalité',{exact:true}).selectOption('Togolaise');
+  await page.getByLabel('Lieu de naissance',{exact:true}).fill('Lomé'); await page.getByRole('combobox',{name:'Nationalité',exact:true}).click(); await page.getByRole('option',{name:'Togolaise',exact:true}).click();
   await page.getByLabel('Adresse email',{exact:true}).fill('candidate@example.test'); await page.getByLabel('Téléphone du candidat',{exact:true}).fill('+22890000000');
   await page.getByRole('textbox',{name:'Adresse de résidence',exact:true}).fill('Adresse locale'); await page.getByRole('combobox',{name:'Formation souhaitée',exact:true}).selectOption(intakeId);
   await page.getByLabel('Dernier diplôme ou niveau obtenu',{exact:true}).fill('Baccalauréat'); await page.getByRole('button',{name:'Suivant',exact:true}).click();

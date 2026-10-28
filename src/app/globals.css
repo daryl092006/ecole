@@ -3701,3 +3701,18 @@ body.transcript-print-body { page: transcript; display: block; width: 190mm; hei
 @media (max-width: 768px) {
   .private-document-preview-frame { height: 60dvh; min-height: 260px; }
 }
+
+/* Country pickers share the website's image flags and searchable menu. */
+.flag-select { position: relative; min-width: 0; width: 100%; }
+.flag-select-trigger { background-image: none; display: flex; align-items: center; gap: .6rem; width: 100%; text-align: left; cursor: pointer; }
+.flag-select-trigger > span:first-of-type { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.country-flag-image { width: 20px; height: auto; flex-shrink: 0; border-radius: 0; object-fit: contain; }
+.flag-select-chevron { margin-left: auto; }
+.flag-select-validation { position: absolute; width: 1px; height: 1px; opacity: 0; pointer-events: none; }
+.flag-select-menu { position: absolute; inset: 100% 0 auto; margin-top: .3rem; padding: .5rem; z-index: 20; background: #fff; border: 1px solid #cbd5e1; border-radius: .5rem; box-shadow: 0 8px 24px #12192b26; }
+.flag-select-search { width: 100%; min-width: 0; margin-bottom: .4rem; }
+.flag-select-options { max-height: 200px; overflow-y: auto; overscroll-behavior: contain; }
+.flag-select-option { display: flex; align-items: center; gap: .6rem; width: 100%; padding: .65rem .5rem; border: 0; border-radius: .25rem; background: transparent; color: #12192b; text-align: left; cursor: pointer; font: inherit; }
+.flag-select-option:hover, .flag-select-option:focus-visible, .flag-select-option[aria-selected="true"] { background: #edf3ff; }
+.flag-select-check { margin-left: auto; }
+.flag-select-empty { padding: .5rem; }

@@ -1,5 +1,6 @@
 'use client';
 
+import FlagSelect from './FlagSelect';
 import { useEffect, useId, useRef, useState } from 'react';
 import { PHONE_COUNTRIES, composePhoneNumber, isPhoneNumber, phoneCountryKey, phoneSelection, splitPhoneNumber } from '@/services/phoneNumberService';
 
@@ -10,10 +11,6 @@ interface Props {
   required?: boolean;
   disabled?: boolean;
 }
-
-const countryFlag = (region: string) => /^[A-Z]{2}$/.test(region)
-  ? String.fromCodePoint(...Array.from(region, character => character.charCodeAt(0) + 127397))
-  : '';
 
 export default function PhoneInput({ label = 'Téléphone', value, onChange, required = false, disabled = false }: Props) {
   const id = useId();
@@ -38,15 +35,14 @@ export default function PhoneInput({ label = 'Téléphone', value, onChange, req
   return <div className="form-group phone-field">
     <label htmlFor={id}>{label}</label>
     <div className="phone-input-row">
-      <select className="select-input" aria-label={`Indicatif — ${label}`} disabled={disabled} value={key} onChange={event => {
-        const nextKey = event.target.value;
+      <FlagSelect label={`Indicatif — ${label}`} disabled={disabled} value={key} onChange={nextKey => {
         const selected = PHONE_COUNTRIES.find(item => phoneCountryKey(item) === nextKey);
         emit(selected ? composePhoneNumber(selected, number) : number, nextKey);
-      }}>
-        <option value="">Sans indicatif précisé</option>
-        {sharedCode && <option value={key}>Indicatif +{sharedCode} · pays non précisé</option>}
-        {PHONE_COUNTRIES.map(item => <option key={phoneCountryKey(item)} value={phoneCountryKey(item)}>{countryFlag(item.region)} {item.name} (+{item.callingCode})</option>)}
-      </select>
+      }} options={[
+        { value: '', label: 'Sans indicatif précisé' },
+        ...(sharedCode ? [{ value: key, label: `Indicatif +${sharedCode} · pays non précisé` }] : []),
+        ...PHONE_COUNTRIES.map(item => ({ value: phoneCountryKey(item), label: `${item.name} (+${item.callingCode})`, code: item.region })),
+      ]} />
       <input ref={input} id={id} className="input" type="tel" inputMode="tel" autoComplete={key ? 'tel-national' : 'tel'} maxLength={80} required={required} disabled={disabled} value={number} onChange={event => {
         const text = event.target.value;
         const complete = /^(?:\+|00)/.test(text.trim());
