@@ -1,13 +1,13 @@
 import { spawnSync } from 'node:child_process';
-import { randomBytes } from 'node:crypto';
+import { createHmac, randomBytes } from 'node:crypto';
 import { chmod, mkdtemp, mkdir, readFile, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import nextEnv from '@next/env';
 
-// Never emit subprocess output: configuration diffs and provider errors may contain secrets.
+// Never emit raw subprocess output: configuration diffs and provider errors may contain secrets.
 const mode = process.argv[2] || 'check';
-if (!['check', 'deploy', 'activate', 'disable'].includes(mode)) throw new Error('Mode attendu : check, deploy, activate ou disable.');
+if (!['check', 'deploy', 'verify', 'activate', 'disable'].includes(mode)) throw new Error('Mode attendu : check, deploy, verify, activate ou disable.');
 nextEnv.loadEnvConfig(process.cwd());
 const env = { ...process.env };
 const origin = new URL(env.NEXT_PUBLIC_SUPABASE_URL || '');
@@ -47,12 +47,29 @@ function preview(directory) {
   try { parsed = JSON.parse(cli(['config', 'diff', '--workdir', directory, '--output-format', 'json'])); }
   catch { throw new Error('Comparaison Supabase indisponible. Activation non effectuée.'); }
   if (!Array.isArray(parsed.changes)) throw new Error('Comparaison Supabase inattendue.');
+  let declared = 0;
   for (const change of parsed.changes) {
     const path = Array.isArray(change.path) ? change.path.join('.') : change.path;
     if (typeof path !== 'string' || !/^[a-zA-Z\d_.[\]-]+$/.test(path)) throw new Error('Chemin de configuration inattendu.');
     console.log(`${change.declared ? 'Déclaré' : 'Non déclaré, conservé'} : ${path}`);
     if (change.declared && !['auth.hook.send_email.enabled', 'auth.hook.send_email.uri', 'auth.hook.send_email.secrets'].includes(path)) throw new Error('Modification hors du hook refusée.');
+    if (change.declared) declared++;
   }
+  return declared;
+}
+
+async function verifyEndpoint() {
+  const unsigned = await fetch(endpoint, { method: 'POST', body: '{}', signal: AbortSignal.timeout(15000) });
+  if (unsigned.status !== 401) throw new Error(`Refus des demandes non signées non confirmé (HTTP ${unsigned.status}).`);
+  const timestamp = String(Math.floor(Date.now() / 1000));
+  const id = 'escen-deployment-check'; const body = '{}';
+  const key = Buffer.from(env.ESCEN_AUTH_EMAIL_HOOK_SECRET.replace(/^v1,whsec_/, ''), 'base64');
+  const signature = createHmac('sha256', key).update(`${id}.${timestamp}.${body}`).digest('base64');
+  const signed = await fetch(endpoint, { method: 'POST', body, signal: AbortSignal.timeout(15000),
+    headers: { 'webhook-id': id, 'webhook-timestamp': timestamp, 'webhook-signature': `v1,${signature}` } });
+  // A correctly signed, deliberately incomplete payload reaches validation but cannot send any email.
+  if (signed.status !== 400) throw new Error(`Correspondance du secret de signature non confirmée (HTTP ${signed.status}).`);
+  console.log('Signature distante vérifiée, sans email envoyé.');
 }
 
 const directory = await mkdtemp(join(tmpdir(), 'escen-auth-email-'));
@@ -78,12 +95,15 @@ try {
     await writeFile(file, Object.entries(values).map(([key, value]) => `${key}=${JSON.stringify(value)}`).join('\n') + '\n', { mode: 0o600 });
     cli(['secrets', 'set', '--env-file', file]);
     cli(['functions', 'deploy', 'auth-email', '--use-api', '--no-verify-jwt']);
-    const response = await fetch(endpoint, { method: 'POST', body: '{}', signal: AbortSignal.timeout(15000) });
-    if (response.status !== 401) throw new Error(`Fonction déployée mais vérification de signature non confirmée (HTTP ${response.status}). Hook non activé.`);
+    await verifyEndpoint();
     console.log('Fonction auth-email déployée et refus des demandes non signées vérifié. Hook non activé.');
+  } else if (mode === 'verify') {
+    await verifyEndpoint();
   } else {
+    if (mode === 'activate') await verifyEndpoint();
     preview(directory);
     cli(['config', 'push', '--workdir', directory, '--yes']);
+    if (preview(directory) !== 0) throw new Error('Configuration du hook non confirmée après application.');
     console.log(mode === 'activate' ? 'Hook d’envoi Auth activé sur la fonction auth-email.' : 'Hook d’envoi Auth désactivé ; le service SMTP Supabase reprend la main.');
   }
 } finally {

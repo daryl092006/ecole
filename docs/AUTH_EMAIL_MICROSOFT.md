@@ -64,6 +64,16 @@ origines réellement utilisées pour le portail.
 
 Retour au service SMTP précédent : `node scripts/configure-auth-email.mjs disable`.
 Cette commande désactive le hook sans supprimer la fonction ni ses secrets.
+`node scripts/configure-auth-email.mjs verify` contrôle la signature de la fonction
+déployée avec un payload incomplet qui ne peut envoyer aucun email.
+
+Activation du 28 octobre 2026 : fonction déployée sur le projet
+`zmxapemyktxhppdxenzb`, hook activé et absence de différence sur ses paramètres
+déclarés vérifiée après application. La fonction répond `401` sans signature et
+`400` avec une signature valide sur un payload volontairement incomplet.
+L’authentification Microsoft a été vérifiée ; aucun email réel n’a été envoyé
+par ces contrôles. La réception doit être confirmée par une nouvelle demande
+de récupération depuis le portail.
 
 Références : [Send Email Hook](https://supabase.com/docs/guides/auth/auth-hooks/send-email-hook),
 [budget HTTP de cinq secondes](https://supabase.com/docs/guides/auth/auth-hooks),
