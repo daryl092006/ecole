@@ -3,18 +3,39 @@ import type { CrudField } from '@/data/crudCatalog';
 import type { PersistentChange, RelationalSnapshot } from '@/types/persistence';
 
 // One subject is one UE in the current ESCEN curriculum.
+// Credits also represent the subject's weight/coefficient, and the 3-letter REESAO
+// discipline prefix is derived automatically from the subject name when not supplied.
 export const resaoSubjectFields: CrudField[] = [
-  { key: 'discipline', label: 'Sigle de discipline REESAO (3 lettres)', type: 'text', required: true },
   { key: 'semester_id', label: 'Semestre du programme', type: 'reference', reference: 'curriculum_semesters', required: true },
   { key: 'credits', label: 'Crédits', type: 'number', min: 0.01, max: 9999.99, step: 0.01, required: true },
-  { key: 'coefficient', label: 'Coefficient', type: 'number', min: 0.001, max: 99999.999, step: 0.001, required: true },
 ];
 
+const STOP_WORDS = new Set(['DE', 'DU', 'DES', 'LA', 'LE', 'LES', 'ET', 'EN', 'AU', 'AUX', 'SUR', 'POUR', 'DANS', 'PAR', 'UN', 'UNE', 'A', 'L', 'D']);
+
+export function deriveResaoDiscipline(name: string): string {
+  const normalized = String(name || '')
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toUpperCase();
+  const allWords = normalized.match(/[A-Z]+/g) || [];
+  const words = allWords.filter(w => !STOP_WORDS.has(w));
+  const pool = words.length > 0 ? words : allWords;
+  let letters = '';
+  if (pool.length >= 3) {
+    letters = pool[0][0] + pool[1][0] + pool[2][0];
+  } else if (pool.length === 2) {
+    letters = pool[0].length >= 2 ? pool[0].slice(0, 2) + pool[1][0] : pool[0][0] + pool[1].slice(0, 2);
+  } else if (pool.length === 1) {
+    letters = pool[0].slice(0, 3);
+  }
+  return (letters + 'CRS').slice(0, 3);
+}
+
 export const resaoSubjectSchema = z.object({
-  discipline: z.string().trim().toUpperCase().regex(/^[A-Z]{3}$/, 'Le sigle de discipline doit comporter exactement trois lettres.'),
+  discipline: z.string().trim().toUpperCase().regex(/^[A-Z]{3}$/, 'Le sigle de discipline doit comporter exactement trois lettres.').optional(),
   semester_id: z.uuid(),
   credits: z.number().min(0.01).max(9999.99).multipleOf(0.01),
-  coefficient: z.number().min(0.001).max(99999.999).multipleOf(0.001),
+  coefficient: z.number().min(0.001).max(99999.999).multipleOf(0.001).optional(),
 }).strict();
 
 export function resaoSubjectContext(snapshot: RelationalSnapshot, semesterId: string) {
@@ -55,15 +76,17 @@ export function generateResaoSubjectCode(snapshot: RelationalSnapshot, disciplin
 
 export function resaoSubjectChanges(snapshot: RelationalSnapshot, input: unknown, subject: Record<string, unknown>): PersistentChange[] {
   const values = resaoSubjectSchema.parse(input);
+  const discipline = values.discipline || deriveResaoDiscipline(String(subject.name || ''));
+  const coefficient = values.coefficient ?? values.credits;
   const { semester, curriculum } = resaoSubjectContext(snapshot, values.semester_id);
   const offerings = (snapshot.tables.academic_offerings || []).filter(row => row.curriculum_id === curriculum.id && !row.archived_at);
   if (offerings.some(row => row.academic_year_id !== subject.academic_year_id)) throw new Error('Ce programme est déjà utilisé dans une autre année. Choisissez un programme propre à l’année consultée.');
-  const code = generateResaoSubjectCode(snapshot, values.discipline, values.semester_id, String(subject.academic_year_id));
+  const code = generateResaoSubjectCode(snapshot, discipline, values.semester_id, String(subject.academic_year_id));
   if (subject.code && subject.code !== code) throw new Error('Le code proposé a changé. Actualisez les données avant de confirmer.');
   const unitId = crypto.randomUUID();
   return [
     { table: 'subjects', operation: 'insert', record: { ...subject, code } },
     { table: 'teaching_units', operation: 'insert', record: { id: unitId, curriculum_id: curriculum.id, semester_id: semester.id, code, name: subject.name, credits: values.credits, reason: subject.reason } },
-    { table: 'curriculum_components', operation: 'insert', record: { id: crypto.randomUUID(), curriculum_id: curriculum.id, unit_id: unitId, subject_id: subject.id, code, credits: values.credits, coefficient: values.coefficient, reason: subject.reason } },
+    { table: 'curriculum_components', operation: 'insert', record: { id: crypto.randomUUID(), curriculum_id: curriculum.id, unit_id: unitId, subject_id: subject.id, code, credits: values.credits, coefficient, reason: subject.reason } },
   ];
 }

@@ -109,18 +109,17 @@ test('Matière : crédits et coefficient décimaux transmis avec le code REESAO'
   const fixture = await prepare(page);
   await page.getByRole('button', { name: 'Ajouter une matière', exact: true }).click();
   await page.getByLabel('Nom', { exact: true }).fill('Finance UI');
-  await page.getByLabel('Sigle de discipline REESAO (3 lettres)').fill('ECN');
   await expect(page.getByLabel('Crédits', { exact: true })).toHaveAttribute('step', '0.01');
-  await expect(page.getByLabel('Coefficient', { exact: true })).toHaveAttribute('step', '0.001');
+  await expect(page.getByLabel('Coefficient', { exact: true })).toHaveCount(0);
+  await expect(page.getByLabel('Code', { exact: true })).toHaveCount(0);
   await page.getByLabel('Crédits', { exact: true }).fill('3.75');
-  await page.getByLabel('Coefficient', { exact: true }).fill('0.625');
-  await expect(page.getByLabel('Code', { exact: true })).toHaveValue('ECN2102');
+  await expect(page.getByRole('status')).toContainText('FIU2101');
   await review(page, 'Création de matière décimale');
   expect(fixture.writes).toHaveLength(0);
   await confirm(page);
   await expect(page.getByRole('region', { name: 'Matières du semestre' })).toContainText('Finance UI');
-  expect(fixture.writes[0]).toMatchObject({ collection: 'subjects', method: 'POST', values: { academic_year_id: year.id, code: 'ECN2102', resao: { semester_id: ids.semester, discipline: 'ECN', credits: 3.75, coefficient: 0.625 } } });
-  await expect(page.getByRole('row').filter({ hasText: 'Finance UI' })).toContainText('0.625');
+  expect(fixture.writes[0]).toMatchObject({ collection: 'subjects', method: 'POST', values: { academic_year_id: year.id, code: 'FIU2101', resao: { semester_id: ids.semester, discipline: 'FIU', credits: 3.75, coefficient: 3.75 } } });
+  await expect(page.getByRole('row').filter({ hasText: 'Finance UI' })).toContainText('3.75');
 });
 
 test('Matière : modification conserve son rattachement et ses valeurs décimales', async ({ page }) => {

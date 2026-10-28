@@ -47,15 +47,13 @@ for (const width of [390, 1440]) test(`Écrans et PostgreSQL local : création, 
   await page.getByRole('button', { name: 'Ajouter une matière', exact: true }).click();
   const name = `Finance de recette ${width}`;
   await page.getByLabel('Nom', { exact: true }).fill(name);
-  await page.getByLabel('Sigle de discipline REESAO (3 lettres)').fill('ECN');
   await page.getByLabel('Crédits', { exact: true }).fill('3.75');
-  await page.getByLabel('Coefficient', { exact: true }).fill('0.625');
   await page.getByRole('textbox', { name: 'Motif', exact: true }).fill('Recette complète sur PostgreSQL local');
   await page.getByRole('button', { name: 'Vérifier les informations', exact: true }).click();
   expect(await local.value('select count(*)::integer as value from escen.subjects where name=$1', [name])).toBe(0);
   await page.getByRole('button', { name: 'Confirmer l’enregistrement', exact: true }).click();
   await expect(page.getByRole('region', { name: 'Matières du semestre' })).toContainText(name);
-  expect(await local.value('select count(*)::integer as value from escen.subjects s join escen.curriculum_components c on c.subject_id=s.id join escen.teaching_units u on u.id=c.unit_id where s.name=$1 and c.credits=3.75 and c.coefficient=0.625 and u.code=s.code', [name])).toBe(1);
+  expect(await local.value('select count(*)::integer as value from escen.subjects s join escen.curriculum_components c on c.subject_id=s.id join escen.teaching_units u on u.id=c.unit_id where s.name=$1 and c.credits=3.75 and c.coefficient=3.75 and u.code=s.code', [name])).toBe(1);
   await page.reload();
   await selectIT(page);
   await page.getByLabel('1. Groupe').selectOption({ index: 1 });
