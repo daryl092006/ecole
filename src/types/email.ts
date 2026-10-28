@@ -8,5 +8,5 @@ export interface EmailRecord {
   requested_by: string | null; reason: string; version: number; created_at: string; updated_at: string;
 }
 export interface QueuedEmail extends EmailRecord { text_body: string; html_body: string; }
-export interface EmailConfiguration { ready: boolean; provider: 'resend' | null; from: string | null; issue: string | null; }
+export interface EmailConfiguration { ready: boolean; provider: 'resend' | 'microsoft' | null; from: string | null; issue: string | null; }
 export interface EmailPage { yearId: string | null; offset: number; limit: number; total: number; records: EmailRecord[]; configuration: EmailConfiguration; }

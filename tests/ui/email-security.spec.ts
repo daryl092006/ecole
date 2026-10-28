@@ -7,6 +7,8 @@ import { getAvailableTabs } from '../../src/permissions/navigation';
 
 const mail = { id: uuid(999), recipient_email: 'student@example.test', subject: 'Copie remise', text_body: 'Texte', html_body: '<p>Texte</p>' } as QueuedEmail;
 const configured = { ESCEN_EMAIL_PROVIDER: 'resend', ESCEN_EMAIL_ENABLED: 'true', ESCEN_EMAIL_FROM: 'ecole@example.test', RESEND_API_KEY: 'FAKE_KEY_FOR_LOCAL_TESTS' };
+const microsoft = { ESCEN_EMAIL_PROVIDER: 'microsoft', ESCEN_EMAIL_ENABLED: 'true', ESCEN_EMAIL_FROM: 'noreply@escen.university',
+  MICROSOFT_TENANT_ID: uuid(10), MICROSOFT_CLIENT_ID: uuid(11), MICROSOFT_CLIENT_SECRET: 'FAKE+SECRET&=FOR_TESTS' };
 function fixture(context: PersistentContext = securityContext(), errorCode = '') {
   const calls: { name: string; args?: Record<string, unknown> }[] = [];
   const client = { rpc: async (name: string, args?: Record<string, unknown>) => {
@@ -102,4 +104,59 @@ test('Worker : file non prise si désactivée, puis résultats persistés avec j
 test('Worker HTTP : aucun accès avec une session utilisateur ou sans secret', async () => {
   const worker = loadSecurityApi('app/api/email-outbox/process/route.ts', {}, securityContext()) as { POST: (request: Request) => Promise<Response> };
   for (const authorization of ['', 'Bearer fixture-auth-token']) expect((await worker.POST(new Request('http://local.test/api/email-outbox/process', { method: 'POST', headers: { authorization } }))).status).toBe(401);
+});
+
+test('Microsoft : configuration complète obligatoire et aucun secret dans la projection publique', async () => {
+  const transport = loadSecurityApi('server/emailTransport.ts', {}, securityContext()) as typeof import('../../src/server/emailTransport');
+  expect(transport.emailConfiguration(microsoft)).toMatchObject({ ready: true, provider: 'microsoft' });
+  expect(JSON.stringify(transport.emailConfiguration(microsoft))).not.toContain(microsoft.MICROSOFT_CLIENT_SECRET);
+  for (const env of [{ ...microsoft, MICROSOFT_CLIENT_SECRET: '' }, { ...microsoft, MICROSOFT_TENANT_ID: '../common' }, { ...microsoft, MICROSOFT_CLIENT_ID: '' }, { ...microsoft, ESCEN_EMAIL_ENABLED: 'false' }]) {
+    expect(await transport.deliverEmail(mail, env, async () => { throw new Error('Aucun réseau autorisé'); })).toEqual({ status: 'FAILED', error: 'CONFIGURATION' });
+  }
+});
+
+test('Microsoft : jeton encodé puis envoi individuel, 202 vide accepté et référence de suivi', async () => {
+  const transport = loadSecurityApi('server/emailTransport.ts', {}, securityContext()) as typeof import('../../src/server/emailTransport');
+  let calls = 0;
+  const result = await transport.deliverEmail(mail, microsoft, async (url, request) => {
+    calls++;
+    expect(request?.redirect).toBe('error');
+    expect(request?.cache).toBe('no-store');
+    if (calls === 1) {
+      expect(url).toBe(`https://login.microsoftonline.com/${microsoft.MICROSOFT_TENANT_ID}/oauth2/v2.0/token`);
+      const body = new URLSearchParams(String(request?.body));
+      expect(body.get('client_secret')).toBe(microsoft.MICROSOFT_CLIENT_SECRET);
+      expect(body.get('scope')).toBe('https://graph.microsoft.com/.default');
+      expect(body.get('grant_type')).toBe('client_credentials');
+      return Response.json({ access_token: 'fake-token', token_type: 'Bearer' });
+    }
+    expect(url).toBe('https://graph.microsoft.com/v1.0/users/noreply%40escen.university/sendMail');
+    expect(new Headers(request?.headers).get('authorization')).toBe('Bearer fake-token');
+    expect(JSON.parse(String(request?.body))).toEqual({ message: { subject: mail.subject,
+      body: { contentType: 'HTML', content: mail.html_body }, toRecipients: [{ emailAddress: { address: mail.recipient_email } }] } });
+    return new Response(null, { status: 202, headers: { 'request-id': 'graph-trace' } });
+  });
+  expect(calls).toBe(2);
+  expect(result).toEqual({ status: 'ACCEPTED', reference: 'microsoft:graph-trace' });
+});
+
+test('Microsoft : échec authentification sans envoi, refus et incertitudes sans réessai', async () => {
+  const transport = loadSecurityApi('server/emailTransport.ts', {}, securityContext()) as typeof import('../../src/server/emailTransport');
+  for (const response of [() => Response.json({}, { status: 401 }), () => Response.json({}), () => { throw new Error('token timeout'); }]) {
+    let calls = 0;
+    expect(await transport.deliverEmail(mail, microsoft, async () => { calls++; return response(); })).toEqual({ status: 'FAILED', error: 'CONFIGURATION' });
+    expect(calls).toBe(1);
+  }
+  for (const [status, expected] of [[403, 'FAILED'], [429, 'FAILED'], [408, 'UNKNOWN'], [409, 'UNKNOWN'], [503, 'UNKNOWN'], [200, 'UNKNOWN'], [0, 'UNKNOWN'], [202, 'ACCEPTED']] as const) {
+    let calls = 0;
+    const result = await transport.deliverEmail({ ...mail, html_body: '' }, microsoft, async (_url, request) => {
+      if (++calls === 1) return Response.json({ access_token: 'fake', token_type: 'Bearer' });
+      expect(JSON.parse(String(request?.body)).message.body).toEqual({ contentType: 'Text', content: mail.text_body });
+      if (!status) throw new Error('send timeout');
+      return new Response(null, { status });
+    });
+    expect(calls).toBe(2);
+    expect(result.status).toBe(expected);
+    if (status === 202) expect(result).toEqual({ status: 'ACCEPTED', reference: `microsoft:${mail.id}` });
+  }
 });
