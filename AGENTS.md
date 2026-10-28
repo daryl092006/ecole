@@ -203,6 +203,7 @@ Cette section actualise les constats historiques des sections 1 et 5, notamment 
 
 ### Décisions et limites à préserver
 
+- Règle confirmée par l’utilisateur le 28 octobre 2026 : le matricule d’un nouvel étudiant est généré automatiquement, sans saisie manuelle. Conserver le matricule des étudiants existants. Certains parcours actuels demandent encore un matricule : ce sont des écarts à corriger, et non la règle métier de référence. Ne pas inventer le format ou la séquence de génération sans retrouver le mécanisme existant ou obtenir la règle validée.
 - Semestres, UE et matières du programme : `reason` et `archived_at` nullables ; motif d'archivage de 3 à 1000 caractères ; audit existant ; contrôles de crédits et pondérations sur les lignes actives ; aucun archivage dans une maquette approuvée, ni d'un parent ayant des enfants actifs. Pas des crédits : 0.01 ; coefficient : 0.001 ; position entière.
 - Notes : REINSCRIT fait partie des candidats ; ABSENT et JUSTIFIE sont traités, NON_TRAITE bloque la soumission ; une correction vide ne devient jamais zéro. Les lots RPC sont bornés et signalent tout échec partiel.
 - Finance : affectation automatique à l'échéance non soldée la plus ancienne, réaffectation possible ; annulation par contre-opération motivée ; remboursements et avoirs déduits des projections. Les paiements PENDING et annulés ne comptent pas comme encaissés.
