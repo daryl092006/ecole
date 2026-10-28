@@ -230,7 +230,14 @@ export async function studentDocumentUrl(id: string, role: RoleName): Promise<st
   return (await readResponse(await fetch(`/api/student-documents?file=${encodeURIComponent(id)}`, { headers: await headers(role), cache: 'no-store' }))).url;
 }
 
-export async function downloadAdmissionDocument(id: string, role: RoleName): Promise<string> {
+export async function downloadAdmissionDocument(id: string, role: RoleName, filename = 'document'): Promise<void> {
   const result = await readResponse(await fetch(`/api/admissions?document=${encodeURIComponent(id)}`, { headers: await headers(role), cache: 'no-store' }));
-  return result.url;
+  if (typeof result.url !== 'string' || !result.url) throw new Error('Le lien de téléchargement est indisponible. Réessayez.');
+  const response = await fetch(result.url, { cache: 'no-store' });
+  if (!response.ok) throw new Error('La pièce est indisponible ou le lien a expiré. Réessayez le téléchargement.');
+  const url = URL.createObjectURL(await response.blob());
+  const anchor = document.createElement('a');
+  anchor.href = url; anchor.download = filename;
+  document.body.appendChild(anchor); anchor.click(); anchor.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
 }

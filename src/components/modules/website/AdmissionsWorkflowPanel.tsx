@@ -1,6 +1,7 @@
 'use client';
 import { useCallback, useEffect, useState } from 'react';
 import Link from 'next/link';
+import { Download } from 'lucide-react';
 import { usePortal } from '@/hooks/usePortal';
 import EnrollmentDialog from '../EnrollmentDialog';
 import { admissionsOperation, downloadAdmissionLetter, downloadAdmissionDocument, RemoteRequestError } from '@/services/remoteCampusService';
@@ -44,6 +45,16 @@ export default function AdmissionsWorkflowPanel() {
   const [amount, setAmount] = useState(''); const [reference, setReference] = useState(''); const [channel, setChannel] = useState(''); const [paymentId, setPaymentId] = useState('');
   const [matricule, setMatricule] = useState(''); const [student, setStudent] = useState(''); const [createToken, setCreateToken] = useState('');
   const [enrollingMatricule, setEnrollingMatricule] = useState<string | null>(null);
+  const [downloadingDocument, setDownloadingDocument] = useState<string | null>(null);
+  const [documentError, setDocumentError] = useState('');
+  useEffect(() => { setDocumentError(''); }, [selected?.id]);
+  async function downloadDocument(id: string, filename: string) {
+    if (downloadingDocument) return;
+    setDownloadingDocument(id); setDocumentError('');
+    try { await downloadAdmissionDocument(id, role, filename); }
+    catch (cause) { setDocumentError(cause instanceof Error ? cause.message : 'Téléchargement impossible. Réessayez.'); }
+    finally { setDownloadingDocument(null); }
+  }
   const refresh = useCallback(async (signal?: AbortSignal) => {
     const value = await admissionsOperation(role, undefined, signal) as AdmissionsContext;
     if (signal?.aborted) return; setData(value); setLegacy(!value.enabled);
@@ -159,6 +170,7 @@ export default function AdmissionsWorkflowPanel() {
 
       <section className="card">
         <h3>Pièces du dossier ({selected.documents.length})</h3>
+        {documentError && <p role="alert" className="restricted-box">{documentError}</p>}
         {selected.documents.length ? (
           <div className="workspace-stack" style={{ gap: '0.5rem' }}>
             {selected.documents.map(doc => (
@@ -167,8 +179,16 @@ export default function AdmissionsWorkflowPanel() {
                   <strong>{formatDocumentLabel(doc.document_key)}</strong>
                   <div className="cell-sub">{doc.filename}</div>
                 </div>
-                <button type="button" aria-label={`Télécharger ${doc.filename}`} className="btn btn-sm btn-outline" onClick={() => { void downloadAdmissionDocument(doc.id, role).catch(error => setError(error.message)); }}>
-                  Télécharger
+                <button
+                  type="button"
+                  aria-label={`Télécharger ${doc.filename}`}
+                  className="btn btn-sm btn-outline"
+                  disabled={downloadingDocument !== null}
+                  aria-busy={downloadingDocument === doc.id}
+                  onClick={() => { void downloadDocument(doc.id, doc.filename); }}
+                >
+                  <Download size={16} aria-hidden="true" />
+                  {downloadingDocument === doc.id ? 'Téléchargement…' : 'Télécharger'}
                 </button>
               </div>
             ))}

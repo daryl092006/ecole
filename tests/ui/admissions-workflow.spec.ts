@@ -42,6 +42,71 @@ async function fillCandidate(page: Page) {
   await page.getByRole('button',{name:'Suivant',exact:true}).click();
   await page.getByRole('checkbox',{name:/Je certifie l’exactitude/}).check();
 }
+
+for (const width of [390, 1440]) {
+  test(`Pièces : téléchargement réel à ${width}px`, async ({ page }) => {
+    await page.setViewportSize({ width, height: 950 });
+    const f = await fixture(page, 'VERIFICATION_ADMISSION');
+    f.application.workflow_stage = null;
+    const pdf = Buffer.from('%PDF-1.4\nDocument de recette locale\n%%EOF');
+    let requests = 0;
+    await page.route('**/api/admissions?document=*', async route => {
+      requests++;
+      expect(route.request().headers()['x-escen-year']).toBe(year);
+      expect(route.request().headers().authorization).toMatch(/^Bearer /);
+      await route.fulfill({ json: { url: new URL('/admission-document.pdf', route.request().url()).href } });
+    });
+    await page.route('**/admission-document.pdf', route => route.fulfill({ contentType: 'application/pdf', body: pdf }));
+    await page.goto('/site-web/demandes');
+    await page.getByRole('button', { name: 'Ouvrir le dossier', exact: true }).click();
+    const downloading = page.waitForEvent('download');
+    await page.getByRole('button', { name: 'Télécharger diplome.pdf', exact: true }).click();
+    const download = await downloading;
+    expect(download.suggestedFilename()).toBe('diplome.pdf');
+    const stream = await download.createReadStream();
+    expect(stream).not.toBeNull();
+    const chunks: Buffer[] = [];
+    for await (const chunk of stream!) chunks.push(Buffer.from(chunk));
+    expect(Buffer.concat(chunks)).toEqual(pdf);
+    expect(requests).toBe(1);
+    expect(f.commands).toHaveLength(0);
+    await expect(page.getByRole('button', { name: 'Télécharger diplome.pdf', exact: true })).toBeEnabled();
+  });
+}
+
+test('Pièces : erreur visible et nouvel essai après un lien expiré', async ({ page }) => {
+  await fixture(page, 'VERIFICATION_ADMISSION');
+  let expired = true;
+  await page.route('**/api/admissions?document=*', route => route.fulfill({ json: { url: new URL('/admission-document.pdf', route.request().url()).href } }));
+  await page.route('**/admission-document.pdf', route => route.fulfill(expired
+    ? { status: 403, json: { error: 'Lien expiré' } }
+    : { contentType: 'application/pdf', body: '%PDF-1.4\nReprise\n%%EOF' }));
+  await page.goto('/site-web/demandes');
+  await page.getByRole('button', { name: 'Ouvrir le dossier', exact: true }).click();
+  const button = page.getByRole('button', { name: 'Télécharger diplome.pdf', exact: true });
+  await button.click();
+  await expect(page.getByRole('alert').filter({ hasText: 'La pièce est indisponible ou le lien a expiré' })).toBeVisible();
+  await expect(button).toBeEnabled();
+  expired = false;
+  const downloading = page.waitForEvent('download');
+  await button.click();
+  expect((await downloading).suggestedFilename()).toBe('diplome.pdf');
+  await expect(page.getByText('La pièce est indisponible ou le lien a expiré', { exact: false })).toHaveCount(0);
+});
+
+test('Pièces : un refus d’accès est affiché sans télécharger le fichier', async ({ page }) => {
+  await fixture(page, 'VERIFICATION_ADMISSION');
+  let downloads = 0;
+  page.on('download', () => { downloads++; });
+  await page.route('**/api/admissions?document=*', route => route.fulfill({ status: 403, json: { error: 'Pièce hors de votre périmètre.' } }));
+  await page.goto('/site-web/demandes');
+  await page.getByRole('button', { name: 'Ouvrir le dossier', exact: true }).click();
+  const button = page.getByRole('button', { name: 'Télécharger diplome.pdf', exact: true });
+  await button.click();
+  await expect(page.getByRole('alert').filter({ hasText: 'Pièce hors de votre périmètre.' })).toBeVisible();
+  await expect(button).toBeEnabled();
+  expect(downloads).toBe(0);
+});
 for (const width of [390,1440]) {
   test(`Dépôt en trois étapes sans pièce à ${width}px`,async({page})=>{
     await page.setViewportSize({width,height:950}); let writes=0;
