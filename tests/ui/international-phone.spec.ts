@@ -36,6 +36,9 @@ for (const width of [360, 390, 768, 1440]) test(`Téléphone international : ind
   await expect(code).toHaveValue('');
   await expect(phone).toHaveValue('90 12 34 56');
   expect(await code.locator('option').count()).toBeGreaterThan(240);
+  await expect(code.locator('option[value="TG-228"]')).toHaveText('🇹🇬 Togo (+228)');
+  await expect(code.locator('option[value="FR-33"]')).toHaveText('🇫🇷 France (+33)');
+  await expect(code.locator('option[value="BJ-229"]')).toHaveText('🇧🇯 Bénin (+229)');
   await code.selectOption('FR-33');
   await phone.fill('06 12 34 56 78');
   await expect(phone).toHaveValue('612345678');
@@ -70,6 +73,7 @@ test('Indicatif partagé : pays non inventé, choix conservé et téléphone eff
   const code = dialog.getByRole('combobox', { name: 'Indicatif — Téléphone', exact: true });
   const phone = dialog.getByLabel('Téléphone', { exact: true });
   await expect(code).toHaveValue('code:1');
+  await expect(code.locator('option:checked')).toHaveText('Indicatif +1 · pays non précisé');
   await code.selectOption('CA-1');
   await expect(code).toHaveValue('CA-1');
   await phone.fill('4165550123');

@@ -11,6 +11,10 @@ interface Props {
   disabled?: boolean;
 }
 
+const countryFlag = (region: string) => /^[A-Z]{2}$/.test(region)
+  ? String.fromCodePoint(...Array.from(region, character => character.charCodeAt(0) + 127397))
+  : '';
+
 export default function PhoneInput({ label = 'Téléphone', value, onChange, required = false, disabled = false }: Props) {
   const id = useId();
   const input = useRef<HTMLInputElement>(null);
@@ -41,7 +45,7 @@ export default function PhoneInput({ label = 'Téléphone', value, onChange, req
       }}>
         <option value="">Sans indicatif précisé</option>
         {sharedCode && <option value={key}>Indicatif +{sharedCode} · pays non précisé</option>}
-        {PHONE_COUNTRIES.map(item => <option key={phoneCountryKey(item)} value={phoneCountryKey(item)}>{item.name} (+{item.callingCode})</option>)}
+        {PHONE_COUNTRIES.map(item => <option key={phoneCountryKey(item)} value={phoneCountryKey(item)}>{countryFlag(item.region)} {item.name} (+{item.callingCode})</option>)}
       </select>
       <input ref={input} id={id} className="input" type="tel" inputMode="tel" autoComplete={key ? 'tel-national' : 'tel'} maxLength={80} required={required} disabled={disabled} value={number} onChange={event => {
         const text = event.target.value;
