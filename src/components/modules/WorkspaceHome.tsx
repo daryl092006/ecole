@@ -338,7 +338,7 @@ export default function WorkspaceHome({ mode = 'home' }: { mode?: 'home' | 'over
     }
 
     if (state.perms.scope.ownDataOnly) {
-      const me = state.students[0];
+      const me = state.students.find(student => student.matricule === state.session?.matricule);
       return [
         {
           title: 'Mon Suivi',
@@ -355,7 +355,8 @@ export default function WorkspaceHome({ mode = 'home' }: { mode?: 'home' | 'over
       ];
     }
 
-    return [];
+    return canViewStudents ? [{ title: 'Scolarité', href: '/etudiants', icon: GraduationCap,
+      items: [{ label: 'Dossiers étudiants', value: `${totalStudents}` }, { label: 'Groupes', value: `${count('groups')}` }] }] : [];
   })();
 
   const showPopulationBreakdown = !state.perms.scope.ownDataOnly && canViewStudents && totalStudents > 0;
@@ -391,10 +392,19 @@ export default function WorkspaceHome({ mode = 'home' }: { mode?: 'home' | 'over
     const page = authorizedPages.find(item => item.id === id);
     return page ? [{ label: page.name, href: page.href, icon: taskIcons[id] || Megaphone }] : [];
   });
+  const allowedDestination = (href: string) => state.availableTabs.some(tab => tab.href === href || tab.subTabs?.some(page => page.href === href));
+  const followUps = [
+    { page: ['sys_support', 'espace_support'], label: 'Demandes de support ouvertes', count: activeRows('support_tickets').filter(ticket => ['OPEN', 'IN_PROGRESS'].includes(String(ticket.status))).length },
+    { page: ['fin_payments'], label: 'Paiements en attente', count: pendingPayments.length },
+    { page: ['acad_schedule'], label: 'Séances à venir', count: activeRows('sessions').filter(session => !['ANNULE', 'REPORTE'].includes(String(session.status)) && Date.parse(String(session.starts_at)) > Date.now()).length },
+  ].flatMap(item => {
+    const page = authorizedPages.find(page => item.page.includes(page.id));
+    return page && item.count > 0 ? [{ ...item, href: page.href }] : [];
+  });
 
   const renderKpiCards = () => (
     roleKpiCards.length > 0 && <div className="home-bottom-grid">
-      {roleKpiCards.map(card => {
+      {roleKpiCards.filter(card => allowedDestination(card.href)).map(card => {
         const Icon = card.icon;
         return (
           <section className="card" key={card.title} aria-label={card.title}>
@@ -476,6 +486,13 @@ export default function WorkspaceHome({ mode = 'home' }: { mode?: 'home' | 'over
     {error && <div className="review-notice" role="alert"><span>{error}</span><IconButton className="btn btn-outline" onClick={retry} label="Réessayer" /></div>}
 
     {mode === 'home' && <>
+      <p className="auth-form-description">Votre tableau de bord · {state.activeRole}. Les informations correspondent à votre périmètre et à l’année consultée.</p>
+      {renderKpiCards()}
+      <section className="card" aria-label="Éléments à suivre">
+        <div className="card-header"><h2>À suivre</h2></div>
+        {followUps.length > 0 ? <div className="home-record-counts">{followUps.map(item => <div key={item.label}><Link href={item.href}>{item.label}</Link><strong>{item.count}</strong></div>)}</div>
+          : <p>Aucun élément en attente dans votre périmètre.</p>}
+      </section>
       {quickActions.length > 0 && <div className="home-quick-actions" style={{ marginBottom: '1.25rem' }}>
         <div className="home-section-heading"><div><h2>Que souhaitez-vous faire ?</h2></div></div>
         <div className="quick-actions-bar">
