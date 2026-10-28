@@ -107,6 +107,67 @@ test('Pièces : un refus d’accès est affiché sans télécharger le fichier',
   await expect(button).toBeEnabled();
   expect(downloads).toBe(0);
 });
+
+for (const width of [390, 1440]) {
+  test(`Pièces : aperçu PDF privé sans téléchargement à ${width}px`, async ({ page }) => {
+    await page.setViewportSize({ width, height: 950 });
+    await fixture(page, 'VERIFICATION_ADMISSION');
+    let downloads = 0;
+    page.on('download', () => { downloads++; });
+    await page.route('**/api/admissions?document=*', route => route.fulfill({ json: { url: new URL('/preview-document.pdf', route.request().url()).href } }));
+    await page.route('**/preview-document.pdf', route => route.fulfill({ contentType: 'application/pdf', body: '%PDF-1.4\nAperçu local\n%%EOF' }));
+    await page.goto('/site-web/demandes');
+    await page.getByRole('button', { name: 'Ouvrir le dossier', exact: true }).click();
+    await page.getByRole('button', { name: 'Visualiser diplome.pdf', exact: true }).click();
+    const preview = page.getByRole('dialog', { name: 'Aperçu · diplome.pdf', exact: true });
+    await expect(preview.locator('iframe')).toHaveAttribute('src', /^blob:/);
+    expect(downloads).toBe(0);
+    expect(await preview.evaluate(element => element.scrollWidth <= element.clientWidth)).toBe(true);
+    await preview.getByRole('button', { name: 'Fermer le détail', exact: true }).click();
+    await expect(preview).toHaveCount(0);
+    await expect(page.getByRole('button', { name: 'Visualiser diplome.pdf', exact: true })).toBeVisible();
+  });
+}
+
+test('Pièces : un accès refusé ne crée pas d’aperçu et permet de réessayer', async ({ page }) => {
+  await fixture(page, 'VERIFICATION_ADMISSION');
+  let forbidden = true;
+  await page.route('**/api/admissions?document=*', route => route.fulfill(forbidden
+    ? { status: 403, json: { error: 'Pièce hors de votre périmètre.' } }
+    : { json: { url: new URL('/preview-document.pdf', route.request().url()).href } }));
+  await page.route('**/preview-document.pdf', route => route.fulfill({ contentType: 'application/pdf', body: '%PDF-1.4\nAperçu local\n%%EOF' }));
+  await page.goto('/site-web/demandes');
+  await page.getByRole('button', { name: 'Ouvrir le dossier', exact: true }).click();
+  await page.getByRole('button', { name: 'Visualiser diplome.pdf', exact: true }).click();
+  const preview = page.getByRole('dialog', { name: 'Aperçu · diplome.pdf', exact: true });
+  await expect(preview.getByRole('alert')).toContainText('Pièce hors de votre périmètre.');
+  await expect(preview.locator('iframe')).toHaveCount(0);
+  forbidden = false;
+  await preview.getByRole('button', { name: 'Réessayer l’aperçu', exact: true }).click();
+  await expect(preview.locator('iframe')).toHaveAttribute('src', /^blob:/);
+});
+
+test('Pièces : aperçu image et refus des formats actifs', async ({ page }) => {
+  const f = await fixture(page, 'VERIFICATION_ADMISSION');
+  f.application.documents[0].filename = 'identite.png';
+  f.application.documents[0].mime_type = 'image/png';
+  let activeContent = false;
+  await page.route('**/api/admissions?document=*', route => route.fulfill({ json: { url: new URL('/preview-image', route.request().url()).href } }));
+  await page.route('**/preview-image', route => route.fulfill(activeContent
+    ? { contentType: 'text/html', body: '<script>window.unexpectedPreviewScript=true</script>' }
+    : { contentType: 'image/png', body: Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+aWQAAAABJRU5ErkJggg==', 'base64') }));
+  await page.goto('/site-web/demandes');
+  await page.getByRole('button', { name: 'Ouvrir le dossier', exact: true }).click();
+  await page.getByRole('button', { name: 'Visualiser identite.png', exact: true }).click();
+  const preview = page.getByRole('dialog', { name: 'Aperçu · identite.png', exact: true });
+  await expect(preview.getByRole('img', { name: 'Document : identite.png', exact: true })).toBeVisible();
+  await expect.poll(() => preview.locator('img').evaluate(image => (image as HTMLImageElement).naturalWidth)).toBe(1);
+  await preview.getByRole('button', { name: 'Fermer le détail', exact: true }).click();
+  activeContent = true;
+  await page.getByRole('button', { name: 'Visualiser identite.png', exact: true }).click();
+  await expect(preview.getByRole('alert')).toContainText('L’aperçu de ce format est indisponible');
+  await expect(preview.locator('iframe, img')).toHaveCount(0);
+});
 for (const width of [390,1440]) {
   test(`Dépôt en trois étapes sans pièce à ${width}px`,async({page})=>{
     await page.setViewportSize({width,height:950}); let writes=0;

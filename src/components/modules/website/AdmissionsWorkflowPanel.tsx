@@ -4,7 +4,7 @@ import Link from 'next/link';
 import { Download } from 'lucide-react';
 import { usePortal } from '@/hooks/usePortal';
 import EnrollmentDialog from '../EnrollmentDialog';
-import { admissionsOperation, downloadAdmissionLetter, downloadAdmissionDocument, RemoteRequestError } from '@/services/remoteCampusService';
+import { admissionsOperation, downloadAdmissionLetter, downloadAdmissionDocument, admissionDocumentBlob, RemoteRequestError } from '@/services/remoteCampusService';
 import { APPLICATION_STAGES, type AdmissionAction, type AdmissionApplication, type AdmissionsContext } from '@/types/admissions';
 import { admissionsJourney, ADMISSIONS_STEPS } from '@/services/admissionsJourney';
 import { ADMISSION_ACTIONS, stageLabel } from '@/services/admissionsService';
@@ -16,6 +16,7 @@ import ReviewedForm from '@/components/ui/ReviewedForm';
 import IconButton from '@/components/ui/IconButton';
 import LoadingState from '@/components/ui/LoadingState';
 import ResponsiveTable from '@/components/ui/ResponsiveTable';
+import DocumentPreview from '@/components/ui/DocumentPreview';
 
 const ACTION_RESULTS: Record<AdmissionAction, string> = {
   acknowledge: 'Candidature reçue', review: 'En vérification admission', incomplete: 'Dossier incomplet',
@@ -47,6 +48,12 @@ export default function AdmissionsWorkflowPanel() {
   const [enrollingMatricule, setEnrollingMatricule] = useState<string | null>(null);
   const [downloadingDocument, setDownloadingDocument] = useState<string | null>(null);
   const [documentError, setDocumentError] = useState('');
+  const [previewDocument, setPreviewDocument] = useState<{ id: string; filename: string; mime_type: string } | null>(null);
+  const loadPreview = useCallback((signal: AbortSignal) => {
+    if (!previewDocument) return Promise.reject(new Error('Aucune pièce sélectionnée.'));
+    return admissionDocumentBlob(previewDocument.id, role, signal);
+  }, [previewDocument, role]);
+  useEffect(() => { setPreviewDocument(null); }, [selected?.id]);
   useEffect(() => { setDocumentError(''); }, [selected?.id]);
   async function downloadDocument(id: string, filename: string) {
     if (downloadingDocument) return;
@@ -179,6 +186,7 @@ export default function AdmissionsWorkflowPanel() {
                   <strong>{formatDocumentLabel(doc.document_key)}</strong>
                   <div className="cell-sub">{doc.filename}</div>
                 </div>
+                <div className="btn-group"><button type="button" className="btn btn-sm btn-outline" aria-label={`Visualiser ${doc.filename}`} onClick={() => setPreviewDocument(doc)}>Visualiser</button>
                 <button
                   type="button"
                   aria-label={`Télécharger ${doc.filename}`}
@@ -189,7 +197,7 @@ export default function AdmissionsWorkflowPanel() {
                 >
                   <Download size={16} aria-hidden="true" />
                   {downloadingDocument === doc.id ? 'Téléchargement…' : 'Télécharger'}
-                </button>
+                </button></div>
               </div>
             ))}
           </div>
@@ -217,5 +225,6 @@ export default function AdmissionsWorkflowPanel() {
         </section>
       )}
     </div></WorkPage>}
+    {previewDocument && <DocumentPreview filename={previewDocument.filename} mimeType={previewDocument.mime_type} load={loadPreview} download={() => downloadAdmissionDocument(previewDocument.id, role, previewDocument.filename)} onClose={() => setPreviewDocument(null)} />}
   </div>;
 }

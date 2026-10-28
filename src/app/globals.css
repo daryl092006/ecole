@@ -3694,3 +3694,10 @@ body.transcript-print-body { page: transcript; display: block; width: 190mm; hei
 }
 
 .attendance-success { padding: 16px; border: 1px solid var(--success); border-radius: 10px; background: var(--success-light); color: var(--success); }
+
+.private-document-preview { display: grid; gap: 1rem; min-width: 0; }
+.private-document-preview-frame { display: block; width: 100%; height: 70dvh; min-height: 320px; border: 1px solid var(--border); border-radius: var(--radius); background: var(--bg-primary); }
+.private-document-preview-image { display: block; width: 100%; height: auto; max-height: 70dvh; object-fit: contain; }
+@media (max-width: 768px) {
+  .private-document-preview-frame { height: 60dvh; min-height: 260px; }
+}
