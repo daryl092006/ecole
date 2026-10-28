@@ -73,6 +73,11 @@ const readCache = new Map<string, { expiresAt: number; value: unknown }>();
 const inFlightRpc = new Map<string, Promise<unknown>>();
 const authCache = new Map<string, { expiresAt: number; value: unknown }>();
 const inFlightAuth = new Map<string, Promise<unknown>>();
+let authCacheGeneration = 0;
+export function invalidateAuthCache() {
+  authCacheGeneration++;
+  authCache.clear(); inFlightAuth.clear();
+}
 
 export function getSupabaseServerClient(): SupabaseClient {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
@@ -134,13 +139,14 @@ export function getSupabaseServerClient(): SupabaseClient {
     if (existing) {
       return (await existing) as Awaited<ReturnType<typeof rawGetUser>>;
     }
+    const generation = authCacheGeneration;
     const run = (async () => {
       let res = await rawGetUser(jwt);
       if (res.error && (!res.error.status || res.error.status === 429 || res.error.status >= 500)) {
         await new Promise(resolve => setTimeout(resolve, 200));
         res = await rawGetUser(jwt);
       }
-      if (!res.error && res.data?.user) {
+      if (!res.error && res.data?.user && generation === authCacheGeneration) {
         authCache.set(jwt, { expiresAt: Date.now() + READ_CACHE_TTL_MS, value: res });
       }
       return res;

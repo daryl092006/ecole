@@ -4,6 +4,7 @@ import { getSupabaseServerClient } from '@/lib/supabase/server';
 import { ROLES, type Permission, type RoleName } from '@/types/permissions';
 import { ROLE_ACCESS } from '@/permissions/rolePermissions';
 import type { PersistentContext, AccountGrant } from '@/types/persistence';
+import { firstLoginState } from '@/services/firstLoginService';
 
 export class RequestError extends Error {
   constructor(public status: number, message: string) { super(message); }
@@ -11,7 +12,7 @@ export class RequestError extends Error {
 const grant = z.object({ role_code: z.string(), role_name: z.string(), site_id: z.string().nullable(), academic_year_id: z.string().nullable(), group_id: z.string().nullable() });
 const profileSchema = z.object({
   account: z.object({ id: z.uuid(), person_id: z.uuid(), auth_user_id: z.uuid(), active: z.literal(true) }),
-  person: z.object({ firstname: z.string(), lastname: z.string(), email: z.string().nullable() }),
+  person: z.object({ firstname: z.string(), lastname: z.string(), email: z.string().nullable(), phone: z.string().nullable().optional() }),
   student: z.object({ id: z.uuid(), matricule: z.string() }).nullable(),
   teacher: z.object({ id: z.uuid() }).nullable(),
   grants: z.array(grant),
@@ -32,10 +33,13 @@ export async function requireAccount(request: Request) {
     throw new RequestError(401, 'Votre session a expiré. Reconnectez-vous.');
   }
   if (!authenticated.data.user) throw new RequestError(401, 'Votre session a expiré. Reconnectez-vous.');
-  const mustChangePassword = authenticated.data.user.app_metadata?.must_change_password === true;
+  const { mustChangePassword, mustVerifyProfile, firstLoginRequired } = firstLoginState(authenticated.data.user.app_metadata, process.env.ESCEN_FIRST_LOGIN_ENABLED === 'true');
   const requestPath = new URL(request.url).pathname;
   if (mustChangePassword && !['/api/session', '/api/session/password'].includes(requestPath)) {
     throw new RequestError(403, 'Changez votre mot de passe avant d’utiliser la plateforme.');
+  }
+  if (mustVerifyProfile && !['/api/session', '/api/session/first-login'].includes(requestPath)) {
+    throw new RequestError(403, 'Vérifiez vos informations personnelles avant d’utiliser la plateforme.');
   }
   const response = await client.rpc('escen_account_session', { p_auth_user_id: authenticated.data.user.id });
   if (response.error) throw new RequestError(503, 'Le service des accès est indisponible.');
@@ -57,7 +61,7 @@ export async function requireAccount(request: Request) {
     studentId: profile.student?.id ?? null, teacherId: profile.teacher?.id ?? null,
     grants: available.filter(item => item.role_code === selected.role_code) as AccountGrant[],
   };
-  return { client, context, profile, user: authenticated.data.user, mustChangePassword, availableRoles: [...new Set(available.map(item => item.role_name))], email: authenticated.data.user.email ?? profile.person.email ?? '' };
+  return { client, context, profile, user: authenticated.data.user, mustChangePassword, mustVerifyProfile, firstLoginRequired, availableRoles: [...new Set(available.map(item => item.role_name))], email: authenticated.data.user.email ?? profile.person.email ?? '' };
 }
 export function requirePermission(context: PersistentContext, permission: Permission) {
   if (!context.permissions.includes(permission)) throw new RequestError(403, 'Opération non autorisée pour votre rôle.');

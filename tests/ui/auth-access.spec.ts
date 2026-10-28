@@ -6,6 +6,7 @@ import { runInNewContext } from 'node:vm';
 import ts from 'typescript';
 import { ROLES } from '../../src/types/permissions';
 import { ROLE_ACCESS } from '../../src/permissions/rolePermissions';
+import { firstLoginState } from '../../src/services/firstLoginService';
 
 function access(error: { status?: number } | null, throws = false) {
   let accountReads = 0;
@@ -28,7 +29,8 @@ function access(error: { status?: number } | null, throws = false) {
     require: (name: string) => name === 'server-only' ? {}
       : name === '@/lib/supabase/server' ? { getSupabaseServerClient: () => client }
       : name === '@/types/permissions' ? { ROLES }
-      : name === '@/permissions/rolePermissions' ? { ROLE_ACCESS } : localRequire(name),
+      : name === '@/permissions/rolePermissions' ? { ROLE_ACCESS }
+      : name === '@/services/firstLoginService' ? { firstLoginState } : localRequire(name),
   });
   return { ...moduleExports, accountReads: () => accountReads };
 }

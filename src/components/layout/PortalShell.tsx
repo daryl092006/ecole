@@ -37,6 +37,7 @@ export default function PortalShell({ children }: { children: ReactNode }) {
   }, [state.authReady, state.session, state.hasLoggedOut, router, pathname]);
   useEffect(() => {
     if (state.session?.mustChangePassword) router.replace('/mot-de-passe-modifier');
+    else if (state.session?.mustVerifyProfile) router.replace('/premiere-connexion');
   }, [state.session, router]);
   useEffect(() => {
     setMenuOpen(false); if (mainRef.current) mainRef.current.scrollTop = 0;
@@ -78,6 +79,7 @@ export default function PortalShell({ children }: { children: ReactNode }) {
     setMenuOpen(false);
   };
   if (state.authError) return <main className="route-loading"><SchoolLogo /><SessionRecovery message={state.authError} onRetry={state.retryAuthentication} onExit={state.logout} /></main>;
+  if (state.session?.mustChangePassword || state.session?.mustVerifyProfile) return <main className="route-loading"><LoadingState label="Ouverture de votre parcours de première connexion…" /></main>;
   if (!state.session || !state.authReady) {
     return (
       <div className="route-loading" role="status" aria-live="polite">

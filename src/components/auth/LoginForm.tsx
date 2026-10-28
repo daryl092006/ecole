@@ -15,7 +15,7 @@ export default function LoginForm() {
   const [passwordUpdated, setPasswordUpdated] = useState(false);
   const [visible, setVisible] = useState(false); const [feedback, setFeedback] = useState(''); const [submitting, setSubmitting] = useState(false);
   useEffect(() => {
-    if (state.authReady && state.session && !submitting && !state.authError) router.replace(state.session.mustChangePassword ? '/mot-de-passe-modifier' : postLoginPath(new URLSearchParams(window.location.search).get('retour') || undefined, state.activeRole));
+    if (state.authReady && state.session && !submitting && !state.authError) router.replace(state.session.mustChangePassword ? '/mot-de-passe-modifier' : state.session.mustVerifyProfile ? '/premiere-connexion' : postLoginPath(new URLSearchParams(window.location.search).get('retour') || undefined, state.activeRole));
   }, [state.session, state.activeRole, state.authReady, state.authError, submitting, router]);
   useEffect(() => { setPasswordUpdated(new URLSearchParams(window.location.search).get('mot-de-passe-modifie') === '1'); }, []);
   useEffect(() => { if (feedback) alert.current?.focus(); }, [feedback]);

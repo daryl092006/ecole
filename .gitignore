@@ -87,3 +87,13 @@ next-env.d.ts
 /tmp/screenshots/personnel-review/
 /tmp/next-subject-programming/
 /tmp/screenshots/subject-programming-*.png
+
+/tmp/screenshots/dashboard-home/
+/tmp/screenshots/first-login/
+/tmp/screenshots/admissions-refonte/
+/tmp/screenshots/delegate-attendance/
+/tmp/screenshots/exam-setup-*.png
+/tmp/activation-admissions/
+/tmp/admissions-deployment/
+/tmp/next-support-workspace/
+/tmp/rpc-conflict-deployment/

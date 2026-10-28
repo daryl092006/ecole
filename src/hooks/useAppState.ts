@@ -76,7 +76,7 @@ export function useAppState() {
   const route = getPortalRoute(pathname);
   const [session, setSession] = useState<{
     accountId: string; name: string; email: string; role: RoleName; availableRoles: RoleName[];
-    studentId: string | null; teacherId: string | null; matricule: string | null; mustChangePassword: boolean;
+    studentId: string | null; teacherId: string | null; matricule: string | null; mustChangePassword: boolean; mustVerifyProfile?: boolean;
     capabilities?: Partial<Record<RoleName, { permissions: Permission[]; globalAccess: boolean }>>;
   } | null>(null);
   const [authReady, setAuthReady] = useState(false);
@@ -216,7 +216,7 @@ export function useAppState() {
   const loadedCampusScope = useRef('');
   const reloadCampus = () => { preserveCampusScreen.current = false; setReloadCampusIndex(index => index + 1); };
   const refreshCampus = () => { preserveCampusScreen.current = true; setReloadCampusIndex(index => index + 1); };
-  const history = useHistoricalCampus(activeRole, session?.accountId, session?.mustChangePassword || (!!session && (!session.capabilities?.[activeRole]?.globalAccess || !session.capabilities?.[activeRole]?.permissions.includes('system.audit.view'))), reloadCampusIndex, academicYearSelection + ':' + (relationalSnapshot.academicContext?.selectedYearId || ''));
+  const history = useHistoricalCampus(activeRole, session?.accountId, session?.mustChangePassword || session?.mustVerifyProfile || (!!session && (!session.capabilities?.[activeRole]?.globalAccess || !session.capabilities?.[activeRole]?.permissions.includes('system.audit.view'))), reloadCampusIndex, academicYearSelection + ':' + (relationalSnapshot.academicContext?.selectedYearId || ''));
 
   const capabilities = session?.capabilities?.[activeRole];
   const perms = session ? { ...ROLE_PERMISSIONS[activeRole], permissions: ROLE_PERMISSIONS[activeRole].permissions.filter(permission => capabilities?.permissions.includes(permission)) } : ROLE_PERMISSIONS[activeRole];
@@ -295,7 +295,7 @@ export function useAppState() {
   }, [setAcademicYears, setPrograms, setTracks, setLevels, setSemesters, setUnits, setSubjects, setTeachers, setAssignments, setGroups, setUsers, setCampusRecords]);
 
   const accountId = session?.accountId;
-  const mustChangePassword = session?.mustChangePassword;
+  const mustChangePassword = session?.mustChangePassword || session?.mustVerifyProfile;
   useEffect(() => {
     const controller = new AbortController();
     const scope = `${accountId}:${activeRole}:${academicYearSelection}`;
@@ -366,7 +366,7 @@ export function useAppState() {
       setSession(profile); setHasLoggedOut(false); setAuthReady(true); setActiveRole(profile.role);
       setDemoIdentity(profile.role === ROLES.STUD || profile.role === ROLES.DEL ? profile.matricule || '' : profile.role === ROLES.ENS ? profile.teacherId || '' : '');
       setSelectedStudent(null); setSelectedClassForGrades(null); setActionFeedback('');
-      router.replace(profile.mustChangePassword ? '/mot-de-passe-modifier' : postLoginPath(requested, profile.role));
+      router.replace(profile.mustChangePassword ? '/mot-de-passe-modifier' : profile.mustVerifyProfile ? '/premiere-connexion' : postLoginPath(requested, profile.role));
     } catch (error) {
       if (authenticated) {
         if ((error instanceof RemoteRequestError && error.status >= 500) || (error instanceof Error && ['TimeoutError', 'AbortError', 'TypeError'].includes(error.name))) {

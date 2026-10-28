@@ -12,7 +12,7 @@ const testPassword = 'Fixture-password-2026!';
 const authId = '10000000-0000-4000-8000-000000000001';
 const recoveryPath = '/mot-de-passe-reinitialiser#access_token=recovery-access-token&refresh_token=recovery-refresh-token&token_type=bearer&expires_in=3600&type=recovery';
 
-function passwordRoute(options: { authenticated?: boolean; required?: boolean; fail?: boolean; missingUser?: boolean } = {}) {
+function passwordRoute(options: { authenticated?: boolean; required?: boolean; fail?: boolean; missingUser?: boolean; firstLogin?: boolean } = {}) {
   const calls: { id: string; attributes: Record<string, unknown> }[] = [];
   class RequestError extends Error {
     constructor(public status: number, message: string) { super(message); }
@@ -25,6 +25,7 @@ function passwordRoute(options: { authenticated?: boolean; required?: boolean; f
         context: { authUserId: authId },
         user: { app_metadata: { provider: 'email', must_change_password: true } },
         mustChangePassword: options.required !== false,
+        firstLoginRequired: !!options.firstLogin,
         client: { auth: { admin: { updateUserById: async (id: string, attributes: Record<string, unknown>) => {
           calls.push({ id, attributes });
           return { data: { user: options.fail || options.missingUser ? null : { id } }, error: options.fail ? new Error('Auth unavailable') : null };
@@ -43,7 +44,7 @@ function passwordRoute(options: { authenticated?: boolean; required?: boolean; f
   const localRequire = createRequire(filename);
   runInNewContext(compiled.outputText, {
     exports: moduleExports, Request, Response,
-    require: (name: string) => name === '@/server/auth' ? serverAuth : localRequire(name),
+    require: (name: string) => name === '@/server/auth' ? serverAuth : name === '@/lib/supabase/server' ? { invalidateAuthCache() {} } : localRequire(name),
   });
   return { post: moduleExports.POST!, calls };
 }
@@ -72,6 +73,16 @@ test('Un refus Auth ne déclenche aucun second appel de déblocage', async () =>
   expect(response.status).toBe(503);
   expect(route.calls).toHaveLength(1);
   expect(route.calls[0].attributes).toHaveProperty('password', testPassword);
+});
+
+test('Première connexion : le mot de passe ouvre la vérification sans la marquer comme terminée', async () => {
+  const route = passwordRoute({ firstLogin: true });
+  const response = await route.post(new Request('http://localhost/api/session/password', { method: 'POST', body: JSON.stringify({ password: testPassword }) }));
+  expect(await response.json()).toEqual({ updated: true, next: 'PROFILE' });
+  const metadata = route.calls[0].attributes.app_metadata as Record<string, unknown>;
+  expect(metadata).toMatchObject({ provider: 'email', must_change_password: false, escen_first_login: { version: 1 } });
+  expect((metadata.escen_first_login as Record<string, unknown>).password_changed_at).toEqual(expect.any(String));
+  expect(metadata.escen_first_login).not.toHaveProperty('profile_reviewed_at');
 });
 
 test('Une réponse Auth sans utilisateur ne confirme pas la levée de l’obligation', async () => {

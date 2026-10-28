@@ -16,10 +16,10 @@ export const securityIds = {
 };
 
 // Execute the real route, validation and permission checks; stub only Auth and RPC transport.
-export function loadSecurityApi(path: string, client: unknown, context: PersistentContext, publicClient?: unknown) {
+export function loadSecurityApi(path: string, client: unknown, context: PersistentContext, publicClient?: unknown, accountExtras: Record<string, unknown> = {}) {
   const overrides = new Map<string, unknown>([
     ['server-only', {}],
-    ['@/lib/supabase/server', { getSupabaseServerClient() { if (publicClient) return publicClient; throw new Error('Connexion distante interdite dans ces tests.'); } }],
+    ['@/lib/supabase/server', { invalidateAuthCache() {}, getSupabaseServerClient() { if (publicClient) return publicClient; throw new Error('Connexion distante interdite dans ces tests.'); } }],
   ]);
   const cache = new Map<string, { exports: Record<string, unknown> }>();
   function load(filename: string): Record<string, unknown> {
@@ -42,7 +42,7 @@ export function loadSecurityApi(path: string, client: unknown, context: Persiste
     return loaded.exports;
   }
   const auth = load(resolve('src/server/auth.ts'));
-  overrides.set('@/server/auth', { ...auth, requireAccount: async () => ({ client, context }) });
+  overrides.set('@/server/auth', { ...auth, requireAccount: async () => ({ client, context, ...accountExtras }) });
   return load(resolve('src', path));
 }
 
