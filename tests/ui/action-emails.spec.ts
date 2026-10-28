@@ -19,10 +19,10 @@ for (const width of [390, 1440]) {
     await expect(page.getByRole('alert').filter({ hasText: 'La demande n’a pas pu être envoyée.' })).toBeVisible();
     await expect(email).toHaveValue('Candidate@example.test');
     await expect(submit).toBeEnabled();
-    await expect(page.getByRole('status').filter({ hasText: 'un lien de réinitialisation sera envoyé' })).toHaveCount(0);
+    await expect(page.getByRole('status').filter({ hasText: 'Un email de réinitialisation a été envoyé.' })).toHaveCount(0);
     fail = false;
     await submit.click();
-    await expect(page.getByRole('status').filter({ hasText: 'Demande enregistrée. Consultez votre boîte mail' })).toBeVisible();
+    await expect(page.getByRole('status')).toHaveText('Un email de réinitialisation a été envoyé.');
     expect(requests).toEqual(Array.from({ length: 2 }, () => ({ email: 'candidate@example.test', redirectTo: 'http://127.0.0.1:3117/mot-de-passe-reinitialiser' })));
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
   });

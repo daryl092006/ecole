@@ -62,7 +62,7 @@ test('Mot de passe oublié : ancienne session fermée et retour sans connexion a
   await page.goto('/mot-de-passe-oublie');
   await page.getByLabel('Adresse email', { exact: true }).fill('it@example.test');
   await page.getByRole('button', { name: 'Recevoir un lien de réinitialisation', exact: true }).click();
-  await expect(page.getByRole('status').filter({ hasText: 'Demande enregistrée.' })).toBeVisible();
+  await expect(page.getByRole('status').filter({ hasText: 'Un email de réinitialisation a été envoyé.' })).toBeVisible();
   expect(requests).toBe(1);
   expect(state.logoutScopes).toEqual(['local']);
   expect(await page.evaluate(key => localStorage.getItem(key), key)).toBeNull();

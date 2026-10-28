@@ -15,7 +15,7 @@ export default function PasswordHelpForm() {
       const { error } = await client.auth.resetPasswordForEmail(email.trim().toLowerCase(), { redirectTo: `${window.location.origin}/mot-de-passe-reinitialiser` });
       if (error) throw error;
       setDone(true);
-      setFeedback('Demande enregistrée. Consultez votre boîte mail et vos courriers indésirables. Pour protéger les comptes, nous ne précisons pas si cette adresse est enregistrée. Si elle l’est, vous recevrez un lien pour choisir un nouveau mot de passe.');
+      setFeedback('Un email de réinitialisation a été envoyé.');
     } catch {
       setFeedback('La demande n’a pas pu être envoyée. Réessayez ou contactez l’administration.');
     } finally { pending.current = false; setSubmitting(false); }
