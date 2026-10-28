@@ -19,8 +19,10 @@ serveur existante pour changer le mot de passe et lever l’obligation ensemble.
 ## Réception des emails : configuration distincte
 
 Les demandes sont envoyées par **Supabase Auth**, et non par la file métier
-Microsoft Graph de `emailTransport.ts`. Configurer les variables Graph dans
-`.env.local` ne configure pas le service de courriel Supabase.
+Microsoft Graph de `emailTransport.ts`. L’envoi par Graph pour Auth passe par le
+hook dédié décrit dans [AUTH_EMAIL_MICROSOFT.md](AUTH_EMAIL_MICROSOFT.md).
+Configurer les variables Graph dans `.env.local` ne suffit pas : la fonction doit
+être déployée et le hook activé dans Supabase.
 
 Dans le tableau de bord Supabase, vérifier le fournisseur d’envoi Auth, le modèle
 de récupération et les URL de redirection autorisées. Chaque origine réellement
