@@ -8,6 +8,78 @@ export const DOCUMENT_LABELS: Record<string, string> = {
   certificat_medical_file: 'Certificat médical', cv_file: 'Curriculum vitæ',
   releve_bac1: 'Relevés année 1', releve_bac2: 'Relevés année 2',
 };
+
+const DISPLAY_DOCUMENT_LABELS: Record<string, string> = {
+  ...DOCUMENT_LABELS,
+  photo: 'Photo d’identité',
+  naissance: 'Acte de naissance',
+  acte_de_naissance: 'Acte de naissance',
+  carte_nationale_d_identite_ou_passeport: 'Carte d’identité ou passeport',
+  cni: 'Carte d’identité ou passeport',
+  nationalite: 'Certificat de nationalité ou pièce d’identité',
+  attestation_du_bac: 'Attestation du BAC',
+  releve_de_notes_du_bac: 'Relevé de notes du BAC',
+  diplome: 'Dernier diplôme',
+  attestation_diplome: 'Attestation de diplôme',
+  cv: 'Curriculum vitæ',
+  certificat_medical: 'Certificat médical',
+  lettre_de_motivation: 'Lettre de motivation',
+};
+
+export function formatDocumentLabel(key: string): string {
+  if (DISPLAY_DOCUMENT_LABELS[key]) return DISPLAY_DOCUMENT_LABELS[key];
+  const cleaned = String(key || '').replace(/_file$/, '').replaceAll('_', ' ').trim();
+  return cleaned ? cleaned.charAt(0).toUpperCase() + cleaned.slice(1) : 'Pièce jointe';
+}
+
+export function cleanCandidatePhone(value: unknown): string {
+  const raw = String(value ?? '').trim();
+  const digits = raw.replace(/\D/g, '');
+  return digits.length >= 6 ? raw : '';
+}
+
+function formatCandidateDate(value: unknown): string {
+  const raw = String(value ?? '').trim();
+  if (!raw) return '';
+  const match = raw.match(/^(\d{4})-(\d{2})-(\d{2})/);
+  if (match) return `${match[3]}/${match[2]}/${match[1]}`;
+  return raw;
+}
+
+export function formatCandidateIdentity(identity: Record<string, unknown>): Array<{ label: string; value: string }> {
+  const genreRaw = String(identity.genre ?? '').trim();
+  const genre = genreRaw === 'M' ? 'Masculin' : genreRaw === 'F' ? 'Féminin' : genreRaw;
+  const entries: Array<[string, string]> = [
+    ['Prénom', String(identity.prenom ?? '').trim()],
+    ['Nom', String(identity.nom ?? '').trim()],
+    ['Nom de naissance', String(identity.nom_jeune_fille ?? '').trim()],
+    ['Genre', genre],
+    ['Date de naissance', formatCandidateDate(identity.date_naissance)],
+    ['Lieu de naissance', String(identity.lieu_naissance ?? '').trim()],
+    ['Nationalité', String(identity.nationalite ?? '').trim()],
+    ['Email', String(identity.email ?? '').trim()],
+    ['Téléphone', cleanCandidatePhone(identity.tel)],
+    ['Téléphone secondaire', cleanCandidatePhone(identity.tel2)],
+    ['Autre téléphone', cleanCandidatePhone(identity.tel3)],
+    ['Adresse', String(identity.adresse ?? '').trim()],
+    ['Numéro de bordereau', String(identity.numero_bordereau ?? '').trim()],
+  ];
+  return entries.filter(([, value]) => Boolean(value)).map(([label, value]) => ({ label, value }));
+}
+
+export function formatCandidateGuardians(guardians: Array<Record<string, unknown>>): Array<{ name: string; details: string }> {
+  return (guardians || []).map(guardian => {
+    const name = [String(guardian.prenom ?? '').trim(), String(guardian.nom ?? '').trim()].filter(Boolean).join(' ').trim();
+    const details = [
+      String(guardian.lien ?? '').trim(),
+      String(guardian.profession ?? '').trim(),
+      cleanCandidatePhone(guardian.tel),
+      String(guardian.email ?? '').trim(),
+      String(guardian.adresse ?? '').trim(),
+    ].filter(Boolean).join(' · ');
+    return { name, details };
+  }).filter(item => Boolean(item.name || item.details));
+}
 const short = z.string().trim().max(200);
 const optional = short.optional().default('');
 export const identitySchema = z.object({

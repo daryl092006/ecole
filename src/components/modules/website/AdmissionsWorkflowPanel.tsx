@@ -7,7 +7,7 @@ import { admissionsOperation, downloadAdmissionLetter, downloadAdmissionDocument
 import { APPLICATION_STAGES, type AdmissionAction, type AdmissionApplication, type AdmissionsContext } from '@/types/admissions';
 import { admissionsJourney, ADMISSIONS_STEPS } from '@/services/admissionsJourney';
 import { ADMISSION_ACTIONS, stageLabel } from '@/services/admissionsService';
-import { DOCUMENT_LABELS } from '@/services/websiteService';
+import { formatCandidateGuardians, formatCandidateIdentity, formatDocumentLabel } from '@/services/websiteService';
 import ApplicationIntakeForm, { type IntakeInput } from './ApplicationIntakeForm';
 import OnlineAdmissionsPanel from './OnlineAdmissionsPanel';
 import WorkPage from '@/components/ui/WorkPage';
@@ -54,13 +54,20 @@ export default function AdmissionsWorkflowPanel() {
     void refresh(controller.signal).catch(error => { if (!controller.signal.aborted) { setLegacy(error instanceof RemoteRequestError && error.status === 403); setError(error.message); } }).finally(() => { if (!controller.signal.aborted) setLoading(false); });
     return () => controller.abort();
   }, [refresh, year, retry]);
-  function chooseAction(value: AdmissionAction) { setAction(value); setReason(''); setChecks([]); setIdentityChecked(false); setGuardiansChecked(false); setAmount(String(Math.max(0,Number(selected?.registration_fee_due || 0)-Number(selected?.registration_fee_paid || 0)))); setReference(''); setPaymentId(''); setChannel(''); setStudent(selected?.legacy_student_id || ''); setMatricule(''); setError(''); }
+  function chooseAction(value: AdmissionAction) {
+    const requiresReason = ['incomplete', 'request_changes', 'refuse', 'reverse_payment'].includes(value);
+    setAction(value);
+    setReason(requiresReason ? '' : ADMISSION_ACTIONS[value].label);
+    setChecks([]); setIdentityChecked(false); setGuardiansChecked(false);
+    setAmount(String(Math.max(0, Number(selected?.registration_fee_due || 0) - Number(selected?.registration_fee_paid || 0))));
+    setReference(''); setPaymentId(''); setChannel(''); setStudent(selected?.legacy_student_id || ''); setMatricule(''); setError('');
+  }
   useEffect(() => { if (action) document.getElementById('admissions-action-form')?.scrollIntoView({ behavior: 'smooth', block: 'start' }); }, [action]);
   async function saved() { await Promise.all([portal.refreshCampus(),refresh()]); window.dispatchEvent(new Event('escen:admissions-changed')); }
   async function command() {
     if (!selected || !action) return; setBusy(true); setError('');
     try {
-      const payload: Record<string, unknown> = { action, id: selected.id, version: selected.version, reason };
+      const payload: Record<string, unknown> = { action, id: selected.id, version: selected.version, reason: reason.trim() || ADMISSION_ACTIONS[action].label };
       if (action === 'complete') Object.assign(payload, { checked_documents: checks, identity_checked: identityChecked, guardians_checked: guardiansChecked });
       if (action === 'confirm_payment') Object.assign(payload, { amount: Number(amount), reference, channel_id: channel });
       if (action === 'reverse_payment') payload.payment_id = paymentId;
@@ -80,14 +87,15 @@ export default function AdmissionsWorkflowPanel() {
   const journey = selected ? admissionsJourney(selected) : null;
   const listed = data.applications.filter(item => (!onlyMine || canProgress(item)) && (!filter || (filter === 'HISTORIQUE' ? !item.workflow_stage && item.status !== 'BROUILLON' : filter === 'BROUILLONS' ? !item.workflow_stage && item.status === 'BROUILLON' : filter === 'A_COMPLETER' ? ['INCOMPLET','A_COMPLETER'].includes(item.workflow_stage || '') : filter === 'ATTENTE_PAIEMENT' ? ['ADMISSIBLE','ATTENTE_PAIEMENT'].includes(item.workflow_stage || '') : item.workflow_stage === filter)) && `${item.identity.nom} ${item.identity.prenom} ${item.identity.email} ${item.reference}`.toLocaleLowerCase('fr').includes(search.toLocaleLowerCase('fr')));
   const actionable = selected ? (Object.entries(ADMISSION_ACTIONS) as [AdmissionAction, typeof ADMISSION_ACTIONS[AdmissionAction]][]).filter(([key, value]) => data.capabilities[value.capability] && value.from.includes(selected.workflow_stage) && (key !== 'create_student' || !selected.student_id) && (key !== 'review' || selected.status !== 'BROUILLON')) : [];
+  const identityRows = selected ? formatCandidateIdentity(selected.identity) : [];
+  const guardianRows = selected ? formatCandidateGuardians(selected.guardians) : [];
+  const needsActionReason = Boolean(action && ['incomplete', 'request_changes', 'refuse', 'reverse_payment'].includes(action));
   return <div className="domain-workspace workspace-stack">
     <div className="page-intro"><div><h1>Candidatures</h1><p>Suivez chaque dossier, identifiez le responsable et effectuez la prochaine action.</p></div><div className="btn-group"><button className="btn btn-outline" disabled={busy} onClick={() => { void refresh().catch(error => setError(error.message)); }}>Actualiser les dossiers</button>{data.capabilities.review && year && <button className="btn btn-primary" onClick={() => { setError(''); setCreateToken(newToken()); }}>Saisir une candidature à ESCEN</button>}</div></div>
     {error && !selected && !createToken && <p role="alert" className="restricted-box">{error}</p>}{success && <p role="status" className="success-message">{success}</p>}
     {!data.mail_configured && <p className="restricted-box" role="status">Les mails sont conservés dans la file d’envoi. Le service d’envoi doit être configuré pour les transmettre.</p>}
-    <section className="card admissions-work-guide"><h2>Qui fait quoi ?</h2><p><strong>Chargé de clientèle :</strong> réception, contrôle des pièces, compléments, transmission, règlement et création du dossier étudiant.</p><p><strong>Direction académique :</strong> étude, admissibilité ou refus. <strong>Candidat :</strong> dépôt et compléments depuis son espace personnel.</p><label className="candidate-consent"><input type="checkbox" checked={onlyMine} onChange={event => setOnlyMine(event.target.checked)} />Afficher uniquement les dossiers que je peux faire avancer ({data.applications.filter(canProgress).length})</label></section>
     <div className="admissions-summary" aria-label="Suivi des candidatures">{[['','Tous les dossiers'],['HISTORIQUE','Historiques à vérifier'],['BROUILLONS','Brouillons non soumis'],['NOUVELLE','Nouvelles'],['A_COMPLETER','À compléter'],['TRANSMIS_ACADEMIE','Pour l’académie'],['ATTENTE_PAIEMENT','Paiement attendu'],['ADMIS_OFFICIEL','Admissions officielles']].map(([stage,label]) => <button className="card" key={stage} onClick={() => setFilter(filter === stage ? '' : stage)} aria-pressed={filter === stage}><strong>{data.applications.filter(item => stage === '' || (stage === 'HISTORIQUE' && !item.workflow_stage && item.status !== 'BROUILLON') || (stage === 'BROUILLONS' && !item.workflow_stage && item.status === 'BROUILLON') || item.workflow_stage === stage || (stage === 'A_COMPLETER' && item.workflow_stage === 'INCOMPLET') || (stage === 'ATTENTE_PAIEMENT' && item.workflow_stage === 'ADMISSIBLE')).length}</strong><span>{label}</span></button>)}</div>
-    <p className="cell-sub">Les dossiers historiques et les brouillons sont comptés séparément des étapes du circuit. Les autres étapes restent accessibles dans le filtre Statut.</p>
-    <section className="card"><div className="card-header"><h2>Dossiers de candidature</h2><span>{listed.length} dossier(s)</span></div><div className="form-grid"><label className="form-group">Rechercher un dossier<input className="input" type="search" placeholder="Nom, email ou référence" value={search} onChange={event => setSearch(event.target.value)} /></label><label className="form-group">Statut<select className="select-input" value={filter} onChange={event => setFilter(event.target.value)}><option value="">Tous les dossiers</option>{Object.entries(APPLICATION_STAGES).map(([key,label]) => <option key={key} value={key}>{label}</option>)}<option value="HISTORIQUE">Historiques à vérifier</option><option value="BROUILLONS">Brouillons non soumis</option></select></label></div>
+    <section className="card"><div className="card-header"><h2>Dossiers de candidature</h2><span>{listed.length} dossier(s)</span></div><div className="form-grid"><label className="form-group">Rechercher un dossier<input className="input" type="search" placeholder="Nom, email ou référence" value={search} onChange={event => setSearch(event.target.value)} /></label><label className="form-group">Statut<select className="select-input" value={filter} onChange={event => setFilter(event.target.value)}><option value="">Tous les dossiers</option>{Object.entries(APPLICATION_STAGES).map(([key,label]) => <option key={key} value={key}>{label}</option>)}<option value="HISTORIQUE">Historiques à vérifier</option><option value="BROUILLONS">Brouillons non soumis</option></select></label></div><label className="candidate-consent" style={{ marginBottom: '0.75rem', display: 'inline-flex' }}><input type="checkbox" checked={onlyMine} onChange={event => setOnlyMine(event.target.checked)} />Afficher uniquement les dossiers que je peux faire avancer ({data.applications.filter(canProgress).length})</label>
       {listed.length ? <div className="table-wrap"><ResponsiveTable className="data-table"><thead><tr><th>Candidat</th><th>Référence</th><th>Formation</th><th>Origine</th><th>Étape et responsable</th><th>Actions</th></tr></thead><tbody>{listed.map(item => <tr key={item.id}><td><strong>{item.identity.prenom} {item.identity.nom}</strong><div className="cell-sub">{item.identity.email}</div></td><td>{item.reference}</td><td>{item.intake_label || (item.legacy_state?.program_unresolved ? 'Filière à vérifier' : 'Formation non renseignée')}</td><td>{item.entry_channel === 'ACCUEIL' ? 'Accueil ESCEN' : 'Site web'}</td><td><span className={`pill admission-status admission-status--${stageTone(item)}`}>{stageLabel(item)}</span><div className="cell-sub">{admissionsJourney(item).owner}</div></td><td><IconButton label="Ouvrir le dossier" className="btn btn-outline" onClick={() => { setSelected(item); setAction(''); setError(''); setSuccess(''); }} /></td></tr>)}</tbody></ResponsiveTable></div> : <div className="empty-state"><strong>Aucune candidature pour ce filtre</strong><span>Les demandes en ligne et saisies à ESCEN suivent le même circuit.</span></div>}
     </section>
     {createToken && <WorkPage title="Saisir une candidature à ESCEN" busy={busy} onClose={() => setCreateToken('')}><ApplicationIntakeForm intakes={data.intakes} busy={busy} error={error} onSave={create} title="Confirmer la candidature saisie à ESCEN" /></WorkPage>}
@@ -126,32 +134,68 @@ export default function AdmissionsWorkflowPanel() {
               </div>
             );
           })()}
-          <p className="cell-sub">Choisissez une action, renseignez les informations demandées, puis relisez et confirmez. Le dossier reste ouvert et affiche ensuite sa nouvelle étape.</p>
         </section>}
+      </section>
       {enrollingMatricule && <EnrollmentDialog kind="auto" initialMatricule={enrollingMatricule} onClose={() => { setEnrollingMatricule(null); void saved(); }} />}
-      {action && <section id="admissions-action-form" className="card admissions-action-form"><button type="button" className="btn btn-outline" disabled={busy} onClick={() => setAction('')}>Annuler cette action</button><h2>{ADMISSION_ACTIONS[action].label}</h2><ReviewedForm key={`${selected.id}:${selected.version}:${action}`} busy={busy} error={error} confirmLabel={`Confirmer : ${ADMISSION_ACTIONS[action].label.toLocaleLowerCase('fr')}`} validate={() => reason.trim().length < 3 ? 'Saisissez un motif précis.' : action === 'complete' && (!identityChecked || !guardiansChecked) ? 'Confirmez les contrôles des informations et des tuteurs.' : null}
-        fields={[{label:'Candidat',value:`${selected.identity.prenom} ${selected.identity.nom}`},{label:'Action',value:ADMISSION_ACTIONS[action].label},{label:'Étape du dossier',previous:stageLabel(selected),value:ACTION_RESULTS[action]},{label:'Motif',value:reason},
+      {action && <section id="admissions-action-form" className="card admissions-action-form"><button type="button" className="btn btn-outline" disabled={busy} onClick={() => setAction('')}>Annuler cette action</button><h2>{ADMISSION_ACTIONS[action].label}</h2><ReviewedForm key={`${selected.id}:${selected.version}:${action}`} busy={busy} error={error} confirmLabel={`Confirmer : ${ADMISSION_ACTIONS[action].label.toLocaleLowerCase('fr')}`} validate={() => needsActionReason && reason.trim().length < 3 ? 'Saisissez un motif précis.' : action === 'complete' && (!identityChecked || !guardiansChecked) ? 'Confirmez les contrôles des informations et des tuteurs.' : null}
+        fields={[{label:'Candidat',value:`${selected.identity.prenom} ${selected.identity.nom}`},{label:'Action',value:ADMISSION_ACTIONS[action].label},{label:'Étape du dossier',previous:stageLabel(selected),value:ACTION_RESULTS[action]},...(needsActionReason ? [{label:'Motif',value:reason}] : []),
           ...(action === 'confirm_payment' ? [{label:'Montant confirmé',value:`${Number(amount).toLocaleString('fr-FR')} FCFA`},{label:'Référence',value:reference},{label:'Moyen de paiement',value:data.payment_channels.find(item => item.id === channel)?.name || ''}] : []),
           ...(action === 'complete' ? [{label:'Pièces contrôlées',value:checks.map(id => selected.documents.find(doc => doc.id === id)?.filename || '').join(', ')}] : []),
           ...(action === 'create_student' ? [{label:'Matricule',value:matricule},{label:'Dossier étudiant',value:student ? 'Dossier existant sélectionné explicitement' : 'Nouveau dossier'}] : [])]}
         consequence={action === 'confirm_payment' ? 'Confirmez uniquement un règlement effectivement reçu. L’admission devient officielle lorsque la totalité des frais d’inscription est confirmée.' : action === 'reverse_payment' ? 'Une contre-opération motivée sera conservée. Le dossier reviendra en attente de paiement ; l’identité étudiante existante sera conservée.' : action === 'transmit' ? 'Le dossier complet sera transmis à l’académie. Le candidat et l’académie seront informés.' : action === 'admissible' ? 'Une lettre d’admissibilité sera créée et mise en envoi, sous réserve du règlement des frais d’inscription. Cette décision ne confirme aucun paiement.' : action === 'refuse' ? 'La décision de refus et sa lettre seront conservées et communiquées au candidat.' : 'L’action sera enregistrée dans l’historique et les notifications prévues seront préparées.'} onConfirm={() => void command()}>
-        {action === 'complete' && <><label className="candidate-consent"><input type="checkbox" checked={identityChecked} onChange={event => setIdentityChecked(event.target.checked)} />Informations personnelles vérifiées</label><label className="candidate-consent"><input type="checkbox" checked={guardiansChecked} onChange={event => setGuardiansChecked(event.target.checked)} />Parents ou tuteurs vérifiés</label><p>Pièces demandées : {selected.required_documents.map(key => DOCUMENT_LABELS[key] || key).join(', ') || 'aucune pièce imposée par la formation.'}</p>{selected.documents.map(doc => <label className="candidate-consent" key={doc.id}><input type="checkbox" checked={checks.includes(doc.id)} onChange={event => setChecks(values => event.target.checked ? [...values,doc.id] : values.filter(id => id !== doc.id))} />Pièce vérifiée : {doc.filename}</label>)}</>}
+        {action === 'complete' && <><label className="candidate-consent"><input type="checkbox" checked={identityChecked} onChange={event => setIdentityChecked(event.target.checked)} />Informations personnelles vérifiées</label><label className="candidate-consent"><input type="checkbox" checked={guardiansChecked} onChange={event => setGuardiansChecked(event.target.checked)} />Parents ou tuteurs vérifiés</label><p>Pièces demandées : {selected.required_documents.map(key => formatDocumentLabel(key)).join(', ') || 'aucune pièce imposée par la formation.'}</p>{selected.documents.map(doc => <label className="candidate-consent" key={doc.id}><input type="checkbox" checked={checks.includes(doc.id)} onChange={event => setChecks(values => event.target.checked ? [...values,doc.id] : values.filter(id => id !== doc.id))} />Pièce vérifiée : {doc.filename}</label>)}</>}
         {action === 'confirm_payment' && <div className="form-grid"><label className="form-group">Montant reçu en FCFA<input type="number" className="input" min="1" step="1" max={Math.max(0,Number(selected.registration_fee_due)-Number(selected.registration_fee_paid))} required value={amount} onChange={event => setAmount(event.target.value)} /></label><label className="form-group">Moyen de paiement<select className="select-input" required value={channel} onChange={event => setChannel(event.target.value)}><option value="">Choisir</option>{data.payment_channels.map(item => <option key={item.id} value={item.id}>{item.name}</option>)}</select></label><label className="form-group">Référence du règlement ou reçu<input className="input" required minLength={3} maxLength={160} value={reference} onChange={event => setReference(event.target.value)} /></label></div>}
         {action === 'reverse_payment' && <label className="form-group">Confirmation à annuler<select className="select-input" required value={paymentId} onChange={event => setPaymentId(event.target.value)}><option value="">Choisir</option>{selected.registration_payments.filter(item => item.kind === 'PAYMENT' && !selected.registration_payments.some(reversal => reversal.reversal_of === item.id)).map(item => <option key={item.id} value={item.id}>{item.reference} · {Number(item.amount).toLocaleString('fr-FR')} FCFA</option>)}</select></label>}
         {action === 'create_student' && <div className="form-grid"><label className="form-group">Dossier existant<select className="select-input" value={student} onChange={event => { setStudent(event.target.value); const row = (portal.relationalSnapshot.tables.students || []).find(item => item.id === event.target.value); setMatricule(String(row?.matricule || '')); }}><option value="">Créer un nouveau dossier</option>{(portal.relationalSnapshot.tables.students || []).map(item => <option value={item.id} key={item.id}>{String(item.matricule)}</option>)}</select></label><label className="form-group">Matricule<input className="input" required maxLength={160} value={matricule} onChange={event => setMatricule(event.target.value)} /></label></div>}
-        <label className="form-group">{['incomplete','request_changes'].includes(action) ? 'Informations ou pièces à compléter' : 'Motif de l’action'}<textarea className="input" required minLength={3} maxLength={1000} value={reason} onChange={event => setReason(event.target.value)} /></label><button type="submit" className="btn btn-primary">Relire avant de confirmer</button>
+        {needsActionReason && <label className="form-group">{['incomplete','request_changes'].includes(action) ? 'Informations ou pièces à compléter' : 'Motif de l’action'}<textarea className="input" required minLength={3} maxLength={1000} value={reason} onChange={event => setReason(event.target.value)} /></label>}<button type="submit" className="btn btn-primary">Relire avant de confirmer</button>
       </ReviewedForm></section>}
 
+      <section className="card">
         <h3>Informations du candidat</h3>
-        <dl className="review-values">{Object.entries(selected.identity).filter(([,value]) => value).map(([key,value]) => <div key={key}><dt>{({nom:'Nom',prenom:'Prénom',email:'Email',tel:'Téléphone',adresse:'Adresse',date_naissance:'Date de naissance'} as Record<string,string>)[key] || key.replaceAll('_',' ')}</dt><dd>{value}</dd></div>)}</dl>
-        <h3>Parents ou tuteurs</h3>{selected.guardians.map((guardian,index) => <p key={index}>{guardian.prenom} {guardian.nom} · {guardian.lien} · {guardian.tel} · {guardian.email}</p>)}
-        <h3>Pièces du dossier</h3>{selected.documents.map(doc => <p key={doc.id}>{DOCUMENT_LABELS[doc.document_key] || doc.document_key} · {doc.filename} <IconButton label={`Télécharger ${doc.filename}`} className="btn btn-outline" onClick={() => { void downloadAdmissionDocument(doc.id,role).catch(error => setError(error.message)); }} /></p>)}
-        {selected.registration_fee_due !== null && <p>Frais d’inscription : {Number(selected.registration_fee_due).toLocaleString('fr-FR')} FCFA · Confirmé : {Number(selected.registration_fee_paid).toLocaleString('fr-FR')} FCFA.</p>}
+        <dl className="record-details-grid">{identityRows.map(item => <div key={item.label}><dt>{item.label}</dt><dd>{item.value}</dd></div>)}</dl>
+        <h3 style={{ marginTop: '1.25rem' }}>Parents ou tuteurs</h3>
+        {guardianRows.length ? <dl className="record-details-grid">{guardianRows.map((guardian, index) => <div key={index}><dt>{guardian.name || `Parent / tuteur ${index + 1}`}</dt><dd>{guardian.details || 'Coordonnées non renseignées'}</dd></div>)}</dl> : <p className="cell-sub">Aucun parent ou tuteur renseigné.</p>}
       </section>
+
+      <section className="card">
+        <h3>Pièces du dossier ({selected.documents.length})</h3>
+        {selected.documents.length ? (
+          <div className="workspace-stack" style={{ gap: '0.5rem' }}>
+            {selected.documents.map(doc => (
+              <div key={doc.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '0.75rem', padding: '0.625rem 0.75rem', border: '1px solid var(--border-subtle, rgba(148,163,184,0.25))', borderRadius: '8px' }}>
+                <div>
+                  <strong>{formatDocumentLabel(doc.document_key)}</strong>
+                  <div className="cell-sub">{doc.filename}</div>
+                </div>
+                <button type="button" aria-label={`Télécharger ${doc.filename}`} className="btn btn-sm btn-outline" onClick={() => { void downloadAdmissionDocument(doc.id, role).catch(error => setError(error.message)); }}>
+                  Télécharger
+                </button>
+              </div>
+            ))}
+          </div>
+        ) : <p className="cell-sub">Aucune pièce déposée dans ce dossier.</p>}
+      </section>
+
       {error && !action && <p role="alert" className="restricted-box">{error}</p>}
-      <section className="card"><h2>Historique des actions</h2><ol className="candidate-history">{selected.events.map(event => <li key={event.id}><strong>{event.to_stage ? APPLICATION_STAGES[event.to_stage] : 'Historique'} · {new Date(event.created_at).toLocaleString('fr-FR')}</strong><p>{event.reason}</p></li>)}</ol></section>
-      <section className="card"><h2>Courriers</h2>{selected.letters.length ? selected.letters.map(letter => <p key={letter.id}>{letter.kind} · {letter.reference} <IconButton label={`Télécharger ${letter.reference}`} className="btn btn-outline" onClick={() => { void downloadAdmissionLetter(letter.id,letter.reference,role).catch(error => setError(error.message)); }} /></p>) : <p>Aucun courrier généré.</p>}</section>
-      <section className="card"><h2>Confirmations des frais d’inscription</h2>{selected.registration_payments.map(item => <p key={item.id}>{item.kind === 'REVERSAL' ? 'Annulation' : 'Règlement confirmé'} · {item.reference} · {Number(item.amount).toLocaleString('fr-FR')} FCFA</p>)}</section>
+
+      {(selected.registration_fee_due !== null || selected.registration_payments.length > 0) && (
+        <section className="card">
+          <h3>Frais d’inscription</h3>
+          {selected.registration_fee_due !== null && <p>Montant attendu : <strong>{Number(selected.registration_fee_due).toLocaleString('fr-FR')} FCFA</strong> · Confirmé : <strong>{Number(selected.registration_fee_paid).toLocaleString('fr-FR')} FCFA</strong></p>}
+          {selected.registration_payments.length ? selected.registration_payments.map(item => <p key={item.id}>{item.kind === 'REVERSAL' ? 'Annulation' : 'Règlement confirmé'} · {item.reference} · {Number(item.amount).toLocaleString('fr-FR')} FCFA</p>) : <p className="cell-sub">Aucun règlement confirmé pour le moment.</p>}
+        </section>
+      )}
+
+      {(selected.events.length > 0 || selected.letters.length > 0) && (
+        <section className="card">
+          {selected.letters.length > 0 && <>
+            <h3>Courriers</h3>
+            {selected.letters.map(letter => <p key={letter.id}>{letter.kind} · {letter.reference} <IconButton label={`Télécharger ${letter.reference}`} className="btn btn-sm btn-outline" onClick={() => { void downloadAdmissionLetter(letter.id,letter.reference,role).catch(error => setError(error.message)); }} /></p>)}
+          </>}
+          <h3>Historique des actions</h3>
+          <ol className="candidate-history">{selected.events.map(event => <li key={event.id}><strong>{event.to_stage ? APPLICATION_STAGES[event.to_stage] : 'Historique'} · {new Date(event.created_at).toLocaleString('fr-FR')}</strong><p>{event.reason}</p></li>)}</ol>
+        </section>
+      )}
     </div></WorkPage>}
   </div>;
 }

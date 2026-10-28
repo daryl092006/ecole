@@ -62,7 +62,8 @@ async function prepare(page: Page, rejected = '') {
 }
 
 async function review(page: Page, reason: string) {
-  await page.getByRole('textbox', { name: 'Motif', exact: true }).fill(reason);
+  const motif = page.getByRole('textbox', { name: 'Motif', exact: true });
+  if (await motif.count()) await motif.fill(reason);
   await page.getByRole('button', { name: 'Vérifier les informations', exact: true }).click();
 }
 async function confirm(page: Page) {

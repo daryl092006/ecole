@@ -7,7 +7,7 @@ import LoadingState from '@/components/ui/LoadingState';
 import { useEffect, useState, type ReactNode } from 'react';
 import { usePortal } from '@/hooks/usePortal';
 import { downloadApplicationDocument, loadWebsiteData, saveWebsiteData, createStudentRecord } from '@/services/remoteCampusService';
-import { DOCUMENT_LABELS } from '@/services/websiteService';
+import { DOCUMENT_LABELS, formatCandidateGuardians, formatCandidateIdentity, formatDocumentLabel } from '@/services/websiteService';
 import type { OnlineApplication, WebsiteIntake, WebsiteManagement } from '@/types/website';
 import WorkPage from '@/components/ui/WorkPage';
 import FormFeedback from '@/components/ui/FormFeedback';
@@ -384,29 +384,13 @@ export default function OnlineAdmissionsPanel({
                 )}
 
                 <h3>Identité et coordonnées</h3>
-                <dl>
-                  {Object.entries(selected.identity)
-                    .filter(([, value]) => value)
-                    .map(([key, value]) => (
-                      <div key={key}>
-                        <dt>
-                          {({
-                            nom: 'Nom',
-                            prenom: 'Prénom',
-                            genre: 'Sexe',
-                            date_naissance: 'Date de naissance',
-                            lieu_naissance: 'Lieu de naissance',
-                            nationalite: 'Nationalité',
-                            email: 'Email',
-                            tel: 'Téléphone',
-                            tel2: 'Autre téléphone',
-                            tel3: 'Autre téléphone',
-                            nom_jeune_fille: 'Nom de naissance',
-                          } as Record<string, string>)[key] || key.replaceAll('_', ' ')}
-                        </dt>
-                        <dd>{String(value)}</dd>
-                      </div>
-                    ))}
+                <dl className="record-details-grid">
+                  {formatCandidateIdentity(selected.identity).map(item => (
+                    <div key={item.label}>
+                      <dt>{item.label}</dt>
+                      <dd>{item.value}</dd>
+                    </div>
+                  ))}
                 </dl>
 
                 <h3>Diplôme déclaré</h3>
@@ -419,16 +403,16 @@ export default function OnlineAdmissionsPanel({
                   ))}
 
                 <h3>Parents ou tuteurs</h3>
-                {selected.guardians.map((guardian, index) => (
+                {formatCandidateGuardians(selected.guardians).length ? formatCandidateGuardians(selected.guardians).map((guardian, index) => (
                   <p key={index}>
-                    {guardian.prenom} {guardian.nom} · {guardian.tel} · {guardian.email}
+                    {[guardian.name, guardian.details].filter(Boolean).join(' · ')}
                   </p>
-                ))}
+                )) : <p className="cell-sub">Aucun parent ou tuteur renseigné.</p>}
 
                 <h3>Pièces reçues</h3>
                 {selected.documents.map(doc => (
                   <p key={doc.id}>
-                    {DOCUMENT_LABELS[doc.document_key]} — {doc.filename}{' '}
+                    {formatDocumentLabel(doc.document_key)} — {doc.filename}{' '}
                     <button className="btn btn-outline btn-sm" onClick={() => void download(doc.id)}>
                       Télécharger {doc.filename}
                     </button>

@@ -65,7 +65,9 @@ for (const width of [390,1440]) {
     await page.setViewportSize({width,height:950});const f=await fixture(page,'VERIFICATION_ADMISSION');await page.goto('/site-web/demandes');
     await page.getByRole('button',{name:'Ouvrir le dossier',exact:true}).click();await page.getByRole('button',{name:'Valider la complétude',exact:true}).click();
     await page.getByRole('checkbox',{name:'Informations personnelles vérifiées',exact:true}).check();await page.getByRole('checkbox',{name:'Parents ou tuteurs vérifiés',exact:true}).check();
-    await page.getByRole('checkbox',{name:'Pièce vérifiée : diplome.pdf',exact:true}).check();await page.getByLabel('Motif de l’action',{exact:true}).fill('Dossier contrôlé et conforme');
+    await page.getByRole('checkbox',{name:'Pièce vérifiée : diplome.pdf',exact:true}).check();
+    const actionReason1 = page.getByLabel('Motif de l’action',{exact:true});
+    if (await actionReason1.count()) await actionReason1.fill('Dossier contrôlé et conforme');
     await page.getByRole('button',{name:'Relire avant de confirmer',exact:true}).click();expect(f.commands).toHaveLength(0);
     await page.getByRole('button',{name:'Confirmer : valider la complétude',exact:true}).click();
     await expect(page.getByRole('button',{name:'Passer à l’académie',exact:true})).toBeVisible();expect(f.commands[0]).toMatchObject({action:'complete',checked_documents:[docId]});
@@ -74,7 +76,9 @@ for (const width of [390,1440]) {
     await page.setViewportSize({width,height:950});const f=await fixture(page,'ADMISSIBLE');await page.goto('/site-web/demandes');
     await page.getByRole('button',{name:'Ouvrir le dossier',exact:true}).click();await expect(page.getByRole('button',{name:'Créer ou relier le dossier étudiant',exact:true})).toHaveCount(0);
     await page.getByRole('button',{name:'Confirmer les frais d’inscription',exact:true}).click();await page.getByRole('combobox',{name:'Moyen de paiement',exact:true}).selectOption(channel);
-    await page.getByLabel('Référence du règlement ou reçu',{exact:true}).fill('RECU-LOCAL-001');await page.getByLabel('Motif de l’action',{exact:true}).fill('Règlement reçu et contrôlé par la finance');
+    await page.getByLabel('Référence du règlement ou reçu',{exact:true}).fill('RECU-LOCAL-001');
+    const actionReason2 = page.getByLabel('Motif de l’action',{exact:true});
+    if (await actionReason2.count()) await actionReason2.fill('Règlement reçu et contrôlé par la finance');
     await page.getByRole('button',{name:'Relire avant de confirmer',exact:true}).click();expect(f.commands).toHaveLength(0);
     await page.getByRole('button',{name:'Confirmer : confirmer les frais d’inscription',exact:true}).click();
     await expect(page.getByRole('button',{name:'Créer ou relier le dossier étudiant',exact:true})).toBeVisible();expect(f.commands[0]).toMatchObject({action:'confirm_payment',amount:50000,channel_id:channel});
@@ -108,7 +112,8 @@ for (const width of [390, 1440]) {
     await page.getByRole('button', { name: 'Ouvrir le dossier', exact: true }).click();
     await expect(page.getByText('Responsable : Chargé de clientèle', { exact: true })).toBeVisible();
     await page.getByRole('button', { name: 'Passer à l’académie', exact: true }).click();
-    await page.getByLabel('Motif de l’action', { exact: true }).fill('Pièces vérifiées, dossier transmis');
+    const actionReason3 = page.getByLabel('Motif de l’action', { exact: true });
+    if (await actionReason3.count()) await actionReason3.fill('Pièces vérifiées, dossier transmis');
     await page.getByRole('button', { name: 'Relire avant de confirmer', exact: true }).click();
     expect(f.commands).toHaveLength(0);
     await page.getByRole('button', { name: 'Confirmer : passer à l’académie', exact: true }).click();

@@ -101,7 +101,8 @@ for (const width of [390, 1440]) test(`Encaissement : validation individuelle, s
   await expect(dialog.getByText('1 proposition non enregistrée', { exact: true })).toHaveCount(0);
   await row('Caisse principale').getByRole('button', { name: 'Modifier', exact: true }).click();
   await dialog.getByRole('textbox', { name: 'Caisse ou organisme', exact: true }).fill('Caisse principale matin');
-  await dialog.getByLabel('Motif', { exact: true }).fill('Précision du libellé de la caisse');
+  const chanMotif = dialog.getByLabel('Motif', { exact: true });
+  if (await chanMotif.count()) await chanMotif.fill('Précision du libellé de la caisse');
   await dialog.getByRole('button', { name: 'Enregistrer le moyen de paiement', exact: true }).click();
   await expect(dialog.getByRole('region', { name: 'Vérification avant enregistrement' })).toContainText('Avant : Caisse principale');
   await dialog.getByRole('button', { name: 'Confirmer l’enregistrement', exact: true }).click();

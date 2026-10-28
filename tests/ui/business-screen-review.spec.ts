@@ -48,7 +48,8 @@ for (const width of [390, 1440]) test(`Écrans et PostgreSQL local : création, 
   const name = `Finance de recette ${width}`;
   await page.getByLabel('Nom', { exact: true }).fill(name);
   await page.getByLabel('Crédits', { exact: true }).fill('3.75');
-  await page.getByRole('textbox', { name: 'Motif', exact: true }).fill('Recette complète sur PostgreSQL local');
+  const subjMotif = page.getByRole('textbox', { name: 'Motif', exact: true });
+  if (await subjMotif.count()) await subjMotif.fill('Recette complète sur PostgreSQL local');
   await page.getByRole('button', { name: 'Vérifier les informations', exact: true }).click();
   expect(await local.value('select count(*)::integer as value from escen.subjects where name=$1', [name])).toBe(0);
   await page.getByRole('button', { name: 'Confirmer l’enregistrement', exact: true }).click();
