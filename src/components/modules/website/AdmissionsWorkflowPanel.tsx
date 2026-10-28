@@ -1,6 +1,8 @@
 'use client';
 import { useCallback, useEffect, useState } from 'react';
+import Link from 'next/link';
 import { usePortal } from '@/hooks/usePortal';
+import EnrollmentDialog from '../EnrollmentDialog';
 import { admissionsOperation, downloadAdmissionLetter, downloadAdmissionDocument, RemoteRequestError } from '@/services/remoteCampusService';
 import { APPLICATION_STAGES, type AdmissionAction, type AdmissionApplication, type AdmissionsContext } from '@/types/admissions';
 import { admissionsJourney, ADMISSIONS_STEPS } from '@/services/admissionsJourney';
@@ -41,6 +43,7 @@ export default function AdmissionsWorkflowPanel() {
   const [identityChecked, setIdentityChecked] = useState(false); const [guardiansChecked, setGuardiansChecked] = useState(false);
   const [amount, setAmount] = useState(''); const [reference, setReference] = useState(''); const [channel, setChannel] = useState(''); const [paymentId, setPaymentId] = useState('');
   const [matricule, setMatricule] = useState(''); const [student, setStudent] = useState(''); const [createToken, setCreateToken] = useState('');
+  const [enrollingMatricule, setEnrollingMatricule] = useState<string | null>(null);
   const refresh = useCallback(async (signal?: AbortSignal) => {
     const value = await admissionsOperation(role, undefined, signal) as AdmissionsContext;
     if (signal?.aborted) return; setData(value); setLegacy(!value.enabled);
@@ -104,8 +107,28 @@ export default function AdmissionsWorkflowPanel() {
           {year && actionable.some(([key]) => key === journey.primary) && journey.primary && <div className="admission-next-action"><button className="btn btn-primary" disabled={busy} onClick={() => chooseAction(journey.primary!)}>{ADMISSION_ACTIONS[journey.primary].label}</button><p>Après confirmation : {ACTION_RESULTS[journey.primary]}.</p></div>}
           {year && <div className="btn-group">{actionable.filter(([key]) => ['request_changes','refuse'].includes(key)).map(([key,value]) => <button key={key} className="btn btn-outline" disabled={busy} onClick={() => chooseAction(key)}>{value.label}</button>)}</div>}
           {year && actionable.some(([key]) => key !== journey.primary && !['acknowledge','await_payment','incomplete','request_changes','refuse'].includes(key)) && <details className="admissions-other-actions"><summary>Autres actions : compléments, décision ou correction</summary><div className="admission-actions">{actionable.filter(([key]) => key !== journey.primary && !['acknowledge','await_payment','incomplete','request_changes','refuse'].includes(key)).map(([key,value]) => <div className="admission-action" key={key}><button className="btn btn-outline" disabled={busy} onClick={() => chooseAction(key)}>{value.label}</button><p>Après confirmation : {ACTION_RESULTS[key]}.</p></div>)}</div></details>}
+          {selected.student_id && (() => {
+            const linked = (portal.relationalSnapshot.tables.students || []).find(item => item.id === selected.student_id);
+            const linkedMat = linked?.matricule ? String(linked.matricule) : '';
+            if (!linkedMat) return null;
+            return (
+              <div className="btn-group mt-2">
+                {portal.perms.permissions.includes('student.lifecycle.manage') && portal.perms.permissions.includes('payment.record') && (
+                  <button type="button" className="btn btn-primary" onClick={() => setEnrollingMatricule(linkedMat)}>
+                    Inscrire au groupe et créer le contrat ({linkedMat})
+                  </button>
+                )}
+                {portal.perms.permissions.includes('student.view') && (
+                  <Link className="btn btn-outline" href={`/etudiants/${encodeURIComponent(linkedMat)}`}>
+                    Ouvrir le dossier étudiant ({linkedMat})
+                  </Link>
+                )}
+              </div>
+            );
+          })()}
           <p className="cell-sub">Choisissez une action, renseignez les informations demandées, puis relisez et confirmez. Le dossier reste ouvert et affiche ensuite sa nouvelle étape.</p>
         </section>}
+      {enrollingMatricule && <EnrollmentDialog kind="auto" initialMatricule={enrollingMatricule} onClose={() => { setEnrollingMatricule(null); void saved(); }} />}
       {action && <section id="admissions-action-form" className="card admissions-action-form"><button type="button" className="btn btn-outline" disabled={busy} onClick={() => setAction('')}>Annuler cette action</button><h2>{ADMISSION_ACTIONS[action].label}</h2><ReviewedForm key={`${selected.id}:${selected.version}:${action}`} busy={busy} error={error} confirmLabel={`Confirmer : ${ADMISSION_ACTIONS[action].label.toLocaleLowerCase('fr')}`} validate={() => reason.trim().length < 3 ? 'Saisissez un motif précis.' : action === 'complete' && (!identityChecked || !guardiansChecked) ? 'Confirmez les contrôles des informations et des tuteurs.' : null}
         fields={[{label:'Candidat',value:`${selected.identity.prenom} ${selected.identity.nom}`},{label:'Action',value:ADMISSION_ACTIONS[action].label},{label:'Étape du dossier',previous:stageLabel(selected),value:ACTION_RESULTS[action]},{label:'Motif',value:reason},
           ...(action === 'confirm_payment' ? [{label:'Montant confirmé',value:`${Number(amount).toLocaleString('fr-FR')} FCFA`},{label:'Référence',value:reference},{label:'Moyen de paiement',value:data.payment_channels.find(item => item.id === channel)?.name || ''}] : []),

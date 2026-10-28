@@ -13,8 +13,10 @@ import ResponsiveTable from '@/components/ui/ResponsiveTable';
 
 export default function ReenrollmentWorkspace() {
   const [enrolling, setEnrolling] = useState(false);
+  const [enrollingMatricule, setEnrollingMatricule] = useState<string | undefined>(undefined);
   const [view, setView] = useState<'reenroll' | 'status'>('reenroll');
   const portal = usePortal();
+  const canReenroll = portal.perms.permissions.includes('student.lifecycle.manage') && portal.perms.permissions.includes('payment.record');
   const [selected, setSelected] = useState<string | null>(null);
   const [data, setData] = useState<ReenrollmentDirectory | null>(null);
   const [error, setError] = useState('');
@@ -34,12 +36,12 @@ export default function ReenrollmentWorkspace() {
   ) || [];
   return (
     <div>
-      {enrolling && <EnrollmentDialog kind="reenroll" onClose={() => { setEnrolling(false); setRetry(value => value + 1); }} />}
+      {enrolling && <EnrollmentDialog kind="reenroll" initialMatricule={enrollingMatricule} onClose={() => { setEnrolling(false); setEnrollingMatricule(undefined); setRetry(value => value + 1); }} />}
       {selected && <StudentRecordDialog initialSection="parcours" matricule={selected} onClose={() => setSelected(null)} />}
       <div className="page-intro">
         <h1>Réinscriptions</h1>
-        {portal.perms.permissions.includes('student.lifecycle.manage') && portal.perms.permissions.includes('payment.record') && (
-          <button className="btn btn-primary" onClick={() => setEnrolling(true)}>Réinscrire un ancien étudiant</button>
+        {canReenroll && (
+          <button className="btn btn-primary" onClick={() => { setEnrollingMatricule(undefined); setEnrolling(true); }}>Réinscrire un ancien étudiant</button>
         )}
       </div>
       <nav className="record-sections mb-2" aria-label="Parcours et statuts">
@@ -78,7 +80,16 @@ export default function ReenrollmentWorkspace() {
                       <td>{student.matricule}</td>
                       <td>{student.firstname} {student.lastname}</td>
                       <td>{data.previous!.name}</td>
-                      <td><IconButton className="btn btn-outline" onClick={() => setSelected(student.matricule)} label="Consulter le dossier" /></td>
+                      <td>
+                        <div className="btn-group">
+                          {canReenroll && (
+                            <button type="button" className="btn btn-sm btn-primary" onClick={() => { setEnrollingMatricule(student.matricule); setEnrolling(true); }}>
+                              Réinscrire
+                            </button>
+                          )}
+                          <IconButton className="btn btn-outline" onClick={() => setSelected(student.matricule)} label="Consulter le dossier" />
+                        </div>
+                      </td>
                     </tr>
                   ))}
                   {!rows.length && (
