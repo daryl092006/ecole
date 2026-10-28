@@ -11,9 +11,8 @@ Lorsque `ESCEN_FIRST_LOGIN_ENABLED=true`, un compte sans état de première conn
 terminé doit :
 
 1. Choisir un nouveau mot de passe sur `/mot-de-passe-modifier`.
-2. Vérifier ses nom, prénoms, email et téléphone sur `/premiere-connexion`.
-3. Confirmer ses informations ou décrire une erreur, puis confirmer le récapitulatif
-   avant d’accéder au tableau de bord.
+2. Vérifier ses informations administratives (nom, prénoms, filière d’inscription, date de naissance, email de connexion) et compléter ses coordonnées personnelles obligatoires (adresse géographique, email personnel, téléphone, date de naissance si manquante) sur `/premiere-connexion`.
+3. Confirmer l'exactitude des informations administratives ou signaler une erreur, puis valider le récapitulatif `ReviewedForm`. En cas de confirmation, les coordonnées personnelles saisies ou modifiées sont enregistrées de façon auditée dans `escen.people`. En cas d’erreur administrative, un signalement est créé dans le centre de support sans altérer les données officielles.
 
 Les API métier refusent les appels directs tant que l’étape requise n’est pas
 terminée. Aucune donnée métier n’est chargée dans le navigateur pendant ces étapes.

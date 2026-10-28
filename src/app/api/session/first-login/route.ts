@@ -9,12 +9,55 @@ import type { FirstLoginProfile } from '@/types/firstLogin';
 
 export const dynamic = 'force-dynamic';
 const reviewSchema = z.discriminatedUnion('decision', [
-  z.object({ decision: z.literal('CONFIRM'), snapshot: z.string().regex(/^[a-f\d]{64}$/) }).strict(),
-  z.object({ decision: z.literal('REPORT'), snapshot: z.string().regex(/^[a-f\d]{64}$/), details: z.string().trim().min(3).max(1000), yearId: z.uuid() }).strict(),
+  z.object({
+    decision: z.literal('CONFIRM'),
+    snapshot: z.string().regex(/^[a-f\d]{64}$/),
+    address: z.string().trim().max(255).optional(),
+    personalEmail: z.string().trim().email().max(255).optional().or(z.literal('')),
+    phone: z.string().trim().max(50).optional(),
+    birthDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional().or(z.literal('')),
+  }).strict(),
+  z.object({
+    decision: z.literal('REPORT'),
+    snapshot: z.string().regex(/^[a-f\d]{64}$/),
+    details: z.string().trim().min(3).max(1000),
+    yearId: z.uuid(),
+  }).strict(),
 ]);
-function ownProfile(auth: Awaited<ReturnType<typeof requireAccount>>) {
+async function ownProfile(auth: Awaited<ReturnType<typeof requireAccount>>) {
   const person = auth.profile.person;
-  const profile: FirstLoginProfile = { firstname: person.firstname, lastname: person.lastname, email: person.email || auth.email, phone: person.phone || '' };
+  let programName: string | null = null;
+  if (auth.context.studentId) {
+    try {
+      const result = await auth.client.rpc('escen_backend_snapshot');
+      if (result.data?.tables) {
+        const tables = result.data.tables;
+        const enrollment = (tables.enrollments || []).find((e: { student_id: string; archived_at?: string | null }) => e.student_id === auth.context.studentId && !e.archived_at);
+        if (enrollment) {
+          const offering = (tables.academic_offerings || []).find((o: { id: string }) => o.id === enrollment.offering_id);
+          const curriculum = (tables.curricula || []).find((c: { id: string }) => c.id === offering?.curriculum_id);
+          const program = (tables.programs || []).find((p: { id: string }) => p.id === curriculum?.program_id);
+          const level = (tables.levels || []).find((l: { id: string }) => l.id === offering?.level_id);
+          if (program) {
+            programName = level?.name ? `${program.name} — ${level.name}` : program.name;
+          }
+        }
+      }
+    } catch {
+      // Snapshot optional for non-academic or error fallback
+    }
+  }
+
+  const profile: FirstLoginProfile = {
+    firstname: person.firstname,
+    lastname: person.lastname,
+    email: auth.email,
+    personalEmail: person.email || '',
+    phone: person.phone || '',
+    address: person.address || '',
+    birthDate: person.birth_date || null,
+    programName,
+  };
   const snapshot = createHash('sha256').update(JSON.stringify([auth.context.accountId, profile])).digest('hex');
   return { profile, snapshot };
 }
@@ -28,7 +71,7 @@ export async function GET(request: Request) {
       const year = await resolveAcademicYear(new Request(request.url), auth.client, auth.context, result.data as RelationalSnapshot);
       return Response.json({ years: year.years.map(item => ({ id: item.id, name: item.name })), currentYearId: year.currentYearId }, { headers: { 'Cache-Control': 'no-store' } });
     }
-    return Response.json(ownProfile(auth), { headers: { 'Cache-Control': 'no-store' } });
+    return Response.json(await ownProfile(auth), { headers: { 'Cache-Control': 'no-store' } });
   } catch (error) { return errorResponse(error); }
 }
 export async function POST(request: Request) {
@@ -36,7 +79,8 @@ export async function POST(request: Request) {
     const auth = await requireAccount(request);
     if (!auth.mustVerifyProfile) throw new RequestError(409, 'Aucune vérification de première connexion n’est en attente.');
     const body = reviewSchema.parse(await request.json().catch(() => { throw new RequestError(400, 'Demande de vérification invalide.'); }));
-    if (body.snapshot !== ownProfile(auth).snapshot) throw new RequestError(409, 'Vos informations ont changé. Actualisez cette page pour les vérifier.');
+    const current = await ownProfile(auth);
+    if (body.snapshot !== current.snapshot) throw new RequestError(409, 'Vos informations ont changé. Actualisez cette page pour les vérifier.');
     let ticketId: string | null = null;
     if (body.decision === 'REPORT') {
       const result = await auth.client.rpc('escen_backend_snapshot');
@@ -55,6 +99,40 @@ export async function POST(request: Request) {
           categoryId: null, priority: 'MEDIUM' }, () => ticketId!);
         const saved = await auth.client.rpc('escen_backend_transaction', { p_actor_id: auth.context.accountId, p_expected_revision: snapshot.revision, p_changes: plan.changes });
         if (saved.error) throw new RequestError(409, 'Le signalement n’a pas été enregistré. Réessayez.');
+      }
+    } else if (body.decision === 'CONFIRM') {
+      const person = auth.profile.person;
+      const nextAddress = body.address !== undefined ? body.address.trim() : (person.address || '');
+      const nextEmail = body.personalEmail !== undefined ? body.personalEmail.trim() : (person.email || '');
+      const nextPhone = body.phone !== undefined ? body.phone.trim() : (person.phone || '');
+      const nextBirthDate = (!person.birth_date && body.birthDate) ? body.birthDate : (person.birth_date || null);
+
+      const hasPersonChanges = (
+        nextAddress !== (person.address || '') ||
+        nextEmail !== (person.email || '') ||
+        nextPhone !== (person.phone || '') ||
+        nextBirthDate !== (person.birth_date || null)
+      );
+
+      if (hasPersonChanges) {
+        const result = await auth.client.rpc('escen_backend_snapshot');
+        if (result.error || !result.data) throw new RequestError(503, 'L’enregistrement de vos informations est indisponible. Réessayez.');
+        const snapshot = result.data as RelationalSnapshot;
+        const updateRecord: Record<string, unknown> = {
+          id: auth.context.personId,
+          address: nextAddress || null,
+          email: nextEmail || null,
+          phone: nextPhone || null,
+        };
+        if (nextBirthDate) {
+          updateRecord.birth_date = nextBirthDate;
+        }
+        const saved = await auth.client.rpc('escen_backend_transaction', {
+          p_actor_id: auth.context.accountId,
+          p_expected_revision: snapshot.revision,
+          p_changes: [{ table: 'people', operation: 'update', record: updateRecord }],
+        });
+        if (saved.error) throw new RequestError(409, 'Vos informations n’ont pas pu être enregistrées. Réessayez.');
       }
     }
     const record = auth.user.app_metadata.escen_first_login || {};

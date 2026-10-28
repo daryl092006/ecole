@@ -4,11 +4,12 @@ import { loadSecurityApi, securityContext, uuid, securityIds } from './security-
 import { authenticateFixture, fixtureCapabilities, ACCOUNT_IDS, snapshot as campusSnapshot } from './persistent-fixture';
 import { ROLES } from '../../src/types/permissions';
 
-const profile = { firstname: 'Alice', lastname: 'Exemple', email: 'alice@example.test', phone: '+22890000000' };
-function fixture(options: { required?: boolean; failAuth?: boolean; failTicket?: boolean; otherCurrentYear?: boolean } = {}) {
+const profile = { firstname: 'Alice', lastname: 'Exemple', email: 'alice@example.test', personalEmail: 'alice@example.test', phone: '+22890000000', address: 'Quartier Test, Lomé', birthDate: '2000-01-01', programName: null };
+function fixture(options: { required?: boolean; failAuth?: boolean; failTicket?: boolean; otherCurrentYear?: boolean; emptyPerson?: boolean } = {}) {
   const context = securityContext();
   const writes: Record<string, unknown>[] = []; let transactions = 0;
-  const tables: Record<string, Record<string, unknown>[]> = { academic_years: [{ id: securityIds.year, name: '2026-2027', status: 'OUVERTE', starts_on: '2026-09-01', ends_on: '2027-08-31' }], support_tickets: [] };
+  const personData = options.emptyPerson ? { firstname: 'Alice', lastname: 'Exemple', email: null, phone: null, address: null, birth_date: null } : { firstname: 'Alice', lastname: 'Exemple', email: profile.email, phone: profile.phone, address: profile.address, birth_date: profile.birthDate };
+  const tables: Record<string, Record<string, unknown>[]> = { academic_years: [{ id: securityIds.year, name: '2026-2027', status: 'OUVERTE', starts_on: '2026-09-01', ends_on: '2027-08-31' }], support_tickets: [], people: [] };
   let failAuth = !!options.failAuth;
   const client = { rpc: async (name: string, args?: Record<string, unknown>) => {
     if (name === 'escen_backend_snapshot') return { data: { revision: 5 + transactions, tables } };
@@ -16,7 +17,10 @@ function fixture(options: { required?: boolean; failAuth?: boolean; failTicket?:
     if (name === 'escen_backend_transaction') {
       transactions++;
       if (options.failTicket) return { error: { code: '40001' } };
-      for (const change of args?.p_changes as { record: Record<string, unknown> }[]) tables.support_tickets.push(change.record);
+      for (const change of args?.p_changes as { table: string; record: Record<string, unknown> }[]) {
+        if (change.table === 'support_tickets') tables.support_tickets.push(change.record);
+        if (change.table === 'people') tables.people.push(change.record);
+      }
       return { data: 6 };
     }
     throw new Error('RPC inattendue');
@@ -26,7 +30,7 @@ function fixture(options: { required?: boolean; failAuth?: boolean; failTicket?:
     return { data: { user: { id } } };
   } } } };
   const route = loadSecurityApi('app/api/session/first-login/route.ts', client, context, undefined, {
-    mustVerifyProfile: options.required !== false, profile: { person: profile }, email: profile.email,
+    mustVerifyProfile: options.required !== false, profile: { person: personData }, email: profile.email,
     user: { app_metadata: { provider: 'email', escen_first_login: { version: 1, password_changed_at: '2026-10-28T10:00:00Z' } } },
   }) as { GET: (request: Request) => Promise<Response>; POST: (request: Request) => Promise<Response> };
   const get = (query = '') => route.GET(new Request(`http://local.test/api/session/first-login${query}`));
@@ -78,6 +82,14 @@ test('Vérification : refus des identifiants injectés, état déjà terminé, v
   expect((await f.post({ decision: 'CONFIRM', snapshot: '0'.repeat(64) })).status).toBe(409);
   expect((await fixture({ required: false }).get()).status).toBe(409);
   expect(f.writes).toHaveLength(0);
+});
+
+test('Vérification : adresse, email personnel et date de naissance manquante enregistrés dans la table people', async () => {
+  const f = fixture({ emptyPerson: true }); const { snapshot } = await (await f.get()).json();
+  const res = await f.post({ decision: 'CONFIRM', snapshot, address: 'Lomé Totsi', personalEmail: 'perso@test.com', phone: '+22899999999', birthDate: '2001-05-10' });
+  expect(res.status).toBe(200);
+  expect(f.transactions()).toBe(1);
+  expect(f.tables.people[0]).toMatchObject({ id: uuid(901), address: 'Lomé Totsi', email: 'perso@test.com', phone: '+22899999999', birth_date: '2001-05-10' });
 });
 
 test('Signalement : ticket audité avant validation Auth, reprise sans doublon après échec Auth', async () => {

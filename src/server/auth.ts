@@ -12,7 +12,16 @@ export class RequestError extends Error {
 const grant = z.object({ role_code: z.string(), role_name: z.string(), site_id: z.string().nullable(), academic_year_id: z.string().nullable(), group_id: z.string().nullable() });
 const profileSchema = z.object({
   account: z.object({ id: z.uuid(), person_id: z.uuid(), auth_user_id: z.uuid(), active: z.literal(true) }),
-  person: z.object({ firstname: z.string(), lastname: z.string(), email: z.string().nullable(), phone: z.string().nullable().optional() }),
+  person: z.object({
+    firstname: z.string(),
+    lastname: z.string(),
+    email: z.string().nullable(),
+    phone: z.string().nullable().optional(),
+    birth_date: z.string().nullable().optional(),
+    address: z.string().nullable().optional(),
+    city: z.string().nullable().optional(),
+    country: z.string().nullable().optional(),
+  }),
   student: z.object({ id: z.uuid(), matricule: z.string() }).nullable(),
   teacher: z.object({ id: z.uuid() }).nullable(),
   grants: z.array(grant),
