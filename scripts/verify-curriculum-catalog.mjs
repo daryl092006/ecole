@@ -108,7 +108,10 @@ export async function verifyCurriculumCatalog(db, check) {
     const entity = await insert('programs', { code: `LVL-${suffix}`, name: 'Filière des niveaux' });
     const extraLevel = await insert('levels', { cycle_id: cycle.id, code: `L2-${suffix}`, name: 'Niveau à retirer', position: 2 });
     const values = { code: entity.code, name: entity.name, description: '' };
-    await save('programs', { ...values, level_ids: [level.id, extraLevel.id] }, { id: entity.id });
+    // Anciennes versions réellement inutilisées : l'API crée désormais deux
+    // semestres pour toute nouvelle association filière/niveau.
+    await insert('curricula', { program_id: entity.id, level_id: level.id, version: 1 });
+    await insert('curricula', { program_id: entity.id, level_id: extraLevel.id, version: 1 });
     const candidates = (await db.query('select * from escen.curricula where program_id=$1 and level_id=$2', [entity.id, extraLevel.id])).rows;
     const second = await insert('curricula', { program_id: entity.id, level_id: extraLevel.id, version: 2 });
     const before = await revision();
@@ -127,10 +130,18 @@ export async function verifyCurriculumCatalog(db, check) {
     assert.equal((await active()).rows.length, 1);
     await save('programs', { ...values, name: 'Nom seul modifié' }, { id: entity.id });
     assert.equal((await active()).rows.length, 1);
-    await save('programs', { ...values, level_ids: [level.id, extraLevel.id] }, { id: entity.id });
-    assert.equal((await active()).rows.find(item => item.level_id === extraLevel.id).version, 3);
     await save('programs', { ...values, level_ids: [] }, { id: entity.id });
     assert.equal((await active()).rows.length, 0);
+    await save('programs', { ...values, level_ids: [level.id, extraLevel.id] }, { id: entity.id });
+    assert.equal((await active()).rows.find(item => item.level_id === extraLevel.id).version, 3);
+    const withSemesters = (await active()).rows;
+    for (const item of withSemesters) {
+      assert.equal(await value('select count(*)::int as value from escen.curriculum_semesters where curriculum_id=$1 and archived_at is null', [item.id]), 2);
+    }
+    const beforeRefusal = await revision();
+    await assert.rejects(save('programs', { ...values, level_ids: [] }, { id: entity.id }), error => error.status === 409 && /cours ou des semestres/.test(error.message));
+    assert.equal(await revision(), beforeRefusal);
+    assert.equal((await active()).rows.length, 2);
   });
   await check('Filières : niveau utilisé refusé avant toute modification du nom, des autres niveaux ou de l’audit', async () => {
     const entity = await insert('programs', { code: `USED-${suffix}`, name: 'Filière utilisée' });
