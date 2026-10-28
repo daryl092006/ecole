@@ -7,6 +7,7 @@ import type { PersistentChange, RelationalSnapshot } from '@/types/persistence';
 import { ROLES } from '@/types/permissions';
 import { isEvaluationEnrollmentStatus } from '@/services/evaluationCandidateService';
 import { evaluationGradeIsComplete, evaluationGradeValue } from '@/services/evaluationGradePolicy';
+import { overlaps, scheduleConflict } from '@/services/scheduleManagementService';
 
 export const dynamic = 'force-dynamic';
 
@@ -57,7 +58,13 @@ const scheduleDeliverySchema = z.object({
   ...commonSchema,
   action: z.literal('schedule_delivery'),
   evaluationId: z.string().uuid(),
-  sessionId: z.string().uuid(),
+  sessionId: z.string().uuid().nullable().optional(),
+  newSession: z.object({
+    mode: z.enum(['EN_LIGNE', 'PAPIER']),
+    roomId: z.string().uuid().nullable(),
+    startsAt: z.string().datetime(),
+    endsAt: z.string().datetime(),
+  }).strict().optional(),
   accessOpensAt: z.string().datetime(),
   accessClosesAt: z.string().datetime(),
   durationMinutes: z.number().int().min(1).max(1440),
@@ -380,24 +387,81 @@ export async function POST(request: Request) {
         }
       }
 
-      const session = (data.scoped.tables.sessions || []).find(row => row.id === body.sessionId);
-      if (!session) throw new RequestError(404, 'Séance introuvable.');
-
-      if (session.assignment_id !== assignment.id) {
-        throw new RequestError(400, 'La séance choisie ne correspond pas à l’enseignement de l’épreuve.');
-      }
-
-      if (session.mode === 'COURS') {
-        throw new RequestError(400, 'Une diffusion d’épreuve ne peut pas être programmée sur une séance ordinaire de cours.');
-      }
-
       const opens = new Date(body.accessOpensAt).getTime();
       const closes = new Date(body.accessClosesAt).getTime();
-      const sessionStart = new Date(String(session.starts_at)).getTime();
-      const sessionEnd = new Date(String(session.ends_at)).getTime();
-
       if (isNaN(opens) || isNaN(closes) || opens >= closes) {
         throw new RequestError(400, 'La fenêtre d’accès est invalide : l’ouverture doit précéder la fermeture.');
+      }
+
+      let targetSessionId = body.sessionId || null;
+      let sessionStart = 0;
+      let sessionEnd = 0;
+
+      if (body.newSession) {
+        const newSession = body.newSession;
+        requirePermission(data.context, 'schedule.create');
+        const sStart = new Date(newSession.startsAt).getTime();
+        const sEnd = new Date(newSession.endsAt).getTime();
+        if (isNaN(sStart) || isNaN(sEnd) || sStart >= sEnd) {
+          throw new RequestError(400, 'La fin de la séance doit être postérieure à son début.');
+        }
+        if ((newSession.mode === 'EN_LIGNE') !== (newSession.roomId === null)) {
+          throw new RequestError(400, 'Une séance en ligne ne réserve pas de salle ; une séance sur papier exige une salle.');
+        }
+        const offering = (data.snapshot.tables.academic_offerings || []).find(o => o.id === assignment.offering_id);
+        if (!offering) throw new RequestError(404, 'Formation introuvable.');
+        if (newSession.roomId) {
+          const room = (data.snapshot.tables.rooms || []).find(r => r.id === newSession.roomId && !r.archived_at && r.available !== false);
+          if (!room) throw new RequestError(409, 'Choisissez une salle disponible pour cette séance d’examen.');
+        }
+        const from = new Date(newSession.startsAt).toISOString().slice(0, 10);
+        const until = new Date(newSession.endsAt).toISOString().slice(0, 10);
+        if (from < String(assignment.valid_from) || (assignment.valid_until && until > String(assignment.valid_until))) {
+          throw new RequestError(400, 'Les horaires dépassent les dates de l’affectation.');
+        }
+        if ((data.snapshot.tables.blocked_periods || []).some(period =>
+          (!period.academic_year_id || period.academic_year_id === offering.academic_year_id) &&
+          (!period.site_id || period.site_id === offering.site_id) &&
+          overlaps(newSession.startsAt, newSession.endsAt, period)
+        )) {
+          throw new RequestError(409, 'Ce créneau se trouve dans une période bloquée.');
+        }
+        const newSessionId = crypto.randomUUID();
+        const proposedSession = {
+          id: newSessionId,
+          assignment_id: assignment.id,
+          offering_id: assignment.offering_id,
+          group_id: assignment.group_id,
+          teacher_id: assignment.teacher_id,
+          starts_at: newSession.startsAt,
+          ends_at: newSession.endsAt,
+          room_id: newSession.roomId,
+          mode: newSession.mode,
+          status: 'PLANIFIE',
+          reason: body.reason.trim(),
+        };
+        const conflict = scheduleConflict(data.snapshot, proposedSession);
+        if (conflict) throw new RequestError(409, conflict);
+        changes.push({
+          table: 'sessions',
+          operation: 'insert',
+          record: proposedSession,
+        });
+        targetSessionId = newSessionId;
+        sessionStart = sStart;
+        sessionEnd = sEnd;
+      } else {
+        if (!targetSessionId) throw new RequestError(400, 'Veuillez choisir ou créer une séance d’examen.');
+        const session = (data.scoped.tables.sessions || []).find(row => row.id === targetSessionId);
+        if (!session) throw new RequestError(404, 'Séance introuvable.');
+        if (session.assignment_id !== assignment.id) {
+          throw new RequestError(400, 'La séance choisie ne correspond pas à l’enseignement de l’épreuve.');
+        }
+        if (session.mode === 'COURS') {
+          throw new RequestError(400, 'Une diffusion d’épreuve ne peut pas être programmée sur une séance ordinaire de cours.');
+        }
+        sessionStart = new Date(String(session.starts_at)).getTime();
+        sessionEnd = new Date(String(session.ends_at)).getTime();
       }
 
       if (opens < sessionStart || closes > sessionEnd) {
@@ -411,7 +475,7 @@ export async function POST(request: Request) {
           operation: 'update',
           record: {
             id: existingDelivery.id,
-            session_id: body.sessionId,
+            session_id: targetSessionId,
             access_opens_at: body.accessOpensAt,
             access_closes_at: body.accessClosesAt,
             duration_minutes: body.durationMinutes,
@@ -425,7 +489,7 @@ export async function POST(request: Request) {
           record: {
             id: crypto.randomUUID(),
             evaluation_id: body.evaluationId,
-            session_id: body.sessionId,
+            session_id: targetSessionId,
             access_opens_at: body.accessOpensAt,
             access_closes_at: body.accessClosesAt,
             duration_minutes: body.durationMinutes,

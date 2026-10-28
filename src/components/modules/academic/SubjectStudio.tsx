@@ -293,7 +293,14 @@ export default function SubjectStudio() {
                     {returnEvalId && (
                       <Link
                         className="btn btn-outline"
-                        href={(subject.purpose === 'RATTRAPAGE' ? '/academique/rattrapages' : subject.purpose === 'CONTROLE_CONTINU' ? '/academique/evaluations' : '/academique/examens') + '?epreuve=' + encodeURIComponent(returnEvalId)}
+                        href={`/academique/examens?${new URLSearchParams({
+                          ...(subject.purpose === 'RATTRAPAGE'
+                            ? { session: 'rattrapage' }
+                            : subject.purpose === 'CONTROLE_CONTINU'
+                            ? { session: 'controle' }
+                            : {}),
+                          epreuve: returnEvalId,
+                        })}`}
                       >
                         Revenir à l’épreuve associée
                       </Link>

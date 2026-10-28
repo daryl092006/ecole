@@ -1,6 +1,5 @@
 'use client';
 import { useState } from 'react';
-import Link from 'next/link';
 import { usePortal } from '@/hooks/usePortal';
 import WorkPage from '@/components/ui/WorkPage';
 import ReviewedForm from '@/components/ui/ReviewedForm';
@@ -39,13 +38,22 @@ export default function ExamDeliveryScheduleDialog({
     p => p.evaluation_id === evaluation.id && p.status === 'AUTORISE' && !p.archived_at
   );
 
+  const canCreateSchedule = portal.perms.permissions.includes('schedule.create');
+  const assignment = (snapshot.tables.teaching_assignments || []).find(a => a.id === evaluation.assignment_id);
+  const offering = (snapshot.tables.academic_offerings || []).find(o => o.id === (assignment?.offering_id || evaluation.offering_id));
+  const availableRooms = (snapshot.tables.rooms || []).filter(
+    r => !r.archived_at && r.available !== false && (!r.site_id || !offering?.site_id || r.site_id === offering.site_id)
+  );
+
   const initialSession = existingDelivery
     ? sessions.find(s => s.id === existingDelivery.session_id) || sessions[0]
     : sessions[0];
 
   const [sessionId, setSessionId] = useState<string>(
-    initialSession ? String(initialSession.id) : ''
+    initialSession ? String(initialSession.id) : canCreateSchedule ? '__new__' : ''
   );
+  const [newSessionMode, setNewSessionMode] = useState<'EN_LIGNE' | 'PAPIER'>('EN_LIGNE');
+  const [newRoomId, setNewRoomId] = useState<string>(availableRooms[0] ? String(availableRooms[0].id) : '');
   const [accessOpensAt, setAccessOpensAt] = useState<string>(
     existingDelivery
       ? localTime(String(existingDelivery.access_opens_at))
@@ -73,10 +81,12 @@ export default function ExamDeliveryScheduleDialog({
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
 
-  const selectedSession = sessions.find(s => s.id === sessionId);
+  const isCreatingSession = sessionId === '__new__';
+  const selectedSession = isCreatingSession ? undefined : sessions.find(s => s.id === sessionId);
 
   const handleSessionChange = (id: string) => {
     setSessionId(id);
+    if (id === '__new__') return;
     const target = sessions.find(s => s.id === id);
     if (target) {
       setAccessOpensAt(localTime(String(target.starts_at)));
@@ -92,7 +102,11 @@ export default function ExamDeliveryScheduleDialog({
     if (isNaN(opens) || isNaN(closes) || opens >= closes) {
       return 'L’ouverture de l’accès doit être antérieure à la fermeture.';
     }
-    if (selectedSession) {
+    if (isCreatingSession) {
+      if (newSessionMode === 'PAPIER' && !newRoomId) {
+        return 'Veuillez sélectionner une salle pour la séance d’examen sur papier.';
+      }
+    } else if (selectedSession) {
       const sStart = new Date(String(selectedSession.starts_at)).getTime();
       const sEnd = new Date(String(selectedSession.ends_at)).getTime();
       if (opens < sStart || closes > sEnd) {
@@ -100,6 +114,9 @@ export default function ExamDeliveryScheduleDialog({
       }
     }
     if (durationMinutes < 1) return 'La durée de composition doit être d’au moins 1 minute.';
+    if ((closes - opens) < durationMinutes * 60000) {
+      return 'La fenêtre d’accès doit couvrir au moins la durée allouée à l’épreuve.';
+    }
     if (!reason.trim() || reason.trim().length < 3) {
       return 'Un motif d’au moins 3 caractères est obligatoire pour la traçabilité.';
     }
@@ -111,7 +128,7 @@ export default function ExamDeliveryScheduleDialog({
       title={existingDelivery ? 'Modifier la programmation d’épreuve' : 'Programmer la diffusion d’épreuve'}
       onClose={onClose}
     >
-      {!sessions.length ? (
+      {!sessions.length && !canCreateSchedule ? (
         <section className="prerequisite-panel" role="alert">
           <h3>Aucune séance d’examen disponible</h3>
           <p>
@@ -119,7 +136,6 @@ export default function ExamDeliveryScheduleDialog({
             sur papier ») doit être planifiée dans l’Emploi du temps pour cet enseignement.
           </p>
           <div className="btn-group mt-2">
-            {portal.perms.permissions.includes('schedule.create') && <Link className="btn btn-primary" href={`/academique/emploi-du-temps?${new URLSearchParams({ affectation: String(evaluation.assignment_id), mode: 'EN_LIGNE', epreuve: String(evaluation.id), nature: evaluation.kind === 'RATTRAPAGE' ? 'resit' : evaluation.kind === 'EXAMEN' ? 'exam' : 'control' })}`}>Créer la séance pour cette épreuve</Link>}
             <DrawerCloseButton className="btn btn-outline" disabled={busy}>
               Fermer
             </DrawerCloseButton>
@@ -136,8 +152,10 @@ export default function ExamDeliveryScheduleDialog({
           fields={[
             { label: 'Épreuve', value: String(evaluation.name || '') },
             {
-              label: 'Séance sélectionnée',
-              value: selectedSession
+              label: 'Séance d’examen',
+              value: isCreatingSession
+                ? `Nouvelle séance (${newSessionMode === 'EN_LIGNE' ? 'En ligne' : `Papier · ${availableRooms.find(r => r.id === newRoomId)?.name || 'Salle'}`})`
+                : selectedSession
                 ? `${displayTime(String(selectedSession.starts_at))} → ${displayTime(String(selectedSession.ends_at))} (${selectedSession.mode})`
                 : 'Non sélectionnée',
             },
@@ -149,6 +167,8 @@ export default function ExamDeliveryScheduleDialog({
           consequence={
             existingDelivery
               ? 'Les horaires de diffusion de l’épreuve seront mis à jour. Les étudiants admissibles composeront selon cette nouvelle fenêtre.'
+              : isCreatingSession
+              ? 'La séance d’examen et la fenêtre de diffusion seront créées ensemble dans la même transaction. Vous pourrez immédiatement composer ou autoriser le sujet.'
               : 'L’épreuve sera programmée sur la séance choisie. Dès l’ouverture, les étudiants admissibles pourront démarrer leur copie en ligne.'
           }
           onConfirm={async event => {
@@ -164,7 +184,17 @@ export default function ExamDeliveryScheduleDialog({
               await manageEvaluation(portal.activeRole, {
                 action: 'schedule_delivery',
                 evaluationId: evaluation.id,
-                sessionId,
+                ...(isCreatingSession
+                  ? {
+                      sessionId: null,
+                      newSession: {
+                        mode: newSessionMode,
+                        roomId: newSessionMode === 'PAPIER' ? newRoomId : null,
+                        startsAt: iso(accessOpensAt),
+                        endsAt: iso(accessClosesAt),
+                      },
+                    }
+                  : { sessionId }),
                 accessOpensAt: iso(accessOpensAt),
                 accessClosesAt: iso(accessClosesAt),
                 durationMinutes,
@@ -192,7 +222,7 @@ export default function ExamDeliveryScheduleDialog({
               <p className="cell-sub">
                 {authorizedPaper
                   ? `Sujet associé : ${String(authorizedPaper.title || '')} (v${String(authorizedPaper.version)}) · ${String(authorizedPaper.duration_minutes)} min`
-                  : 'Aucun sujet autorisé pour le moment. Vous pouvez composer le sujet avant ou après la programmation.'}
+                  : 'Aucun sujet autorisé pour le moment. Vous pouvez composer le sujet dès que cette programmation est enregistrée.'}
               </p>
             </div>
 
@@ -204,6 +234,9 @@ export default function ExamDeliveryScheduleDialog({
                 value={sessionId}
                 onChange={event => handleSessionChange(event.target.value)}
               >
+                {canCreateSchedule && (
+                  <option value="__new__">+ Créer une nouvelle séance d’examen maintenant</option>
+                )}
                 {sessions.map(s => (
                   <option key={s.id} value={String(s.id)}>
                     {displayTime(String(s.starts_at))} → {displayTime(String(s.ends_at))} ({String(s.mode)})
@@ -211,6 +244,40 @@ export default function ExamDeliveryScheduleDialog({
                 ))}
               </select>
             </label>
+
+            {isCreatingSession && (
+              <div className="form-grid">
+                <label className="form-group">
+                  Mode de la séance d’examen
+                  <select
+                    className="select-input"
+                    value={newSessionMode}
+                    onChange={event => setNewSessionMode(event.target.value as 'EN_LIGNE' | 'PAPIER')}
+                  >
+                    <option value="EN_LIGNE">Épreuve en ligne (sans salle)</option>
+                    <option value="PAPIER">Épreuve sur papier (en salle)</option>
+                  </select>
+                </label>
+                {newSessionMode === 'PAPIER' && (
+                  <label className="form-group">
+                    Salle d’examen
+                    <select
+                      className="select-input"
+                      required
+                      value={newRoomId}
+                      onChange={event => setNewRoomId(event.target.value)}
+                    >
+                      <option value="">Choisir une salle disponible</option>
+                      {availableRooms.map(room => (
+                        <option key={room.id} value={String(room.id)}>
+                          {String(room.name || room.code || 'Salle')} ({String(room.capacity || 0)} pl.)
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                )}
+              </div>
+            )}
 
             <div className="form-grid">
               <label className="form-group">

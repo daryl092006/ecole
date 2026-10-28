@@ -41,9 +41,9 @@ for (const rejected of [false, true]) {
       await dialog.getByRole('button', { name: 'Revenir aux informations', exact: true }).click();
       await expect(dialog.getByRole('textbox', { name: 'Intitulé de l’évaluation' })).toHaveValue('Évaluation de recette');
     } else {
-      await expect(page.getByRole('dialog').getByRole('heading', { level: 2 })).toHaveText('Évaluation de recette');
+      await expect(page.getByRole('dialog').getByRole('heading', { name: 'Évaluation de recette', level: 2 })).toBeVisible();
       await expect(page.getByRole('region', { name: 'Préparation de l’épreuve' })).toBeVisible();
-      await expect(page.getByRole('link', { name: 'Composer le sujet', exact: true })).toBeVisible();
+      await expect(page.getByRole('button', { name: 'Programmer la diffusion', exact: true })).toBeVisible();
     }
   });
 }
