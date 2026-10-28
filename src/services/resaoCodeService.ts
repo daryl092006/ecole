@@ -22,13 +22,14 @@ export function resaoSubjectContext(snapshot: RelationalSnapshot, semesterId: st
   const curriculum = snapshot.tables.curricula?.find(row => row.id === semester?.curriculum_id && !row.archived_at);
   const level = snapshot.tables.levels?.find(row => row.id === curriculum?.level_id && !row.archived_at && row.active !== false);
   const cycle = snapshot.tables.cycles?.find(row => row.id === level?.cycle_id);
-  if (!semester || !curriculum || !level || !cycle) throw new Error('Choisissez un semestre rattaché à un programme, un niveau et un cycle valides.');
+  if (!semester || !curriculum || !level) throw new Error('Choisissez un semestre rattaché à un programme, un niveau et un cycle valides.');
   if (curriculum.status !== 'DRAFT') throw new Error('La matière doit être ajoutée à un programme de formation en brouillon.');
-  const cycleText = `${cycle.code} ${cycle.name}`.toUpperCase();
-  const cycleNumber = /\b(L|LICENCE|BACHELOR)\b/.test(cycleText) ? 1 : /\b(M|MASTER)\b/.test(cycleText) ? 2 : /\b(D|DOCTORAT|DOCTORATE)\b/.test(cycleText) ? 3 : 0;
+  const cycleText = `${cycle?.code || ''} ${cycle?.name || ''} ${level.code || ''} ${level.name || ''}`.toUpperCase();
+  const cycleNumber = /\b(L|L1|L2|L3|LICENCE|BACHELOR)\b/.test(cycleText) ? 1 : /\b(M|M1|M2|EM|MASTER)\b/.test(cycleText) ? 2 : /\b(D|DOCTORAT|DOCTORATE)\b/.test(cycleText) ? 3 : 0;
   if (!cycleNumber) throw new Error('Le cycle doit être identifié comme Licence, Master ou Doctorat pour générer le code REESAO.');
   const position = Number(semester.position);
-  const levelPosition = Number(level.position);
+  const rawLevelPos = Number(level.position);
+  const levelPosition = cycleNumber === 2 && rawLevelPos > 2 ? 1 : rawLevelPos;
   // Semester positions in the schema belong to a level-specific curriculum.
   if (![1, 2].includes(position) || !Number.isInteger(levelPosition) || levelPosition < 1) throw new Error('La position du semestre doit être 1 ou 2 dans le niveau.');
   const semesterNumber = (levelPosition - 1) * 2 + position;
@@ -56,7 +57,7 @@ export function resaoSubjectChanges(snapshot: RelationalSnapshot, input: unknown
   const values = resaoSubjectSchema.parse(input);
   const { semester, curriculum } = resaoSubjectContext(snapshot, values.semester_id);
   const offerings = (snapshot.tables.academic_offerings || []).filter(row => row.curriculum_id === curriculum.id && !row.archived_at);
-  if (offerings.some(row => row.academic_year_id !== subject.academic_year_id)) throw new Error('Ce programme est déjà utilisé dans une autre année. Choisissez un programme propre à l’année consultée.');
+  if (offerings.length > 0 && !offerings.some(row => row.academic_year_id === subject.academic_year_id)) throw new Error('Ce programme est déjà utilisé dans une autre année. Choisissez un programme propre à l’année consultée.');
   const code = generateResaoSubjectCode(snapshot, values.discipline, values.semester_id, String(subject.academic_year_id));
   if (subject.code && subject.code !== code) throw new Error('Le code proposé a changé. Actualisez les données avant de confirmer.');
   const unitId = crypto.randomUUID();

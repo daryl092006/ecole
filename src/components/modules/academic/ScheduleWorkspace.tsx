@@ -38,6 +38,7 @@ function ScheduleManager() {
   const portal = usePortal();
   const params = useSearchParams();
   const requestedComponent = params.get('matiere') || '';
+  const requestedGroup = params.get('groupe') || '';
   const requestedAssignment = params.get('affectation') || '';
   const openedRequest = useRef('');
   const [assigning, setAssigning] = useState<{ groupId: string; offeringId: string; componentId: string } | null>(null);
@@ -57,14 +58,15 @@ function ScheduleManager() {
     return () => controller.abort();
   }, [activeRole, academicYearSelection, reload]);
   useEffect(() => {
-    const request = `${activeRole}:${academicYearSelection}:${requestedComponent}:${requestedAssignment}`;
+    const request = `${activeRole}:${academicYearSelection}:${requestedComponent}:${requestedGroup}:${requestedAssignment}`;
     if (!directory?.canCreate || openedRequest.current === request) return;
     const assignment = directory.assignments.find(row => row.id === requestedAssignment);
-    if (!assignment && (!requestedComponent || !directory.components.some(row => row.id === requestedComponent))) return;
+    const hasGroup = Boolean(requestedGroup && directory.groups.some(row => row.id === requestedGroup));
+    if (!assignment && !hasGroup && (!requestedComponent || !directory.components.some(row => row.id === requestedComponent))) return;
     openedRequest.current = request; setDetail(null); setSaveError('');
     setForm({ ...blank(), assignmentId: assignment?.id || '', mode: assignment ? params.get('mode') === 'EN_LIGNE' ? 'EN_LIGNE' : 'PAPIER' : 'COURS' });
     setOperation({ action: 'create_session' });
-  }, [directory, requestedComponent, requestedAssignment, activeRole, academicYearSelection, params]);
+  }, [directory, requestedComponent, requestedGroup, requestedAssignment, activeRole, academicYearSelection, params]);
   if (loading) return <LoadingState label="Chargement du planning…" variant="cards" />;
   if (error || !directory) return <ErrorState title="Planning indisponible" message={error || 'Les séances n’ont pas pu être chargées.'} onRetry={() => setReload(value => value + 1)} />;
   const teacherName = (id: string | null) => directory.teachers.find(teacher => teacher.id === id)?.name || 'Enseignant indisponible';
@@ -156,7 +158,7 @@ function ScheduleManager() {
           .catch(cause => setSaveError(cause instanceof Error ? cause.message : 'Enregistrement impossible.')).finally(() => setSaving(false));
       }}>
       {editing && <>
-        {action === 'create_session' ? <ScheduleCourseSelector directory={directory} assignmentId={form.assignmentId} initialGroupId={groupId} initialComponentId={params.get('matiere') || ''} canAssign={portal.perms.permissions.includes('academic.assignment.manage')} onChange={id => setForm({ ...form, assignmentId: id, roomId: '' })} onAssign={setAssigning} /> : <label className="form-group">Affectation<select className="select-input" required value={form.assignmentId} onChange={event => setForm({ ...form, assignmentId: event.target.value, roomId: '' })}><option value="">Choisir une affectation</option>{directory.assignments.filter(assignment => assignment.id === current?.assignmentId || directory.teachers.some(teacher => teacher.id === assignment.teacherId && teacher.active)).map(assignment => <option key={assignment.id} value={assignment.id}>{assignmentName(assignment.id)}</option>)}</select></label>}
+        {action === 'create_session' ? <ScheduleCourseSelector directory={directory} assignmentId={form.assignmentId} initialGroupId={requestedGroup || groupId} initialComponentId={params.get('matiere') || ''} canAssign={portal.perms.permissions.includes('academic.assignment.manage')} onChange={id => setForm({ ...form, assignmentId: id, roomId: '' })} onAssign={setAssigning} /> : <label className="form-group">Affectation<select className="select-input" required value={form.assignmentId} onChange={event => setForm({ ...form, assignmentId: event.target.value, roomId: '' })}><option value="">Choisir une affectation</option>{directory.assignments.filter(assignment => assignment.id === current?.assignmentId || directory.teachers.some(teacher => teacher.id === assignment.teacherId && teacher.active)).map(assignment => <option key={assignment.id} value={assignment.id}>{assignmentName(assignment.id)}</option>)}</select></label>}
         <label className="form-group">Type de séance<select className="select-input" value={form.mode} onChange={event => setForm({ ...form, mode: event.target.value as SessionMode, roomId: '' })}><option value="COURS">Cours en présentiel</option><option value="PAPIER">Épreuve sur papier</option><option value="EN_LIGNE">En ligne</option></select></label>
         {form.mode !== 'EN_LIGNE' && <label className="form-group">Salle prévue<select className="select-input" required disabled={!assignment} value={form.roomId} onChange={event => setForm({ ...form, roomId: event.target.value })}><option value="">Choisir une salle disponible</option>{directory.rooms.filter(room => room.available && (!room.siteId || room.siteId === siteId)).map(room => <option key={room.id} value={room.id}>{room.name} · {room.capacity} places</option>)}</select></label>}
       </>}

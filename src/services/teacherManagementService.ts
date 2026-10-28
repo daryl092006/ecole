@@ -39,8 +39,8 @@ export function teacherDirectory(snapshot: RelationalSnapshot, context: Persiste
   const offerings = (scoped.tables.academic_offerings || []).filter(row => !row.archived_at
     && scoped.tables.curricula?.some(curriculum => curriculum.id === row.curriculum_id && !curriculum.archived_at && curriculum.status !== 'ARCHIVED'));
   const components = (scoped.tables.curriculum_components || []).filter(component => !component.archived_at
-    && scoped.tables.teaching_units?.some(unit => unit.id === component.unit_id && !unit.archived_at
-      && scoped.tables.curriculum_semesters?.some(semester => semester.id === unit.semester_id && !semester.archived_at))
+    && (!component.unit_id || scoped.tables.teaching_units?.some(unit => unit.id === component.unit_id && !unit.archived_at
+      && scoped.tables.curriculum_semesters?.some(semester => semester.id === unit.semester_id && !semester.archived_at)))
     && scoped.tables.subjects?.some(subject => subject.id === component.subject_id && !subject.archived_at));
   const groups = (scoped.tables.groups || []).filter(group => !group.archived_at);
   const links = (scoped.tables.group_offerings || []).filter(link => !link.archived_at

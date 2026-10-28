@@ -143,6 +143,18 @@ export async function writeCatalog(request: Request, key: string, id?: string) {
     // La filière et tous ses niveaux doivent être enregistrés dans une seule transaction.
     if (changes.length > 100) throw new RequestError(400, 'Trop de programmes de cours concernés. Modifiez moins de niveaux à la fois.');
   }
+  const insertedCurriculaIds = changes
+    .filter(change => change.table === 'curricula' && change.operation === 'insert')
+    .map(change => String(change.record.id));
+  for (const curriculumId of insertedCurriculaIds) {
+    const hasSemesters = (snapshot.tables.curriculum_semesters || []).some(row => row.curriculum_id === curriculumId && !row.archived_at);
+    if (!hasSemesters && changes.length + 2 <= 100) {
+      changes.push(
+        { table: 'curriculum_semesters', operation: 'insert', record: { id: crypto.randomUUID(), curriculum_id: curriculumId, position: 1, name: 'Semestre 1', target_credits: 30, reason: body.reason } },
+        { table: 'curriculum_semesters', operation: 'insert', record: { id: crypto.randomUUID(), curriculum_id: curriculumId, position: 2, name: 'Semestre 2', target_credits: 30, reason: body.reason } },
+      );
+    }
+  }
   if (offeringIds.length > 0) {
     const existingGroupOfferings = (snapshot.tables.group_offerings || []).filter(row => row.group_id === record.id);
     for (const link of existingGroupOfferings) {
