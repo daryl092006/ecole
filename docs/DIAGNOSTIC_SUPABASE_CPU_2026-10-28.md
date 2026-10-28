@@ -42,7 +42,7 @@ pas arrêté. La boucle observée a cessé pendant les relevés. La mesure CPU d
 tableau de bord n'a pas été récupérée : aucune baisse chiffrée de CPU n'est affirmée.
 Le défaut peut réapparaître tant que les codes des fonctions ne sont pas corrigés.
 
-## Correctif préparé, non appliqué
+## Correctif validé en local, non appliqué en production
 
 `docs/proposals/RPC_CONFLICT_CODES_2026-10-28.sql` remplace seulement les
 affectations explicites `errcode = '40001'` dans les fonctions PL/pgSQL des
@@ -74,25 +74,38 @@ HTTP 409 et le nettoyage après refus certain, tout en conservant les fichiers
 si une erreur de transport ne permet pas de savoir si la transaction a abouti.
 Ces modifications restent locales.
 
-Le SQL n'est pas une migration enregistrée et n'a été exécuté ni localement ni
-à distance. Accord demandé avant création et application de migration,
-conformément à `AGENTS.md`. Une application distante exige également une
-autorisation explicite dérogeant à l'interdiction actuelle.
+Après accord utilisateur, le SQL a été enregistré dans la nouvelle migration
+`supabase/migrations/202610280055_rpc_conflict_codes.sql` et exécuté exclusivement
+dans PGlite local. Aucune ancienne migration n'a été modifiée.
+Une application distante exige encore une autorisation explicite dérogeant à
+l'interdiction actuelle de `AGENTS.md`.
 
 ## Vérifications
 
 - `npx tsc --noEmit --incremental false` : succès avant et après adaptations.
 - `npm run lint` : succès avant et après adaptations.
 - `npx playwright test --config tests/ui/rpc-conflicts.config.ts` : 7 tests réussis.
-- `npm test` : échec déjà présent avant adaptations, reproduit après, dans la
-  recette du catalogue : « Niveau à retirer : retrait impossible, des cours ou
-  des semestres sont encore rattachés à ce niveau. » Le correctif SQL proposé
-  n'était pas appliqué lors de ces deux exécutions.
+- `npm test` : succès après migration et correction du jeu de données de recette ;
+  193 groupes de contrôles PostgreSQL, puis recettes enseignants, reprise et
+  admissions réussies (58 contrôles d'admission).
+- `node scripts/verify-rpc-conflicts.mjs` : 14 fonctions corrigées ; définitions
+  identiques hormis les codes, propriétaires, droits et paramètres préservés ;
+  conflits annuels et transactionnels sans mutation, commande valide toujours
+  acceptée, refus des rôles publics et réexécution idempotente.
+- `npm run db:describe` : les deux documents du schéma ont été régénérés
+  simultanément ; contenu inchangé, car cette migration ne modifie que des fonctions.
+
+L'échec initial de `npm test` sur le retrait d'un niveau était antérieur au
+correctif. Le test créait ses données avec une API qui ajoute désormais deux
+semestres, puis attendait de pouvoir retirer le niveau comme s'il était inutilisé.
+La recette utilise maintenant des anciennes versions réellement vides pour ce
+cas et vérifie séparément que les nouvelles versions avec semestres restent
+protégées. Aucune règle métier n'a été modifiée pour faire passer le test.
 
 Les tests ciblés vérifient HTTP 409 avec les deux codes, un seul appel d'écriture
 pour une copie, le nettoyage des fichiers rejetés et leur conservation en cas
-d'issue incertaine. Ils ne valident pas encore le SQL proposé ni le comportement
-réel de PostgREST après migration.
+d'issue incertaine. Le SQL est également vérifié dans PGlite ; le comportement
+réel de PostgREST après migration distante reste à vérifier en production.
 
 ## Autres pistes, secondaires à la boucle
 
@@ -108,8 +121,7 @@ les erreurs répétées. Sa fréquence n'a pas été modifiée.
 
 ## Suite nécessaire
 
-Après accord : enregistrer une nouvelle migration, vérifier localement les codes
-d'erreur, les refus de concurrence sans mutation, les droits et les paramètres
-des fonctions, puis résoudre l'échec général de recette avant livraison.
-Régénérer les deux documents du schéma si une migration est enregistrée.
-Toute mise en production et tout déploiement de l'application restent à faire.
+La validation locale et la régénération du schéma sont terminées. Toute
+application distante de la migration et tout déploiement de l'application
+restent à faire après autorisation explicite. Surveiller ensuite les erreurs,
+les transactions annulées et le CPU pour vérifier l'absence de récidive.
