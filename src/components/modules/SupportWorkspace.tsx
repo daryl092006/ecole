@@ -58,7 +58,17 @@ export default function SupportWorkspace() {
     finally { setBusy(false); }
   }
   return <div className="domain-workspace workspace-stack support-workspace">
-    <div className="page-intro"><div><h1>{directory.canManage ? 'Centre de support' : 'Mes demandes de support'}</h1></div><button className="btn btn-primary" disabled={!directory.yearId} onClick={() => open({ kind: 'create' })}>Ouvrir une demande</button></div>
+    <div className="page-intro">
+      <div>
+        <span className="page-eyebrow">ASSISTANCE & SUPPORT</span>
+        <h1>{directory.canManage ? 'Centre de support' : 'Mes demandes de support'}</h1>
+        <p>Suivez vos demandes d’assistance, échangez avec le support technique et consultez les résolutions.</p>
+      </div>
+      <div className="btn-group">
+        <button className="btn btn-outline" onClick={() => setReload(value => value + 1)}>Actualiser</button>
+        <button className="btn btn-primary" disabled={!directory.yearId} onClick={() => open({ kind: 'create' })}>Ouvrir une demande</button>
+      </div>
+    </div>
     {!directory.yearId && <p className="info-box">Toutes les années : consultation uniquement. Choisissez une année précise pour écrire.</p>}
     {success && <p role="status" className="info-box">{success}</p>}
     {loadError && <p role="alert" className="restricted-box">{loadError}<button className="btn btn-outline" onClick={() => setReload(value => value + 1)}>Réessayer</button></p>}

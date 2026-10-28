@@ -91,7 +91,7 @@ export default function WorkspaceHome({ mode = 'home' }: { mode?: 'home' | 'over
 
     if (role === ROLES.IT) {
       const activeUsers = state.users.filter(u => u.active).length;
-      const openTickets = activeRows('support_tickets').filter(t => !['CLOSED', 'RESOLVED', 'FERME', 'RESOLU'].includes(String(t.status || '').toUpperCase())).length;
+      const openTickets = activeRows('support_tickets').filter(t => ['OPEN', 'IN_PROGRESS'].includes(String(t.status))).length;
       return [
         {
           title: 'Système & Comptes',

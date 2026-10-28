@@ -48,8 +48,31 @@ export default function StudentDocumentsWorkspace({ studentMatricule }: { studen
       setAction(null); setSuccess('La pièce et son suivi ont été enregistrés.'); await portal.refreshCampus(); setReload(value => value + 1);
     } catch (cause) { setError(cause instanceof Error ? cause.message : 'Enregistrement impossible.'); } finally { setBusy(false); }
   }
-  async function download(id: string) { try { setLoadError(''); const url = await studentDocumentUrl(id, portal.activeRole); const link = document.createElement('a'); link.href = url; link.target = '_blank'; link.rel = 'noopener noreferrer'; link.click(); } catch (cause) { setLoadError(cause instanceof Error ? cause.message : 'Téléchargement impossible.'); } }
-  return <div className="domain-workspace workspace-stack student-document-workspace"><div className="page-intro"><div>{studentMatricule ? <h2>Pièces du dossier</h2> : <><h1>Pièces étudiantes</h1></>}</div>{directory.canUpload && <button className="btn btn-primary" disabled={!directory.yearId || !students.length} onClick={() => open({ kind: 'upload' })}>Ajouter une pièce</button>}</div>
+  async function download(id: string) {
+    try {
+      setLoadError('');
+      const url = await studentDocumentUrl(id, portal.activeRole);
+      const link = document.createElement('a');
+      link.href = url;
+      link.target = '_blank';
+      link.rel = 'noopener noreferrer';
+      link.click();
+    } catch (cause) {
+      setLoadError(cause instanceof Error ? cause.message : 'Téléchargement impossible.');
+    }
+  }
+  return <div className="domain-workspace workspace-stack student-document-workspace">
+    <div className="page-intro">
+      <div>
+        <span className="page-eyebrow">DOSSIERS & ÉTUDIANTS</span>
+        <h1>{studentMatricule ? 'Pièces du dossier étudiant' : 'Pièces étudiantes'}</h1>
+        <p>Vérifiez la conformité des pièces déposées et suivez les versions officielles.</p>
+      </div>
+      <div className="btn-group">
+        <button className="btn btn-outline" onClick={() => setReload(value => value + 1)}>Actualiser</button>
+        {directory.canUpload && <button className="btn btn-primary" disabled={!directory.yearId || !students.length} onClick={() => open({ kind: 'upload' })}>Ajouter une pièce</button>}
+      </div>
+    </div>
     {!studentMatricule && issuedDocuments.length > 0 && <button className="btn btn-outline" onClick={() => setIssued(true)}>Consulter les documents établis</button>}{!directory.yearId && <p className="info-box">Toutes les années : consultation uniquement.</p>}{success && <p className="info-box" role="status">{success}</p>}{loadError && <p className="restricted-box" role="alert">{loadError}</p>}
     {!studentMatricule && <ListFilters count={directory.documents.length} active={Boolean(filter)}><section className="card"><label className="form-group">Rechercher une pièce<input className="input" type="search" value={filter} onChange={event => setFilter(event.target.value)} /></label></section></ListFilters>}
     {!documents.length && <section className="card"><p>{studentMatricule ? 'Aucune pièce déposée.' : 'Aucune pièce pour ces critères.'}</p></section>}

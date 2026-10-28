@@ -82,6 +82,12 @@ onMounted(async () => {`);
 }
 </style>`);
   await writeFile(path.join(root, 'app/pages/inscription/index.vue'), adaptDiplomaForm(registration));
+  // The candidate portal owns the three-step form and its secure follow-up space.
+  // Legacy adaptation remains available for an explicitly requested compatibility build.
+  if (process.env.ESCEN_CANDIDATE_FORM !== 'legacy') {
+    const entry = await readFile(new URL('./website-templates/candidate-entry.vue', import.meta.url), 'utf8');
+    await writeFile(path.join(root, 'app/pages/inscription/index.vue'), entry.replace('__ESCEN_CANDIDATE_URL__', JSON.stringify(`${portal.origin}/candidature`)));
+  }
   let store = await readFile(path.join(sourceRoot, 'app/stores/candidature.ts'), 'utf8');
   store = store.replace('return response.data?.candidat || null', 'return response.data || null');
   await writeFile(path.join(root, 'app/stores/candidature.ts'), store);

@@ -5,6 +5,7 @@ import { errorResponse, RequestError } from '@/server/auth';
 import { boundedRequest, hashWebsiteToken, websiteRpc } from '@/server/website';
 import { DOCUMENT_LABELS, diplomaSchema, escapeArticleContent, guardianSchema, identitySchema, sniffDocument } from '@/services/websiteService';
 import type { WebsiteArticle, WebsiteIntake } from '@/types/website';
+import { attemptApplicationEmails, portalOrigin } from '@/server/admissions';
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
 type RouteContext = { params: Promise<{ path: string[] }> };
@@ -135,7 +136,23 @@ async function handle(request: Request, context: RouteContext) {
         const index = Number(match[1]); const item = guardians.get(index) || {}; item[match[2]] = value; guardians.set(index, item);
       }
       const tuteurs = z.array(guardianSchema).min(1).max(5).parse([...guardians.values()]);
-      return cors(request, Response.json(await rpc('submit', token, { accept_cgu: '1', tuteurs })));
+      const existing = await client.rpc('escen_candidate_dossier', { p_token_hash: hashWebsiteToken(token), p_action: 'read', p_data: {} });
+      if (!existing.error) return cors(request, Response.json({ id: existing.data.application.id, reference: existing.data.application.reference, workflow_stage: existing.data.application.workflow_stage }));
+      if (existing.error.code !== 'P0002') throw new RequestError(503, 'Le nouveau circuit de candidature est indisponible.');
+      const draft = await rpc('draft', token);
+      const intakes = await rpc('intakes') as WebsiteIntake[];
+      const intake = intakes.find(item => item.academic_year_id === draft.candidat.academic_year_id && item.level_id === draft.candidat.niveau_id && item.program_id === draft.candidat.filiere_id);
+      if (!intake) throw new RequestError(409, 'Formation fermée ou non renseignée.');
+      const fields = (keys: string[]) => Object.fromEntries(keys.filter(key => draft.candidat[key] !== undefined).map(key => [key,draft.candidat[key]]));
+      const receipt = await websiteRpc(client, 'escen_application_submit', {
+        p_actor_id: null, p_role_code: null, p_year_id: draft.candidat.academic_year_id, p_token_hash: hashWebsiteToken(token),
+        p_data: { consent: true, intake_id: intake.id, guardians: tuteurs,
+          identity: fields(['nom','prenom','genre','date_naissance','lieu_naissance','nationalite','email','tel','tel2','tel3','adresse','nom_jeune_fille']),
+          diploma: fields(['type_diplome_id','numero_table','annee_bac','serie','mention_bac','etablissement_diplome','annee_diplome','intitule_diplome','specialite_diplome','mention_diplome']) },
+        p_access_url: `${portalOrigin(request)}/candidature/suivi#access=${token}`,
+      });
+      await attemptApplicationEmails(client);
+      return cors(request, Response.json(receipt));
     }
     throw new RequestError(405, 'Méthode indisponible.');
   } catch (error) {

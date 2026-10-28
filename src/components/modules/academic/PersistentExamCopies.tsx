@@ -6,9 +6,7 @@ import WorkPage from '@/components/ui/WorkPage';
 import ReviewedForm from '@/components/ui/ReviewedForm';
 import { connectedRecordName } from '@/services/connectedRecordDisplayService';
 import {
-  evaluationCandidateStatusLabel,
   evaluationGradeIsComplete,
-  evaluationGradeNoteLabel,
   evaluationGradeValue,
 } from '@/services/evaluationGradePolicy';
 import { manageEvaluation } from '@/services/remoteCampusService';
@@ -132,77 +130,128 @@ export default function PersistentExamCopies({ evaluationId, candidateId, onClos
         canGrade && candidate && ['REMISE', 'EXPIREE'].includes(String(attempt.status))
       );
 
-      return <article className="online-exam-entry" key={attempt.id}>
-        <h2>{studentName}</h2>
-        <p>{attempt.status === 'EN_COURS' ? 'En cours' : attempt.status === 'EXPIREE' ? 'Remise automatique à l’échéance' : attempt.status === 'INTERROMPUE' ? 'Interrompue' : 'Remise volontaire'} · {attempt.completion_status === 'NON_TRAITE' ? 'Non traitée · 0/20 à enregistrer' : attempt.completion_status === 'PARTIELLE' ? 'Réponses partielles' : attempt.completion_status === 'COMPLETE' ? 'Toutes les questions répondues' : 'Composition en cours'}</p>
-        <p className="cell-sub">Correction enseignant : <strong>{evaluationCandidateStatusLabel(grade, attempt.status)}</strong> · Note : <strong>{evaluationGradeNoteLabel(grade, attempt.status)}</strong></p>
-        {!!attempt.submitted_at && <p>Remise : {new Date(String(attempt.submitted_at)).toLocaleString('fr-FR')}</p>}
-        <button className="btn btn-outline" onClick={() => setSelected(selected === attempt.id ? '' : attempt.id)}>{selected === attempt.id ? 'Masquer les réponses' : 'Lire les réponses'}</button>
-        {selected === attempt.id && (
-          <div>
-            {questions.map((question, qIndex) => {
-              const response = answers.find(row => row.question_id === question.id)?.response as OnlineExamAnswer | undefined;
-              const choices = response?.option_ids || [];
-              const optionsForQuestion = (tables.exam_options || []).filter(row => row.question_id === question.id);
-              const choiceLabels = optionsForQuestion.filter(row => choices.includes(row.id)).map(row => String(row.label));
-              const correctLabels = optionsForQuestion.filter(row => row.is_correct === true).map(row => String(row.label));
-              const maxPts = Number(question.points) || 0;
-              const config = (question.configuration || {}) as { correction?: string };
-              const autoPts = autoQcmPoints(String(question.id));
-              const currentScore =
-                attemptScores[String(question.id)] !== undefined
-                  ? attemptScores[String(question.id)]
-                  : autoPts !== null
-                  ? String(autoPts)
-                  : '';
+      const studentInitials = studentName.split(' ').map(w => w[0]).filter(Boolean).slice(0, 2).join('').toUpperCase() || 'ET';
+      const statusPillClass = attempt.status === 'EN_COURS' ? 'pill-warning' : attempt.status === 'REMISE' ? 'pill-success' : 'pill-info';
+      const gradeVal = existingNumericGrade !== null ? `${existingNumericGrade} / 20` : null;
 
-              return <section className="online-exam-question" key={question.id}>
-                {maxPts > 0 && (
-                  <div className="cell-sub">
-                    <strong>Question {qIndex + 1}</strong> · Barème : {maxPts} pt(s)
-                    {autoPts !== null && (
-                      <span> · {autoPts > 0 ? 'QCM exact' : 'QCM incorrect'}</span>
+      return (
+        <article className="online-exam-entry" key={attempt.id}>
+          <div className="online-exam-entry-header">
+            <div className="online-exam-student">
+              <div className="online-exam-avatar">{studentInitials}</div>
+              <div className="online-exam-info">
+                <h2>{studentName}</h2>
+                <div className="online-exam-badges">
+                  <span className={`pill ${statusPillClass}`}>
+                    {attempt.status === 'EN_COURS' ? 'En cours' : attempt.status === 'EXPIREE' ? 'Remise automatique' : attempt.status === 'INTERROMPUE' ? 'Interrompue' : 'Remise volontaire'}
+                  </span>
+                  <span className="pill pill-subtle">
+                    {attempt.completion_status === 'NON_TRAITE' ? 'Non traitée' : attempt.completion_status === 'PARTIELLE' ? 'Partielle' : attempt.completion_status === 'COMPLETE' ? 'Complète' : 'En cours'}
+                  </span>
+                  {Boolean(attempt.submitted_at) && (
+                    <span className="cell-sub">
+                      Remise : {new Date(String(attempt.submitted_at)).toLocaleString('fr-FR')}
+                    </span>
+                  )}
+                </div>
+              </div>
+            </div>
+            <div className="online-exam-score-box">
+              {gradeVal ? (
+                <span className="online-exam-grade-badge">Note : {gradeVal}</span>
+              ) : (
+                <span className="pill pill-warning">À corriger</span>
+              )}
+              <button
+                type="button"
+                className="btn btn-sm btn-outline"
+                onClick={() => setSelected(selected === attempt.id ? '' : attempt.id)}
+              >
+                {selected === attempt.id ? 'Masquer la copie' : 'Consulter et noter'}
+              </button>
+            </div>
+          </div>
+
+          {selected === attempt.id && (
+            <div style={{ marginTop: '1.25rem', paddingTop: '1.25rem', borderTop: '1px solid var(--border)' }}>
+              {questions.map((question, qIndex) => {
+                const response = answers.find(row => row.question_id === question.id)?.response as OnlineExamAnswer | undefined;
+                const choices = response?.option_ids || [];
+                const optionsForQuestion = (tables.exam_options || []).filter(row => row.question_id === question.id);
+                const choiceLabels = optionsForQuestion.filter(row => choices.includes(row.id)).map(row => String(row.label));
+                const correctLabels = optionsForQuestion.filter(row => row.is_correct === true).map(row => String(row.label));
+                const maxPts = Number(question.points) || 0;
+                const config = (question.configuration || {}) as { correction?: string };
+                const autoPts = autoQcmPoints(String(question.id));
+                const currentScore =
+                  attemptScores[String(question.id)] !== undefined
+                    ? attemptScores[String(question.id)]
+                    : autoPts !== null
+                    ? String(autoPts)
+                    : '';
+
+                return (
+                  <section className="online-exam-question" key={question.id}>
+                    <div className="online-exam-question-header">
+                      <strong>Question {qIndex + 1}</strong>
+                      <span className="pill pill-subtle">Barème : {maxPts} pt(s)</span>
+                      {autoPts !== null && (
+                        <span className={`pill ${autoPts > 0 ? 'pill-success' : 'pill-warning'}`}>
+                          {autoPts > 0 ? '✓ QCM exact' : '✗ QCM incorrect'}
+                        </span>
+                      )}
+                    </div>
+                    <div className="subject-text" style={{ fontSize: '1rem', fontWeight: 600, margin: '8px 0' }}>
+                      <SubjectRichText value={String(question.prompt)} />
+                    </div>
+
+                    <div className="online-exam-answer-box">
+                      <div className="cell-sub" style={{ marginBottom: '4px', fontWeight: 600 }}>Réponse de l’étudiant :</div>
+                      {choiceLabels.length > 0 && <p style={{ margin: '4px 0' }}>Choix : <strong>{choiceLabels.join(' ; ')}</strong></p>}
+                      {!!response?.text && <p style={{ margin: '4px 0' }}>{question.kind === 'TEXTE' ? response.text : `Justification : ${response.text}`}</p>}
+                      {!choiceLabels.length && !response?.text && <p style={{ color: 'var(--text-subtle)', fontStyle: 'italic', margin: '4px 0' }}>Sans réponse</p>}
+                    </div>
+
+                    {correctLabels.length > 0 && (
+                      <div className="online-exam-expected-box">
+                        <strong>Réponse attendue :</strong> {correctLabels.join(' ; ')}
+                      </div>
                     )}
-                  </div>
-                )}
-                <h3 className="subject-text"><SubjectRichText value={String(question.prompt)} /></h3>
-                {choiceLabels.length > 0 && <p className="subject-text">Choix : {choiceLabels.join(' ; ')}</p>}
-                {!!response?.text && <p className="subject-text">{question.kind === 'TEXTE' ? response.text : `Justification : ${response.text}`}</p>}
-                {!choiceLabels.length && !response?.text && <p>Sans réponse</p>}
-                {correctLabels.length > 0 && (
-                  <div className="cell-sub">Réponse attendue : {correctLabels.join(' ; ')}</div>
-                )}
-                {!!config.correction && (
-                  <div className="cell-sub">Corrigé indicatif : {config.correction}</div>
-                )}
-                {canGradeThisAttempt && maxPts > 0 && (
-                  <label className="form-group mt-2" style={{ maxWidth: '16rem' }}>
-                    Points attribués (sur {maxPts})
-                    <input
-                      className="input"
-                      type="number"
-                      min={0}
-                      max={maxPts}
-                      step="0.25"
-                      value={currentScore}
-                      onChange={event => {
-                        const val = event.target.value;
-                        const nextScores = { ...attemptScores, [String(question.id)]: val };
-                        setQuestionScores(prev => ({ ...prev, [String(attempt.id)]: nextScores }));
-                        const nextSum = questions.reduce((sum, q) => {
-                          const v = nextScores[String(q.id)];
-                          if (v !== undefined && v !== '' && Number.isFinite(Number(v))) return sum + Number(v);
-                          const a = autoQcmPoints(String(q.id));
-                          return sum + (a ?? 0);
-                        }, 0);
-                        const nextMark = totalPaperPoints > 0 ? roundMark((nextSum / totalPaperPoints) * 20) : roundMark(nextSum);
-                        setManualFinals(prev => ({ ...prev, [String(attempt.id)]: String(nextMark) }));
-                      }}
-                    />
-                  </label>
-                )}
-              </section>;
-            })}
+                    {!!config.correction && (
+                      <div className="online-exam-expected-box" style={{ background: '#eff6ff', borderColor: '#bfdbfe', color: '#1e40af' }}>
+                        <strong>Corrigé indicatif :</strong> {config.correction}
+                      </div>
+                    )}
+
+                    {canGradeThisAttempt && maxPts > 0 && (
+                      <label className="form-group mt-2" style={{ maxWidth: '16rem' }}>
+                        Points attribués (sur {maxPts})
+                        <input
+                          className="input"
+                          type="number"
+                          min={0}
+                          max={maxPts}
+                          step="0.25"
+                          value={currentScore}
+                          onChange={event => {
+                            const val = event.target.value;
+                            const nextScores = { ...attemptScores, [String(question.id)]: val };
+                            setQuestionScores(prev => ({ ...prev, [String(attempt.id)]: nextScores }));
+                            const nextSum = questions.reduce((sum, q) => {
+                              const v = nextScores[String(q.id)];
+                              if (v !== undefined && v !== '' && Number.isFinite(Number(v))) return sum + Number(v);
+                              const a = autoQcmPoints(String(q.id));
+                              return sum + (a ?? 0);
+                            }, 0);
+                            const nextMark = totalPaperPoints > 0 ? roundMark((nextSum / totalPaperPoints) * 20) : roundMark(nextSum);
+                            setManualFinals(prev => ({ ...prev, [String(attempt.id)]: String(nextMark) }));
+                          }}
+                        />
+                      </label>
+                    )}
+                  </section>
+                );
+              })}
 
             {canGradeThisAttempt && candidate && (
               <div className="card mt-2" style={{ backgroundColor: 'var(--surface-sunken)' }}>
@@ -283,7 +332,8 @@ export default function PersistentExamCopies({ evaluationId, candidateId, onClos
             )}
           </div>
         )}
-      </article>;
-    })}
+      </article>
+    );
+  })}
   </WorkPage>;
 }

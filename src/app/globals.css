@@ -3228,8 +3228,104 @@ input[type="radio"] {
 }
 
 /* Persistent online exam workspace. */
-.online-exam-entry { padding: 1.25rem 0; border-bottom: 1px solid var(--border); }
-.online-exam-question { margin: 1.5rem 0; padding: 1rem; border: 1px solid var(--border); border-radius: 8px; min-width: 0; }
+.online-exam-entry {
+  padding: 18px 20px;
+  background: var(--bg-card, #ffffff);
+  border: 1px solid var(--border, #e2e8f0);
+  border-radius: var(--radius-lg, 14px);
+  margin-bottom: 14px;
+  box-shadow: var(--shadow-sm);
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+.online-exam-entry:hover {
+  border-color: var(--border-strong, #cbd5e1);
+}
+.online-exam-entry-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 14px;
+}
+.online-exam-student {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+.online-exam-avatar {
+  display: grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #0284c7, #0369a1);
+  color: #ffffff;
+  font-weight: 700;
+  font-size: 1rem;
+  flex-shrink: 0;
+}
+.online-exam-info h2 {
+  margin: 0 0 4px;
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: var(--text-primary, #0f172a);
+}
+.online-exam-badges {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+}
+.online-exam-score-box {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 8px;
+}
+.online-exam-grade-badge {
+  font-size: 1.15rem;
+  font-weight: 700;
+  padding: 4px 12px;
+  border-radius: 8px;
+  background: var(--accent-light, #eff6ff);
+  color: var(--accent-hover, #1d4ed8);
+  border: 1px solid var(--accent-border, #bfdbfe);
+}
+.online-exam-question {
+  margin: 16px 0;
+  padding: 16px 18px;
+  background: var(--bg-tertiary, #f8fafc);
+  border: 1px solid var(--border, #e2e8f0);
+  border-radius: 10px;
+  min-width: 0;
+}
+.online-exam-question-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 8px;
+  padding-bottom: 6px;
+  border-bottom: 1px solid var(--border, #e2e8f0);
+}
+.online-exam-answer-box {
+  margin: 10px 0;
+  padding: 10px 14px;
+  background: #ffffff;
+  border: 1px solid var(--border, #cbd5e1);
+  border-radius: 8px;
+  font-size: 0.9rem;
+}
+.online-exam-expected-box {
+  margin: 8px 0;
+  padding: 8px 12px;
+  background: #f0fdf4;
+  border: 1px solid #bbf7d0;
+  border-radius: 6px;
+  color: #166534;
+  font-size: 0.85rem;
+}
 .online-exam-question legend { max-width: 100%; white-space: pre-wrap; overflow-wrap: anywhere; }
 .online-exam-question textarea { width: 100%; resize: vertical; }
 .online-exam-status { position: sticky; top: 0; z-index: 2; background: var(--surface, #fff); padding: .5rem; border-bottom: 1px solid var(--border); }
@@ -3237,6 +3333,8 @@ input[type="radio"] {
 .online-exam-actions p { flex-basis: 100%; margin: 0; }
 .online-exam-workspace { padding-bottom: calc(1rem + env(safe-area-inset-bottom)); }
 @media (max-width: 768px) {
+  .online-exam-entry-header { flex-direction: column; align-items: flex-start; }
+  .online-exam-score-box { align-items: flex-start; width: 100%; }
   .online-exam-question { padding: .75rem; }
   .online-exam-actions > .btn { flex: 1 1 100%; }
 }
@@ -3648,17 +3746,61 @@ body.transcript-print-body { page: transcript; display: block; width: 190mm; hei
 .candidate-history { padding-left: 24px; display: grid; gap: 14px; }
 .candidate-history p { margin: 6px 0; white-space: pre-wrap; overflow-wrap: anywhere; }
 .candidate-preserve-text { white-space: pre-wrap; }
-.admissions-summary { display: grid; grid-template-columns: repeat(5,minmax(0,1fr)); gap: 12px; }
-.admissions-summary > button { display: flex; flex-direction: column; align-items: flex-start; gap: 8px; color: var(--text-primary); text-align: left; cursor: pointer; }
-.admissions-summary strong { font-size: 1.6rem; }
-.admissions-summary > button[aria-pressed="true"] { outline: 2px solid var(--primary, #4f46e5); }
-@media (max-width: 1024px) { .admissions-summary { grid-template-columns: repeat(3,minmax(0,1fr)); } }
+.admissions-summary {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 14px;
+}
+.admissions-summary > button {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 18px 20px;
+  background: var(--bg-card, #ffffff);
+  border: 1px solid var(--border, #e2e8f0);
+  border-radius: var(--radius-lg, 14px);
+  color: var(--text-primary, #0f172a);
+  text-align: left;
+  cursor: pointer;
+  box-shadow: var(--shadow-sm);
+  transition: transform 0.15s ease, box-shadow 0.15s ease, border-color 0.15s ease;
+}
+.admissions-summary > button:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-md);
+  border-color: var(--accent, #2563eb);
+}
+.admissions-summary strong {
+  font-size: 1.8rem;
+  font-weight: 700;
+  line-height: 1.1;
+  color: var(--text-primary, #0f172a);
+  font-variant-numeric: tabular-nums;
+}
+.admissions-summary span {
+  font-size: 0.85rem;
+  font-weight: 500;
+  color: var(--text-secondary, #475569);
+}
+.admissions-summary > button[aria-pressed="true"] {
+  border-color: var(--accent, #2563eb);
+  background: var(--accent-light, #eff6ff);
+  box-shadow: 0 0 0 2px var(--accent, #2563eb);
+}
+.admissions-summary > button[aria-pressed="true"] span {
+  color: var(--accent-hover, #1d4ed8);
+  font-weight: 600;
+}
+@media (max-width: 1024px) {
+  .admissions-summary { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+}
 @media (max-width: 768px) {
   .candidate-public-header { padding: 18px 14px; }
   .candidate-public-content { padding: 0 12px 24px; }
   .candidate-steps { gap: 4px; }
   .candidate-steps li { padding: 10px 3px; flex-direction: column; text-align: center; font-size: .8rem; }
-  .admissions-summary { grid-template-columns: repeat(2,minmax(0,1fr)); }
+  .admissions-summary { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .candidate-public-content input[type="file"] { max-width: 100%; }
 }
 
@@ -3677,20 +3819,501 @@ body.transcript-print-body { page: transcript; display: block; width: 190mm; hei
 .admission-action .btn { white-space: normal; }
 
 /* Parcours des candidatures : responsable, progression et prochaine action. */
-.admissions-stepper { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 12px; padding: 0; margin: 0 0 24px; list-style: none; }
-.admissions-stepper li { display: flex; align-items: flex-start; gap: 8px; padding: 12px; border: 1px solid var(--border); border-radius: 10px; font-size: .85rem; overflow-wrap: anywhere; }
-.admissions-stepper li > span { display: grid; place-items: center; min-width: 24px; height: 24px; border-radius: 50%; background: #e8edf3; color: #334155; }
-.admissions-stepper .admissions-step-current { border-color: #2563eb; background: #eff6ff; color: #1e40af; font-weight: 700; }
-.admissions-stepper .admissions-step-done > span { background: #dcfce7; color: #166534; }
+.dossier-hero {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  padding: 20px;
+  background: var(--bg-card, #ffffff);
+  border: 1px solid var(--border, #e2e8f0);
+  border-radius: var(--radius-lg, 14px);
+  box-shadow: var(--shadow-sm);
+}
+
+.dossier-hero-main {
+  display: flex;
+  align-items: center;
+  gap: 18px;
+}
+
+.dossier-avatar {
+  display: grid;
+  place-items: center;
+  width: 58px;
+  height: 58px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #2563eb, #1d4ed8);
+  color: #ffffff;
+  font-size: 1.35rem;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  box-shadow: 0 4px 12px rgba(37, 99, 235, 0.25);
+  flex-shrink: 0;
+}
+
+.dossier-hero-info {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+  flex: 1;
+}
+
+.dossier-hero-title-row {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.dossier-hero-name {
+  margin: 0;
+  font-size: 1.35rem;
+  font-weight: 700;
+  color: var(--text-primary, #0f172a);
+}
+
+.dossier-hero-meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+
+.dossier-meta-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 4px 10px;
+  background: var(--bg-tertiary, #f1f5f9);
+  color: var(--text-secondary, #475569);
+  border-radius: 6px;
+  font-size: 0.8rem;
+  font-weight: 500;
+}
+
+.dossier-callout {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 12px 16px;
+  border-radius: 8px;
+  font-size: 0.875rem;
+  line-height: 1.5;
+}
+
+.dossier-callout-icon {
+  font-size: 1.15rem;
+  flex-shrink: 0;
+  margin-top: 1px;
+}
+
+.dossier-callout-content strong {
+  display: block;
+  font-weight: 600;
+  margin-bottom: 2px;
+}
+
+.dossier-callout-content p {
+  margin: 0;
+}
+
+.dossier-callout--info {
+  background: #eff6ff;
+  border: 1px solid #bfdbfe;
+  color: #1e40af;
+}
+
+.dossier-callout--warning {
+  background: #fffbeb;
+  border: 1px solid #fde68a;
+  color: #92400e;
+}
+
+.dossier-callout--alert {
+  background: #fef2f2;
+  border: 1px solid #fecaca;
+  color: #991b1b;
+}
+
+.dossier-journey-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  margin-top: 8px;
+}
+
+.dossier-section-title-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.dossier-section-title {
+  margin: 0;
+  font-size: 1.05rem;
+  font-weight: 700;
+  color: var(--text-primary, #0f172a);
+}
+
+.dossier-step-counter {
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--accent, #2563eb);
+  background: var(--accent-light, #eff6ff);
+  padding: 3px 10px;
+  border-radius: 12px;
+}
+
+.admissions-stepper {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 10px;
+  padding: 0;
+  margin: 0;
+  list-style: none;
+}
+
+.admissions-stepper li {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  gap: 8px;
+  padding: 12px 8px;
+  border: 1px solid var(--border, #e2e8f0);
+  background: var(--bg-card, #ffffff);
+  border-radius: 10px;
+  font-size: 0.8rem;
+  transition: all 0.2s ease;
+  position: relative;
+}
+
+.admissions-step-bubble {
+  display: grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: var(--bg-tertiary, #e2e8f0);
+  color: var(--text-secondary, #475569);
+  font-weight: 700;
+  font-size: 0.85rem;
+}
+
+.admissions-step-label {
+  font-weight: 500;
+  color: var(--text-secondary, #475569);
+  line-height: 1.3;
+}
+
+.admissions-stepper .admissions-step-current {
+  border-color: var(--accent, #2563eb);
+  background: var(--accent-light, #eff6ff);
+  box-shadow: 0 0 0 1px var(--accent, #2563eb);
+}
+
+.admissions-stepper .admissions-step-current .admissions-step-bubble {
+  background: var(--accent, #2563eb);
+  color: #ffffff;
+}
+
+.admissions-stepper .admissions-step-current .admissions-step-label {
+  color: var(--accent-hover, #1d4ed8);
+  font-weight: 700;
+}
+
+.admissions-stepper .admissions-step-done {
+  border-color: #bbf7d0;
+  background: #f0fdf4;
+}
+
+.admissions-stepper .admissions-step-done .admissions-step-bubble {
+  background: #16a34a;
+  color: #ffffff;
+}
+
+.admissions-stepper .admissions-step-done .admissions-step-label {
+  color: #166534;
+}
+
+.dossier-action-banner {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding: 18px;
+  background: linear-gradient(180deg, #f8fafc 0%, #f1f5f9 100%);
+  border: 1px solid #cbd5e1;
+  border-radius: 12px;
+}
+
+.dossier-action-banner-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 14px;
+}
+
+.dossier-step-title {
+  margin: 0 0 4px;
+  font-size: 1.05rem;
+  font-weight: 700;
+  color: var(--text-primary, #0f172a);
+}
+
+.dossier-step-instruction {
+  margin: 0;
+  font-size: 0.875rem;
+  color: var(--text-secondary, #475569);
+  line-height: 1.5;
+}
+
+.dossier-owner-tag {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  padding: 6px 12px;
+  background: #ffffff;
+  border: 1px solid var(--border, #e2e8f0);
+  border-radius: 8px;
+  flex-shrink: 0;
+}
+
+.dossier-owner-label {
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  color: var(--text-muted, #64748b);
+  letter-spacing: 0.05em;
+  font-weight: 600;
+}
+
+.dossier-owner-name {
+  font-size: 0.85rem;
+  color: var(--accent, #2563eb);
+}
+
+.dossier-action-cta {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 14px;
+  padding: 14px;
+  background: #ffffff;
+  border: 1px solid #bfdbfe;
+  border-radius: 10px;
+}
+
+.dossier-action-cta .btn {
+  font-size: 0.95rem;
+  padding: 0.7rem 1.4rem;
+  box-shadow: 0 2px 8px rgba(37, 99, 235, 0.25);
+}
+
+.dossier-action-hint {
+  font-size: 0.85rem;
+  color: var(--text-secondary, #475569);
+}
+
+.dossier-secondary-actions {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 10px;
+  padding-top: 8px;
+  border-top: 1px solid #e2e8f0;
+}
+
+.dossier-secondary-title {
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--text-muted, #64748b);
+}
+
+.dossier-enrolled-box {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 12px;
+  padding: 14px;
+  background: #ecfdf5;
+  border: 1px solid #a7f3d0;
+  border-radius: 10px;
+}
+
+.dossier-enrolled-badge {
+  font-weight: 700;
+  color: #065f46;
+  font-size: 0.9rem;
+}
+
+.dossier-guardians-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 14px;
+  margin-top: 10px;
+}
+
+.dossier-guardian-card {
+  padding: 16px;
+  background: var(--bg-tertiary, #f8fafc);
+  border: 1px solid var(--border, #e2e8f0);
+  border-radius: 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.dossier-guardian-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  border-bottom: 1px solid #e2e8f0;
+  padding-bottom: 10px;
+}
+
+.dossier-guardian-avatar {
+  display: grid;
+  place-items: center;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background: #e2e8f0;
+  font-size: 1.1rem;
+  flex-shrink: 0;
+}
+
+.dossier-guardian-name {
+  margin: 0 0 3px;
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: var(--text-primary, #0f172a);
+}
+
+.dossier-guardian-body {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  font-size: 0.85rem;
+}
+
+.dossier-guardian-row {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.dossier-label {
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--text-muted, #64748b);
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+.dossier-contact-link {
+  font-weight: 600;
+  color: var(--accent, #2563eb);
+  text-decoration: none;
+}
+
+.dossier-contact-link:hover {
+  text-decoration: underline;
+}
+
+.dossier-empty-val {
+  font-size: 0.75rem;
+  color: var(--text-subtle, #94a3b8);
+  font-style: italic;
+  padding: 2px 6px;
+  background: #e2e8f0;
+  border-radius: 4px;
+}
+
+.dossier-contacts-bar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-bottom: 16px;
+  padding: 12px;
+  background: var(--bg-tertiary, #f8fafc);
+  border-radius: 8px;
+  border: 1px solid var(--border, #e2e8f0);
+}
+
+.dossier-contact-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  background: #ffffff;
+  border: 1px solid var(--border, #cbd5e1);
+  border-radius: 6px;
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--accent, #2563eb);
+  text-decoration: none;
+}
+
+.dossier-contact-pill:hover {
+  background: var(--accent-light, #eff6ff);
+  border-color: var(--accent, #2563eb);
+}
+
+.dossier-doc-card {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 12px;
+  padding: 12px 16px;
+  background: #ffffff;
+  border: 1px solid var(--border, #e2e8f0);
+  border-radius: 10px;
+  transition: border-color 0.15s ease;
+}
+
+.dossier-doc-card:hover {
+  border-color: var(--accent, #2563eb);
+}
+
+.dossier-doc-main {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+}
+
+.dossier-doc-icon {
+  font-size: 1.4rem;
+  flex-shrink: 0;
+}
+
+.admission-actions { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 240px), 1fr)); gap: 12px; }
+.admission-action { padding: 12px; background: var(--bg-secondary); border-radius: 8px; }
+.admission-action p { margin-top: 8px; line-height: 1.5; font-size: .875rem; }
+.admission-action .btn { white-space: normal; }
 .admission-next-action { margin: 20px 0; padding: 16px; background: #f1f5f9; border-radius: 10px; }
-.admissions-other-actions { margin: 16px 0; }
-.admissions-other-actions > summary { cursor: pointer; padding: 12px 0; font-weight: 600; }
+.admissions-other-actions { margin: 12px 0 0; }
+.admissions-other-actions > summary { cursor: pointer; padding: 8px 0; font-weight: 600; font-size: 0.85rem; color: var(--text-secondary); }
 .admissions-action-form { scroll-margin-top: 24px; margin: 20px 0; border: 2px solid #2563eb; }
 .admissions-work-guide p { margin: 8px 0; }
+
 @media (max-width: 768px) {
-  .admissions-stepper { grid-template-columns: 1fr; gap: 6px; }
-  .admissions-stepper li { align-items: center; padding: 8px 12px; }
-  .admission-next-action .btn { width: 100%; }
+  .admissions-stepper { grid-template-columns: 1fr; gap: 8px; }
+  .admissions-stepper li { flex-direction: row; text-align: left; padding: 10px 14px; }
+  .dossier-action-banner-header { flex-direction: column; }
+  .dossier-owner-tag { align-items: flex-start; }
+  .dossier-action-cta { flex-direction: column; align-items: stretch; }
+  .dossier-action-cta .btn { width: 100%; justify-content: center; }
+  .dossier-guardians-grid { grid-template-columns: 1fr; }
+}
+
+@media (max-width: 480px) {
+  .dossier-hero-main { flex-direction: column; align-items: flex-start; }
 }
 
 .attendance-success { padding: 16px; border: 1px solid var(--success); border-radius: 10px; background: var(--success-light); color: var(--success); }
