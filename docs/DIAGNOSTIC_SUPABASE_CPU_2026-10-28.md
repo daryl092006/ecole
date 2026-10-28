@@ -125,3 +125,20 @@ La validation locale et la régénération du schéma sont terminées. Toute
 application distante de la migration et tout déploiement de l'application
 restent à faire après autorisation explicite. Surveiller ensuite les erreurs,
 les transactions annulées et le CPU pour vérifier l'absence de récidive.
+
+
+## Mise en production confirmée le 28 octobre 2026
+
+Cette section actualise les mentions de validation locale ci-dessus. Après accord explicite de l’utilisateur, la migration 055 a été appliquée à 15:00:14 UTC. Le SQL et son historique Supabase ont été validés dans la même transaction ; aucune autre migration n’a été appliquée.
+
+Comparaison des 108 fonctions applicatives : seules les 14 fonctions prévues ont changé ; droits, propriétaires, signatures et paramètres identiques. Zéro affectation explicite de `40001` restante. Test réel PostgREST : révision volontairement invalide refusée avec HTTP 409 / PT409 en 520 ms, révision métier inchangée à 52.
+
+Annulations : 137206459 à 15:00:53 avant le test, 137206460 à 15:02:52 après le test (une annulation attendue), aucune connexion sur la commande annuelle. CPU du tableau de bord non mesuré directement. Les adaptations TypeScript restent locales ; aucun déploiement applicatif ni push Git.
+
+Sauvegarde : `tmp/rpc-conflict-deployment/before-production.json.gz`. Empreinte SHA-256 du SQL appliqué : `08019e820f5aed588d62ce75215789f4d710b71a6b38e31b201cb3203ad9beb5`. Le manque d’espace disque local a empêché certaines écritures de compte rendu ; aucun fichier n’a été supprimé.
+
+Dernier contrôle à 15:04:39 UTC : compteur stable à 137206460 annulations, révision 52, zéro connexion sur la commande annuelle et migration 055 enregistrée une seule fois.
+
+Après autorisation de nettoyage, seuls sept dossiers de cache de compilation
+Next.js non suivis par Git ont été supprimés. L'espace libre est passé d'environ
+116 Mio à 3,6 Gio. Données, sauvegardes et modifications préexistantes conservées.
