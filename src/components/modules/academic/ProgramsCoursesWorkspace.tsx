@@ -14,18 +14,26 @@ export default function ProgramsCoursesWorkspace() {
   const [semesterId, setSemesterId] = useState('');
   const [task, setTask] = useState<{ collection: string; create?: boolean; editId?: string } | null>(null);
   const refreshedEmptySemesters = useRef(false);
+  const refreshedSem5 = useRef(false);
   const canEdit = portal.globalAccess && portal.perms.permissions.includes('academic.structure.manage');
   const canSchedule = portal.perms.permissions.includes('schedule.create');
   const year = portal.academicYearContext?.years.find(row => row.id === portal.academicYearContext?.selectedYearId);
 
   useEffect(() => {
     const hasV2 = (tables.curricula || []).some(row => !row.archived_at && Number(row.version) >= 2);
-    const hasSem5 = (tables.curriculum_semesters || []).some(row => !row.archived_at && row.name === 'Semestre 5');
-    if (!refreshedEmptySemesters.current && (!(tables.curriculum_semesters || []).length || (year?.name === '2026-2027' && (!hasV2 || !hasSem5)))) {
+    if (!refreshedEmptySemesters.current && (!(tables.curriculum_semesters || []).length || (year?.name === '2026-2027' && !hasV2))) {
       refreshedEmptySemesters.current = true;
       portal.refreshCampus();
     }
   }, [tables.curriculum_semesters, tables.curricula, year?.name, portal]);
+
+  useEffect(() => {
+    const hasSem5 = (tables.curriculum_semesters || []).some(row => !row.archived_at && row.name === 'Semestre 5');
+    if (!refreshedSem5.current && year?.name === '2026-2027' && !hasSem5) {
+      refreshedSem5.current = true;
+      portal.refreshCampus();
+    }
+  }, [tables.curriculum_semesters, year?.name, portal]);
 
   const yearGroups = (tables.groups || []).filter(row => !row.archived_at && (!year || row.academic_year_id === year.id));
   const programs = (tables.programs || []).filter(row => !row.archived_at && row.active !== false);
@@ -106,7 +114,18 @@ export default function ProgramsCoursesWorkspace() {
     return tables.teaching_units?.some(unit => !unit.archived_at && unit.id === row.unit_id && unit.semester_id === semester.id);
   });
   const selectedLevel = selectedOption?.level || (tables.levels || []).find(row => row.id === curriculum?.level_id);
-  const activeSemesterLabel = showAllSemesters ? 'Tous les semestres' : semester ? String(semester.name) : '';
+  const semLabel = (row: Record<string, unknown> | undefined) => {
+    if (!row) return '';
+    const raw = String(row.name || '');
+    const code = String(selectedLevel?.code || '').toUpperCase();
+    const rawPos = Number(selectedLevel?.position || 1);
+    const levelPos = code === 'EM' || rawPos > 3 || rawPos < 1 ? 1 : rawPos;
+    if (levelPos > 1 && /^Semestre [12]$/.test(raw)) {
+      return `Semestre ${(levelPos - 1) * 2 + Number(row.position || 1)}`;
+    }
+    return raw;
+  };
+  const activeSemesterLabel = showAllSemesters ? 'Tous les semestres' : semester ? semLabel(semester) : '';
   const contextParts = [selectedOption?.name, selectedLevel?.name && !String(selectedOption?.name || '').includes(String(selectedLevel.name)) ? String(selectedLevel.name) : '', activeSemesterLabel].filter(Boolean);
   const context = contextParts.join(' · ');
   const editableProgram = canEdit && !!year && curriculum?.status === 'DRAFT';
@@ -143,7 +162,7 @@ export default function ProgramsCoursesWorkspace() {
           2. Semestre
           <select className="select-input" disabled={!curriculum} value={semesterId} onChange={event => setSemesterId(event.target.value)}>
             <option value="">Choisir un semestre</option>
-            {semesters.map(row => <option key={row.id} value={row.id}>{String(row.name)}</option>)}
+            {semesters.map(row => <option key={row.id} value={row.id}>{semLabel(row)}</option>)}
             {semesters.length > 1 && <option value="ALL">Tous les semestres ({allCurriculumComponents.length} matières)</option>}
           </select>
         </label>
@@ -162,7 +181,7 @@ export default function ProgramsCoursesWorkspace() {
         const scheduleHref = canSchedule
           ? `/academique/emploi-du-temps?matiere=${encodeURIComponent(component.id)}${selectedOption?.isRealGroup ? `&groupe=${encodeURIComponent(selectedOption.id)}` : ''}`
           : '/academique/emploi-du-temps';
-        return <tr key={component.id}><td><strong>{String(subject.name)}</strong></td><td>{String(component.code || subject.code || 'Non renseigné')}</td>{showAllSemesters && <td>{String(compSem?.name || semesters[0]?.name || 'Semestre 1')}</td>}<td>{String(component.credits ?? 'Non renseignés')}</td><td>{String(component.coefficient ?? 'Non renseigné')}</td><td><div className="btn-group">{canEdit && year && <button className="btn btn-outline" onClick={() => setTask({ collection: 'subjects', editId: subject.id })}>Modifier la matière</button>}{portal.perms.permissions.includes('schedule.view') && <Link className="btn btn-outline" href={scheduleHref}>{canSchedule ? 'Programmer un cours' : 'Voir l’emploi du temps'}</Link>}</div></td></tr>;
+        return <tr key={component.id}><td><strong>{String(subject.name)}</strong></td><td>{String(component.code || subject.code || 'Non renseigné')}</td>{showAllSemesters && <td>{semLabel(compSem || semesters[0]) || 'Semestre 1'}</td>}<td>{String(component.credits ?? 'Non renseignés')}</td><td>{String(component.coefficient ?? 'Non renseigné')}</td><td><div className="btn-group">{canEdit && year && <button className="btn btn-outline" onClick={() => setTask({ collection: 'subjects', editId: subject.id })}>Modifier la matière</button>}{portal.perms.permissions.includes('schedule.view') && <Link className="btn btn-outline" href={scheduleHref}>{canSchedule ? 'Programmer un cours' : 'Voir l’emploi du temps'}</Link>}</div></td></tr>;
       })}{!components.length && <tr><td colSpan={showAllSemesters ? 6 : 5}>Aucune matière dans ce semestre. Ajoutez la première matière pour préparer les cours.</td></tr>}</tbody></ResponsiveTable></div>
     </section>}
     {unassigned.length > 0 && <section className="card"><h2>Matières sans rattachement renseigné ({unassigned.length})</h2><p>Ces matières sont conservées dans le catalogue, sans semestre associé.</p>{unassigned.map(subject => <p key={subject.id}>{String(subject.name)} · {String(subject.code || 'Code non renseigné')}</p>)}</section>}
