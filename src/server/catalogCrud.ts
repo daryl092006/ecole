@@ -143,15 +143,22 @@ export async function writeCatalog(request: Request, key: string, id?: string) {
     // La filière et tous ses niveaux doivent être enregistrés dans une seule transaction.
     if (changes.length > 100) throw new RequestError(400, 'Trop de programmes de cours concernés. Modifiez moins de niveaux à la fois.');
   }
-  const insertedCurriculaIds = changes
+  const insertedCurricula = changes
     .filter(change => change.table === 'curricula' && change.operation === 'insert')
-    .map(change => String(change.record.id));
-  for (const curriculumId of insertedCurriculaIds) {
+    .map(change => change.record);
+  for (const curRecord of insertedCurricula) {
+    const curriculumId = String(curRecord.id);
     const hasSemesters = (snapshot.tables.curriculum_semesters || []).some(row => row.curriculum_id === curriculumId && !row.archived_at);
     if (!hasSemesters && changes.length + 2 <= 100) {
+      const level = (snapshot.tables.levels || []).find(row => row.id === curRecord.level_id);
+      const code = String(level?.code || '').toUpperCase();
+      const rawPos = Number(level?.position || 1);
+      const levelPos = code === 'EM' || rawPos > 3 || rawPos < 1 ? 1 : rawPos;
+      const s1Num = (levelPos - 1) * 2 + 1;
+      const s2Num = (levelPos - 1) * 2 + 2;
       changes.push(
-        { table: 'curriculum_semesters', operation: 'insert', record: { id: crypto.randomUUID(), curriculum_id: curriculumId, position: 1, name: 'Semestre 1', target_credits: 30, reason: body.reason } },
-        { table: 'curriculum_semesters', operation: 'insert', record: { id: crypto.randomUUID(), curriculum_id: curriculumId, position: 2, name: 'Semestre 2', target_credits: 30, reason: body.reason } },
+        { table: 'curriculum_semesters', operation: 'insert', record: { id: crypto.randomUUID(), curriculum_id: curriculumId, position: 1, name: `Semestre ${s1Num}`, target_credits: 30, reason: body.reason } },
+        { table: 'curriculum_semesters', operation: 'insert', record: { id: crypto.randomUUID(), curriculum_id: curriculumId, position: 2, name: `Semestre ${s2Num}`, target_credits: 30, reason: body.reason } },
       );
     }
   }

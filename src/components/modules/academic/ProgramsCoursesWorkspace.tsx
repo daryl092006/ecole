@@ -20,7 +20,8 @@ export default function ProgramsCoursesWorkspace() {
 
   useEffect(() => {
     const hasV2 = (tables.curricula || []).some(row => !row.archived_at && Number(row.version) >= 2);
-    if (!refreshedEmptySemesters.current && (!(tables.curriculum_semesters || []).length || (year?.name === '2026-2027' && !hasV2))) {
+    const hasSem5 = (tables.curriculum_semesters || []).some(row => !row.archived_at && row.name === 'Semestre 5');
+    if (!refreshedEmptySemesters.current && (!(tables.curriculum_semesters || []).length || (year?.name === '2026-2027' && (!hasV2 || !hasSem5)))) {
       refreshedEmptySemesters.current = true;
       portal.refreshCampus();
     }
