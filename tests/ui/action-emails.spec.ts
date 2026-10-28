@@ -22,7 +22,7 @@ for (const width of [390, 1440]) {
     await expect(page.getByRole('status').filter({ hasText: 'un lien de réinitialisation sera envoyé' })).toHaveCount(0);
     fail = false;
     await submit.click();
-    await expect(page.getByRole('status').filter({ hasText: 'Si cette adresse correspond à un compte, un lien de réinitialisation sera envoyé.' })).toBeVisible();
+    await expect(page.getByRole('status').filter({ hasText: 'Demande enregistrée. Consultez votre boîte mail' })).toBeVisible();
     expect(requests).toEqual(Array.from({ length: 2 }, () => ({ email: 'candidate@example.test', redirectTo: 'http://127.0.0.1:3117/mot-de-passe-reinitialiser' })));
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
   });

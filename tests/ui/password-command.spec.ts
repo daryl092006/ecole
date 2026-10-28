@@ -10,6 +10,7 @@ import { ROLES } from '../../src/types/permissions';
 
 const testPassword = 'Fixture-password-2026!';
 const authId = '10000000-0000-4000-8000-000000000001';
+const recoveryPath = '/mot-de-passe-reinitialiser#access_token=recovery-access-token&refresh_token=recovery-refresh-token&token_type=bearer&expires_in=3600&type=recovery';
 
 function passwordRoute(options: { authenticated?: boolean; required?: boolean; fail?: boolean; missingUser?: boolean } = {}) {
   const calls: { id: string; attributes: Record<string, unknown> }[] = [];
@@ -104,12 +105,12 @@ for (const path of ['/mot-de-passe-modifier', '/mot-de-passe-reinitialiser']) {
       return route.fulfill({ json: { id: authId, email: 'test@example.test' } });
     });
     await page.route('**/api/session/password', route => {
-      expect(route.request().headers().authorization).toBe('Bearer fixture-auth-token');
+      expect(route.request().headers().authorization).toBe(path === '/mot-de-passe-reinitialiser' ? 'Bearer recovery-access-token' : 'Bearer fixture-auth-token');
       expect(route.request().postDataJSON()).toEqual({ password: testPassword });
       updates++;
       return rejected ? route.fulfill({ status: 503, json: { error: 'Indisponible' } }) : route.fulfill({ json: { updated: true } });
     });
-    await page.goto(path);
+    await page.goto(path === '/mot-de-passe-reinitialiser' ? recoveryPath : path);
     await page.getByLabel('Nouveau mot de passe', { exact: true }).fill(testPassword);
     await page.getByLabel('Confirmer le mot de passe', { exact: true }).fill(testPassword);
     await page.getByRole('button', { name: 'Enregistrer le nouveau mot de passe', exact: true }).click();
@@ -139,11 +140,45 @@ test('La récupération sans obligation conserve le changement Supabase utilisat
     mandatoryUpdates++;
     return route.fulfill({ status: 409, json: { error: 'Aucune obligation' } });
   });
-  await page.goto('/mot-de-passe-reinitialiser');
+  await page.goto(recoveryPath);
   await page.getByLabel('Nouveau mot de passe', { exact: true }).fill(testPassword);
   await page.getByLabel('Confirmer le mot de passe', { exact: true }).fill(testPassword);
   await page.getByRole('button', { name: 'Enregistrer le nouveau mot de passe', exact: true }).click();
   await expect(page).toHaveURL(/\/connexion\?mot-de-passe-modifie=1$/);
   expect(directUpdates).toBe(1);
   expect(mandatoryUpdates).toBe(0);
+});
+
+test('Une session ordinaire ne remplace pas le lien de récupération', async ({ page }) => {
+  await authenticateFixture(page);
+  let writes = 0;
+  await page.route('**/auth/v1/user', route => {
+    if (route.request().method() === 'PUT') writes++;
+    return route.fulfill({ json: { id: authId } });
+  });
+  await page.goto('/mot-de-passe-reinitialiser');
+  await expect(page.getByRole('heading', { name: 'Lien de réinitialisation invalide' })).toBeVisible();
+  await expect(page.getByLabel('Nouveau mot de passe', { exact: true })).toHaveCount(0);
+  expect(writes).toBe(0);
+});
+
+test('Un lien expiré ne réutilise pas une ancienne session', async ({ page }) => {
+  await authenticateFixture(page);
+  await page.route('**/auth/v1/user', route => route.fulfill({ status: 401, json: { message: 'Expired token' } }));
+  await page.goto(recoveryPath);
+  await expect(page.getByRole('heading', { name: 'Lien de réinitialisation invalide' })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Enregistrer le nouveau mot de passe' })).toHaveCount(0);
+});
+
+test('Un lien de récupération ne crée aucune session persistante de portail', async ({ page }) => {
+  await page.route('**/auth/v1/**', route => route.fulfill({ json: { id: authId, email: 'test@example.test' } }));
+  let profileReads = 0;
+  await page.route('**/api/session', route => { profileReads++; return route.fulfill({ status: 401, json: {} }); });
+  await page.goto(recoveryPath);
+  await expect(page.getByLabel('Nouveau mot de passe', { exact: true })).toBeVisible();
+  expect(await page.evaluate(() => Object.keys(localStorage).filter(key => key.includes('auth-token') || key.includes('password-recovery')))).toEqual([]);
+  expect(profileReads).toBe(0);
+  await page.getByRole('link', { name: 'Retour à la connexion', exact: true }).click();
+  await expect(page.getByRole('button', { name: 'Se connecter', exact: true })).toBeVisible();
+  await expect(page).toHaveURL(/\/connexion$/);
 });

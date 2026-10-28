@@ -111,11 +111,11 @@ export function useAppState() {
     let unsubscribe: (() => void) | undefined;
     const version = ++authVersion.current;
     const current = () => !cancelled && authVersion.current === version;
-    const recovery = window.location.pathname === '/mot-de-passe-reinitialiser';
+    const recovery = () => window.location.pathname === '/mot-de-passe-reinitialiser';
     setAuthError('');
-    if (!sessionRef.current && !recovery) setAuthReady(false);
+    if (!sessionRef.current && !recovery()) setAuthReady(false);
     const restoreSession = async () => {
-      if (recovery) { setAuthReady(true); return; }
+      if (recovery()) { setAuthReady(true); return; }
       try {
         const { data, error } = await getSupabaseBrowserClient().auth.getSession();
         if (error) throw error;
@@ -157,7 +157,7 @@ export function useAppState() {
             setHasLoggedOut(false);
             setAuthNotice('Votre session a pris fin. Reconnectez-vous pour continuer.');
           }
-        } else if (event === 'SIGNED_IN' && authSession && !authAction.current && !recovery) {
+        } else if (event === 'SIGNED_IN' && authSession && !authAction.current && !recovery()) {
           const changedUser = !!authenticatedUserId.current && authenticatedUserId.current !== authSession.user.id;
           if (sessionRef.current && !changedUser) return;
           if (changedUser) { ++authVersion.current; setSession(null); setAuthReady(false); setAuthError(''); }

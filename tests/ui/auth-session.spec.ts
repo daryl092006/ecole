@@ -55,6 +55,23 @@ test('Une panne du profil conserve la session et propose une reprise', async ({ 
   await expect(page.locator('#main-content')).toBeVisible();
 });
 
+test('Mot de passe oublié : ancienne session fermée et retour sans connexion automatique', async ({ context, page }) => {
+  const state = await fixture(context, true);
+  let requests = 0;
+  await context.route('**/auth/v1/recover*', route => { requests++; return route.fulfill({ json: {} }); });
+  await page.goto('/mot-de-passe-oublie');
+  await page.getByLabel('Adresse email', { exact: true }).fill('it@example.test');
+  await page.getByRole('button', { name: 'Recevoir un lien de réinitialisation', exact: true }).click();
+  await expect(page.getByRole('status').filter({ hasText: 'Demande enregistrée.' })).toBeVisible();
+  expect(requests).toBe(1);
+  expect(state.logoutScopes).toEqual(['local']);
+  expect(await page.evaluate(key => localStorage.getItem(key), key)).toBeNull();
+  await page.getByRole('link', { name: 'Revenir à la connexion', exact: true }).click();
+  await expect(page.getByRole('button', { name: 'Se connecter', exact: true })).toBeVisible();
+  await expect(page).toHaveURL(/\/connexion$/);
+  await expect(page.locator('#main-content')).toHaveCount(0);
+});
+
 test('La déconnexion est propagée aux autres onglets et reste locale à cette session', async ({ context, page }) => {
   const state = await fixture(context, true);
   await page.goto('/mon-espace');
