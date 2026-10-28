@@ -41,12 +41,6 @@ export function filterSnapshotForAcademicYear(snapshot: RelationalSnapshot, year
   for (const [table, rows] of Object.entries(tables)) if (rows.some(row => row.academic_year_id !== undefined)) annual.add(table);
   // Grants express authorization, never a filter on which identity/role exists.
   annual.delete('role_grants'); annual.delete('academic_working_year');
-  const sharedSubjectIds = new Set(
-    (tables.curriculum_components || [])
-      .filter(row => !row.archived_at)
-      .map(row => String(row.subject_id || ''))
-      .filter(Boolean)
-  );
   let changed = true;
   while (changed) {
     changed = false;
@@ -56,13 +50,13 @@ export function filterSnapshotForAcademicYear(snapshot: RelationalSnapshot, year
     }
   }
   for (const table of annual) tables[table] = (tables[table] || []).filter(row => {
-    if (row.academic_year_id != null) return row.academic_year_id === yearId || (table === 'subjects' && sharedSubjectIds.has(row.id));
+    if (row.academic_year_id != null) return row.academic_year_id === yearId;
     // A nullable year is not evidence of membership: require a real annual parent.
     return Object.entries(map[table] || {}).some(([field, parent]) => annual.has(parent) && row[field] != null);
   });
   // A chain must reach a known year; a cycle of unknown parents is not a year.
   const attributed = new Set<string>();
-  for (const table of annual) for (const row of tables[table] || []) if (row.academic_year_id === yearId || (table === 'subjects' && sharedSubjectIds.has(row.id))) attributed.add(`${table}:${row.id}`);
+  for (const table of annual) for (const row of tables[table] || []) if (row.academic_year_id === yearId) attributed.add(`${table}:${row.id}`);
   for (let pass = 0; pass < annual.size; pass++) {
     let added = false;
     for (const table of annual) for (const row of tables[table] || []) {

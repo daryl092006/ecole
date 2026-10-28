@@ -19,11 +19,12 @@ export default function ProgramsCoursesWorkspace() {
   const year = portal.academicYearContext?.years.find(row => row.id === portal.academicYearContext?.selectedYearId);
 
   useEffect(() => {
-    if (!refreshedEmptySemesters.current && !(tables.curriculum_semesters || []).length) {
+    const hasV2 = (tables.curricula || []).some(row => !row.archived_at && Number(row.version) >= 2);
+    if (!refreshedEmptySemesters.current && (!(tables.curriculum_semesters || []).length || (year?.name === '2026-2027' && !hasV2))) {
       refreshedEmptySemesters.current = true;
       portal.refreshCampus();
     }
-  }, [tables.curriculum_semesters, portal]);
+  }, [tables.curriculum_semesters, tables.curricula, year?.name, portal]);
 
   const yearGroups = (tables.groups || []).filter(row => !row.archived_at && (!year || row.academic_year_id === year.id));
   const programs = (tables.programs || []).filter(row => !row.archived_at && row.active !== false);

@@ -57,7 +57,7 @@ export function resaoSubjectChanges(snapshot: RelationalSnapshot, input: unknown
   const values = resaoSubjectSchema.parse(input);
   const { semester, curriculum } = resaoSubjectContext(snapshot, values.semester_id);
   const offerings = (snapshot.tables.academic_offerings || []).filter(row => row.curriculum_id === curriculum.id && !row.archived_at);
-  if (offerings.length > 0 && !offerings.some(row => row.academic_year_id === subject.academic_year_id)) throw new Error('Ce programme est déjà utilisé dans une autre année. Choisissez un programme propre à l’année consultée.');
+  if (offerings.some(row => row.academic_year_id !== subject.academic_year_id)) throw new Error('Ce programme est déjà utilisé dans une autre année. Choisissez un programme propre à l’année consultée.');
   const code = generateResaoSubjectCode(snapshot, values.discipline, values.semester_id, String(subject.academic_year_id));
   if (subject.code && subject.code !== code) throw new Error('Le code proposé a changé. Actualisez les données avant de confirmer.');
   const unitId = crypto.randomUUID();

@@ -506,7 +506,17 @@ function ReferenceCrudContent({
   }
   const submitLabel = dismissingPaymentProposal ? 'Vérifier le retrait' : creatingOfferings ? 'Enregistrer les niveaux' : preparingFinancialSettings ? dialog === 'archive' ? 'Vérifier l’archivage' : preparingAnnualFees ? 'Enregistrer le tarif' : 'Enregistrer le moyen de paiement' : 'Enregistrer';
   const annualPrograms = (data?.tables.programs || []).filter(row => !row.archived_at && row.active !== false);
-  const annualCurricula = (data?.tables.curricula || []).filter(row => !row.archived_at && row.status !== 'ARCHIVED' && row.program_id === form.program_id);
+  const allProgramCurricula = (data?.tables.curricula || []).filter(row => !row.archived_at && row.status !== 'ARCHIVED' && row.program_id === form.program_id);
+  const yearOfferingCurriculumIds = new Set(
+    (data?.tables.academic_offerings || [])
+      .filter(row => !row.archived_at && row.academic_year_id === form.academic_year_id)
+      .map(row => String(row.curriculum_id || ''))
+  );
+  const annualCurricula = [...new Set(allProgramCurricula.map(row => String(row.level_id)))].map(lvlId => {
+    const forLevel = allProgramCurricula.filter(row => row.level_id === lvlId);
+    return forLevel.find(row => yearOfferingCurriculumIds.has(row.id))
+      || [...forLevel].sort((a, b) => Number(b.version || 1) - Number(a.version || 1))[0];
+  }).filter((row): row is DatabaseRow => Boolean(row));
   const savedAnnualVariants = (programId: string) => (data?.tables.academic_offerings || [])
     .filter(row => !row.archived_at && row.academic_year_id === form.academic_year_id
       && data?.tables.curricula?.some(curriculum => curriculum.id === row.curriculum_id && curriculum.program_id === programId))
