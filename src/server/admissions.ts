@@ -66,8 +66,8 @@ export async function persistCandidateFiles(client: SupabaseClient, name: string
   const response = await client.rpc(name, args);
   if (response.error) {
     // A transport failure can conceal a commit: only clean up a definite SQL rejection.
-    if (['23514','23505','23503','42501','40001','P0002'].includes(response.error.code)) await client.storage.from('escen-online-applications').remove(paths);
-    throw new RequestError(response.error.code === '40001' ? 409 : 503, 'Les pièces n’ont pas pu être confirmées. Actualisez le dossier avant de réessayer.');
+    if (['23514','23505','23503','42501','40001','PT409','P0002'].includes(response.error.code)) await client.storage.from('escen-online-applications').remove(paths);
+    throw new RequestError(['40001','PT409'].includes(response.error.code) ? 409 : 503, 'Les pièces n’ont pas pu être confirmées. Actualisez le dossier avant de réessayer.');
   }
   return response.data;
 }

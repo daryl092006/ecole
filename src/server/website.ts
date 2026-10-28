@@ -8,7 +8,7 @@ export async function websiteRpc(client: SupabaseClient, name: string, args: Rec
   const result = await client.rpc(name, args);
   if (result.error) {
     const code = result.error.code;
-    const status = code === '42501' ? 403 : code === 'P0002' ? 404 : ['23514', '23505', '40001', '23503'].includes(code) ? 409 : 503;
+    const status = code === '42501' ? 403 : code === 'P0002' ? 404 : ['23514', '23505', '40001', 'PT409', '23503'].includes(code) ? 409 : 503;
     throw new RequestError(status, status === 503 ? 'Le service du site est indisponible. Réessayez.' : status === 404 ? 'Dossier ou publication introuvable.' : status === 403 ? 'Accès non autorisé.' : 'Enregistrement refusé : dossier incomplet, référence fermée, doublon ou modification concurrente. Actualisez et vérifiez les informations.');
   }
   return result.data;

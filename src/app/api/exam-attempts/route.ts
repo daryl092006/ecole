@@ -16,7 +16,7 @@ async function execute(request: Request, params: Record<string, unknown>) {
   const result = await client.rpc('escen_online_exam', { ...params, p_actor_id: context.accountId, p_role_code: context.roleCode });
   if (result.error) {
     if (result.error.code === '42501') throw new RequestError(403, 'Cette copie ne vous est pas accessible.');
-    if (result.error.code === '40001') throw new RequestError(409, 'Cette copie a été modifiée dans un autre onglet. Vos réponses locales sont conservées. Rechargez la copie pour reprendre la version enregistrée.');
+    if (['40001', 'PT409'].includes(result.error.code)) throw new RequestError(409, 'Cette copie a été modifiée dans un autre onglet. Vos réponses locales sont conservées. Rechargez la copie pour reprendre la version enregistrée.');
     if (['23514', '23502', '23503', '22P02'].includes(result.error.code ?? '')) throw new RequestError(422, 'L’épreuve est fermée, indisponible ou les réponses sont invalides. Actualisez la copie pour vérifier son état.');
     throw new RequestError(503, 'Enregistrement indisponible. Vos réponses locales sont conservées ; réessayez avant la fin de l’épreuve.');
   }
