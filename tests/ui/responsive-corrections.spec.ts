@@ -9,11 +9,8 @@ async function open(page: Page, route: string, width: number, account: AuditAcco
   await expect(page.locator('main .loading-state:visible')).toHaveCount(0);
   if (route.startsWith('/academique/filieres')) {
     // The connected workspace now opens the table after choosing its context.
-    await page.getByRole('combobox', { name: '1. Filière', exact: true }).selectOption({ index: 1 });
-    await page.getByRole('combobox', { name: '2. Niveau', exact: true }).selectOption({ index: 1 });
-    const version = page.getByRole('combobox', { name: 'Version du programme', exact: true });
-    if (await version.count()) await version.selectOption({ index: 1 });
-    await page.getByRole('combobox', { name: '3. Semestre', exact: true }).selectOption({ index: 1 });
+    await page.getByRole('combobox', { name: '1. Groupe', exact: true }).selectOption({ index: 1 });
+    await page.getByRole('combobox', { name: '2. Semestre', exact: true }).selectOption({ index: 1 });
   }
   await page.evaluate(() => document.fonts.ready);
   expect(problems).toEqual([]);

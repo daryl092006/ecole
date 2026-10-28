@@ -31,9 +31,8 @@ test('Création : code automatique, récapitulatif puis enregistrement avec le s
     return route.fulfill({ status: 201, json: { id: 'CREATED', revision: 2 } });
   });
   await page.goto('/academique/filieres?collection=subjects');
-  await page.getByLabel('1. Filière').selectOption('P');
-  await page.getByLabel('2. Niveau').selectOption('L');
-  await page.getByLabel('3. Semestre').selectOption(semesterId);
+  await page.getByLabel('1. Groupe').selectOption('P');
+  await page.getByLabel('2. Semestre').selectOption(semesterId);
   await page.getByRole('button', { name: 'Ajouter une matière', exact: true }).click();
   const dialog = page.getByRole('dialog');
   await dialog.getByRole('textbox', { name: 'Nom', exact: true }).fill('Finance digitale');

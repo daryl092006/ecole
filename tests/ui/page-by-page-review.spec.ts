@@ -103,11 +103,8 @@ for (const width of [390, 1440]) test(`Revue des pages, sous-onglets et fenêtre
         await capture(page, screen.href, 'Page initiale');
         const seen = new Set<string>();
         if (screen.key === 'acad_program') {
-          await page.getByRole('combobox', { name: '1. Filière', exact: true }).selectOption({ index: 1 });
-          await page.getByRole('combobox', { name: '2. Niveau', exact: true }).selectOption({ index: 1 });
-          const version = page.getByRole('combobox', { name: 'Version du programme', exact: true });
-          if (await version.count()) await version.selectOption({ index: 1 });
-          await page.getByRole('combobox', { name: '3. Semestre', exact: true }).selectOption({ index: 1 });
+          await page.getByRole('combobox', { name: '1. Groupe', exact: true }).selectOption({ index: 1 });
+          await page.getByRole('combobox', { name: '2. Semestre', exact: true }).selectOption({ index: 1 });
           await capture(page, screen.href, 'Programme et matières après sélection');
         }
         if (screen.key === 'web_documents') {

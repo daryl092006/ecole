@@ -55,9 +55,8 @@ async function prepare(page: Page, rejected = '') {
     return route.fulfill({ status: request.method() === 'POST' ? 201 : 200, json: { revision, id: ids.created } });
   });
   await page.goto('/academique/filieres');
-  await page.getByLabel('1. Filière').selectOption('P');
-  await page.getByLabel('2. Niveau').selectOption('L');
-  await page.getByLabel('3. Semestre').selectOption(ids.semester);
+  await page.getByLabel('1. Groupe').selectOption('P');
+  await page.getByLabel('2. Semestre').selectOption(ids.semester);
   await expect(page.getByRole('region', { name: 'Matières du semestre' })).toContainText('Matière UI');
   return { tables, writes, reads: () => campusReads };
 }
@@ -89,7 +88,7 @@ test('Semestre : création décimale contextualisée et ordre entier obligatoire
   await confirm(page);
   await expect.poll(fixture.reads).toBeGreaterThan(reads);
   expect(fixture.writes).toEqual([expect.objectContaining({ collection: 'curriculum_semesters', method: 'POST', values: { curriculum_id: ids.curriculum, name: 'Semestre UI', position: 2, target_credits: 3.75 } })]);
-  await page.getByLabel('3. Semestre').selectOption(ids.created);
+  await page.getByLabel('2. Semestre').selectOption(ids.created);
   await expect(page.getByRole('region', { name: 'Matières du semestre' })).toContainText('Semestre UI');
 });
 

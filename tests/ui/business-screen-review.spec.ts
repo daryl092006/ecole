@@ -41,10 +41,9 @@ for (const width of [390, 1440]) test(`Écrans et PostgreSQL local : création, 
   await connect(page);
   await page.goto('/academique/filieres');
   await selectIT(page);
-  await page.getByLabel('1. Filière').selectOption(local.programs[0].id);
-  await page.getByLabel('2. Niveau').selectOption(local.level.id);
+  await page.getByLabel('1. Groupe').selectOption({ index: 1 });
   const semesterId = await local.value('select id as value from escen.curriculum_semesters where curriculum_id=$1 and position=1', [local.curricula[0].id]);
-  await page.getByLabel('3. Semestre').selectOption(semesterId);
+  await page.getByLabel('2. Semestre').selectOption(semesterId);
   await page.getByRole('button', { name: 'Ajouter une matière', exact: true }).click();
   const name = `Finance de recette ${width}`;
   await page.getByLabel('Nom', { exact: true }).fill(name);
@@ -59,9 +58,8 @@ for (const width of [390, 1440]) test(`Écrans et PostgreSQL local : création, 
   expect(await local.value('select count(*)::integer as value from escen.subjects s join escen.curriculum_components c on c.subject_id=s.id join escen.teaching_units u on u.id=c.unit_id where s.name=$1 and c.credits=3.75 and c.coefficient=0.625 and u.code=s.code', [name])).toBe(1);
   await page.reload();
   await selectIT(page);
-  await page.getByLabel('1. Filière').selectOption(local.programs[0].id);
-  await page.getByLabel('2. Niveau').selectOption(local.level.id);
-  await page.getByLabel('3. Semestre').selectOption(semesterId);
+  await page.getByLabel('1. Groupe').selectOption({ index: 1 });
+  await page.getByLabel('2. Semestre').selectOption(semesterId);
   await expect(page.getByRole('region', { name: 'Matières du semestre' })).toContainText(name);
   await page.getByRole('row').filter({ hasText: name }).scrollIntoViewIfNeeded();
   await page.screenshot({ path: `tmp/screenshots/business-review/${width}/programme.png`, fullPage: true });
