@@ -92,6 +92,21 @@ export default function WorkspaceHome({ mode = 'home' }: { mode?: 'home' | 'over
     if (role === ROLES.IT) {
       const activeUsers = state.users.filter(u => u.active).length;
       const openTickets = activeRows('support_tickets').filter(t => ['OPEN', 'IN_PROGRESS'].includes(String(t.status))).length;
+      const teacherStaffIds = new Set(activeRows('teachers').map(row => row.staff_id));
+      const contractStaffIds = new Set(activeRows('staff_contracts').filter(row => !row.ends_on).map(row => row.staff_id));
+      const teacherOnlyPersonIds = new Set(
+        activeRows('staff')
+          .filter(row => teacherStaffIds.has(row.id) && !contractStaffIds.has(row.id))
+          .map(row => row.person_id),
+      );
+      const adminStaffCount = new Set([
+        ...activeRows('staff')
+          .filter(row => !teacherStaffIds.has(row.id) || contractStaffIds.has(row.id))
+          .map(row => row.person_id),
+        ...activeRows('accounts')
+          .filter(row => row.account_type === 'staff' && row.active !== false && !teacherOnlyPersonIds.has(row.person_id))
+          .map(row => row.person_id),
+      ]).size;
       return [
         {
           title: 'Système & Comptes',
@@ -101,7 +116,7 @@ export default function WorkspaceHome({ mode = 'home' }: { mode?: 'home' | 'over
             { label: 'Comptes actifs', value: `${activeUsers}/${state.users.length}` },
             { label: 'Enseignants', value: `${count('teachers')}` },
             { label: 'Support ouvert', value: `${openTickets}` },
-            { label: 'Personnel', value: `${count('staff')}` },
+            { label: 'Personnel', value: `${adminStaffCount}` },
             { label: 'Dossiers étudiants', value: `${totalStudents}` },
           ],
         },

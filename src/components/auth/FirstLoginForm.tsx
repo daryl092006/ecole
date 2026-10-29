@@ -33,7 +33,7 @@ export default function FirstLoginForm() {
       const response = await fetch('/api/session/first-login?support=1', { headers: { Authorization: `Bearer ${auth.session.access_token}` }, cache: 'no-store', signal: controller.signal });
       if (!response.ok) throw new Error('Les années du signalement ne peuvent pas être chargées.');
       const result = await response.json() as FirstLoginSupportContext;
-      if (!controller.signal.aborted) { setSupport(result); setYearId(result.currentYearId || ''); }
+      if (!controller.signal.aborted) { setSupport(result); setYearId(result.currentYearId || result.years[0]?.id || ''); }
     })().catch(cause => { if (!controller.signal.aborted) setSupportError(cause instanceof Error ? cause.message : 'Chargement impossible.'); });
     return () => controller.abort();
   }, [decision, session?.mustVerifyProfile, session?.accountId, supportRetry]);
@@ -177,9 +177,9 @@ export default function FirstLoginForm() {
 
       {decision === 'REPORT' && <><label className="form-group">Informations à corriger<textarea className="input" required minLength={3} maxLength={1000} value={details} onChange={event => setDetails(event.target.value)} placeholder="Décrivez l'erreur constatée sur votre filière, nom, date de naissance..." /></label>
         {supportError ? <div role="alert">{supportError}<button type="button" className="btn btn-outline" onClick={() => setSupportRetry(value => value + 1)}>Réessayer le chargement des années</button></div>
-          : !support ? <LoadingState compact label="Chargement des années autorisées…" />
+          : !support ? <LoadingState compact label="Chargement…" />
             : support.years.length === 0 ? <p role="alert">Aucune année ne vous est encore attribuée pour transmettre ce signalement. Contactez l’administration ESCEN.</p>
-              : <label className="form-group">Année du signalement<select className="select-input" required value={yearId} onChange={event => setYearId(event.target.value)}><option value="">Choisir une année</option>{support.years.map(year => <option key={year.id} value={year.id}>{year.name}</option>)}</select></label>}
+              : (!portal.perms.scope.ownDataOnly && support.years.length > 1) ? <label className="form-group">Année du signalement<select className="select-input" required value={yearId} onChange={event => setYearId(event.target.value)}><option value="">Choisir une année</option>{support.years.map(year => <option key={year.id} value={year.id}>{year.name}</option>)}</select></label> : null}
       </>}
       <button className="btn btn-primary auth-submit">Vérifier avant de confirmer</button>
     </ReviewedForm>

@@ -4,17 +4,23 @@ import type { SupabaseClient } from '@supabase/supabase-js';
 import type { PersistentContext, RelationalSnapshot } from '@/types/persistence';
 import type { AcademicYearContext } from '@/types/academicYearContext';
 import { accessibleAcademicYears } from '@/services/academicYearScopeService';
+import { ROLES } from '@/types/permissions';
 import { RequestError } from '@/server/auth';
 
 export async function resolveAcademicYear(request: Request, client: SupabaseClient, context: PersistentContext, snapshot: RelationalSnapshot): Promise<AcademicYearContext> {
   const result = await client.rpc('escen_academic_year_context');
   if (result.error) throw new RequestError(503, 'Le contexte des années est indisponible. Réessayez.');
   const years = accessibleAcademicYears(snapshot, context);
-  const currentYearId = years.some(year => year.id === result.data?.currentYearId) ? result.data.currentYearId as string : null;
+  const personal = [ROLES.STUD, ROLES.DEL].includes(context.role as typeof ROLES.STUD);
+  const currentYearId = years.some(year => year.id === result.data?.currentYearId)
+    ? result.data.currentYearId as string
+    : personal
+      ? (years.find(year => year.status === 'OUVERTE')?.id || years[0]?.id || null)
+      : null;
   const selection = request.headers.get('x-escen-year') || 'current';
   const selectedYearId = selection === 'all' ? null : selection === 'current' ? currentYearId : z.uuid().parse(selection);
   if (selectedYearId && !years.some(year => year.id === selectedYearId)) throw new RequestError(403, 'Cette année ne fait pas partie de vos attributions. Choisissez une année autorisée.');
-  return { currentYearId, currentYearConfigured: !!result.data?.currentYearId, selectedYearId, selection, years };
+  return { currentYearId, currentYearConfigured: !!result.data?.currentYearId || (personal && !!currentYearId), selectedYearId, selection, years };
 }
 
 export async function assertArchiveAcademicYear(request: Request, client: SupabaseClient, context: PersistentContext, rowId: string) {
