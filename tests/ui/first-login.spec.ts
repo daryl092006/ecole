@@ -92,6 +92,30 @@ test('Vérification : adresse, email personnel et date de naissance manquante en
   expect(f.tables.people[0]).toMatchObject({ id: uuid(901), address: 'Lomé Totsi', email: 'perso@test.com', phone: '+22899999999', birth_date: '2001-05-10' });
 });
 
+test('Première connexion : correction directe du nom, des prénoms et de la date déjà renseignée', async () => {
+  const f = fixture(); const { snapshot } = await (await f.get()).json();
+  const response = await f.post({ decision: 'CONFIRM', snapshot, firstname: 'Alice Marie', lastname: 'Exemple corrigé', birthDate: '2001-02-03' });
+  expect(response.status).toBe(200);
+  expect(f.transactions()).toBe(1);
+  expect(f.tables.people[0]).toMatchObject({ id: uuid(901), firstname: 'Alice Marie', lastname: 'Exemple corrigé', birth_date: '2001-02-03' });
+  expect(f.tables.support_tickets).toHaveLength(0);
+});
+
+test('Correction personnelle : noms vides, date impossible et changement de propriétaire refusés', async () => {
+  const f = fixture(); const { snapshot } = await (await f.get()).json();
+  for (const changes of [{ firstname: ' ' }, { lastname: '' }, { birthDate: '2001-02-30' }, { birthDate: '2999-01-01' }, { personId: uuid(999), firstname: 'Autre' }]) {
+    expect((await f.post({ decision: 'CONFIRM', snapshot, ...changes })).status).toBe(400);
+  }
+  expect(f.transactions()).toBe(0);
+  expect(f.writes).toHaveLength(0);
+});
+
+test('Une correction échouée ne débloque pas la première connexion', async () => {
+  const f = fixture({ failTicket: true }); const { snapshot } = await (await f.get()).json();
+  expect((await f.post({ decision: 'CONFIRM', snapshot, lastname: 'Corrigé' })).status).toBe(409);
+  expect(f.writes).toHaveLength(0);
+});
+
 test('Signalement : ticket audité avant validation Auth, reprise sans doublon après échec Auth', async () => {
   const f = fixture({ failAuth: true }); const { snapshot } = await (await f.get()).json();
   const body = { decision: 'REPORT', snapshot, details: 'Mon prénom doit être corrigé.', yearId: securityIds.year };
@@ -134,6 +158,7 @@ for (const width of [390, 1440]) for (const decision of ['CONFIRM', 'REPORT'] as
   await page.route('**/api/session/first-login', route => {
     if (route.request().method() === 'GET') return route.fulfill({ json: { profile, snapshot: 'a'.repeat(64) } });
     expect(route.request().postDataJSON()).toMatchObject({ decision, snapshot: 'a'.repeat(64) });
+    if (decision === 'CONFIRM') expect(route.request().postDataJSON()).toMatchObject({ firstname: 'Alice Marie', lastname: 'Exemple corrigé', birthDate: '2001-02-03' });
     if (decision === 'REPORT') expect(route.request().postDataJSON().details).toBe('Mon numéro doit être corrigé.');
     if (decision === 'REPORT') expect(route.request().postDataJSON().yearId).toBe(securityIds.year);
     phase = 'DONE'; saved++; return route.fulfill({ json: { updated: true, ticketId: null } });
@@ -151,11 +176,20 @@ for (const width of [390, 1440]) for (const decision of ['CONFIRM', 'REPORT'] as
     await page.getByLabel('Non, je souhaite signaler une erreur').check();
     await page.getByLabel('Informations à corriger', { exact: true }).fill('Mon numéro doit être corrigé.');
     await page.getByRole('combobox', { name: 'Année du signalement', exact: true }).selectOption(securityIds.year);
+  } else {
+    await page.getByLabel('Nom', { exact: true }).fill('Exemple corrigé');
+    await page.getByLabel('Prénoms', { exact: true }).fill('Alice Marie');
+    await page.getByLabel('Date de naissance', { exact: true }).fill('2001-02-03');
   }
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
   await page.screenshot({ path: `tmp/screenshots/first-login/${width}-${decision}.png`, fullPage: true });
   await page.getByRole('button', { name: 'Vérifier avant de confirmer', exact: true }).click();
   expect(saved).toBe(0);
+  if (decision === 'CONFIRM') {
+    await expect(page.getByRole('region', { name: 'Vérification avant enregistrement' })).toContainText('Alice Marie');
+    await expect(page.getByRole('region', { name: 'Vérification avant enregistrement' })).toContainText('Avant : Alice');
+    await expect(page.getByRole('region', { name: 'Vérification avant enregistrement' })).toContainText('03/02/2001');
+  }
   await page.getByRole('button', { name: decision === 'CONFIRM' ? 'Confirmer mes informations' : 'Transmettre le signalement et continuer', exact: true }).click();
   await expect(page).toHaveURL(/mon-espace$/); await expect(page.locator('#main-content')).toBeVisible();
   expect(saved).toBe(1);

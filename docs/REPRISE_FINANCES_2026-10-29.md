@@ -31,12 +31,26 @@ en zéro. Les lignes supposées en double ne sont pas supprimées.
 Les dates exactes, moyens et références des anciens versements ne figurent
 pas dans le tableau : ils restent vides. Le mois d'encaissement est conservé.
 La préparation ne fixe pas arbitrairement le 15 du mois ou un paiement en
-espèces. Une règle de reprise ou les justificatifs restent nécessaires avant
+espèces. L'utilisateur a confirmé que la date n'est pas nécessaire pour les
+paiements historiques : elle doit rester absente, sans demander de justificatif
+pour la seule date. La colonne `payments.paid_on` est cependant encore NOT NULL ;
+la migration permettant NULL a été présentée et attend son accord, conformément
+à AGENTS.md. Les moyens, références et rapprochements restent à vérifier avant
 l'import. L'ancien script externe n'a pas été relancé ni modifié : ses dates
 fixes, matricules calculés localement et lots partiels doivent être remplacés
 avant toute utilisation.
 
 ## Correction dans le portail
+
+Précision utilisateur : la correction souhaitée concerne l'étape 2 de la
+première connexion. Ce parcours permet maintenant de modifier directement le
+nom, les prénoms, la date de naissance déjà renseignée et les coordonnées.
+Le récapitulatif montre l'identité avant/après. L'API ne modifie que la personne
+authentifiée, contrôle l'état de première connexion et refuse les noms vides,
+dates impossibles/futures et identifiants injectés. La filière et le niveau
+restent dans le parcours de signalement scolaire.
+
+L'accès suivant avait été ajouté avant cette précision :
 
 Depuis le dossier étudiant, ouvrir « Frais et versements », puis
 « Enregistrer un paiement ». Le bouton « Corriger le nom, le prénom ou les

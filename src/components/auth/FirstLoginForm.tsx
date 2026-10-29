@@ -15,6 +15,8 @@ export default function FirstLoginForm() {
   const portal = usePortal(); const router = useRouter();
   const [data, setData] = useState<FirstLoginPage | null>(null);
   const [decision, setDecision] = useState<'CONFIRM' | 'REPORT'>('CONFIRM');
+  const [firstname, setFirstname] = useState('');
+  const [lastname, setLastname] = useState('');
   const [address, setAddress] = useState('');
   const [personalEmail, setPersonalEmail] = useState('');
   const [phone, setPhone] = useState('');
@@ -54,6 +56,8 @@ export default function FirstLoginForm() {
       const profile = await response.json() as FirstLoginPage;
       if (!controller.signal.aborted) {
         setData(profile);
+        setFirstname(profile.profile.firstname);
+        setLastname(profile.profile.lastname);
         setAddress(profile.profile.address || '');
         setPersonalEmail(profile.profile.personalEmail || '');
         setPhone(displayedPhoneNumber(profile.profile.phone));
@@ -69,14 +73,13 @@ export default function FirstLoginForm() {
   if (finishing) return <div className="auth-form-card first-login-card"><LoadingState label="Vérification enregistrée. Ouverture de votre tableau de bord…" /></div>;
   if (!data) return <div className="auth-form-card first-login-card">{error ? <><p role="alert">{error}</p><button className="btn btn-primary" onClick={() => setRetry(value => value + 1)}>Réessayer</button></> : <LoadingState label="Chargement de vos informations…" />}</div>;
 
-  const displayBirthDate = data.profile.birthDate
-    ? new Date(data.profile.birthDate + 'T00:00:00').toLocaleDateString('fr-FR')
-    : (birthDate ? new Date(birthDate + 'T00:00:00').toLocaleDateString('fr-FR') : 'À renseigner');
+  const displayBirthDate = birthDate ? new Date(birthDate + 'T00:00:00').toLocaleDateString('fr-FR') : 'À renseigner';
 
   const reviewFields = [
-    { label: 'Nom et prénoms', value: `${data.profile.lastname} ${data.profile.firstname}`.trim() },
+    { label: 'Nom', previous: data.profile.lastname, value: decision === 'CONFIRM' ? lastname.trim() : data.profile.lastname },
+    { label: 'Prénoms', previous: data.profile.firstname, value: decision === 'CONFIRM' ? firstname.trim() : data.profile.firstname },
     ...(data.profile.programName ? [{ label: 'Filière d’inscription', value: data.profile.programName }] : []),
-    { label: 'Date de naissance', value: displayBirthDate },
+    { label: 'Date de naissance', previous: data.profile.birthDate ? new Date(data.profile.birthDate + 'T00:00:00').toLocaleDateString('fr-FR') : 'Non renseignée', value: decision === 'CONFIRM' ? displayBirthDate : (data.profile.birthDate ? new Date(data.profile.birthDate + 'T00:00:00').toLocaleDateString('fr-FR') : 'Non renseignée') },
     { label: 'Email de connexion', value: data.profile.email },
     ...(decision === 'CONFIRM' ? [
       { label: 'Numéro de téléphone', value: displayedPhoneNumber(phone) || 'Non renseigné' },
@@ -93,16 +96,17 @@ export default function FirstLoginForm() {
   return <div className="auth-form-card first-login-card">
     <span className="auth-eyebrow">PREMIÈRE CONNEXION · ÉTAPE 2 SUR 2</span>
     <h2>Vérifiez vos informations</h2>
-    <p className="auth-form-description">Contrôlez votre identité administrative et complétez vos coordonnées de contact avec indicatif téléphonique pour accéder à votre espace ESCEN.</p>
+    <p className="auth-form-description">Vérifiez et corrigez votre nom, vos prénoms, votre date de naissance et vos coordonnées avant de confirmer.</p>
     <ReviewedForm
       busy={busy}
       error={error}
       fields={reviewFields}
       confirmLabel={decision === 'CONFIRM' ? 'Confirmer mes informations' : 'Transmettre le signalement et continuer'}
-      consequence={decision === 'CONFIRM' ? 'Vos coordonnées personnelles seront mises à jour dans votre dossier et votre accès sera débloqué.' : 'Une demande sera transmise au centre de support. Vos informations officielles restent inchangées jusqu’à leur correction par une personne habilitée. Vous pourrez accéder à votre tableau de bord.'}
+      consequence={decision === 'CONFIRM' ? 'Votre identité et vos coordonnées seront mises à jour dans votre dossier, les changements seront tracés et votre accès sera débloqué.' : 'Une demande sera transmise au centre de support. Vos informations officielles restent inchangées jusqu’à leur correction par une personne habilitée. Vous pourrez accéder à votre tableau de bord.'}
       validate={() => {
         if (decision === 'CONFIRM') {
-          if (!data.profile.birthDate && !birthDate) return 'Veuillez renseigner votre date de naissance.';
+          if (!firstname.trim() || !lastname.trim()) return 'Veuillez renseigner votre nom et vos prénoms.';
+          if (!birthDate) return 'Veuillez renseigner votre date de naissance.';
           if (!displayedPhoneNumber(phone) || !isPhoneNumber(phone)) return 'Veuillez renseigner un numéro de téléphone valide avec son indicatif.';
           if (!personalEmail.trim() || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(personalEmail.trim())) return 'Veuillez renseigner une adresse email personnelle valide.';
           if (!address.trim()) return 'Veuillez renseigner votre adresse géographique (quartier, ville, rue...).';
@@ -125,10 +129,12 @@ export default function FirstLoginForm() {
               decision,
               snapshot: data.snapshot,
               ...(decision === 'CONFIRM' ? {
+                firstname: firstname.trim(),
+                lastname: lastname.trim(),
                 address: address.trim(),
                 personalEmail: personalEmail.trim(),
                 phone: displayedPhoneNumber(phone).trim(),
-                ...((!data.profile.birthDate && birthDate) ? { birthDate } : {}),
+                birthDate,
               } : { details, yearId }),
             }),
           });
@@ -163,15 +169,15 @@ export default function FirstLoginForm() {
           <label className={`first-login-decision-card ${decision === 'CONFIRM' ? 'is-selected' : ''}`}>
             <input type="radio" name="profile-decision" checked={decision === 'CONFIRM'} onChange={() => setDecision('CONFIRM')} />
             <div>
-              <strong>Oui, mes informations officielles sont exactes</strong>
-              <span>Je complète ou confirme mes coordonnées personnelles pour ouvrir mon espace.</span>
+              <strong>Vérifier et corriger mes informations personnelles</strong>
+              <span>Je corrige directement mon identité et mes coordonnées avant de les confirmer.</span>
             </div>
           </label>
           <label className={`first-login-decision-card ${decision === 'REPORT' ? 'is-selected' : ''}`}>
             <input type="radio" name="profile-decision" checked={decision === 'REPORT'} onChange={() => setDecision('REPORT')} />
             <div>
               <strong>Non, je souhaite signaler une erreur administrative</strong>
-              <span>Signaler une erreur sur mon nom, mes prénoms, ma filière ou ma date de naissance.</span>
+              <span>Ma filière, mon niveau ou mon dossier scolaire nécessite une intervention de la scolarité.</span>
             </div>
           </label>
         </div>
@@ -179,11 +185,13 @@ export default function FirstLoginForm() {
 
       {decision === 'CONFIRM' && (
         <fieldset className="first-login-contact-fieldset">
-          <legend>Coordonnées personnelles à compléter</legend>
-          {!data.profile.birthDate && (
+          <legend>Identité et coordonnées à vérifier</legend>
+          <label className="form-group">Nom<input className="input" required maxLength={160} autoComplete="family-name" value={lastname} onChange={event => setLastname(event.target.value)} /></label>
+          <label className="form-group">Prénoms<input className="input" required maxLength={160} autoComplete="given-name" value={firstname} onChange={event => setFirstname(event.target.value)} /></label>
+          {(
             <label className="form-group">
               Date de naissance
-              <input className="input" type="date" required value={birthDate} onChange={e => setBirthDate(e.target.value)} />
+              <input className="input" type="date" required max={new Date().toISOString().slice(0, 10)} value={birthDate} onChange={e => setBirthDate(e.target.value)} />
             </label>
           )}
           <PhoneInput
@@ -209,7 +217,7 @@ export default function FirstLoginForm() {
           <legend>Signalement au service scolarité</legend>
           <label className="form-group">
             Informations à corriger
-            <textarea className="input" rows={4} required minLength={3} maxLength={1000} value={details} onChange={event => setDetails(event.target.value)} placeholder="Précisez l’erreur constatée (orthographe du nom, filière d’inscription, date de naissance...)" />
+            <textarea className="input" rows={4} required minLength={3} maxLength={1000} value={details} onChange={event => setDetails(event.target.value)} placeholder="Précisez l’erreur sur votre filière, votre niveau ou votre dossier scolaire" />
           </label>
           {supportError ? <div role="alert">{supportError}<button type="button" className="btn btn-outline" onClick={() => setSupportRetry(value => value + 1)}>Réessayer le chargement des années</button></div>
             : !support ? <LoadingState compact label="Chargement…" />

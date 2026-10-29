@@ -58,7 +58,7 @@ export function reviewSpreadsheet(raw, snapshot, yearCode = '2026-2027') {
         payments.push({ kind: 'SCOLARITE', amount: paid, month: date.toISOString().slice(0, 7), paidOn: null, method: null, reference: null });
       }
     }
-    if (payments.length) issues.push('Dates, moyens et références des paiements à vérifier ; les mois ne sont pas des dates de versement.');
+    if (payments.length) issues.push('Moyens et références des paiements à vérifier ; les dates inconnues restent absentes, conformément à la consigne de reprise.');
     const student = candidates.length === 1 ? candidates[0] : null;
     const enrollments = student ? tables.enrollments.filter(item => item.student_id === student.studentId && tables.academic_offerings.some(offering => offering.id === item.offering_id && offering.academic_year_id === year.id)) : [];
     const existingPayments = (tables.payments || []).filter(item => enrollments.some(enrollment => enrollment.id === item.enrollment_id)).map(item => ({ id: item.id, reference: item.reference, amount: item.amount, paidOn: item.paid_on, status: item.status, cancelled: (tables.payment_reversals || []).some(reversal => reversal.payment_id === item.id) }));

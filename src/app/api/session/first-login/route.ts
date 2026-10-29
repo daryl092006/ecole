@@ -12,10 +12,12 @@ const reviewSchema = z.discriminatedUnion('decision', [
   z.object({
     decision: z.literal('CONFIRM'),
     snapshot: z.string().regex(/^[a-f\d]{64}$/),
+    firstname: z.string().trim().min(1).max(160).optional(),
+    lastname: z.string().trim().min(1).max(160).optional(),
     address: z.string().trim().max(255).optional(),
     personalEmail: z.string().trim().email().max(255).optional().or(z.literal('')),
     phone: z.string().trim().max(50).optional(),
-    birthDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional().or(z.literal('')),
+    birthDate: z.iso.date().refine(value => value <= new Date().toISOString().slice(0, 10), 'La date de naissance ne peut pas être future.').optional(),
     city: z.string().trim().max(160).optional(),
     country: z.string().trim().max(160).optional(),
     nationality: z.string().trim().max(160).optional(),
@@ -106,16 +108,19 @@ export async function POST(request: Request) {
       }
     } else if (body.decision === 'CONFIRM') {
       const person = auth.profile.person;
+      const nextFirstname = body.firstname ?? person.firstname;
+      const nextLastname = body.lastname ?? person.lastname;
       const nextAddress = body.address !== undefined ? body.address.trim() : (person.address || '');
       const nextEmail = body.personalEmail !== undefined ? body.personalEmail.trim() : (person.email || '');
       const nextPhone = body.phone !== undefined ? body.phone.trim() : (person.phone || '');
-      const nextBirthDate = (!person.birth_date && body.birthDate) ? body.birthDate : (person.birth_date || null);
+      const nextBirthDate = body.birthDate ?? person.birth_date ?? null;
       const nextCity = body.city !== undefined ? body.city.trim() : (person.city || '');
       const nextCountry = body.country !== undefined ? body.country.trim() : (person.country || '');
       const nextNationality = body.nationality !== undefined ? body.nationality.trim() : (person.nationality || '');
       const nextGender = body.gender !== undefined ? body.gender.trim() : (person.gender || '');
 
       const hasPersonChanges = (
+        nextFirstname !== person.firstname || nextLastname !== person.lastname ||
         nextAddress !== (person.address || '') ||
         nextEmail !== (person.email || '') ||
         nextPhone !== (person.phone || '') ||
@@ -132,6 +137,8 @@ export async function POST(request: Request) {
         const snapshot = result.data as RelationalSnapshot;
         const updateRecord: Record<string, unknown> = {
           id: auth.context.personId,
+          firstname: nextFirstname,
+          lastname: nextLastname,
           address: nextAddress || null,
           email: nextEmail || null,
           phone: nextPhone || null,
