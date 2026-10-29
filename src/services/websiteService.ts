@@ -32,6 +32,17 @@ export function formatDocumentLabel(key: string): string {
   return cleaned ? cleaned.charAt(0).toUpperCase() + cleaned.slice(1) : 'Pièce jointe';
 }
 
+export function slugifyWebsiteText(value: string): string {
+  return String(value || '')
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '')
+    .slice(0, 180)
+    .replace(/-+$/g, '');
+}
+
 export function cleanCandidatePhone(value: unknown): string {
   const raw = String(value ?? '').trim();
   const digits = raw.replace(/\D/g, '');

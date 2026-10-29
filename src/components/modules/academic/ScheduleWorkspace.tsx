@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
 import { usePortal } from '@/hooks/usePortal';
 import { loadSchedule, manageSchedule } from '@/services/remoteCampusService';
@@ -21,12 +21,55 @@ import CourseAssignmentDialog from './CourseAssignmentDialog';
 
 type Action = ScheduleCommand['action'];
 type Operation = { action: Action; session?: ManagedSession };
-const titles: Record<Action, string> = { create_session: 'Nouvelle séance', update_session: 'Modifier la séance', move_session: 'Déplacer la séance', cancel_session: 'Annuler la séance', replace_teacher: 'Remplacer l’enseignant', block_period: 'Bloquer une période' };
+type ScheduleCadence = 'single' | 'multi';
+
+const titles: Record<Action, string> = {
+  create_session: 'Nouvelle séance',
+  update_session: 'Modifier la séance',
+  move_session: 'Déplacer la séance',
+  cancel_session: 'Annuler la séance',
+  replace_teacher: 'Remplacer l’enseignant',
+  block_period: 'Bloquer une période',
+};
+
+const QUICK_TIME_PRESETS = [
+  { label: '08:00 – 10:00', start: '08:00', end: '10:00' },
+  { label: '10:00 – 12:00', start: '10:00', end: '12:00' },
+  { label: '08:00 – 12:00', start: '08:00', end: '12:00' },
+  { label: '14:00 – 16:00', start: '14:00', end: '16:00' },
+  { label: '16:00 – 18:00', start: '16:00', end: '18:00' },
+  { label: '14:00 – 18:00', start: '14:00', end: '18:00' },
+  { label: 'Journée (08:00 – 17:00)', start: '08:00', end: '17:00' },
+] as const;
+
+const WEEKDAYS = [
+  { day: 1, short: 'Lun', label: 'Lundi' },
+  { day: 2, short: 'Mar', label: 'Mardi' },
+  { day: 3, short: 'Mer', label: 'Mercredi' },
+  { day: 4, short: 'Jeu', label: 'Jeudi' },
+  { day: 5, short: 'Ven', label: 'Vendredi' },
+  { day: 6, short: 'Sam', label: 'Samedi' },
+] as const;
+
 // The institution uses Africa/Lome (UTC). Keep input and review independent of browser timezone.
 const localTime = (value: string) => value ? new Date(value).toISOString().slice(0, 16) : '';
 const iso = (value: string) => new Date(`${value}:00Z`).toISOString();
 const displayTime = (value: string) => new Intl.DateTimeFormat('fr-FR', { dateStyle: 'short', timeStyle: 'short', timeZone: 'Africa/Lome' }).format(new Date(value));
 const blank = () => ({ assignmentId: '', startsAt: '', endsAt: '', mode: 'COURS' as SessionMode, roomId: '', teacherId: '', name: '', kind: 'AUTRE' as 'AUTRE' | 'JOUR_FERIE' | 'VACANCES' | 'FERMETURE' | 'EXAMEN', siteId: '', reason: '' });
+
+function computeWeekRange(baseDateStr: string, includeSaturday = false): { from: string; until: string } {
+  const base = baseDateStr ? new Date(`${baseDateStr}T00:00:00Z`) : new Date();
+  const utcDay = base.getUTCDay(); // 0 = Sun, 1 = Mon, ...
+  const diffToMonday = utcDay === 0 ? -6 : 1 - utcDay;
+  const monday = new Date(base);
+  monday.setUTCDate(base.getUTCDate() + diffToMonday);
+  const end = new Date(monday);
+  end.setUTCDate(monday.getUTCDate() + (includeSaturday ? 5 : 4));
+  return {
+    from: monday.toISOString().slice(0, 10),
+    until: end.toISOString().slice(0, 10),
+  };
+}
 
 export default function ScheduleWorkspace() {
   const portal = usePortal();
@@ -49,6 +92,15 @@ function ScheduleManager() {
   const [operation, setOperation] = useState<Operation | null>(null), [form, setForm] = useState(blank);
   const [saving, setSaving] = useState(false), [saveError, setSaveError] = useState('');
   const [groupSelection, setGroupSelection] = useState({ yearId: '', groupId: '' });
+
+  // Multi-session / full-week scheduling state
+  const [cadence, setCadence] = useState<ScheduleCadence>('single');
+  const [multiFromDate, setMultiFromDate] = useState('');
+  const [multiUntilDate, setMultiUntilDate] = useState('');
+  const [multiStartTime, setMultiStartTime] = useState('08:00');
+  const [multiEndTime, setMultiEndTime] = useState('12:00');
+  const [multiDays, setMultiDays] = useState<number[]>([1, 2, 3, 4, 5]);
+
   useEffect(() => {
     const controller = new AbortController();
     setLoading(true); setError(''); setDetail(null); setOperation(null); setAssigning(null);
@@ -57,6 +109,7 @@ function ScheduleManager() {
       .finally(() => { if (!controller.signal.aborted) setLoading(false); });
     return () => controller.abort();
   }, [activeRole, academicYearSelection, reload]);
+
   useEffect(() => {
     const request = `${activeRole}:${academicYearSelection}:${requestedComponent}:${requestedGroup}:${requestedAssignment}`;
     if (!directory?.canCreate || openedRequest.current === request) return;
@@ -64,11 +117,42 @@ function ScheduleManager() {
     const hasGroup = Boolean(requestedGroup && directory.groups.some(row => row.id === requestedGroup));
     if (!assignment && !hasGroup && (!requestedComponent || !directory.components.some(row => row.id === requestedComponent))) return;
     openedRequest.current = request; setDetail(null); setSaveError('');
+    setCadence('single');
     setForm({ ...blank(), assignmentId: assignment?.id || '', mode: assignment ? params.get('mode') === 'EN_LIGNE' ? 'EN_LIGNE' : 'PAPIER' : 'COURS' });
     setOperation({ action: 'create_session' });
   }, [directory, requestedComponent, requestedGroup, requestedAssignment, activeRole, academicYearSelection, params]);
+
+  const multiSlots = useMemo(() => {
+    if (cadence !== 'multi' || !multiFromDate || !multiUntilDate || !multiStartTime || !multiEndTime || multiEndTime <= multiStartTime || multiUntilDate < multiFromDate) {
+      return [];
+    }
+    const slots: { date: string; startsAt: string; endsAt: string; label: string }[] = [];
+    const cursor = new Date(`${multiFromDate}T00:00:00Z`);
+    const end = new Date(`${multiUntilDate}T00:00:00Z`);
+    let guard = 0;
+    while (cursor <= end && guard < 90) {
+      guard += 1;
+      const dayOfWeek = cursor.getUTCDay();
+      if (multiDays.includes(dayOfWeek) && slots.length < 60) {
+        const dateStr = cursor.toISOString().slice(0, 10);
+        const startsAt = iso(`${dateStr}T${multiStartTime}`);
+        const endsAt = iso(`${dateStr}T${multiEndTime}`);
+        const weekdayName = WEEKDAYS.find(w => w.day === dayOfWeek)?.short || '';
+        slots.push({
+          date: dateStr,
+          startsAt,
+          endsAt,
+          label: `${weekdayName} ${dateStr.split('-').reverse().join('/')} (${multiStartTime}–${multiEndTime})`,
+        });
+      }
+      cursor.setUTCDate(cursor.getUTCDate() + 1);
+    }
+    return slots;
+  }, [cadence, multiFromDate, multiUntilDate, multiStartTime, multiEndTime, multiDays]);
+
   if (loading) return <LoadingState label="Chargement du planning…" variant="cards" />;
   if (error || !directory) return <ErrorState title="Planning indisponible" message={error || 'Les séances n’ont pas pu être chargées.'} onRetry={() => setReload(value => value + 1)} />;
+
   const teacherName = (id: string | null) => directory.teachers.find(teacher => teacher.id === id)?.name || 'Enseignant indisponible';
   const groupName = (id: string) => directory.groups.find(group => group.id === id)?.label || String(portal.relationalSnapshot.tables.groups?.find(group => group.id === id)?.name || 'Groupe indisponible');
   const componentName = (assignmentId: string) => directory.components.find(component => component.id === directory.assignments.find(assignment => assignment.id === assignmentId)?.componentId)?.label || 'Matière';
@@ -77,27 +161,56 @@ function ScheduleManager() {
     return assignment ? `${groupName(assignment.groupId)} · ${componentName(assignment.id)} · ${teacherName(assignment.teacherId)} · ${directory.offerings.find(offering => offering.id === assignment.offeringId)?.label || 'Formation'}` : 'Affectation indisponible';
   };
   const roomName = (id: string | null) => id ? directory.rooms.find(room => room.id === id)?.name || 'Salle indisponible' : 'En ligne';
+
   const open = (action: Action, session?: ManagedSession) => {
     setDetail(null); setSaveError(''); setOperation({ action, session });
+    setCadence('single');
+    const defaultWeek = computeWeekRange(new Date().toISOString().slice(0, 10), false);
+    setMultiFromDate(defaultWeek.from);
+    setMultiUntilDate(defaultWeek.until);
+    setMultiStartTime('08:00');
+    setMultiEndTime('12:00');
+    setMultiDays([1, 2, 3, 4, 5]);
     setForm({ ...blank(), siteId: directory.canBlockAllSites ? '' : directory.sites[0]?.id || '', ...(session ? {
       assignmentId: session.assignmentId, startsAt: localTime(session.startsAt), endsAt: localTime(session.endsAt), mode: session.mode,
       roomId: session.roomId || '', teacherId: session.replacementTeacherId || '',
     } : {}) });
   };
+
+  const applySingleQuickSlot = (startHour: string, endHour: string) => {
+    const currentDay = form.startsAt ? form.startsAt.slice(0, 10) : (directory.assignments.find(a => a.id === form.assignmentId)?.validFrom || new Date().toISOString().slice(0, 10));
+    setForm(prev => ({
+      ...prev,
+      startsAt: `${currentDay}T${startHour}`,
+      endsAt: `${currentDay}T${endHour}`,
+    }));
+  };
+
   const action = operation?.action;
   const current = operation?.session;
   const editing = action === 'create_session' || action === 'update_session';
   const timed = editing || action === 'move_session' || action === 'block_period';
-  const movingExam = current?.exam && timed && form.startsAt && form.endsAt
-    && (Date.parse(iso(form.startsAt)) !== Date.parse(current.startsAt) || Date.parse(iso(form.endsAt)) !== Date.parse(current.endsAt)) ? current.exam : null;
-  const nextAccess = movingExam && current ? shiftExamAccess(movingExam, current.startsAt, iso(form.startsAt)) : null;
+  const isMultiCreate = action === 'create_session' && cadence === 'multi';
+  const effectiveStartsAt = isMultiCreate ? (multiSlots[0] ? localTime(multiSlots[0].startsAt) : '') : form.startsAt;
+  const effectiveEndsAt = isMultiCreate ? (multiSlots[0] ? localTime(multiSlots[0].endsAt) : '') : form.endsAt;
+  const effectiveReason = form.reason.trim() || (action === 'create_session'
+    ? (isMultiCreate && multiSlots.length > 1 ? `Programmation groupée de ${multiSlots.length} séances de cours` : 'Programmation pédagogique du cours')
+    : '');
+
+  const movingExam = current?.exam && timed && effectiveStartsAt && effectiveEndsAt
+    && (Date.parse(iso(effectiveStartsAt)) !== Date.parse(current.startsAt) || Date.parse(iso(effectiveEndsAt)) !== Date.parse(current.endsAt)) ? current.exam : null;
+  const nextAccess = movingExam && current ? shiftExamAccess(movingExam, current.startsAt, iso(effectiveStartsAt)) : null;
   const assignment = directory.assignments.find(row => row.id === form.assignmentId);
   const siteId = directory.offerings.find(offering => offering.id === assignment?.offeringId)?.siteId;
+
   const fields: ReviewField[] = [
     ...(editing ? [{ label: 'Cours', value: assignmentName(form.assignmentId), ...(current ? { previous: assignmentName(current.assignmentId) } : {}) },
       { label: 'Type de séance', value: form.mode, previous: current?.mode }, { label: 'Salle prévue', value: roomName(form.roomId || null), ...(current ? { previous: roomName(current.roomId) } : {}) }] : []),
-    ...(timed ? [{ label: 'Début (heure de Lomé)', value: form.startsAt ? displayTime(iso(form.startsAt)) : '', ...(current ? { previous: displayTime(current.startsAt) } : {}) },
-      { label: 'Fin (heure de Lomé)', value: form.endsAt ? displayTime(iso(form.endsAt)) : '', ...(current ? { previous: displayTime(current.endsAt) } : {}) }] : []),
+    ...(isMultiCreate ? [
+      { label: 'Période programmée', value: `Du ${multiFromDate} au ${multiUntilDate} (${multiStartTime} – ${multiEndTime})` },
+      { label: 'Séances générées', value: `${multiSlots.length} séance(s) : ${multiSlots.slice(0, 6).map(s => s.label).join(', ')}${multiSlots.length > 6 ? '…' : ''}` },
+    ] : timed ? [{ label: 'Début (heure de Lomé)', value: effectiveStartsAt ? displayTime(iso(effectiveStartsAt)) : '', ...(current ? { previous: displayTime(current.startsAt) } : {}) },
+      { label: 'Fin (heure de Lomé)', value: effectiveEndsAt ? displayTime(iso(effectiveEndsAt)) : '', ...(current ? { previous: displayTime(current.endsAt) } : {}) }] : []),
     ...(movingExam && nextAccess ? [{ label: 'Épreuve déplacée', value: movingExam.name },
       { label: 'Ouverture de l’épreuve (Lomé)', value: displayTime(nextAccess.opensAt), previous: displayTime(movingExam.opensAt) },
       { label: 'Fermeture de l’épreuve (Lomé)', value: displayTime(nextAccess.closesAt), previous: displayTime(movingExam.closesAt) },
@@ -105,22 +218,27 @@ function ScheduleManager() {
     ...(action === 'cancel_session' && current ? [{ label: 'Séance', value: assignmentName(current.assignmentId) }, { label: 'Statut', value: 'ANNULE', previous: current.status }] : []),
     ...(action === 'replace_teacher' && current ? [{ label: 'Enseignant effectif', value: teacherName(form.teacherId || current.teacherId), previous: teacherName(current.replacementTeacherId || current.teacherId) }] : []),
     ...(action === 'block_period' ? [{ label: 'Intitulé', value: form.name }, { label: 'Type de période', value: form.kind }, { label: 'Site', value: directory.sites.find(site => site.id === form.siteId)?.name || 'Tous les sites' }] : []),
-    { label: 'Motif', value: form.reason },
+    { label: 'Motif', value: effectiveReason },
   ];
+
   const consequence = action === 'block_period' ? 'La période bloquera toute nouvelle séance sur ce créneau et ce périmètre dans l’année sélectionnée. Les séances existantes doivent être traitées avant ce blocage.'
     : action === 'cancel_session' ? 'La séance sera marquée annulée avec son motif et restera dans l’historique. Les émargements et les examens avec copies ou résultats protègent son annulation.'
       : action === 'replace_teacher' ? 'Seul l’enseignant effectif de cette séance changera. L’affectation d’origine et les autres séances seront conservées. Les conflits du remplaçant seront contrôlés.'
         : movingExam ? 'La séance et les horaires d’accès à l’épreuve seront déplacés ensemble, dans un seul enregistrement. La durée de composition sera conservée. Le déplacement sera refusé si l’épreuve est déjà ouverte, possède une copie ou un résultat, ou si un conflit apparaît.'
+        : isMultiCreate ? `Les ${multiSlots.length} séances seront créées en une seule opération après contrôle du groupe, de l’enseignant, de la salle et des périodes bloquées.`
         : 'La séance sera enregistrée après contrôle du groupe, de l’enseignant, de la salle, du semestre et des périodes bloquées. Les autres séances resteront inchangées.';
+
   const yearId = directory.selectedYearId || '';
   const groups = [...new Map([...directory.groups, ...directory.sessions.map(session => ({ id: session.groupId, label: groupName(session.groupId) }))].map(group => [group.id, group])).values()];
   const groupId = groupSelection.yearId === yearId && groups.some(group => group.id === groupSelection.groupId) ? groupSelection.groupId : '';
   const sessions = directory.sessions.filter(session => !groupId || session.groupId === groupId);
   const active = sessions.filter(session => !['ANNULE', 'REPORTE'].includes(session.status));
+
   return <div className="domain-workspace workspace-stack">
-    <div className="page-intro"><div><h1>Séances et emploi du temps</h1><p>Horaires en heure de Lomé (UTC). Les conflits sont contrôlés avant enregistrement.</p></div><div className="btn-group">
+    <div className="page-intro"><div><h1>Séances et emploi du temps</h1><p>Horaires en heure de Lomé (UTC). Programmation à l’heure précise, par séance ou sur toute une semaine.</p></div><div className="btn-group">
       {directory.canCreate && <button className="btn btn-primary" onClick={() => open('create_session')}>Programmer un cours</button>}
       {directory.canUpdate && (directory.canBlockAllSites || directory.sites.length > 0) && <button className="btn btn-outline" onClick={() => open('block_period')}>Bloquer une période</button>}
+      <Link className="btn btn-outline" href="/academique/referentiel?collection=groups">Créer / gérer une classe</Link>
     </div></div>
     {params.get('epreuve') && <Link className="btn btn-outline mb-2" href={`/academique/examens?${new URLSearchParams({ epreuve: params.get('epreuve')!, ...(params.get('nature') === 'resit' ? { session: 'rattrapage' } : params.get('nature') === 'control' ? { session: 'controle' } : {}) })}`}>Revenir à la préparation de l’épreuve</Link>}
     {success && <p className="card" role="status">{success}</p>}
@@ -144,18 +262,41 @@ function ScheduleManager() {
     </WorkPage>}
     {operation && <WorkPage title={titles[operation.action]} busy={saving} onClose={() => setOperation(null)}><ReviewedForm busy={saving} error={saveError} fields={fields} consequence={consequence}
       confirmLabel={`Confirmer : ${titles[operation.action].toLocaleLowerCase('fr')}`} danger={action === 'cancel_session'}
-      validate={() => editing && !assignment ? 'Choisissez le groupe, la matière et l’enseignant du cours.' : timed && form.endsAt <= form.startsAt ? 'La fin doit être postérieure au début.' : form.reason.trim().length < 3 ? 'Le motif doit contenir au moins 3 caractères.' : null}
+      validate={() => {
+        if (editing && !assignment) return 'Choisissez le groupe, la matière et l’enseignant du cours.';
+        if (isMultiCreate) {
+          if (!multiSlots.length) return 'Sélectionnez une période valide, au moins un jour de cours et des heures cohérentes.';
+        } else if (timed && effectiveEndsAt <= effectiveStartsAt) {
+          return 'La fin doit être postérieure au début.';
+        }
+        if (effectiveReason.length < 3) return 'Le motif doit contenir au moins 3 caractères.';
+        return null;
+      }}
       onConfirm={event => {
         event.preventDefault(); setSaving(true); setSaveError('');
-        const common = { revision: directory.revision, reason: form.reason };
+        const common = { revision: directory.revision, reason: effectiveReason };
         const sessionId = current?.id || '';
         const command: ScheduleCommand = operation.action === 'block_period' ? { ...common, action: 'block_period', name: form.name, kind: form.kind, siteId: form.siteId || null, startsAt: iso(form.startsAt), endsAt: iso(form.endsAt) }
           : operation.action === 'cancel_session' ? { ...common, action: 'cancel_session', sessionId }
             : operation.action === 'replace_teacher' ? { ...common, action: 'replace_teacher', sessionId, teacherId: form.teacherId || null }
               : operation.action === 'move_session' ? { ...common, action: 'move_session', sessionId, startsAt: iso(form.startsAt), endsAt: iso(form.endsAt) }
+                : isMultiCreate ? {
+                  ...common,
+                  action: 'create_session',
+                  assignmentId: form.assignmentId,
+                  roomId: form.roomId || null,
+                  mode: form.mode,
+                  startsAt: multiSlots[0].startsAt,
+                  endsAt: multiSlots[0].endsAt,
+                  slots: multiSlots.map(slot => ({ startsAt: slot.startsAt, endsAt: slot.endsAt })),
+                }
                 : { ...common, action: operation.action, ...(operation.action === 'update_session' ? { sessionId } : {}), assignmentId: form.assignmentId, roomId: form.roomId || null, mode: form.mode, startsAt: iso(form.startsAt), endsAt: iso(form.endsAt) } as ScheduleCommand;
-        void manageSchedule(activeRole, command).then(() => { setOperation(null); setSuccess('Planning enregistré. Le motif et l’historique sont conservés.'); setReload(value => value + 1); portal.refreshCampus(); })
-          .catch(cause => setSaveError(cause instanceof Error ? cause.message : 'Enregistrement impossible.')).finally(() => setSaving(false));
+        void manageSchedule(activeRole, command).then(() => {
+          setOperation(null);
+          setSuccess(isMultiCreate && multiSlots.length > 1 ? `${multiSlots.length} séances programmées avec succès.` : 'Planning enregistré. Le motif et l’historique sont conservés.');
+          setReload(value => value + 1);
+          portal.refreshCampus();
+        }).catch(cause => setSaveError(cause instanceof Error ? cause.message : 'Enregistrement impossible.')).finally(() => setSaving(false));
       }}>
       {editing && <>
         {action === 'create_session' ? <ScheduleCourseSelector directory={directory} assignmentId={form.assignmentId} initialGroupId={requestedGroup || groupId} initialComponentId={params.get('matiere') || ''} canAssign={portal.perms.permissions.includes('academic.assignment.manage')} onChange={id => setForm({ ...form, assignmentId: id, roomId: '' })} onAssign={setAssigning} /> : <label className="form-group">Affectation<select className="select-input" required value={form.assignmentId} onChange={event => setForm({ ...form, assignmentId: event.target.value, roomId: '' })}><option value="">Choisir une affectation</option>{directory.assignments.filter(assignment => assignment.id === current?.assignmentId || directory.teachers.some(teacher => teacher.id === assignment.teacherId && teacher.active)).map(assignment => <option key={assignment.id} value={assignment.id}>{assignmentName(assignment.id)}</option>)}</select></label>}
@@ -166,10 +307,124 @@ function ScheduleManager() {
         <label className="form-group">Type de période<select className="select-input" value={form.kind} onChange={event => setForm({ ...form, kind: event.target.value as typeof form.kind })}>{['AUTRE', 'JOUR_FERIE', 'VACANCES', 'FERMETURE', 'EXAMEN'].map(kind => <option key={kind} value={kind}>{kind}</option>)}</select></label>
         <label className="form-group">Site<select className="select-input" required={!directory.canBlockAllSites} value={form.siteId} onChange={event => setForm({ ...form, siteId: event.target.value })}>{directory.canBlockAllSites ? <option value="">Tous les sites</option> : <option value="">Choisir un site</option>}{directory.sites.map(site => <option key={site.id} value={site.id}>{site.name}</option>)}</select></label>
       </>}
-      {timed && <div className="form-grid"><label className="form-group">Début (heure de Lomé)<input className="input" type="datetime-local" required value={form.startsAt} onChange={event => setForm({ ...form, startsAt: event.target.value })} /></label><label className="form-group">Fin (heure de Lomé)<input className="input" type="datetime-local" required min={form.startsAt || undefined} value={form.endsAt} onChange={event => setForm({ ...form, endsAt: event.target.value })} /></label></div>}
+      {action === 'create_session' && (
+        <div className="form-group">
+          <span className="form-label">Mode de programmation</span>
+          <div className="btn-group">
+            <button type="button" className={`btn btn-sm ${cadence === 'single' ? 'btn-primary' : 'btn-outline'}`} onClick={() => setCadence('single')}>
+              Séance unique
+            </button>
+            <button type="button" className={`btn btn-sm ${cadence === 'multi' ? 'btn-primary' : 'btn-outline'}`} onClick={() => {
+              const baseDate = form.startsAt ? form.startsAt.slice(0, 10) : (assignment?.validFrom || new Date().toISOString().slice(0, 10));
+              const week = computeWeekRange(baseDate, false);
+              if (!multiFromDate) setMultiFromDate(week.from);
+              if (!multiUntilDate) setMultiUntilDate(week.until);
+              setCadence('multi');
+            }}>
+              Semaine entière / Plusieurs séances d’un coup
+            </button>
+          </div>
+        </div>
+      )}
+      {timed && !isMultiCreate && (
+        <>
+          {action === 'create_session' && (
+            <div className="form-group">
+              <span className="form-label">Créneaux horaires rapides (heure précise)</span>
+              <div className="btn-group">
+                {QUICK_TIME_PRESETS.map(preset => (
+                  <button
+                    key={preset.label}
+                    type="button"
+                    className="btn btn-sm btn-outline"
+                    onClick={() => applySingleQuickSlot(preset.start, preset.end)}
+                  >
+                    {preset.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+          <div className="form-grid">
+            <label className="form-group">Début (heure de Lomé)<input className="input" type="datetime-local" required value={form.startsAt} onChange={event => setForm({ ...form, startsAt: event.target.value })} /></label>
+            <label className="form-group">Fin (heure de Lomé)<input className="input" type="datetime-local" required min={form.startsAt || undefined} value={form.endsAt} onChange={event => setForm({ ...form, endsAt: event.target.value })} /></label>
+          </div>
+        </>
+      )}
+      {isMultiCreate && (
+        <fieldset className="card">
+          <legend>Programmation sur une semaine ou plusieurs jours</legend>
+          <div className="btn-group mb-1">
+            <button type="button" className="btn btn-sm btn-outline" onClick={() => {
+              const week = computeWeekRange(multiFromDate || assignment?.validFrom || new Date().toISOString().slice(0, 10), false);
+              setMultiFromDate(week.from);
+              setMultiUntilDate(week.until);
+              setMultiDays([1, 2, 3, 4, 5]);
+            }}>
+              Toute la semaine (Lun → Ven)
+            </button>
+            <button type="button" className="btn btn-sm btn-outline" onClick={() => {
+              const week = computeWeekRange(multiFromDate || assignment?.validFrom || new Date().toISOString().slice(0, 10), true);
+              setMultiFromDate(week.from);
+              setMultiUntilDate(week.until);
+              setMultiDays([1, 2, 3, 4, 5, 6]);
+            }}>
+              Semaine complète (Lun → Sam)
+            </button>
+          </div>
+          <div className="form-grid">
+            <label className="form-group">Du (premier jour)<input className="input" type="date" required value={multiFromDate} onChange={event => setMultiFromDate(event.target.value)} /></label>
+            <label className="form-group">Au (dernier jour)<input className="input" type="date" required min={multiFromDate || undefined} value={multiUntilDate} onChange={event => setMultiUntilDate(event.target.value)} /></label>
+          </div>
+          <div className="form-group">
+            <span className="form-label">Jours de cours dans la semaine</span>
+            <div className="btn-group">
+              {WEEKDAYS.map(item => {
+                const selected = multiDays.includes(item.day);
+                return (
+                  <button
+                    key={item.day}
+                    type="button"
+                    className={`btn btn-sm ${selected ? 'btn-primary' : 'btn-outline'}`}
+                    aria-pressed={selected}
+                    onClick={() => setMultiDays(prev => prev.includes(item.day) ? prev.filter(d => d !== item.day) : [...prev, item.day].sort())}
+                  >
+                    {item.label}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+          <div className="form-group">
+            <span className="form-label">Créneaux horaires rapides</span>
+            <div className="btn-group mb-1">
+              {QUICK_TIME_PRESETS.map(preset => (
+                <button
+                  key={preset.label}
+                  type="button"
+                  className={`btn btn-sm ${multiStartTime === preset.start && multiEndTime === preset.end ? 'btn-primary' : 'btn-outline'}`}
+                  onClick={() => { setMultiStartTime(preset.start); setMultiEndTime(preset.end); }}
+                >
+                  {preset.label}
+                </button>
+              ))}
+            </div>
+          </div>
+          <div className="form-grid">
+            <label className="form-group">Heure précise de début (Lomé)<input className="input" type="time" required value={multiStartTime} onChange={event => setMultiStartTime(event.target.value)} /></label>
+            <label className="form-group">Heure précise de fin (Lomé)<input className="input" type="time" required value={multiEndTime} onChange={event => setMultiEndTime(event.target.value)} /></label>
+          </div>
+          <div className="info-box mt-1" role="status">
+            <strong>{multiSlots.length} séance(s) à programmer :</strong>{' '}
+            {multiSlots.length > 0
+              ? multiSlots.map(s => s.label).join(' · ')
+              : 'Choisissez les dates, les jours et les heures de début et de fin.'}
+          </div>
+        </fieldset>
+      )}
       {action === 'replace_teacher' && current && <label className="form-group">Remplaçant<select className="select-input" value={form.teacherId} onChange={event => setForm({ ...form, teacherId: event.target.value })}><option value="">Enseignant d’origine : {teacherName(current.teacherId)}</option>{directory.teachers.filter(teacher => teacher.active && teacher.id !== current.teacherId).map(teacher => <option key={teacher.id} value={teacher.id}>{teacher.name}</option>)}</select></label>}
       {action === 'cancel_session' && current && <p>{assignmentName(current.assignmentId)} · {displayTime(current.startsAt)} → ANNULE</p>}
-      <label className="form-group">Motif<textarea className="input" required minLength={3} maxLength={1000} value={form.reason} onChange={event => setForm({ ...form, reason: event.target.value })} /></label>
+      <label className="form-group">Motif<textarea className="input" required={action !== 'create_session'} minLength={action !== 'create_session' ? 3 : undefined} maxLength={1000} placeholder={action === 'create_session' ? 'Facultatif à la création (renseigné automatiquement)' : undefined} value={form.reason} onChange={event => setForm({ ...form, reason: event.target.value })} /></label>
       <DrawerActions><button className="btn btn-primary">Vérifier les informations</button><DrawerCloseButton className="btn btn-outline" disabled={saving}>Annuler</DrawerCloseButton></DrawerActions>
     </ReviewedForm></WorkPage>}
     {assigning && <CourseAssignmentDialog {...assigning} onClose={() => setAssigning(null)} onSaved={async id => {

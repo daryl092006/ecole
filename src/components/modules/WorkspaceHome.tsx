@@ -349,6 +349,17 @@ export default function WorkspaceHome({ mode = 'home' }: { mode?: 'home' | 'over
             { label: 'Filières', value: `${programsCount}` },
           ],
         },
+        ...(role === ROLES.MKT ? [{
+          title: 'Étudiants & Cours',
+          href: '/etudiants/liste',
+          icon: GraduationCap,
+          items: [
+            { label: 'Étudiants', value: `${totalStudents}` },
+            { label: 'Filières', value: `${programsCount}` },
+            { label: 'Groupes', value: `${count('groups')}` },
+            { label: 'Séances', value: `${count('sessions')}` },
+          ],
+        }] : []),
       ];
     }
 
@@ -385,7 +396,7 @@ export default function WorkspaceHome({ mode = 'home' }: { mode?: 'home' | 'over
     [ROLES.ENS]: ['acad_schedule', 'acad_subjects', 'acad_grades', 'acad_attendance', 'acad_complaints'],
     [ROLES.SURV]: ['acad_exams', 'acad_attendance', 'acad_schedule'],
     [ROLES.RAF]: ['fin_payments', 'fin_kpis', 'fin_contracts', 'fin_reports', 'stud_list'],
-    [ROLES.MKT]: ['comm_announcements', 'web_applications', 'comm_news', 'web_brochures'],
+    [ROLES.MKT]: ['comm_announcements', 'web_applications', 'stud_list', 'acad_schedule', 'acad_program', 'comm_news', 'web_brochures'],
     [ROLES.ACHATS]: ['log_purchases', 'log_suppliers', 'log_assets'],
     [ROLES.SITE]: ['web_applications', 'web_documents', 'web_brochures', 'comm_news'],
     [ROLES.IT]: ['staff_list', 'stud_accounts', 'sys_support', 'acad_reference', 'sys_logs'],

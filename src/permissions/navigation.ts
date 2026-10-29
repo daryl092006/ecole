@@ -9,6 +9,7 @@ export const ALL_TABS = [
     icon: 'Home',
     subTabs: [
       { id: 'espace_dashboard', name: 'Tableau de bord' },
+      { id: 'espace_profile', name: 'Mon profil' },
       { id: 'espace_support', name: 'Support technique' },
       { id: 'espace_announcements', name: 'Annonces & Actualités' },
       { id: 'espace_exams', name: 'Mes épreuves en ligne' },

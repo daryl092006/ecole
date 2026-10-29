@@ -1,5 +1,6 @@
 'use client';
 import { useEffect, useState } from 'react';
+import Link from 'next/link';
 import { usePortal } from '@/hooks/usePortal';
 import { loadTeachers, manageTeacher } from '@/services/remoteCampusService';
 import type { TeacherDirectory } from '@/types/teachers';
@@ -23,18 +24,19 @@ export default function CourseAssignmentDialog({ groupId, offeringId, componentI
   }, [portal.activeRole, retry]);
   const offering = directory?.offerings.find(row => row.id === offeringId);
   const valid = directory?.canManageAssignments && directory.groups.some(row => row.id === groupId && row.offeringIds.includes(offeringId)) && directory.components.some(row => row.id === componentId && row.curriculumId === offering?.curriculumId);
+  const effectiveReason = reason.trim() || 'Affectation pédagogique depuis l’emploi du temps';
   return <WorkPage title="Choisir l’enseignant de ce cours" busy={busy} onClose={onClose}>
     {!directory ? error ? <div role="alert"><p>{error}</p><button className="btn btn-outline" onClick={() => setRetry(value => value + 1)}>Réessayer</button></div> : <LoadingState label="Chargement des enseignants…" /> : !valid ? <p role="alert">L’affectation n’est pas disponible pour ce groupe, cette matière ou cette année. Actualisez le planning.</p> : <ReviewedForm busy={busy} error={error} confirmLabel="Confirmer l’enseignant" fields={[
       { label: 'Groupe', value: directory.groups.find(row => row.id === groupId)?.label || '' }, { label: 'Formation', value: offering?.label || '' },
       { label: 'Matière', value: directory.components.find(row => row.id === componentId)?.label || '' }, { label: 'Enseignant', value: directory.teachers.find(row => row.id === teacherId)?.name || '' },
-      { label: 'Début', value: from }, { label: 'Fin', value: until || 'Sans date de fin' }, { label: 'Motif', value: reason },
-    ]} consequence="L’enseignant sera affecté à cette matière pour ce groupe et cette formation. Vous pourrez ensuite choisir le créneau du cours. Aucune séance n’est créée à cette étape." validate={() => until && until < from ? 'La fin doit être postérieure ou égale au début.' : null} onConfirm={() => {
+      { label: 'Début', value: from }, { label: 'Fin', value: until || 'Sans date de fin' }, { label: 'Motif', value: effectiveReason },
+    ]} consequence="L’enseignant sera affecté à cette matière pour ce groupe et cette formation et recevra une notification par e-mail si son adresse est renseignée. Vous pourrez ensuite choisir le créneau du cours." validate={() => until && until < from ? 'La fin doit être postérieure ou égale au début.' : null} onConfirm={() => {
       setBusy(true); setError('');
       let recorded = Boolean(savedId);
       void (async () => {
         let id = savedId;
         if (!id) {
-          const result = await manageTeacher(portal.activeRole, { action: 'create_assignment', revision: directory.revision, teacherId, groupId, offeringId, componentId, validFrom: from, validUntil: until || null, reason });
+          const result = await manageTeacher(portal.activeRole, { action: 'create_assignment', revision: directory.revision, teacherId, groupId, offeringId, componentId, validFrom: from, validUntil: until || null, reason: effectiveReason });
           id = result.id; recorded = true; setSavedId(id); portal.refreshCampus();
         }
         await onSaved(id);
@@ -43,10 +45,10 @@ export default function CourseAssignmentDialog({ groupId, offeringId, componentI
       <fieldset disabled={busy || Boolean(savedId)}>
       <p>{directory.groups.find(row => row.id === groupId)?.label} · {directory.components.find(row => row.id === componentId)?.label}</p>
       <label className="form-group">Enseignant<select aria-label="Enseignant" className="select-input" required value={teacherId} onChange={event => setTeacherId(event.target.value)}><option value="">Choisir un enseignant</option>{directory.teachers.filter(row => row.active).map(row => <option key={row.id} value={row.id}>{row.name}</option>)}</select></label>
-      {!directory.teachers.some(row => row.active) && <p>Aucun enseignant actif. Complétez les profils dans « Enseignants et affectations » avant de programmer ce cours.</p>}
+      {!directory.teachers.some(row => row.active) && <p>Aucun enseignant actif. <Link href="/personnel/enseignants">Complétez les profils dans « Enseignants et affectations »</Link> avant de programmer ce cours.</p>}
       <label className="form-group">Début de l’enseignement<input className="input" type="date" required value={from} onChange={event => setFrom(event.target.value)} /></label>
       <label className="form-group">Fin de l’enseignement (facultative)<input className="input" type="date" min={from} value={until} onChange={event => setUntil(event.target.value)} /></label>
-      <label className="form-group">Motif<textarea className="input" required minLength={3} maxLength={1000} value={reason} onChange={event => setReason(event.target.value)} /></label>
+      <label className="form-group">Motif<textarea className="input" maxLength={1000} placeholder="Facultatif — renseigné automatiquement si laissé vide" value={reason} onChange={event => setReason(event.target.value)} /></label>
       <DrawerActions><button className="btn btn-primary" disabled={busy || !directory.teachers.some(row => row.active)}>Vérifier l’enseignant</button></DrawerActions>
       </fieldset>
     </ReviewedForm>}

@@ -35,7 +35,25 @@ export async function GET(request: Request) {
         const label = roleById.get(String(grant.role_id));
         return label ? [label] : [];
       }))];
-      return { personId: person.id, staffId: member?.id || null, firstname: String(person.firstname || ''), lastname: String(person.lastname || ''), email: String(person.email || ''), phone: displayedPhoneNumber(person.phone), employeeNumber: displayedEmployeeNumber(member?.employee_number), isTeacher: !!member && teacherStaffIds.has(member.id), active: !member?.archived_at, roles, contracts: (tables.staff_contracts || []).filter(row => row.staff_id === member?.id).map(row => ({ id: row.id, position: String(row.position), type: String(row.contract_type), startsOn: String(row.starts_on), endsOn: row.ends_on ? String(row.ends_on) : null })) };
+      return {
+        personId: person.id,
+        staffId: member?.id || null,
+        firstname: String(person.firstname || ''),
+        lastname: String(person.lastname || ''),
+        email: String(person.email || ''),
+        phone: displayedPhoneNumber(person.phone),
+        address: String(person.address || ''),
+        birthDate: String(person.birth_date || ''),
+        city: String(person.city || ''),
+        country: String(person.country || ''),
+        nationality: String(person.nationality || ''),
+        gender: String(person.gender || ''),
+        employeeNumber: displayedEmployeeNumber(member?.employee_number),
+        isTeacher: !!member && teacherStaffIds.has(member.id),
+        active: !member?.archived_at,
+        roles,
+        contracts: (tables.staff_contracts || []).filter(row => row.staff_id === member?.id).map(row => ({ id: row.id, position: String(row.position), type: String(row.contract_type), startsOn: String(row.startsOn || row.starts_on), endsOn: row.ends_on ? String(row.ends_on) : null })),
+      };
     });
     return Response.json({ records, revision: result.data.revision }, { headers: { 'Cache-Control': 'no-store' } });
   } catch (error) { return errorResponse(error); }

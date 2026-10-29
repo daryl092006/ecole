@@ -16,6 +16,10 @@ const reviewSchema = z.discriminatedUnion('decision', [
     personalEmail: z.string().trim().email().max(255).optional().or(z.literal('')),
     phone: z.string().trim().max(50).optional(),
     birthDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional().or(z.literal('')),
+    city: z.string().trim().max(160).optional(),
+    country: z.string().trim().max(160).optional(),
+    nationality: z.string().trim().max(160).optional(),
+    gender: z.string().trim().max(40).optional(),
   }).strict(),
   z.object({
     decision: z.literal('REPORT'),
@@ -106,12 +110,20 @@ export async function POST(request: Request) {
       const nextEmail = body.personalEmail !== undefined ? body.personalEmail.trim() : (person.email || '');
       const nextPhone = body.phone !== undefined ? body.phone.trim() : (person.phone || '');
       const nextBirthDate = (!person.birth_date && body.birthDate) ? body.birthDate : (person.birth_date || null);
+      const nextCity = body.city !== undefined ? body.city.trim() : (person.city || '');
+      const nextCountry = body.country !== undefined ? body.country.trim() : (person.country || '');
+      const nextNationality = body.nationality !== undefined ? body.nationality.trim() : (person.nationality || '');
+      const nextGender = body.gender !== undefined ? body.gender.trim() : (person.gender || '');
 
       const hasPersonChanges = (
         nextAddress !== (person.address || '') ||
         nextEmail !== (person.email || '') ||
         nextPhone !== (person.phone || '') ||
-        nextBirthDate !== (person.birth_date || null)
+        nextBirthDate !== (person.birth_date || null) ||
+        nextCity !== (person.city || '') ||
+        nextCountry !== (person.country || '') ||
+        nextNationality !== (person.nationality || '') ||
+        nextGender !== (person.gender || '')
       );
 
       if (hasPersonChanges) {
@@ -124,9 +136,11 @@ export async function POST(request: Request) {
           email: nextEmail || null,
           phone: nextPhone || null,
         };
-        if (nextBirthDate) {
-          updateRecord.birth_date = nextBirthDate;
-        }
+        if (nextBirthDate) updateRecord.birth_date = nextBirthDate;
+        if (body.city !== undefined) updateRecord.city = nextCity || null;
+        if (body.country !== undefined) updateRecord.country = nextCountry || null;
+        if (body.nationality !== undefined) updateRecord.nationality = nextNationality || null;
+        if (body.gender !== undefined) updateRecord.gender = nextGender || null;
         const saved = await auth.client.rpc('escen_backend_transaction', {
           p_actor_id: auth.context.accountId,
           p_expected_revision: snapshot.revision,

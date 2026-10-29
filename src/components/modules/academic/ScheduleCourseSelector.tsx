@@ -20,13 +20,20 @@ export default function ScheduleCourseSelector({ directory, assignmentId, initia
     || offerings.find(row => directory.components.some(c => c.curriculumId === row.curriculumId))
     || offerings[0];
   const assignments = directory.assignments.filter(row => row.groupId === groupId && (!offering || row.offeringId === offering.id || offerings.some(o => o.id === row.offeringId)) && row.componentId === component?.id && directory.teachers.some(teacher => teacher.id === row.teacherId && teacher.active));
-  return <fieldset><legend>Quel cours programmer ?</legend><p>Choisissez le groupe, sa matière et l’enseignant, puis renseignez le créneau ci-dessous.</p>
+  return <fieldset><legend>Quel cours programmer ?</legend><p>Choisissez la classe (groupe), sa matière et l’enseignant, puis renseignez le créneau ou la semaine ci-dessous.</p>
     <label className="form-group">Groupe du cours<select aria-label="Groupe du cours" className="select-input" required value={groupId} onChange={event => { setGroupId(event.target.value); setComponent(''); onChange(''); }}><option value="">Choisir un groupe</option>{directory.groups.map(row => <option key={row.id} value={row.id}>{row.label}</option>)}</select></label>
+    <div className="btn-group mb-1">
+      <Link className="btn btn-sm btn-outline" href="/academique/referentiel?collection=groups">Créer ou gérer une classe / un groupe →</Link>
+      <Link className="btn btn-sm btn-outline" href="/academique/referentiel?collection=group_offerings">Rattacher une classe à une formation →</Link>
+    </div>
     <label className="form-group">Matière du cours<select aria-label="Matière du cours" className="select-input" required disabled={!group} value={component?.id || ''} onChange={event => { setComponent(event.target.value); onChange(''); }}><option value="">Choisir une matière</option>{components.map(row => <option key={row.id} value={row.id}>{row.label}</option>)}</select></label>
     {group && !components.length && <p>Aucune matière disponible pour ce groupe. <Link href="/academique/filieres">Compléter son programme de cours</Link>.</p>}
     <label className="form-group">Enseignant du cours<select aria-label="Enseignant du cours" className="select-input" required disabled={!component || !assignments.length} value={assignmentId} onChange={event => onChange(event.target.value)}><option value="">Choisir l’enseignant</option>{assignments.map(row => <option key={row.id} value={row.id}>{directory.teachers.find(teacher => teacher.id === row.teacherId)?.name} · du {row.validFrom}{row.validUntil ? ` au ${row.validUntil}` : ', sans date de fin'}</option>)}</select></label>
     {component && !assignments.length && <p>Aucun enseignant n’est encore affecté à cette matière pour ce groupe.</p>}
-    {component && offering && canAssign && <button type="button" className="btn btn-outline" onClick={() => onAssign({ groupId, offeringId: offering.id, componentId: component.id })}>Affecter un enseignant ici</button>}
-    {!directory.groups.length && <p>Aucun groupe disponible. Préparez les groupes et leurs formations dans « Année scolaire ».</p>}
+    <div className="btn-group">
+      {component && offering && canAssign && <button type="button" className="btn btn-outline" onClick={() => onAssign({ groupId, offeringId: offering.id, componentId: component.id })}>Affecter un enseignant ici</button>}
+      <Link className="btn btn-sm btn-outline" href="/personnel/enseignants">Enseignants & affectations →</Link>
+    </div>
+    {!directory.groups.length && <p>Aucun groupe disponible. <Link href="/academique/referentiel?collection=groups">Créer une classe / un groupe</Link> ou préparez les formations dans « Année scolaire ».</p>}
   </fieldset>;
 }

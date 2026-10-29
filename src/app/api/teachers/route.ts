@@ -3,6 +3,8 @@ import { requireAccount, requirePermission, RequestError, errorResponse } from '
 import { resolveAcademicYear } from '@/server/academicYearContext';
 import type { RelationalSnapshot, PersistentChange } from '@/types/persistence';
 import { hasGlobalStaffManagement, teacherDirectory, teacherAcademicScope, assignmentIsGranted, teacherHasUpcomingSessions, assignmentHasSessionsAfter } from '@/services/teacherManagementService';
+import { processEmailBatch } from '@/server/emailWorker';
+import { deliverEmail, emailConfiguration } from '@/server/emailTransport';
 
 export const dynamic = 'force-dynamic';
 const common = { revision: z.number().int().nonnegative(), reason: z.string().trim().min(3).max(1000) };
@@ -14,6 +16,18 @@ const commandSchema = z.discriminatedUnion('action', [
   z.object({ ...common, action: z.literal('create_assignment'), teacherId: z.uuid(), groupId: z.uuid(), offeringId: z.uuid(), componentId: z.uuid(), validFrom: z.iso.date(), validUntil: z.iso.date().nullable() }).strict(),
   z.object({ ...common, action: z.literal('end_assignment'), assignmentId: z.uuid(), endOn: z.iso.date() }).strict(),
 ]);
+
+function escapeHtml(value: string): string {
+  return value
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;');
+}
+
+function isValidEmail(email: string): boolean {
+  return email.length > 0 && email.length <= 254 && /^[^\s<>@]+@[^\s<>@]+\.[^\s<>@]+$/.test(email);
+}
 
 async function loadContext(request: Request) {
   const auth = await requireAccount(request);
@@ -87,6 +101,78 @@ export async function POST(request: Request) {
     }
     const saved = await data.client.rpc('escen_backend_transaction', { p_actor_id: data.context.accountId, p_expected_revision: body.revision, p_changes: changes });
     if (saved.error) throw new RequestError(409, 'Enregistrement refusé : vérifiez les dates, les doublons ou une modification concurrente. Aucune modification partielle n’est conservée.');
+
+    // Notification par e-mail lors de l'affectation d'un enseignant à une matière ou de la création de son profil
+    if (body.action === 'create_assignment' && data.year.selectedYearId) {
+      const rawTeacher = data.snapshot.tables.teachers?.find(row => row.id === body.teacherId);
+      const rawStaff = rawTeacher ? data.snapshot.tables.staff?.find(row => row.id === rawTeacher.staff_id) : undefined;
+      const rawPerson = rawStaff ? data.snapshot.tables.people?.find(row => row.id === rawStaff.person_id) : undefined;
+      const recipientEmail = String(rawPerson?.email || '').trim().toLowerCase();
+      const recipientName = `${String(rawPerson?.firstname || '').trim()} ${String(rawPerson?.lastname || '').trim()}`.trim();
+      if (isValidEmail(recipientEmail) && recipientName) {
+        const groupLabel = data.directory.groups.find(g => g.id === body.groupId)?.label || 'Groupe';
+        const offeringLabel = data.directory.offerings.find(o => o.id === body.offeringId)?.label || 'Formation';
+        const componentLabel = data.directory.components.find(c => c.id === body.componentId)?.label || 'Matière';
+        const subject = `ESCEN — Nouvelle affectation pédagogique : ${componentLabel} (${groupLabel})`.slice(0, 180);
+        const textBody = `Bonjour ${recipientName},\n\nVous avez été affecté(e) à l’enseignement de la matière « ${componentLabel} » pour le groupe « ${groupLabel} » (${offeringLabel}).\n\nPériode d’affectation : du ${body.validFrom}${body.validUntil ? ` au ${body.validUntil}` : ' (sans date de fin fixée)'}.\n\nVous pouvez consulter votre emploi du temps, vos feuilles de présence et vos évaluations depuis votre espace enseignant ESCEN.\n\nDirection Académique ESCEN`;
+        const htmlBody = `<div style="font-family:sans-serif;color:#0f172a;line-height:1.6;"><h2 style="color:#0f172a;">Nouvelle affectation pédagogique — ESCEN</h2><p>Bonjour <strong>${escapeHtml(recipientName)}</strong>,</p><p>Vous avez été affecté(e) à l’enseignement suivant :</p><ul><li><strong>Matière :</strong> ${escapeHtml(componentLabel)}</li><li><strong>Classe / Groupe :</strong> ${escapeHtml(groupLabel)}</li><li><strong>Formation :</strong> ${escapeHtml(offeringLabel)}</li><li><strong>Période :</strong> du ${escapeHtml(body.validFrom)}${body.validUntil ? ` au ${escapeHtml(body.validUntil)}` : ' (sans date de fin fixée)'}</li></ul><p>Connectez-vous à votre espace enseignant ESCEN pour consulter votre planning de cours et vos listes d’étudiants.</p><p style="color:#64748b;font-size:13px;">Direction Académique ESCEN</p></div>`;
+        try {
+          const enqueued = await data.client.rpc('escen_email_enqueue', {
+            p_year_id: data.year.selectedYearId,
+            p_event_type: 'teaching_assignment_created',
+            p_source_table: 'teaching_assignments',
+            p_source_id: id,
+            p_source_version: 'v1',
+            p_recipient_email: recipientEmail,
+            p_recipient_name: recipientName,
+            p_subject: subject,
+            p_text_body: textBody,
+            p_html_body: htmlBody,
+            p_actor_id: data.context.accountId,
+          });
+          if (!enqueued.error && emailConfiguration().ready) {
+            await processEmailBatch(data.client);
+          }
+        } catch {
+          // Do not fail the committed academic transaction if email queueing is unavailable in a test mock
+        }
+      }
+    } else if (body.action === 'create_profile' && emailConfiguration().ready) {
+      const rawStaff = data.snapshot.tables.staff?.find(row => row.id === body.staffId);
+      const rawPerson = rawStaff ? data.snapshot.tables.people?.find(row => row.id === rawStaff.person_id) : undefined;
+      const recipientEmail = String(rawPerson?.email || '').trim().toLowerCase();
+      const recipientName = `${String(rawPerson?.firstname || '').trim()} ${String(rawPerson?.lastname || '').trim()}`.trim();
+      if (isValidEmail(recipientEmail) && recipientName) {
+        try {
+          const nowIso = new Date().toISOString();
+          await deliverEmail({
+            id,
+            academic_year_id: data.year.selectedYearId || '00000000-0000-0000-0000-000000000000',
+            event_type: 'teaching_assignment_created',
+            source_table: 'teachers',
+            source_id: id,
+            recipient_email: recipientEmail,
+            recipient_name: recipientName,
+            subject: 'ESCEN — Activation de votre profil enseignant',
+            status: 'PROCESSING',
+            attempts: 1,
+            provider_reference: null,
+            accepted_at: null,
+            last_error_code: null,
+            requested_by: data.context.accountId,
+            reason: body.reason,
+            version: 1,
+            created_at: nowIso,
+            updated_at: nowIso,
+            text_body: `Bonjour ${recipientName},\n\nVotre profil enseignant a été activé sur la plateforme académique ESCEN${body.specialty ? ` (Spécialité : ${body.specialty})` : ''}.\n\nVous recevrez une notification dès que vos affectations de cours seront enregistrées.\n\nDirection Académique ESCEN`,
+            html_body: `<div style="font-family:sans-serif;color:#0f172a;line-height:1.6;"><h2>Profil enseignant activé — ESCEN</h2><p>Bonjour <strong>${escapeHtml(recipientName)}</strong>,</p><p>Votre profil enseignant a été activé sur la plateforme académique ESCEN${body.specialty ? ` (Spécialité : <strong>${escapeHtml(body.specialty)}</strong>)` : ''}.</p><p>Vous recevrez un e-mail dès que vos matières et groupes de cours vous seront affectés.</p><p style="color:#64748b;font-size:13px;">Direction Académique ESCEN</p></div>`,
+          });
+        } catch {
+          // Best-effort notification
+        }
+      }
+    }
+
     return Response.json({ id, revision: saved.data }, { status: body.action.startsWith('create_') ? 201 : 200, headers: { 'Cache-Control': 'no-store' } });
   } catch (error) { return errorResponse(error); }
 }

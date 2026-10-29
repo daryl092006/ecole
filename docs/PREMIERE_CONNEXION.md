@@ -11,7 +11,7 @@ Lorsque `ESCEN_FIRST_LOGIN_ENABLED=true`, un compte sans état de première conn
 terminé doit :
 
 1. Choisir un nouveau mot de passe sur `/mot-de-passe-modifier`.
-2. Vérifier ses informations administratives (nom, prénoms, filière d’inscription, date de naissance, email de connexion) et compléter ses coordonnées personnelles obligatoires (adresse géographique, email personnel, téléphone, date de naissance si manquante) sur `/premiere-connexion`.
+2. Vérifier ses informations administratives (nom, prénoms, filière d’inscription, date de naissance, email de connexion) et compléter ses coordonnées personnelles obligatoires (adresse géographique, email personnel, téléphone avec indicatif, date de naissance si manquante) sur `/premiere-connexion`.
 3. Confirmer l'exactitude des informations administratives ou signaler une erreur, puis valider le récapitulatif `ReviewedForm`. En cas de confirmation, les coordonnées personnelles saisies ou modifiées sont enregistrées de façon auditée dans `escen.people`. En cas d’erreur administrative, un signalement est créé dans le centre de support sans altérer les données officielles.
 
 Les API métier refusent les appels directs tant que l’étape requise n’est pas
@@ -37,12 +37,12 @@ invalident le cache serveur pour permettre la transition immédiate vers l’ét
 `node scripts/prepare-first-login.mjs` présente uniquement les totaux, sans écriture
 et sans afficher d’identité ou de secret. `--apply` relit chaque compte avant de :
 
-- Préparer les comptes jamais connectés et demander leur changement de mot de passe.
-- Exempter de ce nouveau parcours les comptes ayant déjà une connexion, tout en
+- Préparer les comptes en attente de première connexion avec le mot de passe initial par défaut `password` et demander leur changement de mot de passe obligatoire dès la première connexion.
+- Exempter de ce nouveau parcours les comptes ayant déjà une connexion (sauf avec `--reset-all`), tout en
   conservant une éventuelle obligation historique de changer de mot de passe.
-- Préserver tout état de première connexion déjà préparé ou terminé.
+- Préserver tout état de première connexion déjà terminé.
 
-La commande ne change aucun mot de passe, n’envoie aucun email, ne modifie aucun
+La commande initialise le mot de passe par défaut (`password`) uniquement pour les comptes soumis à la première connexion, n’envoie aucun email, ne modifie aucun
 rôle et n’applique aucune migration SQL. Elle ne met `ESCEN_FIRST_LOGIN_ENABLED=true`
 dans `.env.local` qu’après une préparation sans échec. Les nouveaux comptes créés
 ultérieurement seront soumis au parcours par défaut, même sans marqueur initial.

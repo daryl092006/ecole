@@ -10,13 +10,15 @@ interface Props {
   onChange: (value: string) => void;
   required?: boolean;
   disabled?: boolean;
+  defaultCountry?: string;
 }
 
-export default function PhoneInput({ label = 'Téléphone', value, onChange, required = false, disabled = false }: Props) {
+export default function PhoneInput({ label = 'Téléphone', value, onChange, required = false, disabled = false, defaultCountry = '' }: Props) {
   const id = useId();
   const input = useRef<HTMLInputElement>(null);
-  const [choice, setChoice] = useState({ key: phoneSelection(value), value, edited: false });
-  const key = choice.value === value ? choice.key : phoneSelection(value);
+  const resolveKey = (raw: string) => phoneSelection(raw) || (!raw.trim() ? defaultCountry : '');
+  const [choice, setChoice] = useState({ key: resolveKey(value), value, edited: false });
+  const key = choice.value === value ? choice.key : resolveKey(value);
   const edited = choice.value === value && choice.edited;
   const country = PHONE_COUNTRIES.find(item => phoneCountryKey(item) === key);
   const sharedCode = key.startsWith('code:') ? key.slice(5) : '';

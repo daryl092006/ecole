@@ -53,14 +53,20 @@ export default function TeachersWorkspace() {
   const offeringName = (id: string) => directory.offerings.find(row => row.id === id)?.label || 'Formation indisponible';
   const groupName = (id: string) => directory.groups.find(row => row.id === id)?.label || 'Groupe indisponible';
   const componentName = (id: string) => directory.components.find(row => row.id === id)?.label || 'Matière indisponible';
+  const isCreation = operation?.kind === 'create_profile' || operation?.kind === 'create_assignment';
+  const effectiveReason = form.reason.trim() || (operation?.kind === 'create_profile'
+    ? 'Ouverture du profil enseignant'
+    : operation?.kind === 'create_assignment'
+      ? 'Affectation pédagogique de l’enseignant'
+      : '');
   const title = operation?.kind === 'create_profile' ? 'Créer un profil enseignant' : operation?.kind === 'update_profile' ? 'Modifier le profil enseignant'
     : operation?.kind === 'set_active' ? `${operation.teacher.active ? 'Désactiver' : 'Activer'} l’enseignant`
     : operation?.kind === 'end_assignment' ? 'Terminer l’affectation' : 'Nouvelle affectation';
-  const consequence = operation?.kind === 'create_profile' ? 'Le profil enseignant sera lié au dossier du personnel existant. Aucun compte ni rôle de connexion ne sera créé.'
+  const consequence = operation?.kind === 'create_profile' ? 'Le profil enseignant sera lié au dossier du personnel existant et une notification sera envoyée si son e-mail est renseigné.'
     : operation?.kind === 'update_profile' ? 'La spécialité sera mise à jour. L’identité et le matricule se modifient dans les dossiers du personnel.'
       : operation?.kind === 'set_active' ? 'Le statut pédagogique sera modifié avec son motif. La désactivation est bloquée si des séances restent à assurer ; aucune séance ni aucun compte ne sera modifié automatiquement.'
         : operation?.kind === 'end_assignment' ? 'La date de fin sera enregistrée avec son motif. Les séances et l’historique restent conservés ; toute séance non annulée doit rester comprise dans les dates de l’affectation.'
-          : 'L’enseignant sera affecté à ce groupe, cette formation et cette matière pour les dates indiquées. Aucune séance ne sera créée automatiquement.';
+          : 'L’enseignant sera affecté à ce groupe, cette formation et cette matière pour les dates indiquées, et recevra un e-mail de notification si son adresse est renseignée.';
   const fields: ReviewField[] = operation?.kind === 'create_profile' ? [
     { label: 'Membre du personnel', value: directory.staff.find(row => row.id === form.staffId)?.name || '' }, { label: 'Spécialité', value: form.specialty },
   ] : operation?.kind === 'update_profile' ? [
@@ -162,18 +168,23 @@ export default function TeachersWorkspace() {
       </tr>;
     })}{!directory.assignments.length && <tr><td colSpan={5}>Aucune affectation dans cette année et ce périmètre.</td></tr>}</tbody></ResponsiveTable></section>}
     {operation && <WorkPage busy={saving} title={title} onClose={() => setOperation(null)}><ReviewedForm busy={saving} error={saveError}
-      confirmLabel={`Confirmer : ${title.toLocaleLowerCase('fr')}`} fields={[...fields, { label: 'Motif', value: form.reason }]} consequence={consequence}
-      validate={() => operation.kind === 'create_assignment' && form.validUntil && form.validUntil < form.validFrom ? 'La date de fin ne peut pas précéder la date de début.' : null}
+      confirmLabel={`Confirmer : ${title.toLocaleLowerCase('fr')}`} fields={[...fields, { label: 'Motif', value: effectiveReason }]} consequence={consequence}
+      validate={() => operation.kind === 'create_assignment' && form.validUntil && form.validUntil < form.validFrom ? 'La date de fin ne peut pas précéder la date de début.' : effectiveReason.length < 3 ? 'Le motif doit contenir au moins 3 caractères.' : null}
       onConfirm={event => {
         event.preventDefault(); setSaving(true); setSaveError('');
-        const common = { revision: directory.revision, reason: form.reason };
+        const common = { revision: directory.revision, reason: effectiveReason };
         const command: TeacherCommand = operation.kind === 'create_profile' ? { ...common, action: 'create_profile', staffId: form.staffId, specialty: form.specialty }
           : operation.kind === 'update_profile' ? { ...common, action: 'update_profile', teacherId: operation.teacher.id, specialty: form.specialty }
             : operation.kind === 'set_active' ? { ...common, action: 'set_active', teacherId: operation.teacher.id, active: !operation.teacher.active }
               : operation.kind === 'end_assignment' ? { ...common, action: 'end_assignment', assignmentId: operation.assignment.id, endOn: form.endOn }
                 : { ...common, action: 'create_assignment', teacherId: form.teacherId, offeringId: form.offeringId, groupId: form.groupId, componentId: form.componentId, validFrom: form.validFrom, validUntil: form.validUntil || null };
         void manageTeacher(activeRole, command).then(() => {
-          setOperation(null); setSuccess('Enregistrement effectué. Le motif et l’historique sont conservés.'); setReload(value => value + 1); portal.refreshCampus();
+          setOperation(null);
+          setSuccess(operation.kind === 'create_assignment'
+            ? 'Affectation enregistrée et notification préparée pour l’enseignant.'
+            : 'Enregistrement effectué. Le motif et l’historique sont conservés.');
+          setReload(value => value + 1);
+          portal.refreshCampus();
         }).catch(cause => setSaveError(cause instanceof Error ? cause.message : 'Enregistrement impossible.')).finally(() => setSaving(false));
       }}>
       {operation.kind === 'create_profile' && <label className="form-group">Membre du personnel<select className="select-input" required value={form.staffId} onChange={event => setForm({ ...form, staffId: event.target.value })}><option value="">Choisir un dossier existant</option>{directory.staff.map(member => <option key={member.id} value={member.id}>{member.name} · {member.employeeNumber}</option>)}</select></label>}
@@ -188,7 +199,7 @@ export default function TeachersWorkspace() {
         <label className="form-group">Fin prévue (facultative)<input className="input" type="date" min={form.validFrom} value={form.validUntil} onChange={event => setForm({ ...form, validUntil: event.target.value })} /></label>
       </div>}
       {operation.kind === 'end_assignment' && <label className="form-group">Fin de l’affectation<input className="input" type="date" required min={operation.assignment.validFrom} max={operation.assignment.validUntil || undefined} value={form.endOn} onChange={event => setForm({ ...form, endOn: event.target.value })} /></label>}
-      <label className="form-group">Motif<textarea className="input" required minLength={3} maxLength={1000} value={form.reason} onChange={event => setForm({ ...form, reason: event.target.value })} /></label>
+      <label className="form-group">Motif<textarea className="input" required={!isCreation} minLength={!isCreation ? 3 : undefined} maxLength={1000} placeholder={isCreation ? 'Facultatif à la création (renseigné automatiquement)' : undefined} value={form.reason} onChange={event => setForm({ ...form, reason: event.target.value })} /></label>
       <DrawerActions><button className="btn btn-primary">Vérifier les informations</button><DrawerCloseButton className="btn btn-outline" disabled={saving}>Annuler</DrawerCloseButton></DrawerActions>
     </ReviewedForm></WorkPage>}
   </div>;

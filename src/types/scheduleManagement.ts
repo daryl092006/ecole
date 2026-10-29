@@ -22,7 +22,8 @@ export interface ScheduleDirectory {
   blockedPeriods: { id: string; name: string; kind: string; siteId: string | null; startsAt: string; endsAt: string; reason: string }[];
 }
 interface Common { revision: number; reason: string; }
-export interface SessionInput { assignmentId: string; startsAt: string; endsAt: string; mode: SessionMode; roomId: string | null; }
+export interface SessionSlotInput { startsAt: string; endsAt: string; }
+export interface SessionInput { assignmentId: string; startsAt: string; endsAt: string; mode: SessionMode; roomId: string | null; slots?: SessionSlotInput[]; }
 export type ScheduleCommand = Common & (
   | ({ action: 'create_session' } & SessionInput)
   | ({ action: 'update_session'; sessionId: string } & SessionInput)

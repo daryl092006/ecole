@@ -26,27 +26,36 @@ async function directory(request:Request){
  const candidates=(scoped.tables.students || []).filter(row=>!row.archived_at && !registered.has(row.id)).map(row=>{
   const person=snapshot.tables.people?.find(person=>person.id===row.person_id);
   const knownOld=historicalMatricules.has(String(row.matricule)) || snapshot.tables.enrollments?.some(enrollment=>enrollment.student_id===row.id);
-  return {id:row.id,matricule:row.matricule,name:[person?.firstname,person?.lastname].filter(Boolean).join(' '),kind:knownOld?'reenroll':'new',eligible:!knownOld || previousStudents.has(row.id)};
+  const prevEnrollment=knownOld?(snapshot.tables.enrollments || []).find(enrollment=>enrollment.student_id===row.id && previousOfferingIds.has(String(enrollment.offering_id))):undefined;
+  const prevOffering=prevEnrollment?snapshot.tables.academic_offerings?.find(item=>item.id===prevEnrollment.offering_id):undefined;
+  const prevProgramId=prevOffering?snapshot.tables.curricula?.find(item=>item.id===prevOffering.curriculum_id)?.program_id:undefined;
+  const suggestedOffering=prevOffering?offerings.find(item=>item.level_id===prevOffering.level_id && snapshot.tables.curricula?.find(c=>c.id===item.curriculum_id)?.program_id===prevProgramId):undefined;
+  return {id:row.id,matricule:row.matricule,name:[person?.firstname,person?.lastname].filter(Boolean).join(' '),kind:knownOld?'reenroll':'new',eligible:!knownOld || previousStudents.has(row.id),suggestedOfferingId:suggestedOffering?.id || null};
  });
- const groupLinks=availableEnrollmentGroupLinks(snapshot,offerings);
+ const explicitLinks=availableEnrollmentGroupLinks(snapshot,offerings);
+ const activeGroups=(snapshot.tables.groups || []).filter(row=>!row.archived_at && row.active!==false && row.academic_year_id===year.selectedYearId);
+ const levelMatchedLinks=offerings.flatMap(offering=>activeGroups.filter(group=>group.level_id===offering.level_id && (group.site_id || null)===(offering.site_id || null) && !explicitLinks.some(link=>link.group_id===group.id && link.offering_id===offering.id)).map(group=>({id:`level:${group.id}:${offering.id}`,group_id:group.id,offering_id:offering.id,academic_year_id:offering.academic_year_id,level_id:offering.level_id})));
+ const groupLinks=[...explicitLinks,...levelMatchedLinks];
  return {...auth,snapshot,year,offerings,candidates,previous,previousOfferingIds,groupLinks};
 }
 export async function GET(request:Request){try{
  const data=await directory(request);const tables=data.snapshot.tables;
- return Response.json({revision:data.snapshot.revision,candidates:data.candidates,offerings:data.offerings.map(row=>({id:row.id,name:connectedRecordName('academic_offerings',row,data.snapshot),levelId:row.level_id,deliveryMode:row.delivery_mode,programId:tables.curricula?.find(item=>item.id===row.curriculum_id)?.program_id})),groups:data.groupLinks.map(link=>({id:link.group_id,offeringId:link.offering_id,name:tables.groups?.find(group=>group.id===link.group_id)?.name})),fees:(tables.annual_fee_schedules || []).filter(row=>row.academic_year_id===data.year.selectedYearId && !row.archived_at),previousYear:data.previous?.name || null},{headers:{'Cache-Control':'no-store'}});
+ return Response.json({revision:data.snapshot.revision,candidates:data.candidates,offerings:data.offerings.map(row=>({id:row.id,name:connectedRecordName('academic_offerings',row,data.snapshot),levelId:row.level_id,deliveryMode:row.delivery_mode,programId:tables.curricula?.find(item=>item.id===row.curriculum_id)?.program_id})),groups:data.groupLinks.map(link=>({id:link.group_id,offeringId:link.offering_id,levelId:link.level_id,name:tables.groups?.find(group=>group.id===link.group_id)?.name})),fees:(tables.annual_fee_schedules || []).filter(row=>row.academic_year_id===data.year.selectedYearId && !row.archived_at),previousYear:data.previous?.name || null},{headers:{'Cache-Control':'no-store'}});
 }catch(error){return errorResponse(error);}}
-const schema=z.object({kind:z.enum(['new','reenroll']),studentId:z.uuid(),offeringId:z.uuid(),groupId:z.uuid(),tuitionId:z.uuid(),registrationId:z.uuid(),revision:z.number().int().nonnegative(),enrolledOn:z.iso.date(),reason:z.string().trim().min(3).max(1000)}).strict();
+const schema=z.object({kind:z.enum(['new','reenroll']),studentId:z.uuid(),offeringId:z.uuid(),groupId:z.uuid().optional(),tuitionId:z.uuid(),registrationId:z.uuid(),revision:z.number().int().nonnegative(),enrolledOn:z.iso.date(),reason:z.string().trim().min(3).max(1000)}).strict();
 export async function POST(request:Request){try{
  const data=await directory(request);const body=schema.parse(await request.json());
  requirePermission(data.context,'payment.record');
- try{assertOfferingPrepared(data.snapshot,data.year.selectedYearId!,body.offeringId);}catch(error){throw new RequestError(409,error instanceof Error?error.message:'Année non prête.');}
+ const offering=data.offerings.find(row=>row.id===body.offeringId);
+ const resolvedGroupId=body.groupId || data.groupLinks.find(link=>link.offering_id===body.offeringId)?.group_id || '';
+ const snapshotWithGroupLinks:RelationalSnapshot={...data.snapshot,tables:{...data.snapshot.tables,group_offerings:[...(data.snapshot.tables.group_offerings || []),...data.groupLinks.filter(link=>!(data.snapshot.tables.group_offerings || []).some(existing=>existing.group_id===link.group_id && existing.offering_id===link.offering_id && !existing.archived_at))]}};
+ try{assertOfferingPrepared(snapshotWithGroupLinks,data.year.selectedYearId!,body.offeringId);}catch(error){throw new RequestError(409,error instanceof Error?error.message:'Année non prête.');}
  const target=data.year.years.find(year=>year.id===data.year.selectedYearId)!;
  if(target.status!=='OUVERTE')throw new RequestError(409,'Ouvrez l’année après sa préparation avant toute inscription.');
  const candidate=data.candidates.find(row=>row.id===body.studentId && row.kind===body.kind);
  if(!candidate || !candidate.eligible)throw new RequestError(409,'Ce dossier ne correspond pas à ce parcours. Les anciens dossiers exigent la reprise de l’inscription précédente avant réinscription.');
- const offering=data.offerings.find(row=>row.id===body.offeringId);
  const tables=data.snapshot.tables;
- if(!offering || !data.groupLinks.some(link=>link.group_id===body.groupId && link.offering_id===offering.id))throw new RequestError(409,'Choisissez un groupe disponible et relié à cette formation annuelle. Actualisez si le groupe ou son rattachement a été archivé.');
+ if(!offering || !resolvedGroupId || !data.groupLinks.some(link=>link.group_id===resolvedGroupId && link.offering_id===offering.id))throw new RequestError(409,'Choisissez un groupe disponible et relié à cette formation annuelle. Actualisez si le groupe ou son rattachement a été archivé.');
  if(body.enrolledOn<target.starts_on || body.enrolledOn>target.ends_on)throw new RequestError(400,'La date d’inscription doit appartenir à l’année cible.');
  if(body.kind==='reenroll'){
   const previous=tables.enrollments?.filter(row=>row.student_id===body.studentId && data.previousOfferingIds.has(String(row.offering_id))) || [];
@@ -61,7 +70,14 @@ export async function POST(request:Request){try{
   if(!fee)throw new RequestError(409,'Tarif absent ou incompatible avec cette formation et cette année.');return fee;
  });
  const enrollmentId=crypto.randomUUID(),contractId=crypto.randomUUID(),versionId=crypto.randomUUID();
- const changes:PersistentChange[]=[{table:'enrollments',operation:'insert',record:{id:enrollmentId,student_id:body.studentId,offering_id:offering.id,status:body.kind==='new'?'INSCRIT':'REINSCRIT',enrolled_on:body.enrolledOn,created_by:data.context.accountId}},{table:'enrollment_groups',operation:'insert',record:{id:crypto.randomUUID(),enrollment_id:enrollmentId,offering_id:offering.id,group_id:body.groupId,valid_from:body.enrolledOn,changed_by:data.context.accountId,reason:body.reason}},{table:'enrollment_events',operation:'insert',record:{id:crypto.randomUUID(),enrollment_id:enrollmentId,new_status:body.kind==='new'?'INSCRIT':'REINSCRIT',actor_id:data.context.accountId,reason:body.reason}},{table:'financial_contracts',operation:'insert',record:{id:contractId,enrollment_id:enrollmentId,reference:`CON-${enrollmentId}`}},{table:'contract_versions',operation:'insert',record:{id:versionId,contract_id:contractId,version:1,status:'DRAFT',reason:body.reason}}];
+ const changes:PersistentChange[]=[];
+ const existingGroupLink=(tables.group_offerings || []).find(row=>row.group_id===resolvedGroupId && row.offering_id===offering.id);
+ if(!existingGroupLink){
+  changes.push({table:'group_offerings',operation:'insert',record:{id:crypto.randomUUID(),group_id:resolvedGroupId,offering_id:offering.id,academic_year_id:offering.academic_year_id,level_id:offering.level_id,...(offering.site_id?{site_id:offering.site_id}:{}),reason:body.reason}});
+ }else if(existingGroupLink.archived_at){
+  changes.push({table:'group_offerings',operation:'update',record:{id:existingGroupLink.id,archived_at:null,reason:body.reason}});
+ }
+ changes.push({table:'enrollments',operation:'insert',record:{id:enrollmentId,student_id:body.studentId,offering_id:offering.id,status:body.kind==='new'?'INSCRIT':'REINSCRIT',enrolled_on:body.enrolledOn,created_by:data.context.accountId}},{table:'enrollment_groups',operation:'insert',record:{id:crypto.randomUUID(),enrollment_id:enrollmentId,offering_id:offering.id,group_id:resolvedGroupId,valid_from:body.enrolledOn,changed_by:data.context.accountId,reason:body.reason}},{table:'enrollment_events',operation:'insert',record:{id:crypto.randomUUID(),enrollment_id:enrollmentId,new_status:body.kind==='new'?'INSCRIT':'REINSCRIT',actor_id:data.context.accountId,reason:body.reason}},{table:'financial_contracts',operation:'insert',record:{id:contractId,enrollment_id:enrollmentId,reference:`CON-${enrollmentId}`}},{table:'contract_versions',operation:'insert',record:{id:versionId,contract_id:contractId,version:1,status:'DRAFT',reason:body.reason}});
  for(const fee of chosen){let type=tables.fee_types?.find(row=>row.code===`ANNUAL-${fee.category}`);
   if(!type){type={id:crypto.randomUUID(),code:`ANNUAL-${fee.category}`,name:fee.category==='SCOLARITE'?'Scolarité':'Inscription',category:fee.category};changes.push({table:'fee_types',operation:'insert',record:type});}
   changes.push({table:'contract_lines',operation:'insert',record:{id:crypto.randomUUID(),contract_id:contractId,version_id:versionId,fee_type_id:type.id,description:`${fee.category} · ${target.name} · tarif ${fee.id}`,amount:fee.amount}});

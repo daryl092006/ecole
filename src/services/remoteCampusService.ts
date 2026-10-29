@@ -250,3 +250,22 @@ export async function downloadAdmissionDocument(id: string, role: RoleName, file
   document.body.appendChild(anchor); anchor.click(); anchor.remove();
   setTimeout(() => URL.revokeObjectURL(url), 1000);
 }
+
+export interface OwnProfileUpdateInput {
+  phone: string;
+  personalEmail: string;
+  birthDate: string;
+  gender: string;
+  nationality: string;
+  address: string;
+  city: string;
+  country: string;
+}
+
+export async function saveOwnProfile(values: OwnProfileUpdateInput, role: RoleName): Promise<{ updated: boolean; revision: number }> {
+  return readResponse(await fetch('/api/session/profile', {
+    method: 'POST',
+    headers: { ...await headers(role), 'Content-Type': 'application/json' },
+    body: JSON.stringify(values),
+  }));
+}

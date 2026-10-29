@@ -4,6 +4,7 @@ import DrawerActions from '@/components/ui/DrawerActions';
 import { useEffect, useState } from 'react';
 import { usePortal } from '@/hooks/usePortal';
 import { loadWebsiteBrochures, loadWebsiteData, saveWebsiteBrochure } from '@/services/remoteCampusService';
+import { BROCHURE_CYCLES, slugifyWebsiteText } from '@/services/websiteService';
 import type { WebsiteBrochure, WebsiteProgramReference } from '@/types/website';
 import LoadingState from '@/components/ui/LoadingState';
 import ErrorState from '@/components/ui/ErrorState';
@@ -14,6 +15,15 @@ const empty = { title: '', slug: '', description: '', status: 'BROUILLON' as Web
 const labels = { BROUILLON: 'Brouillon', PUBLIE: 'Publiée', RETIRE: 'Retirée' };
 const cycleLabels: Record<string, string> = { LICENCE: 'Licence Pro', MASTER: 'Master Pro', EXECUTIVE: 'Executive Master' };
 const cycles = ['LICENCE', 'MASTER', 'EXECUTIVE', 'GENERAL'];
+
+function buildSuggestedBrochureTitle(cycle: WebsiteBrochure['cycle'], programId: string | null, programs: WebsiteProgramReference[]): string {
+  const program = programs.find(item => item.id === programId);
+  const cycleTitle = cycle ? BROCHURE_CYCLES[cycle] : '';
+  if (cycleTitle && program) return `${cycleTitle} en ${program.name}`;
+  if (program) return `Brochure ${program.name}`;
+  if (cycleTitle) return `Brochure ${cycleTitle}`;
+  return '';
+}
 
 export default function WebsiteBrochuresPanel({ onBack }: { onBack?: () => void }) {
   const state = usePortal();
@@ -61,10 +71,14 @@ export default function WebsiteBrochuresPanel({ onBack }: { onBack?: () => void 
     if (!editing) return;
     setBusy(true); setSaveError('');
     const { id, version, title, slug, description, status, program_id, cycle } = editing;
+    const computedSlug = slugifyWebsiteText(slug || title) || 'brochure-escen';
     try {
       await saveWebsiteBrochure({
         ...(id ? { id, version } : {}),
-        title, slug, description, status,
+        title,
+        slug: computedSlug,
+        description,
+        status,
         program_id: program_id || null,
         cycle: cycle || null,
         reason: `${labels[status]} : ${title}`
@@ -99,13 +113,33 @@ export default function WebsiteBrochuresPanel({ onBack }: { onBack?: () => void 
         {programsLoading && <LoadingState label="Chargement des filières…" />}
         {programsError && <div role="alert"><p>{programsError}</p><button type="button" className="btn btn-outline" onClick={() => setProgramsRevision(value => value + 1)}>Réessayer les filières</button></div>}
         <fieldset disabled={busy || confirm}>
-          <label className="form-group">Titre<input className="input" required minLength={3} maxLength={180} value={editing.title} onChange={event => setEditing({ ...editing, title: event.target.value })} /></label>
-          <label className="form-group">Adresse de la brochure (slug)<input className="input" required pattern="[a-z0-9]+(-[a-z0-9]+)*" maxLength={180} value={editing.slug} onChange={event => setEditing({ ...editing, slug: event.target.value })} /></label>
           <div className="brochure-fields">
-            <label className="form-group">Filière associée (facultatif)<select className="select-input" disabled={programsLoading || !!programsError} value={editing.program_id || ''} onChange={event => setEditing({ ...editing, program_id: event.target.value || null })}><option value="">Aucune (Brochure générale)</option>{editing.program_id && !programs.some(program => program.id === editing.program_id) && <option value={editing.program_id}>{editing.program_name || 'Filière actuelle indisponible'}</option>}{programs.map(p => <option key={p.id} value={p.id}>{p.name}{p.code ? ` (${p.code})` : ''}</option>)}</select></label>
-            <label className="form-group">Cycle d'études<select className="select-input" value={editing.cycle || ''} onChange={event => setEditing({ ...editing, cycle: (event.target.value || null) as WebsiteBrochure['cycle'] })}><option value="">Aucun</option><option value="LICENCE">Licence professionnelle</option><option value="MASTER">Master professionnel</option><option value="EXECUTIVE">Executive Master</option></select></label>
+            <label className="form-group">Cycle d&apos;études<select className="select-input" value={editing.cycle || ''} onChange={event => {
+              const nextCycle = (event.target.value || null) as WebsiteBrochure['cycle'];
+              const prevSuggested = buildSuggestedBrochureTitle(editing.cycle || null, editing.program_id || null, programs);
+              const nextSuggested = buildSuggestedBrochureTitle(nextCycle, editing.program_id || null, programs);
+              const nextTitle = (!editing.title || editing.title === prevSuggested) && nextSuggested ? nextSuggested : editing.title;
+              setEditing({ ...editing, cycle: nextCycle, title: nextTitle, slug: editing.id ? editing.slug : slugifyWebsiteText(nextTitle) });
+            }}><option value="">Aucun (Brochure générale)</option><option value="LICENCE">Licence professionnelle</option><option value="MASTER">Master professionnel</option><option value="EXECUTIVE">Executive Master</option></select></label>
+            <label className="form-group">Filière associée (facultatif)<select className="select-input" disabled={programsLoading || !!programsError} value={editing.program_id || ''} onChange={event => {
+              const nextProgramId = event.target.value || null;
+              const prevSuggested = buildSuggestedBrochureTitle(editing.cycle || null, editing.program_id || null, programs);
+              const nextSuggested = buildSuggestedBrochureTitle(editing.cycle || null, nextProgramId, programs);
+              const nextTitle = (!editing.title || editing.title === prevSuggested) && nextSuggested ? nextSuggested : editing.title;
+              setEditing({ ...editing, program_id: nextProgramId, title: nextTitle, slug: editing.id ? editing.slug : slugifyWebsiteText(nextTitle) });
+            }}><option value="">Aucune (Brochure générale)</option>{editing.program_id && !programs.some(program => program.id === editing.program_id) && <option value={editing.program_id}>{editing.program_name || 'Filière actuelle indisponible'}</option>}{programs.map(p => <option key={p.id} value={p.id}>{p.name}{p.code ? ` (${p.code})` : ''}</option>)}</select></label>
           </div>
-          <label className="form-group">Description<textarea className="input" maxLength={500} value={editing.description} onChange={event => setEditing({ ...editing, description: event.target.value })} /></label>
+          <label className="form-group">Titre<input className="input" required minLength={3} maxLength={180} placeholder="Ex : Licence professionnelle en Finance Digitale" value={editing.title} onChange={event => {
+            const nextTitle = event.target.value;
+            setEditing({ ...editing, title: nextTitle, slug: editing.id ? editing.slug : slugifyWebsiteText(nextTitle) });
+          }} /></label>
+          {(editing.slug || editing.title) && (
+            <div className="editorial-slug-hint">
+              <span>Lien de téléchargement généré automatiquement</span>
+              <code>/brochures/{editing.slug || slugifyWebsiteText(editing.title)}</code>
+            </div>
+          )}
+          <label className="form-group">Description<textarea className="input" maxLength={500} placeholder="Présentation succincte des débouchés et du contenu de la brochure…" value={editing.description} onChange={event => setEditing({ ...editing, description: event.target.value })} /></label>
           <label className="form-group">Fichier PDF — 10 Mo maximum<input className="input" type="file" accept="application/pdf,.pdf" required={!editing.id} onChange={event => setFile(event.target.files?.[0] || null)} /></label>
           {editing.filename && <p>Fichier actuel : {editing.filename}</p>}
           <label className="form-group">Diffusion<select className="select-input" value={editing.status} onChange={event => setEditing({ ...editing, status: event.target.value as WebsiteBrochure['status'] })}><option value="BROUILLON">Brouillon privé</option><option value="PUBLIE">Publier sur le site</option><option value="RETIRE">Retirer du site</option></select></label>

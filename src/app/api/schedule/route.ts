@@ -7,9 +7,10 @@ import { canBlockSite, examRescheduleIssue, overlaps, scheduleConflict, schedule
 export const dynamic = 'force-dynamic';
 const common = { revision: z.number().int().nonnegative(), reason: z.string().trim().min(3).max(1000) };
 const times = { startsAt: z.iso.datetime({ offset: true }), endsAt: z.iso.datetime({ offset: true }) };
+const slotSchema = z.object(times).strict();
 const session = { ...times, assignmentId: z.uuid(), roomId: z.uuid().nullable(), mode: z.enum(['COURS', 'PAPIER', 'EN_LIGNE']) };
 const schema = z.discriminatedUnion('action', [
-  z.object({ ...common, ...session, action: z.literal('create_session') }).strict(),
+  z.object({ ...common, ...session, action: z.literal('create_session'), slots: z.array(slotSchema).min(1).max(60).optional() }).strict(),
   z.object({ ...common, ...session, action: z.literal('update_session'), sessionId: z.uuid() }).strict(),
   z.object({ ...common, ...times, action: z.literal('move_session'), sessionId: z.uuid() }).strict(),
   z.object({ ...common, action: z.literal('cancel_session'), sessionId: z.uuid() }).strict(),
@@ -43,7 +44,8 @@ export async function POST(request: Request) {
     if (body.revision !== data.snapshot.revision) throw new RequestError(409, 'Le planning a changé. Actualisez avant de réessayer.');
     if ('startsAt' in body && Date.parse(body.endsAt) <= Date.parse(body.startsAt)) throw new RequestError(400, 'La fin doit être postérieure au début.');
     const rows = (table: string) => data.snapshot.tables[table] || [];
-    let id: string; let change: PersistentChange;
+    let id = '';
+    const changes: PersistentChange[] = [];
     if (body.action === 'block_period') {
       if (!canBlockSite(data.context, data.year.selectedYearId, body.siteId)
         || body.siteId && !data.directory.sites.some(site => site.id === body.siteId)) throw new RequestError(403, 'Bloquer une période exige une attribution couvrant tous les groupes du site concerné.');
@@ -52,14 +54,61 @@ export async function POST(request: Request) {
       if (rows('sessions').some(session => !['ANNULE', 'REPORTE'].includes(String(session.status)) && overlaps(body.startsAt, body.endsAt, session)
         && rows('academic_offerings').some(offering => offering.id === session.offering_id && offering.academic_year_id === data.year.selectedYearId && (!body.siteId || body.siteId === offering.site_id)))) throw new RequestError(409, 'Déplacez ou annulez les séances existantes avant de bloquer cette période.');
       id = crypto.randomUUID();
-      change = { table: 'blocked_periods', operation: 'insert', record: { id, academic_year_id: data.year.selectedYearId, site_id: body.siteId, name: body.name, kind: body.kind, starts_at: body.startsAt, ends_at: body.endsAt, reason: body.reason } };
+      changes.push({ table: 'blocked_periods', operation: 'insert', record: { id, academic_year_id: data.year.selectedYearId, site_id: body.siteId, name: body.name, kind: body.kind, starts_at: body.startsAt, ends_at: body.endsAt, reason: body.reason } });
+    } else if (body.action === 'create_session') {
+      const assignment = data.directory.assignments.find(assignment => assignment.id === body.assignmentId);
+      if (!assignment) throw new RequestError(404, 'Affectation active introuvable dans votre périmètre et cette année.');
+      if (!data.directory.teachers.some(teacher => teacher.id === assignment.teacherId && teacher.active)) throw new RequestError(409, 'L’enseignant affecté doit être actif.');
+      if ((body.mode === 'EN_LIGNE') !== (body.roomId === null)) throw new RequestError(400, 'Une séance en ligne ne réserve pas de salle ; une séance en présentiel exige une salle.');
+      const offering = rows('academic_offerings').find(offering => offering.id === assignment.offeringId)!;
+      if (body.roomId) {
+        const room = data.directory.rooms.find(room => room.id === body.roomId);
+        if (!room || !room.available || room.siteId && room.siteId !== offering.site_id) throw new RequestError(409, 'Choisissez une salle disponible compatible avec le site de la formation.');
+      }
+      const rawAssignment = rows('teaching_assignments').find(row => row.id === assignment.id)!;
+      const slotList = body.slots?.length ? body.slots : [{ startsAt: body.startsAt, endsAt: body.endsAt }];
+      const createdProposals: DatabaseRow[] = [];
+      for (const slot of slotList) {
+        if (Date.parse(slot.endsAt) <= Date.parse(slot.startsAt)) throw new RequestError(400, 'La fin doit être postérieure au début.');
+        if (createdProposals.some(prev => overlaps(slot.startsAt, slot.endsAt, prev))) {
+          throw new RequestError(400, 'Deux séances programmées dans la même série se chevauchent.');
+        }
+        const slotId = crypto.randomUUID();
+        if (!id) id = slotId;
+        const patch: Record<string, unknown> = {
+          id: slotId,
+          reason: body.reason,
+          assignment_id: assignment.id,
+          offering_id: assignment.offeringId,
+          group_id: assignment.groupId,
+          teacher_id: assignment.teacherId,
+          starts_at: slot.startsAt,
+          ends_at: slot.endsAt,
+          room_id: body.roomId,
+          mode: body.mode,
+          status: 'PLANIFIE',
+        };
+        const proposed = patch as DatabaseRow;
+        const from = new Date(String(proposed.starts_at)).toISOString().slice(0, 10);
+        const until = new Date(String(proposed.ends_at)).toISOString().slice(0, 10);
+        if (from < String(rawAssignment.valid_from) || rawAssignment.valid_until && until > String(rawAssignment.valid_until)) {
+          throw new RequestError(400, 'Les horaires dépassent les dates de l’affectation.');
+        }
+        if (rows('blocked_periods').some(period => (!period.academic_year_id || period.academic_year_id === offering.academic_year_id) && (!period.site_id || period.site_id === offering.site_id) && overlaps(proposed.starts_at, proposed.ends_at, period))) {
+          throw new RequestError(409, 'Ce créneau se trouve dans une période bloquée.');
+        }
+        const conflict = scheduleConflict(data.snapshot, proposed);
+        if (conflict) throw new RequestError(409, conflict);
+        createdProposals.push(proposed);
+        changes.push({ table: 'sessions', operation: 'insert', record: patch });
+      }
     } else {
       const current = 'sessionId' in body ? data.directory.sessions.find(session => session.id === body.sessionId) : undefined;
       if ('sessionId' in body && !current) throw new RequestError(404, 'Séance introuvable dans l’année et le périmètre sélectionnés.');
       const original = current ? rows('sessions').find(session => session.id === current.id)! : undefined;
       id = original?.id || crypto.randomUUID();
       const patch: Record<string, unknown> = { id, reason: body.reason };
-      if (body.action === 'create_session' || body.action === 'update_session') {
+      if (body.action === 'update_session') {
         const assignment = data.directory.assignments.find(assignment => assignment.id === body.assignmentId);
         if (!assignment) throw new RequestError(404, 'Affectation active introuvable dans votre périmètre et cette année.');
         if ((!current || current.assignmentId !== assignment.id) && !data.directory.teachers.some(teacher => teacher.id === assignment.teacherId && teacher.active)) throw new RequestError(409, 'L’enseignant affecté doit être actif.');
@@ -67,7 +116,6 @@ export async function POST(request: Request) {
         if (current && current.assignmentId !== assignment.id && original?.series_id) throw new RequestError(409, 'Cette séance appartient à une série : son affectation ne peut pas être changée individuellement.');
         Object.assign(patch, { assignment_id: assignment.id, offering_id: assignment.offeringId, group_id: assignment.groupId, teacher_id: assignment.teacherId,
           starts_at: body.startsAt, ends_at: body.endsAt, room_id: body.roomId, mode: body.mode });
-        if (body.action === 'create_session') patch.status = 'PLANIFIE';
       } else if (body.action === 'move_session') Object.assign(patch, { starts_at: body.startsAt, ends_at: body.endsAt });
       else if (body.action === 'cancel_session') patch.status = 'ANNULE';
       else {
@@ -101,10 +149,10 @@ export async function POST(request: Request) {
         const conflict = scheduleConflict(data.snapshot, proposed);
         if (conflict) throw new RequestError(409, conflict);
       }
-      change = { table: 'sessions', operation: original ? 'update' : 'insert', record: patch };
+      changes.push({ table: 'sessions', operation: original ? 'update' : 'insert', record: patch });
     }
-    const saved = await data.client.rpc('escen_backend_transaction', { p_actor_id: data.context.accountId, p_expected_revision: body.revision, p_changes: [change] });
+    const saved = await data.client.rpc('escen_backend_transaction', { p_actor_id: data.context.accountId, p_expected_revision: body.revision, p_changes: changes });
     if (saved.error) throw new RequestError(409, scheduleDatabaseError(saved.error));
-    return Response.json({ id, revision: saved.data }, { status: change.operation === 'insert' ? 201 : 200, headers: { 'Cache-Control': 'no-store' } });
+    return Response.json({ id, count: changes.length, revision: saved.data }, { status: changes[0]?.operation === 'insert' ? 201 : 200, headers: { 'Cache-Control': 'no-store' } });
   } catch (error) { return errorResponse(error); }
 }

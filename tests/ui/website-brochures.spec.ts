@@ -37,6 +37,7 @@ for (const width of [390, 1440]) {
         posts++;
         expect(route.request().headers().authorization).toBe('Bearer fixture-auth-token');
         expect(route.request().postDataBuffer()?.toString()).toContain('Brochure licence');
+        expect(route.request().postDataBuffer()?.toString()).toContain('brochure-licence');
         if (fail) return route.fulfill({ status: 409, json: { error: 'Version concurrente. Réessayez.' } });
         saved = true;
         status = posts > 1 ? 'RETIRE' : 'PUBLIE';
@@ -47,7 +48,7 @@ for (const width of [390, 1440]) {
     await page.goto('/site-web/brochures');
     await page.getByRole('button', { name: 'Ajouter une brochure', exact: true }).click();
     await page.getByLabel('Titre', { exact: true }).fill('Brochure licence');
-    await page.getByLabel('Adresse de la brochure').fill('brochure-licence');
+    await expect(page.getByText('/brochures/brochure-licence', { exact: true })).toBeVisible();
     await page.getByLabel('Description', { exact: true }).fill('Les formations');
     await page.getByLabel('Fichier PDF').setInputFiles({ name: 'licence.pdf', mimeType: 'application/pdf', buffer: Buffer.from('%PDF-1.7\n%%EOF') });
     await page.getByLabel('Diffusion').selectOption('PUBLIE');

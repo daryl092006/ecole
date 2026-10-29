@@ -16,7 +16,7 @@ const snapshot: RelationalSnapshot = { revision: 5, tables: {
   teaching_assignments: [{ id:'a1',teacher_id:'t1',offering_id:'o1',group_id:'g1' },{ id:'a2',teacher_id:'t2',offering_id:'o1',group_id:'g2' }],
   evaluations: [{ id:'e1',assignment_id:'a1',status:'PUBLIEES' },{ id:'e2',assignment_id:'a1',status:'SAISIES' },{ id:'e3',assignment_id:'a2',status:'PUBLIEES' }],
   evaluation_candidates: [{ id:'ec1',evaluation_id:'e1',enrollment_id:'n1' },{ id:'ec2',evaluation_id:'e2',enrollment_id:'n1' },{ id:'ec3',evaluation_id:'e3',enrollment_id:'n2' }],
-  grades: [{ id:'mark1',candidate_id:'ec1',value:12 },{ id:'mark2',candidate_id:'ec2',value:15 },{ id:'mark3',candidate_id:'ec3',value:18 }],
+  grades: [{ id:'mark1',candidate_id:'ec1',value:12 },{ id:'mark2',candidate_id:'ec2',value:15 },{ id:'mark3',evaluation_id:'e3',candidate_id:'ec3',value:18 }],
   exam_papers: [{ id:'paper1',evaluation_id:'e1',status:'AUTORISE',reason:'Secret' }],
   exam_questions: [{ id:'q1',paper_id:'paper1',prompt:'Secret',configuration:{ answer:'Secret' } }],
   exam_options: [{ id:'option1',question_id:'q1',is_correct:true,label:'Secret' }],
@@ -61,12 +61,18 @@ assert.deepEqual(teacher.grades.map(row => row.id),['mark1','mark2']);
 assert.equal(teacher.people.some(row => row.id === 'p2'),false);
 assert.equal(teacher.people.find(row => row.id === 'p1')?.email,undefined);
 assert.equal(teacher.payments,undefined);
-for (const role of [ROLES.MKT,ROLES.STG,ROLES.ACHATS]) {
+const marketingFiltered = filterRelationalSnapshot(snapshot,context(ROLES.MKT)).tables;
+assert.deepEqual(marketingFiltered.students.map(row => row.id),['s1','s2']);
+assert.deepEqual(marketingFiltered.groups.map(row => row.id),['g1','g2']);
+assert.equal(marketingFiltered.grades,undefined);
+assert.equal(marketingFiltered.payments,undefined);
+assert.equal(marketingFiltered.communications?.length ?? 0,1);
+for (const role of [ROLES.STG,ROLES.ACHATS]) {
   const filtered = filterRelationalSnapshot(snapshot,context(role)).tables;
   assert.deepEqual(filtered.people.map(row => row.id),['pm']);
   assert.equal(filtered.grades,undefined);
   assert.equal(filtered.payments,undefined);
-  assert.equal(filtered.communications?.length ?? 0,role === ROLES.MKT ? 1 : 0);
+  assert.equal(filtered.communications?.length ?? 0,0);
 }
 const technician = filterRelationalSnapshot(snapshot,context(ROLES.IT)).tables;
 assert.equal(technician.grades.length,3);
