@@ -5,12 +5,7 @@ import { protectRegistrationDocuments } from './website-registration-resilience.
 import { adaptDiplomaForm } from './website-diploma.mjs';
 
 export async function adaptWebsite(root, portal) {
-  // The former checklist URL belongs to the registration flow.
-  const preparationFile = path.join(root, 'app/pages/preparation-inscription/index.vue');
-  const preparation = await readFile(preparationFile, 'utf8');
-  if (!/redirect:\s*['"]\/inscription['"]/.test(preparation)) {
-    await writeFile(preparationFile, preparation.replace('<script setup>', "<script setup>\ndefinePageMeta({ redirect: '/inscription' })"));
-  }
+  // The preparation checklist and the registration form remain on the website.
   for (const [template, destination] of [
     ['BrochureModal.vue', 'app/components/BrochureModal.vue'],
     ['brochures.vue', 'app/pages/brochures.vue'],
@@ -19,6 +14,11 @@ export async function adaptWebsite(root, portal) {
   }
   // Always derive from the untouched source so that rerunning is deterministic.
   const sourceRoot = process.env.ESCEN_WEBSITE_SOURCE || path.join(os.homedir(), 'Downloads/escen-website');
+  const restoredRegistration = await readFile(path.join(root, 'app/components/registration/RegistrationForm.vue'), 'utf8').then(() => true).catch(error => {
+    if (error.code === 'ENOENT') return false;
+    throw error;
+  });
+  if (!restoredRegistration) {
   let registration = await readFile(path.join(sourceRoot, 'app/pages/inscription/index.vue'), 'utf8');
   registration = registration.replace(/const champsParcoursConfig = computed\(\(\) => \{[\s\S]*?\n\}\)/, "const champsParcoursConfig = computed(() => ({ annee_bac: false, serie: false, mention_bac: false, etablissement_diplome: false }))");
   // Required attachments are set explicitly by the platform per formation.
@@ -82,19 +82,19 @@ onMounted(async () => {`);
 }
 </style>`);
   await writeFile(path.join(root, 'app/pages/inscription/index.vue'), adaptDiplomaForm(registration));
-  // The candidate portal owns the three-step form and its secure follow-up space.
-  // Legacy adaptation remains available for an explicitly requested compatibility build.
-  if (process.env.ESCEN_CANDIDATE_FORM !== 'legacy') {
+  // A portal redirect must be explicitly requested; website registration is the default.
+  if (process.env.ESCEN_CANDIDATE_FORM === 'portal') {
     const entry = await readFile(new URL('./website-templates/candidate-entry.vue', import.meta.url), 'utf8');
     await writeFile(path.join(root, 'app/pages/inscription/index.vue'), entry.replace('__ESCEN_CANDIDATE_URL__', JSON.stringify(`${portal.origin}/candidature`)));
   }
-  let store = await readFile(path.join(sourceRoot, 'app/stores/candidature.ts'), 'utf8');
+  }
+  let store = await readFile(path.join(restoredRegistration ? root : sourceRoot, 'app/stores/candidature.ts'), 'utf8');
   store = store.replace('return response.data?.candidat || null', 'return response.data || null');
   await writeFile(path.join(root, 'app/stores/candidature.ts'), store);
   await writeFile(path.join(root, 'app/plugins/axios.ts'), `import axios from 'axios';
 import config from '../../config';
 export default defineNuxtPlugin(() => {
-  const baseURL = (import.meta.server && process.env.ESCEN_SSR_API_URL) ? process.env.ESCEN_SSR_API_URL : config.app_dev_url;
+  const baseURL = (import.meta.server && process.env.ESCEN_SSR_API_URL) ? process.env.ESCEN_SSR_API_URL : import.meta.dev ? (import.meta.server ? 'http://127.0.0.1:3000/api/website' : '/api/website') : config.app_prod_url;
   const client = axios.create({ baseURL, timeout: 20000, headers: { Accept: 'application/json' } });
   return { provide: { axios: client } };
 });
