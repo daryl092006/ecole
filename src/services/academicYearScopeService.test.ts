@@ -61,3 +61,20 @@ assert.equal(annualRoots.tables.student_documents.length,6);
 assert.equal(accessibleAcademicYears(snapshot,{...context,role:ROLES.MKT,permissions:['communication.view']}).length,3);
 
 assert.deepEqual(filterSnapshotForAcademicYear({...snapshot,tables:{...snapshot.tables,students:[...snapshot.tables.students,{id:'NO_YEAR',person_id:'P1',matricule:'SANS_ANNEE'}]}},'Y1').tables.students.map(row=>row.id),['S1']);
+
+const multiYearAccounts: RelationalSnapshot = { ...snapshot, tables: { ...snapshot.tables,
+  people: [{ id: 'P1', firstname: 'Alice', lastname: 'Y1' }, { id: 'P2', firstname: 'Bob', lastname: 'Y2' }, { id: 'P_STAFF', firstname: 'Claire', lastname: 'Staff' }],
+  students: [{ id: 'S1', person_id: 'P1', matricule: 'ETU-1' }, { id: 'S2', person_id: 'P2', matricule: 'ETU-2' }],
+  enrollments: [{ id: 'E1', offering_id: 'O1', student_id: 'S1', status: 'INSCRIT' }, { id: 'E2', offering_id: 'O2', student_id: 'S2', status: 'INSCRIT' }],
+  accounts: [{ id: 'ACC_S1', person_id: 'P1', account_type: 'student', active: true }, { id: 'ACC_S2', person_id: 'P2', account_type: 'student', active: true }, { id: 'ACC_STAFF', person_id: 'P_STAFF', account_type: 'staff', active: true }],
+} };
+const scopedY2 = filterSnapshotForAcademicYear(multiYearAccounts, 'Y2');
+assert.deepEqual(scopedY2.tables.students.map(row => row.id), ['S2']);
+assert.deepEqual(scopedY2.tables.accounts.map(row => row.id), ['ACC_S2', 'ACC_STAFF']);
+const projectedY2 = projectRelationalCampus(scopedY2);
+assert.equal(projectedY2.users.filter(user => user.kind === 'student').length, 1);
+assert.equal(projectedY2.users.filter(user => user.kind === 'staff').length, 1);
+assert.equal(projectedY2.users.filter(user => (user.kind ?? 'unclassified') === 'unclassified').length, 0);
+const projectedAll = projectRelationalCampus({ ...multiYearAccounts, tables: { ...multiYearAccounts.tables, students: [{ id: 'S2', person_id: 'P2', matricule: 'ETU-2' }] } });
+assert.equal(projectedAll.users.filter(user => user.kind === 'student').length, 2);
+assert.equal(projectedAll.users.filter(user => (user.kind ?? 'unclassified') === 'unclassified').length, 0);

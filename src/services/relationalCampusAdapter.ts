@@ -96,7 +96,7 @@ export function projectRelationalCampus(snapshot: RelationalSnapshot, now = new 
     const grants = rows('role_grants').filter(grant => grant.account_id === row.id
       && Date.parse(text(grant, 'valid_from')) <= now.getTime() && (!text(grant, 'valid_until') || Date.parse(text(grant, 'valid_until')) > now.getTime()));
     const roles = [...new Set(grants.flatMap(grant => { const role = roleRows.get(text(grant, 'role_id')); const name = roleNames[text(role, 'code')]; return name && role?.active === true ? [name] : []; }))];
-    const kind = rows('students').some(student => student.person_id === row.person_id) ? 'student' : row.account_type === 'staff' || rows('staff').some(employee => employee.person_id === row.person_id) ? 'staff' : 'unclassified';
+    const kind = row.account_type === 'student' || rows('students').some(student => student.person_id === row.person_id) ? 'student' : row.account_type === 'staff' || rows('staff').some(employee => employee.person_id === row.person_id) ? 'staff' : 'unclassified';
     return [{ id: row.id, kind: kind as DemoUser['kind'], name: names(person), email: text(person, 'email'), role: roles[0] ?? null, roles, active: row.active === true, history: [] }];
   }).sort((a, b) => a.name.localeCompare(b.name, 'fr'));
   return { data, users, revision: snapshot.revision };

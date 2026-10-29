@@ -7,7 +7,7 @@ import { ROLES } from '@/types/permissions';
 import type { ComplaintWorkflowStatus } from '@/types/academic';
 import type { DatabaseRow } from '@/types/persistence';
 import { connectedRecordName, connectedRecordValue } from '@/services/connectedRecordDisplayService';
-import { manageComplaint } from '@/services/remoteCampusService';
+import { manageComplaint, roleHeaderValue } from '@/services/remoteCampusService';
 import { academicYearRequestHeaders } from '@/services/academicYearSelection';
 import { getSupabaseBrowserClient } from '@/lib/supabase/client';
 import LoadingState from '@/components/ui/LoadingState';
@@ -51,7 +51,7 @@ export default function ComplaintsPanel() {
       const { data } = await getSupabaseBrowserClient().auth.getSession();
       if (!data.session) throw new Error('Connexion requise.');
       const response = await fetch('/api/complaints', {
-        headers: { Authorization: `Bearer ${data.session.access_token}`, 'x-escen-role': portal.activeRole, ...academicYearRequestHeaders() },
+        headers: { Authorization: `Bearer ${data.session.access_token}`, 'x-escen-role': roleHeaderValue(portal.activeRole), ...academicYearRequestHeaders() },
         cache: 'no-store', signal: controller.signal,
       });
       const result = await response.json();

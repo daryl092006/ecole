@@ -8,10 +8,12 @@ export class RemoteRequestError extends Error {
   constructor(public status: number, message: string) { super(message); }
 }
 
+export const roleHeaderValue = (role: RoleName) => role.normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+
 async function headers(role?: RoleName, useResolvedYear = true) {
   const session = await getSupabaseBrowserClient().auth.getSession();
   if (!session.data.session) throw new RemoteRequestError(401, 'Connexion requise.');
-  return { ...academicYearRequestHeaders(useResolvedYear), Authorization: `Bearer ${session.data.session.access_token}`, ...(role ? { 'x-escen-role': role } : {}) };
+  return { ...academicYearRequestHeaders(useResolvedYear), Authorization: `Bearer ${session.data.session.access_token}`, ...(role ? { 'x-escen-role': roleHeaderValue(role) } : {}) };
 }
 async function readResponse(response: Response) {
   let data;
@@ -49,8 +51,11 @@ export async function saveRelationalChanges(revision: number, changes: Persisten
   const data = await readResponse(await fetch('/api/campus',{ method:'POST',headers:{ ...await headers(role),'Content-Type':'application/json' },body:JSON.stringify({ revision,changes }) }));
   return data.revision;
 }
-export async function loadAccountSession(role?: RoleName) {
-  return readResponse(await fetch('/api/session',{ headers:await headers(role),cache:'no-store', signal: AbortSignal.timeout(15000) }));
+export async function loadAccountSession(role?: RoleName, accessToken?: string) {
+  const requestHeaders = accessToken
+    ? { ...academicYearRequestHeaders(true), Authorization: `Bearer ${accessToken}`, ...(role ? { 'x-escen-role': roleHeaderValue(role) } : {}) }
+    : await headers(role);
+  return readResponse(await fetch('/api/session',{ headers:requestHeaders,cache:'no-store', signal: AbortSignal.timeout(15000) }));
 }
 export async function updatePersistentAccount(id: string, values: { action: 'activate' | 'deactivate' | 'archive' | 'role'; reason: string; role?: RoleName; previousRole?: RoleName | null }, role: RoleName): Promise<void> {
   await readResponse(await fetch(`/api/accounts/${encodeURIComponent(id)}`, { method: 'PATCH', headers: { ...await headers(role), 'Content-Type': 'application/json' }, body: JSON.stringify(values) }));

@@ -5,6 +5,7 @@ import { ROLES } from '@/types/permissions';
 import type { EmailPage, EmailRecord, EmailStatus } from '@/types/email';
 import { getSupabaseBrowserClient } from '@/lib/supabase/client';
 import { academicYearRequestHeaders } from '@/services/academicYearSelection';
+import { roleHeaderValue } from '@/services/remoteCampusService';
 import LoadingState from '@/components/ui/LoadingState';
 import ErrorState from '@/components/ui/ErrorState';
 import ResponsiveTable from '@/components/ui/ResponsiveTable';
@@ -32,7 +33,7 @@ export default function EmailOutboxPanel() {
   const headers = async () => {
     const { data } = await getSupabaseBrowserClient().auth.getSession();
     if (!data.session) throw new Error('Connexion requise.');
-    return { Authorization: `Bearer ${data.session.access_token}`, 'x-escen-role': portal.activeRole, ...academicYearRequestHeaders() };
+    return { Authorization: `Bearer ${data.session.access_token}`, 'x-escen-role': roleHeaderValue(portal.activeRole), ...academicYearRequestHeaders() };
   };
 
   useEffect(() => {
@@ -42,7 +43,7 @@ export default function EmailOutboxPanel() {
       const { data } = await getSupabaseBrowserClient().auth.getSession();
       if (!data.session) throw new Error('Connexion requise.');
       const response = await fetch(`/api/email-outbox?offset=${offset}`, { cache: 'no-store', signal: controller.signal,
-        headers: { Authorization: `Bearer ${data.session.access_token}`, 'x-escen-role': portal.activeRole, ...academicYearRequestHeaders() } });
+        headers: { Authorization: `Bearer ${data.session.access_token}`, 'x-escen-role': roleHeaderValue(portal.activeRole), ...academicYearRequestHeaders() } });
       const result = await response.json();
       if (!response.ok) throw new Error(result.error || 'Suivi des mails indisponible.');
       if (!controller.signal.aborted) setPage(result);

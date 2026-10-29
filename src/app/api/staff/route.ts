@@ -3,6 +3,8 @@ import { requireAccount, requirePermission, errorResponse, RequestError } from '
 import { filterRelationalSnapshot } from '@/services/persistentPermissionsService';
 import type { RelationalSnapshot, PersistentChange } from '@/types/persistence';
 import type { PersonnelRecord } from '@/types/staff';
+import { ROLES } from '@/types/permissions';
+import { displayedPhoneNumber } from '@/services/phoneNumberService';
 import { displayedEmployeeNumber, internalStaffReference } from '@/utils/staffReference';
 export const dynamic = 'force-dynamic';
 const schema = z.object({ personId: z.uuid().optional(), firstname: z.string().trim().min(1).max(160), lastname: z.string().trim().min(1).max(160), email: z.union([z.email(), z.literal('')]), phone: z.string().trim().max(80), employeeNumber: z.string().trim().max(160).optional().default(''), isTeacher: z.boolean().optional().default(false), teacherSpecialty: z.string().trim().max(160).optional().default(''), position: z.string().trim().max(160).optional().default(''), contractType: z.enum(['PERMANENT', 'VACATAIRE', 'STAGIAIRE']).optional().default('PERMANENT'), startsOn: z.union([z.iso.date(), z.literal('')]).optional().default('') }).strict()
@@ -16,10 +18,24 @@ export async function GET(request: Request) {
     const { tables } = filterRelationalSnapshot(snapshot, context);
     // Le profil complète uniquement les dossiers autorisés, y compris pour le RAF sans accès académique.
     const teacherStaffIds = new Set((snapshot.tables.teachers || []).map(row => row.staff_id));
+    const roleNames = ROLES as Record<string, string>;
+    const roleById = new Map((snapshot.tables.roles || []).filter(row => row.active !== false).map(row => [row.id, roleNames[String(row.code || '')] || String(row.name || '')]));
+    const now = Date.now();
+    const allAccounts = (snapshot.tables.accounts || []).filter(row => !row.archived_at);
+    const activeGrants = (snapshot.tables.role_grants || []).filter(grant => {
+      const from = Date.parse(String(grant.valid_from || ''));
+      const until = grant.valid_until ? Date.parse(String(grant.valid_until)) : null;
+      return (!Number.isFinite(from) || from <= now) && (until === null || (Number.isFinite(until) && until > now));
+    });
     const staff = tables.staff || []; const accounts = tables.accounts || [];
-    const records: PersonnelRecord[] = (tables.people || []).filter(person => !person.archived_at && (staff.some(row => row.person_id === person.id && !row.archived_at) || accounts.some(row => row.person_id === person.id && row.account_type === 'staff' && !row.archived_at))).map(person => {
+    const records: PersonnelRecord[] = (tables.people || []).filter(person => !person.archived_at && (staff.some(row => row.person_id === person.id && !row.archived_at) || accounts.some(row => row.person_id === person.id && row.account_type === 'staff' && row.active !== false && !row.archived_at))).map(person => {
       const member = staff.find(row => row.person_id === person.id && !row.archived_at);
-      return { personId: person.id, staffId: member?.id || null, firstname: String(person.firstname || ''), lastname: String(person.lastname || ''), email: String(person.email || ''), phone: String(person.phone || ''), employeeNumber: displayedEmployeeNumber(member?.employee_number), isTeacher: !!member && teacherStaffIds.has(member.id), active: !member?.archived_at, contracts: (tables.staff_contracts || []).filter(row => row.staff_id === member?.id).map(row => ({ id: row.id, position: String(row.position), type: String(row.contract_type), startsOn: String(row.starts_on), endsOn: row.ends_on ? String(row.ends_on) : null })) };
+      const personAccountIds = new Set(allAccounts.filter(row => row.person_id === person.id).map(row => row.id));
+      const roles = [...new Set(activeGrants.filter(grant => personAccountIds.has(String(grant.account_id))).flatMap(grant => {
+        const label = roleById.get(String(grant.role_id));
+        return label ? [label] : [];
+      }))];
+      return { personId: person.id, staffId: member?.id || null, firstname: String(person.firstname || ''), lastname: String(person.lastname || ''), email: String(person.email || ''), phone: displayedPhoneNumber(person.phone), employeeNumber: displayedEmployeeNumber(member?.employee_number), isTeacher: !!member && teacherStaffIds.has(member.id), active: !member?.archived_at, roles, contracts: (tables.staff_contracts || []).filter(row => row.staff_id === member?.id).map(row => ({ id: row.id, position: String(row.position), type: String(row.contract_type), startsOn: String(row.starts_on), endsOn: row.ends_on ? String(row.ends_on) : null })) };
     });
     return Response.json({ records, revision: result.data.revision }, { headers: { 'Cache-Control': 'no-store' } });
   } catch (error) { return errorResponse(error); }

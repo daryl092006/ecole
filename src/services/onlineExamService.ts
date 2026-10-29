@@ -1,5 +1,6 @@
 import { getSupabaseBrowserClient } from '@/lib/supabase/client';
 import { academicYearRequestHeaders } from './academicYearSelection';
+import { roleHeaderValue } from './remoteCampusService';
 import type { RoleName } from '@/types/permissions';
 import type { OnlineExamCommand, OnlineExamDirectory, OnlineExamView } from '@/types/onlineExam';
 
@@ -11,7 +12,7 @@ async function request(role: RoleName, command?: OnlineExamCommand, attemptId?: 
   if (!session) throw new OnlineExamError('Reconnectez-vous pour retrouver votre copie enregistrée.', 401);
   const response = await fetch(`/api/exam-attempts${attemptId ? `?attemptId=${encodeURIComponent(attemptId)}` : ''}`, {
     method: command ? 'POST' : 'GET', cache: 'no-store',
-    headers: { ...academicYearRequestHeaders(), Authorization: `Bearer ${session.access_token}`, 'x-escen-role': role, 'Content-Type': 'application/json' },
+    headers: { ...academicYearRequestHeaders(), Authorization: `Bearer ${session.access_token}`, 'x-escen-role': roleHeaderValue(role), 'Content-Type': 'application/json' },
     ...(command ? { body: JSON.stringify(command) } : {}),
   });
   const result = await response.json();

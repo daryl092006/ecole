@@ -29,6 +29,28 @@ const profileSchema = z.object({
 });
 const knownRoles = ROLES as Record<string, RoleName>;
 
+function normalizeRoleHeader(value: string): string {
+  return value.trim().normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
+}
+
+function matchesRequestedRole(grant: { role_code: string; role_name: string }, rawRequested: string): boolean {
+  if (grant.role_name === rawRequested || grant.role_code === rawRequested) return true;
+  const candidates = [rawRequested];
+  try { candidates.push(decodeURIComponent(rawRequested)); } catch { /* Ignore malformed URI sequences */ }
+  try { candidates.push(Buffer.from(rawRequested, 'latin1').toString('utf8')); } catch { /* Ignore buffer conversion errors */ }
+  const targetNorm = normalizeRoleHeader(grant.role_name);
+  const codeNorm = normalizeRoleHeader(grant.role_code);
+  for (const candidate of candidates) {
+    const norm = normalizeRoleHeader(candidate);
+    if (norm === targetNorm || norm === codeNorm) return true;
+    if (candidate.includes('\uFFFD')) {
+      const pattern = new RegExp('^' + normalizeRoleHeader(candidate).replace(/[.*+?^${}()|[\]\\]/g, '\\$&').replace(/\ufffd+/g, '.+') + '$');
+      if (pattern.test(targetNorm)) return true;
+    }
+  }
+  return false;
+}
+
 export async function requireAccount(request: Request) {
   const authorization = request.headers.get('authorization');
   if (!authorization?.startsWith('Bearer ') || authorization.length > 12000) throw new RequestError(401, 'Connexion requise.');
@@ -59,7 +81,7 @@ export async function requireAccount(request: Request) {
   const available = profile.grants.filter(item => knownRoles[item.role_code] === item.role_name);
   if (!available.length) throw new RequestError(403, 'Aucun rôle actif ne vous est attribué.');
   const requested = request.headers.get('x-escen-role');
-  const selected = requested ? available.find(item => item.role_name === requested) : available[0];
+  const selected = requested ? available.find(item => matchesRequestedRole(item, requested)) : available[0];
   if (!selected) throw new RequestError(403, 'Ce rôle ne vous est pas attribué.');
   const role = knownRoles[selected.role_code];
   if ((role === ROLES.STUD || role === ROLES.DEL) && !profile.student || role === ROLES.ENS && !profile.teacher) throw new RequestError(403, 'Votre profil métier doit être complété par ESCEN.');

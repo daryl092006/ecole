@@ -42,7 +42,15 @@ export default function RequiredPasswordChangeForm() {
         });
         if (!response.ok) throw new Error('Le changement n’a pas été confirmé par le service des accès. Réessayez.');
         const result = await response.json();
-        if (result.next === 'PROFILE') { setWaitingForProfile(true); state.refreshCampus(); state.retryAuthentication(); return; }
+        if (result.next === 'PROFILE') {
+          setWaitingForProfile(true);
+          const email = state.session?.email || data.session.user.email || '';
+          if (email) {
+            await supabase.auth.signInWithPassword({ email: email.trim().toLowerCase(), password }).catch(() => null);
+          }
+          state.retryAuthentication();
+          return;
+        }
         await supabase.auth.signOut();
         router.replace('/connexion?mot-de-passe-modifie=1');
       })().catch(error => { setFeedback(error instanceof Error ? error.message : 'Mise à jour impossible.'); setSubmitting(false); }).finally(() => { pending.current = false; });

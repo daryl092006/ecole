@@ -76,7 +76,16 @@ export function filterSnapshotForAcademicYear(snapshot: RelationalSnapshot, year
     }
     if (!removed) break;
   }
+  const allStudentPersonIds = new Set((tables.students || []).map(student => student.person_id));
   const selectedStudents = new Set((tables.enrollments || []).map(row => row.student_id));
   tables.students = (tables.students || []).filter(student => selectedStudents.has(student.id) || confirmedHistoricalStudentIds.includes(student.id));
+  const selectedStudentPersonIds = new Set(tables.students.map(student => student.person_id));
+  const staffPersonIds = new Set((tables.staff || []).map(employee => employee.person_id));
+  if (tables.accounts) {
+    tables.accounts = tables.accounts.filter(account => {
+      const isStudentAccount = account.account_type === 'student' || (account.person_id != null && allStudentPersonIds.has(account.person_id) && account.account_type !== 'staff' && !staffPersonIds.has(account.person_id));
+      return !isStudentAccount || selectedStudentPersonIds.has(account.person_id);
+    });
+  }
   return { ...snapshot, tables };
 }

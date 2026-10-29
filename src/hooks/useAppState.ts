@@ -94,7 +94,8 @@ export function useAppState() {
   const [campusRecords, setCampusRecords] = useCampusRecords();
   const groups = references.groups;
   const [demoIdentity, setDemoIdentity] = useState('');
-  const [activeRole, setActiveRole] = useState<RoleName>(ROLES.DG);
+  const [selectedRole, setActiveRole] = useState<RoleName>(ROLES.DG);
+  const activeRole: RoleName = session && !session.availableRoles.includes(selectedRole) ? session.role : selectedRole;
   const activeRoleRef = useRef(activeRole);
   activeRoleRef.current = activeRole;
   const currentTab = route?.tab || Object.entries(MODULE_PATHS).find(([, path]) => path === pathname)?.[0] || 'espace';
@@ -122,7 +123,7 @@ export function useAppState() {
         if (!current()) return;
         if (!data.session) { authenticatedUserId.current = null; setSession(null); return; }
         authenticatedUserId.current = data.session.user.id;
-        const profile = await loadAccountSession();
+        const profile = await loadAccountSession(undefined, data.session.access_token);
         if (!current()) return;
         if (!sessionRef.current || sessionRef.current.accountId !== profile.accountId || !profile.availableRoles.includes(activeRoleRef.current)) {
           setActiveRole(profile.role);
@@ -361,7 +362,7 @@ export function useAppState() {
       if (error || !data.session) throw new Error(authenticationErrorMessage(error));
       authenticated = true;
       authenticatedUserId.current = data.session.user.id;
-      const profile = await loadAccountSession();
+      const profile = await loadAccountSession(undefined, data.session.access_token);
       if (authVersion.current !== version) throw new Error('La connexion a été interrompue. Réessayez.');
       setSession(profile); setHasLoggedOut(false); setAuthReady(true); setActiveRole(profile.role);
       setDemoIdentity(profile.role === ROLES.STUD || profile.role === ROLES.DEL ? profile.matricule || '' : profile.role === ROLES.ENS ? profile.teacherId || '' : '');

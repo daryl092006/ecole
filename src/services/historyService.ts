@@ -1,11 +1,12 @@
 import { academicYearRequestHeaders } from './academicYearSelection';
+import { roleHeaderValue } from './remoteCampusService';
 import type { HistoryCatalog, HistoryPage } from '@/types/history';
 import type { RoleName } from '@/types/permissions';
 import { getSupabaseBrowserClient } from '@/lib/supabase/client';
 async function getHistory(path: string, role: RoleName, signal?: AbortSignal) {
   const { data } = await getSupabaseBrowserClient().auth.getSession();
   if (!data.session) throw new Error('Connexion requise.');
-  const response = await fetch(path, { headers: { ...academicYearRequestHeaders(), Authorization: `Bearer ${data.session.access_token}`, 'x-escen-role': role }, cache: 'no-store', signal });
+  const response = await fetch(path, { headers: { ...academicYearRequestHeaders(), Authorization: `Bearer ${data.session.access_token}`, 'x-escen-role': roleHeaderValue(role) }, cache: 'no-store', signal });
   const result = await response.json();
   if (!response.ok) throw new Error(result.error || 'Les données historiques sont indisponibles.');
   return result;

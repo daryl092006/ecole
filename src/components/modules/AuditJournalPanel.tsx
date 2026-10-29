@@ -5,6 +5,7 @@ import { usePortal } from '@/hooks/usePortal';
 import { ROLES } from '@/types/permissions';
 import { getSupabaseBrowserClient } from '@/lib/supabase/client';
 import { academicYearRequestHeaders } from '@/services/academicYearSelection';
+import { roleHeaderValue } from '@/services/remoteCampusService';
 import { connectedFieldLabel } from '@/services/connectedRecordDisplayService';
 import LoadingState from '@/components/ui/LoadingState';
 import ErrorState from '@/components/ui/ErrorState';
@@ -49,7 +50,7 @@ export default function AuditJournalPanel({ exportMode = false }: { exportMode?:
     try {
       const { data } = await getSupabaseBrowserClient().auth.getSession();
       if (!data.session) throw new Error('Connexion requise.');
-      const headers = { Authorization: `Bearer ${data.session.access_token}`, 'x-escen-role': portal.activeRole, ...academicYearRequestHeaders() };
+      const headers = { Authorization: `Bearer ${data.session.access_token}`, 'x-escen-role': roleHeaderValue(portal.activeRole), ...academicYearRequestHeaders() };
       const records: AuditRecord[] = [];
       const ids = new Set<string>();
       let first: AuditPage | null = null;
@@ -89,7 +90,7 @@ export default function AuditJournalPanel({ exportMode = false }: { exportMode?:
       if (!data.session) throw new Error('Connexion requise.');
       const params = new URLSearchParams({ source, offset: String(offset), ...filters });
       const response = await fetch(`/api/audit?${params}`, {
-        headers: { Authorization: `Bearer ${data.session.access_token}`, 'x-escen-role': portal.activeRole, ...academicYearRequestHeaders() },
+        headers: { Authorization: `Bearer ${data.session.access_token}`, 'x-escen-role': roleHeaderValue(portal.activeRole), ...academicYearRequestHeaders() },
         cache: 'no-store', signal: controller.signal,
       });
       const result = await response.json();

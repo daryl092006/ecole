@@ -41,3 +41,13 @@ export function isPhoneNumber(value: string): boolean {
   const digits = text.replace(/^(?:\+|00)/, '').replace(/\D/g, '');
   return digits.length >= 3 && digits.length <= 15 && (!/^(?:\+|00)/.test(text) || /^[1-9]/.test(digits));
 }
+
+/** Numéro affichable : masque un indicatif nu (ex. "+228") ou un numéro composé uniquement de zéros. */
+export function displayedPhoneNumber(value: unknown): string {
+  const text = String(value || '').trim();
+  if (!text) return '';
+  const { callingCode, number } = splitPhoneNumber(text);
+  const subscriberDigits = (callingCode ? number : text).replace(/\D/g, '');
+  if (!subscriberDigits || /^0+$/.test(subscriberDigits)) return '';
+  return text;
+}

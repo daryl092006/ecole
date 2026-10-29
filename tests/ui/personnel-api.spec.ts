@@ -12,14 +12,20 @@ test('Personnel : profil enseignant conservé pour le RAF et lorsque le profil e
   const fixture = teacherFixture(securityContext(ROLES.RAF));
   fixture.snapshot.tables.teachers[0].active = false;
   fixture.snapshot.tables.staff[0].employee_number = internalStaffReference();
+  fixture.snapshot.tables.staff[1].employee_number = 'INT-218586a4-2821-55ed-b121-5b15599037cf';
+  fixture.snapshot.tables.people[0].phone = '+228';
+  fixture.snapshot.tables.people[1].phone = '+228 00000000';
   const response = await fixture.staffApi.GET(new Request('http://local.test/api/staff'));
   expect(response.status).toBe(200);
   const { records } = await response.json();
-  expect(records.find((row: { personId: string }) => row.personId === uuid(920))).toMatchObject({ isTeacher: true, employeeNumber: '' });
+  expect(records.find((row: { personId: string }) => row.personId === uuid(920))).toMatchObject({ isTeacher: true, employeeNumber: '', phone: '' });
+  expect(records.find((row: { personId: string }) => row.personId === uuid(921))).toMatchObject({ isTeacher: true, employeeNumber: '', phone: '' });
   expect(records.find((row: { personId: string }) => row.personId === uuid(922))).toMatchObject({ isTeacher: false });
   const teachers = await (await fixture.get()).json();
   expect(teachers.teachers[0].employeeNumber).toBe('');
+  expect(teachers.teachers[1].employeeNumber).toBe('');
   expect(projectRelationalCampus(fixture.snapshot).data.teachers[0].employeeNumber).toBe('');
+  expect(projectRelationalCampus(fixture.snapshot).data.teachers[1].employeeNumber).toBe('');
 });
 
 test('Personnel : création administrative validée et profil enseignant facultatif', async () => {
