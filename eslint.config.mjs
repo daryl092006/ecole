@@ -18,6 +18,7 @@ const eslintConfig = defineConfig([
     },
   },
   globalIgnores([
+    'escen-website/**',
     '.next/**',
     '.next-verification/**',
     '.next-ui-tests/**',
