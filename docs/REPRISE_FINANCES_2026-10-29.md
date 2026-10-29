@@ -35,8 +35,12 @@ espèces. L'utilisateur a confirmé que la date n'est pas nécessaire pour les
 paiements historiques : elle doit rester absente, sans demander de justificatif
 pour la seule date. La colonne `payments.paid_on` est cependant encore NOT NULL ;
 la migration permettant NULL a été approuvée puis créée dans
-`202610290058_historical_payment_date.sql`, pour application et tests locaux
-uniquement conformément à AGENTS.md. Les moyens, références et rapprochements restent à vérifier avant
+`202610290058_historical_payment_date.sql`, initialement testée localement.
+Après autorisation explicite de l'utilisateur d'appliquer cette migration à
+Supabase malgré la restriction précédente, la migration 058 a été appliquée
+seule et enregistrée dans `supabase_migrations.schema_migrations`.
+La migration 057, absente de l'historique distant lors de la vérification,
+n'a pas été appliquée. Les moyens, références et rapprochements restent à vérifier avant
 l'import. L'ancien script externe n'a pas été relancé ni modifié : ses dates
 fixes, matricules calculés localement et lots partiels doivent être remplacés
 avant toute utilisation.
@@ -68,5 +72,10 @@ séparément. Le matricule et l'historique ne sont pas modifiés par cet éditeu
   `npx playwright test --config tests/ui/payment-identity-correction.config.ts`.
 - TypeScript, ESLint et suite métier/PGlite habituelle.
 
-Aucune migration, aucun nouveau paiement et aucun changement d'identité
-n'ont été appliqués à la base distante pendant cette intervention.
+La migration 058 a été appliquée à la base distante après accord explicite.
+Une vérification transactionnelle a comparé l'ensemble des données des paiements
+avant/après le changement de contrainte : aucune ligne n'a changé. Les 62
+paiements totalisant 49 625 000 FCFA et leurs dates sont conservés.
+Aucun nouveau paiement et aucun changement d'identité n'ont été appliqués
+à la base distante pendant cette intervention. La reprise du tableau reste
+distincte de cette modification de schéma.
