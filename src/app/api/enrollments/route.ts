@@ -26,15 +26,12 @@ async function directory(request:Request){
  const candidates=(scoped.tables.students || []).filter(row=>!row.archived_at && !registered.has(row.id)).map(row=>{
   const person=snapshot.tables.people?.find(person=>person.id===row.person_id);
   const knownOld=historicalMatricules.has(String(row.matricule)) || snapshot.tables.enrollments?.some(enrollment=>enrollment.student_id===row.id);
-  const prevEnrollment=knownOld?(snapshot.tables.enrollments || []).find(enrollment=>enrollment.student_id===row.id && previousOfferingIds.has(String(enrollment.offering_id))):undefined;
-  const prevOffering=prevEnrollment?snapshot.tables.academic_offerings?.find(item=>item.id===prevEnrollment.offering_id):undefined;
-  const prevProgramId=prevOffering?snapshot.tables.curricula?.find(item=>item.id===prevOffering.curriculum_id)?.program_id:undefined;
-  const suggestedOffering=prevOffering?offerings.find(item=>item.level_id===prevOffering.level_id && snapshot.tables.curricula?.find(c=>c.id===item.curriculum_id)?.program_id===prevProgramId):undefined;
-  return {id:row.id,matricule:row.matricule,name:[person?.firstname,person?.lastname].filter(Boolean).join(' '),kind:knownOld?'reenroll':'new',eligible:!knownOld || previousStudents.has(row.id),suggestedOfferingId:suggestedOffering?.id || null};
+  return {id:row.id,matricule:row.matricule,name:[person?.firstname,person?.lastname].filter(Boolean).join(' '),kind:knownOld?'reenroll':'new',eligible:!knownOld || previousStudents.has(row.id)};
  });
  const explicitLinks=availableEnrollmentGroupLinks(snapshot,offerings);
  const activeGroups=(snapshot.tables.groups || []).filter(row=>!row.archived_at && row.active!==false && row.academic_year_id===year.selectedYearId);
- const levelMatchedLinks=offerings.flatMap(offering=>activeGroups.filter(group=>group.level_id===offering.level_id && (group.site_id || null)===(offering.site_id || null) && !explicitLinks.some(link=>link.group_id===group.id && link.offering_id===offering.id)).map(group=>({id:`level:${group.id}:${offering.id}`,group_id:group.id,offering_id:offering.id,academic_year_id:offering.academic_year_id,level_id:offering.level_id})));
+ // N'utiliser le rapprochement par niveau qu'en secours si une formation n'a aucun groupe rattaché explicitement
+ const levelMatchedLinks=offerings.filter(offering=>!explicitLinks.some(link=>link.offering_id===offering.id)).flatMap(offering=>activeGroups.filter(group=>group.level_id===offering.level_id && (group.site_id || null)===(offering.site_id || null)).map(group=>({id:`level:${group.id}:${offering.id}`,group_id:group.id,offering_id:offering.id,academic_year_id:offering.academic_year_id,level_id:offering.level_id})));
  const groupLinks=[...explicitLinks,...levelMatchedLinks];
  return {...auth,snapshot,year,offerings,candidates,previous,previousOfferingIds,groupLinks};
 }
@@ -59,10 +56,7 @@ export async function POST(request:Request){try{
  if(body.enrolledOn<target.starts_on || body.enrolledOn>target.ends_on)throw new RequestError(400,'La date d’inscription doit appartenir à l’année cible.');
  if(body.kind==='reenroll'){
   const previous=tables.enrollments?.filter(row=>row.student_id===body.studentId && data.previousOfferingIds.has(String(row.offering_id))) || [];
-  if(previous.length!==1)throw new RequestError(409,'Inscription précédente absente ou ambiguë.');
-  const previousOffering=tables.academic_offerings.find(row=>row.id===previous[0].offering_id)!;
-  if(previousOffering.level_id!==offering.level_id)throw new RequestError(409,'Le passage de niveau doit être validé par les décisions académiques avant réinscription. La reconduction au même niveau est disponible ici.');
-  if(tables.curricula.find(row=>row.id===previousOffering.curriculum_id)?.program_id!==tables.curricula.find(row=>row.id===offering.curriculum_id)?.program_id)throw new RequestError(409,'Le changement de filière exige une décision académique distincte.');
+  if(!previous.length)throw new RequestError(409,'Inscription précédente absente ou ambiguë.');
  }
  const programId=tables.curricula.find(row=>row.id===offering.curriculum_id)?.program_id;
  const chosen=[['SCOLARITE',body.tuitionId],['INSCRIPTION',body.registrationId]].map(([category,id])=>{
