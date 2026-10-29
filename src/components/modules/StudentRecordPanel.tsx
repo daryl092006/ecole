@@ -176,7 +176,7 @@ export default function StudentRecordPanel({ studentId, embedded = false, initia
               {section === 'finance' && state.perms.permissions.includes('finance.view') && <p className="student-record-context">
                 {student.financials?.available === true ? `Payé : ${student.financials.paid.toLocaleString('fr-FR')} FCFA · Reste à payer : ${student.financials.remaining.toLocaleString('fr-FR')} FCFA` : 'Situation financière non établie.'}
               </p>}
-              <StudentOperationsPanel key={`operations:${section}`} mode={section === 'finance' ? 'finance' : 'academic'} matricule={student.matricule} onChanged={() => setRetry(value => value + 1)}>
+              <StudentOperationsPanel student={student} key={`operations:${section}`} mode={section === 'finance' ? 'finance' : 'academic'} matricule={student.matricule} onChanged={() => setRetry(value => value + 1)}>
                 {section === 'parcours' && <StudentEnrollmentsPanel embedded matricule={student.matricule} />}
               </StudentOperationsPanel>
             </>
