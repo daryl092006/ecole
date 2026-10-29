@@ -185,6 +185,15 @@ try {
   const installment = await insert('installments', { version_id: version.id, position: 1, due_on: '2026-11-01', amount: 1000, description: 'Échéance' });
   await db.query("update escen.contract_versions set status = 'APPROVED', approved_by = $1, approved_at = now() where id = $2", [account.id, version.id]);
   const payment = await insert('payments', { enrollment_id: enrollment.id, payer_name: 'Payeur Test', amount: 600, method: 'VIREMENT', provider: 'BANQUE', reference: 'PAY-TEST', paid_on: '2026-10-14', recorded_by: account.id });
+  await check('Paiement historique : date absente conservée, date de saisie automatique et dates connues inchangées', async () => {
+    await db.exec('begin');
+    try {
+      const historical = await insert('payments', { enrollment_id: enrollment.id, payer_name: 'Payeur Test', amount: 100, method: 'VIREMENT', provider: 'BANQUE', reference: 'PAY-HISTORICAL', recorded_by: account.id });
+      assert.equal(historical.paid_on, null);
+      assert.ok(historical.recorded_at);
+      assert.equal(await scalar('select paid_on::text as value from escen.payments where id = $1', [payment.id]), '2026-10-14');
+    } finally { await db.exec('rollback'); }
+  });
   const allocation = await insert('payment_allocations', { payment_id: payment.id, enrollment_id: enrollment.id, contract_id: contract.id, version_id: version.id, line_id: line.id, installment_id: installment.id, amount: 600, allocated_by: account.id });
   await check('Montants FCFA entiers et allocation bornée par paiement/contrat/échéance', async () => {
     await assert.rejects(insert('payments', { enrollment_id: enrollment.id, payer_name: 'Test', amount: 0.001, method: 'ESPECES', provider: 'CAISSE', reference: 'FRACTION', paid_on: '2026-10-14', recorded_by: account.id }), /check/i);

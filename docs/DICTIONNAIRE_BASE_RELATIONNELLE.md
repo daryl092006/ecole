@@ -3313,7 +3313,7 @@ CREATE UNIQUE INDEX payment_reversals_pkey ON escen.payment_reversals USING btre
 | method | text | NO | — | NEVER |
 | provider | escen.nonempty_text | NO | — | NEVER |
 | reference | escen.nonempty_text | NO | — | NEVER |
-| paid_on | date | NO | — | NEVER |
+| paid_on | date | YES | — | NEVER |
 | recorded_by | uuid | NO | — | NEVER |
 | recorded_at | timestamptz | NO | now() | NEVER |
 | withdrawal_fee | escen.xof_amount | NO | 0 | NEVER |
@@ -3334,7 +3334,6 @@ payments_id_not_null: NOT NULL id
 payments_legacy_source_row_id_fkey: FOREIGN KEY (legacy_source_row_id) REFERENCES escen_private.legacy_rows(id) ON DELETE RESTRICT
 payments_method_check: CHECK ((method = ANY (ARRAY['ESPECES'::text, 'VIREMENT'::text, 'CARTE'::text, 'MOBILE_MONEY'::text, 'CHEQUE'::text])))
 payments_method_not_null: NOT NULL method
-payments_paid_on_not_null: NOT NULL paid_on
 payments_payer_person_id_fkey: FOREIGN KEY (payer_person_id) REFERENCES escen.people(id) ON DELETE RESTRICT
 payments_pkey: PRIMARY KEY (id)
 payments_provider_not_null: NOT NULL provider

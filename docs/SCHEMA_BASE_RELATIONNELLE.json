@@ -6448,7 +6448,7 @@
       "table": "payments",
       "name": "paid_on",
       "type": "date",
-      "nullable": "NO",
+      "nullable": "YES",
       "default": null,
       "generated": "NEVER"
     },
@@ -16999,13 +16999,6 @@
       "name": "payments_method_not_null",
       "type": "n",
       "definition": "NOT NULL method"
-    },
-    {
-      "schema": "escen",
-      "table": "payments",
-      "name": "payments_paid_on_not_null",
-      "type": "n",
-      "definition": "NOT NULL paid_on"
     },
     {
       "schema": "escen",

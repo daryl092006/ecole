@@ -34,8 +34,9 @@ La préparation ne fixe pas arbitrairement le 15 du mois ou un paiement en
 espèces. L'utilisateur a confirmé que la date n'est pas nécessaire pour les
 paiements historiques : elle doit rester absente, sans demander de justificatif
 pour la seule date. La colonne `payments.paid_on` est cependant encore NOT NULL ;
-la migration permettant NULL a été présentée et attend son accord, conformément
-à AGENTS.md. Les moyens, références et rapprochements restent à vérifier avant
+la migration permettant NULL a été approuvée puis créée dans
+`202610290058_historical_payment_date.sql`, pour application et tests locaux
+uniquement conformément à AGENTS.md. Les moyens, références et rapprochements restent à vérifier avant
 l'import. L'ancien script externe n'a pas été relancé ni modifié : ses dates
 fixes, matricules calculés localement et lots partiels doivent être remplacés
 avant toute utilisation.

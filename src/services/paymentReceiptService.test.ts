@@ -32,4 +32,8 @@ assert.ok(paymentReceiptMarkup(cancelled).includes('&lt;i&gt;Double saisie&lt;/i
 snapshot.tables.payment_reversals = []; snapshot.tables.payments[0].status = 'PENDING';
 const pending = paymentReceiptDocument(snapshot, new Set(['E']), 'R')!;
 assert.equal(pending.net, 0); assert.ok(paymentReceiptMarkup(pending).includes('EN ATTENTE DE VALIDATION'));
+snapshot.tables.payments[0].paid_on = null;
+const undated = paymentReceiptDocument(snapshot, new Set(['E']), 'R')!;
+assert.equal(undated.paidOn, '');
+assert.ok(paymentReceiptMarkup(undated).includes('<th>Date du paiement</th><td>Non renseignée</td>'));
 console.log('Reçus : inscription autorisée, état courant, remboursements, montants d’origine et échappement HTML vérifiés.');
