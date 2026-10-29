@@ -44,7 +44,7 @@ for (const width of [360, 390, 768, 1440]) test(`Téléphone international : ind
   await page.keyboard.press('Escape');
   const nationality = dialog.getByRole('combobox', { name: 'Nationalité', exact: true });
   await nationality.click();
-  await dialog.getByRole('textbox', { name: 'Rechercher — Nationalité', exact: true }).fill('beninoise');
+  await dialog.getByRole('searchbox', { name: 'Rechercher — Nationalité', exact: true }).fill('beninoise');
   await dialog.getByRole('option', { name: 'Béninoise', exact: true }).click();
   await expect(nationality.locator('img')).toHaveAttribute('src', 'https://flagcdn.com/w40/bj.png');
   await code.click();
@@ -134,13 +134,40 @@ test('Fournisseur : le champ partagé enregistre un indicatif autre que le Togo'
   expect(writes[0]).toMatchObject({ values: { phone: '+233241234567' } });
 });
 
+for (const width of [360, 390, 768, 1024, 1440]) {
+  test(`Nationalité : protéger une sélection sans saisie à ${width}px`, async ({ page }) => {
+    await page.setViewportSize({ width, height: 1000 });
+    const fixture = await studentFixture(page);
+    const dialog = page.getByRole('dialog');
+    await dialog.getByRole('combobox', { name: 'Nationalité', exact: true }).click();
+    await dialog.getByRole('option', { name: 'Béninoise', exact: true }).click();
+    await dialog.getByRole('button', { name: 'Fermer le détail', exact: true }).click();
+    await expect(dialog.getByRole('heading', { name: 'Quitter sans enregistrer ?' })).toBeVisible();
+    await dialog.getByRole('button', { name: 'Continuer la saisie', exact: true }).click();
+    await expect(dialog.getByRole('combobox', { name: 'Nationalité', exact: true })).toContainText('Béninoise');
+    expect(fixture.writes).toHaveLength(0);
+  });
+
+  test(`Nationalité : rechercher sans modifier le dossier à ${width}px`, async ({ page }) => {
+    const fixture = await studentFixture(page);
+    await page.setViewportSize({ width, height: 1000 });
+    const dialog = page.getByRole('dialog');
+    await dialog.getByRole('combobox', { name: 'Nationalité', exact: true }).click();
+    await dialog.getByRole('searchbox', { name: 'Rechercher — Nationalité', exact: true }).fill('beninoise');
+    await page.keyboard.press('Escape');
+    await dialog.getByRole('button', { name: 'Fermer le détail', exact: true }).click();
+    await expect(dialog).toHaveCount(0);
+    expect(fixture.writes).toHaveLength(0);
+  });
+}
+
 test('Drapeaux images : recherche au clavier et fermeture sans quitter le dossier', async ({ page }) => {
   await studentFixture(page);
   const dialog = page.getByRole('dialog');
   const nationality = dialog.getByRole('combobox', { name: 'Nationalité', exact: true });
   await nationality.focus();
   await nationality.press('ArrowDown');
-  const search = dialog.getByRole('textbox', { name: 'Rechercher — Nationalité', exact: true });
+  const search = dialog.getByRole('searchbox', { name: 'Rechercher — Nationalité', exact: true });
   await expect(search).toBeFocused();
   await search.fill('togolaise');
   await search.press('ArrowDown');

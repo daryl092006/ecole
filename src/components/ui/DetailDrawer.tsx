@@ -7,7 +7,7 @@ const openDialogs: string[] = [];
 const blockedElements = new Map<HTMLElement, { count: number; inert: boolean; hidden: string | null }>();
 let originalBodyOverflow = '';
 
-const DrawerContext = createContext<{ requestClose: (onAccepted?: () => void) => void; markSaved: () => void; actionsTarget: HTMLDivElement | null } | null>(null);
+const DrawerContext = createContext<{ requestClose: (onAccepted?: () => void) => void; markSaved: () => void; markDirty: () => void; actionsTarget: HTMLDivElement | null } | null>(null);
 
 export function useDrawer() { return useContext(DrawerContext); }
 
@@ -29,7 +29,7 @@ export default function DetailDrawer({ title, onClose, children, busy = false }:
   useEffect(() => { if (!dirty) return; const protect = (event: BeforeUnloadEvent) => { event.preventDefault(); }; window.addEventListener('beforeunload', protect); return () => window.removeEventListener('beforeunload', protect); }, [dirty]);
   const close = useRef(requestClose);
   close.current = requestClose;
-  const drawerContext = useMemo(() => ({ requestClose: (onAccepted?: () => void) => close.current(onAccepted), markSaved: () => setDirty(false), actionsTarget }), [actionsTarget]);
+  const drawerContext = useMemo(() => ({ requestClose: (onAccepted?: () => void) => close.current(onAccepted), markSaved: () => setDirty(false), markDirty: () => setDirty(true), actionsTarget }), [actionsTarget]);
   useEffect(() => { if (discard) { discardNotice.current?.focus(); discardNotice.current?.scrollIntoView({ block: 'nearest' }); } }, [discard]);
   useEffect(() => {
     const viewport = window.visualViewport;

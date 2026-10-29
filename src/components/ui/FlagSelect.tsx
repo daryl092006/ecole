@@ -2,6 +2,7 @@
 
 import Image from 'next/image';
 import { useEffect, useId, useRef, useState } from 'react';
+import { useDrawer } from './DetailDrawer';
 
 export interface FlagOption { value: string; label: string; code?: string; }
 interface Props {
@@ -16,6 +17,7 @@ interface Props {
 const normalize = (value: string) => value.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
 
 export default function FlagSelect({ id, label, value, options, onChange, required, disabled }: Props) {
+  const drawer = useDrawer();
   const generatedId = useId();
   const controlId = id || generatedId;
   const root = useRef<HTMLDivElement>(null);
@@ -35,6 +37,7 @@ export default function FlagSelect({ id, label, value, options, onChange, requir
     return () => document.removeEventListener('pointerdown', outside);
   }, [open]);
   function choose(next: string) {
+    if (next !== value && root.current?.closest('form')) drawer?.markDirty();
     onChange(next); setOpen(false); setQuery(''); trigger.current?.focus();
   }
   function flag(option: FlagOption) {
@@ -60,7 +63,7 @@ export default function FlagSelect({ id, label, value, options, onChange, requir
       {selected && flag(selected)}<span>{selected?.label || value}</span><span className="flag-select-chevron" aria-hidden="true">⌄</span>
     </button>
     {open && <div className="flag-select-menu">
-      <input ref={search} className="input flag-select-search" aria-label={`Rechercher — ${label}`} placeholder="Rechercher un pays ou une nationalité…" value={query} onChange={event => setQuery(event.target.value)} onKeyDown={event => {
+      <input ref={search} type="search" className="input flag-select-search" aria-label={`Rechercher — ${label}`} placeholder="Rechercher un pays ou une nationalité…" value={query} onChange={event => setQuery(event.target.value)} onKeyDown={event => {
         if (event.key === 'Enter') { event.preventDefault(); if (filtered[0]) choose(filtered[0].value); }
       }} />
       <div className="flag-select-options" id={`${controlId}-options`} role="listbox" aria-label={label}>
