@@ -39,7 +39,10 @@ export default function StudentPaymentList({ matricule, payments, revision, adju
             {(payment.cancelled || payment.pending) && <div className="cell-sub">{payment.cancelled ? 'Annulé' : 'En attente'}</div>}
           </td>
           <td>{connectedRecordValue('payments', 'method', row?.method, snapshot)}</td>
-          <td><button type="button" className="payment-reference" aria-haspopup="dialog" aria-label={`Versement ${payment.reference}`} onClick={() => setSelectedId(payment.id)}>{payment.reference}</button></td>
+          <td>
+            <button type="button" className="payment-reference" aria-haspopup="dialog" aria-label={`Versement ${payment.reference}`} onClick={() => setSelectedId(payment.id)}>{payment.reference}</button>
+            {typeof row?.comment === 'string' && row.comment.length > 0 && <div className="cell-sub">{row.comment}</div>}
+          </td>
         </tr>;
       })}</tbody>
     </ResponsiveTable></div>}

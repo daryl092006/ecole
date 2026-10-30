@@ -72,7 +72,7 @@ export async function GET(request:Request,{params}:Params){try{
 }catch(error){return errorResponse(error);}}
 const common={revision:z.number().int().nonnegative(),enrollmentId:z.uuid(),reason:z.string().trim().min(3).max(1000)};
 const schema=z.discriminatedUnion('action',[
-  z.object({...common,action:z.literal('payment'),amount:z.number().int().positive().max(2147483647),payer:z.string().trim().min(2).max(160),reference:z.string().trim().min(2).max(160),provider:z.string().trim().min(2).max(160),method:z.enum(['ESPECES','MOBILE_MONEY','VIREMENT','CHEQUE','CARTE']),paidOn:z.iso.date()}).strict(),
+  z.object({...common,action:z.literal('payment'),amount:z.number().int().positive().max(2147483647),payer:z.string().trim().min(2).max(160),reference:z.string().trim().min(2).max(160),provider:z.string().trim().min(2).max(160),method:z.enum(['ESPECES','MOBILE_MONEY','VIREMENT','CHEQUE','CARTE']),paidOn:z.iso.date(),category:z.enum(['INSCRIPTION','SCOLARITE','ANNEXE']).optional()}).strict(),
   z.object({...common,action:z.literal('reallocate_payment'),paymentId:z.uuid(),targets:z.array(z.object({installmentId:z.uuid(),amount:z.number().int().positive().max(2147483647)}).strict()).min(1)}).strict(),
   z.object({...common,action:z.literal('cancel_payment'),paymentId:z.uuid()}).strict(),
   z.object({...common,action:z.literal('refund_payment'),paymentId:z.uuid(),amount:z.number().int().positive().max(Number.MAX_SAFE_INTEGER),reference:z.string().trim().min(2).max(160)}).strict(),
@@ -108,7 +108,7 @@ export async function POST(request:Request,{params}:Params){try{
     if(selected?.status!=='CLOTUREE' && !data.snapshot.tables.annual_payment_channels?.some(channel=>channel.academic_year_id===data.year.selectedYearId && !channel.archived_at && channel.method===body.method && channel.name===body.provider)) throw new RequestError(409,'Choisissez une caisse et un mode configurés pour cette année.');
     const id=crypto.randomUUID();
     changes.push({table:'payments',operation:'insert',record:{id,enrollment_id:enrollment.id,payer_name:body.payer,amount:body.amount,method:body.method,provider:body.provider,reference:body.reference,paid_on:body.paidOn,recorded_by:data.context.accountId,comment:body.reason}});
-    changes.push({table:'receipts',operation:'insert',record:{id:crypto.randomUUID(),payment_id:id,reference:`REC-${id}`,snapshot:{matricule:data.student.matricule,academicYearId:data.year.selectedYearId,amount:body.amount,reference:body.reference,payer:payerName(body.payer),method:body.method,paidOn:body.paidOn},issued_by:data.context.accountId}});
+    changes.push({table:'receipts',operation:'insert',record:{id:crypto.randomUUID(),payment_id:id,reference:`REC-${id}`,snapshot:{matricule:data.student.matricule,academicYearId:data.year.selectedYearId,amount:body.amount,reference:body.reference,payer:payerName(body.payer),method:body.method,paidOn:body.paidOn,category:body.category,reason:body.reason},issued_by:data.context.accountId}});
     paymentId=id;
     const plan=planPaymentAllocations(data.scoped,{paymentId:id,enrollmentId:enrollment.id,amount:body.amount,actorId:data.context.accountId});
     changes.push(...plan.changes);
