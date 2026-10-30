@@ -53,7 +53,11 @@ export default function FlagSelect({ id, label, value, options, onChange, requir
       if (!open) { setOpen(true); setQuery(''); return; }
       const items = Array.from(root.current?.querySelectorAll<HTMLButtonElement>('[role="option"]') || []);
       const index = items.indexOf(document.activeElement as HTMLButtonElement);
-      items[(index + (event.key === 'ArrowDown' ? 1 : -1) + items.length) % items.length]?.focus();
+      if (!items.length) return;
+      const nextIndex = index < 0
+        ? event.key === 'ArrowDown' ? 0 : items.length - 1
+        : (index + (event.key === 'ArrowDown' ? 1 : -1) + items.length) % items.length;
+      items[nextIndex]?.focus();
     }
   }}>
     <select className="flag-select-validation" aria-hidden="true" tabIndex={-1} value={value} required={required} disabled={disabled} onChange={event => choose(event.target.value)} onInvalid={event => {

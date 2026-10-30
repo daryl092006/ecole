@@ -183,3 +183,15 @@ test('Drapeaux images : recherche au clavier et fermeture sans quitter le dossie
   await expect(nationality).toBeFocused();
   await expect(dialog.getByRole('listbox')).toHaveCount(0);
 });
+
+test('Nationalité : la flèche haute depuis la recherche atteint la dernière option', async ({ page }) => {
+  await studentFixture(page);
+  const dialog = page.getByRole('dialog');
+  await dialog.getByRole('combobox', { name: 'Nationalité', exact: true }).click();
+  const search = dialog.getByRole('searchbox', { name: 'Rechercher — Nationalité', exact: true });
+  await expect(search).toBeFocused();
+  await search.press('ArrowUp');
+  await expect(dialog.getByRole('listbox', { name: 'Nationalité', exact: true }).getByRole('option').last()).toBeFocused();
+  await page.keyboard.press('ArrowDown');
+  await expect(dialog.getByRole('listbox', { name: 'Nationalité', exact: true }).getByRole('option').first()).toBeFocused();
+});
