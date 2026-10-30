@@ -6,9 +6,11 @@ import { usePortal } from '@/hooks/usePortal';
 import EnrollmentDialog from '../EnrollmentDialog';
 import { admissionsOperation, downloadAdmissionLetter, downloadAdmissionDocument, admissionDocumentBlob, RemoteRequestError } from '@/services/remoteCampusService';
 import { APPLICATION_STAGES, type AdmissionAction, type AdmissionApplication, type AdmissionsContext } from '@/types/admissions';
+import type { WebsiteIntake } from '@/types/website';
 import { admissionsJourney, ADMISSIONS_STEPS } from '@/services/admissionsJourney';
-import { ADMISSION_ACTIONS, stageLabel } from '@/services/admissionsService';
+import { ADMISSION_ACTIONS, stageLabel, MACRO_STAGES, type MacroStage, getApplicationMacroStage, stageBadge } from '@/services/admissionsService';
 import { formatCandidateIdentity, formatDocumentLabel } from '@/services/websiteService';
+import { downloadCsv } from '@/utils/csv';
 import ApplicationIntakeForm, { type IntakeInput } from './ApplicationIntakeForm';
 import OnlineAdmissionsPanel from './OnlineAdmissionsPanel';
 import WorkPage from '@/components/ui/WorkPage';
@@ -33,6 +35,26 @@ function stageTone(item: AdmissionApplication) {
   if (['INCOMPLET','A_COMPLETER','ADMISSIBLE','ATTENTE_PAIEMENT'].includes(item.workflow_stage)) return 'warning';
   return 'active';
 }
+
+function getCandidateProgramAndLevel(item: AdmissionApplication, intakes: WebsiteIntake[]) {
+  const intake = intakes.find(i => i.id === item.intake_id);
+  let program = intake?.program_name || '';
+  let level = intake?.level_name || '';
+  if (!program && item.intake_label) {
+    const parts = item.intake_label.split(' - ');
+    program = parts[0]?.trim() || '';
+    if (parts.length > 1) {
+      level = parts.slice(1).join(' - ').trim();
+    }
+  }
+  if (!program) {
+    program = item.legacy_state?.program_unresolved ? 'Filière à vérifier' : 'Non renseignée';
+  }
+  if (!level) {
+    level = 'Non renseigné';
+  }
+  return { program, level };
+}
 const newToken = () => Array.from(crypto.getRandomValues(new Uint8Array(32)), value => value.toString(16).padStart(2,'0')).join('');
 export default function AdmissionsWorkflowPanel() {
   const portal = usePortal(); const role = portal.activeRole; const year = portal.academicYearContext?.selectedYearId;
@@ -40,7 +62,11 @@ export default function AdmissionsWorkflowPanel() {
   const [retry, setRetry] = useState(0);
   const [error, setError] = useState(''); const [success, setSuccess] = useState(''); const [busy, setBusy] = useState(false);
   const [onlyMine, setOnlyMine] = useState(false);
-  const [search, setSearch] = useState(''); const [filter, setFilter] = useState(''); const [selected, setSelected] = useState<AdmissionApplication | null>(null);
+  const [search, setSearch] = useState('');
+  const [macroFilter, setMacroFilter] = useState<MacroStage>('ALL');
+  const [filiereFilter, setFiliereFilter] = useState('');
+  const [niveauFilter, setNiveauFilter] = useState('');
+  const [selected, setSelected] = useState<AdmissionApplication | null>(null);
   const [action, setAction] = useState<AdmissionAction | ''>(''); const [reason, setReason] = useState(''); const [checks, setChecks] = useState<string[]>([]);
   const [identityChecked, setIdentityChecked] = useState(false); const [guardiansChecked, setGuardiansChecked] = useState(false);
   const [amount, setAmount] = useState(''); const [reference, setReference] = useState(''); const [channel, setChannel] = useState(''); const [paymentId, setPaymentId] = useState('');
@@ -103,27 +129,192 @@ export default function AdmissionsWorkflowPanel() {
   if (!data) return <section className="card"><h1>Candidatures</h1><p role="alert" className="restricted-box">{error || 'Les candidatures sont indisponibles.'}</p><button className="btn btn-outline" onClick={() => setRetry(value => value + 1)}>Réessayer</button></section>;
   const canProgress = (item: AdmissionApplication) => { const next = admissionsJourney(item).primary; return next !== null && data.capabilities[ADMISSION_ACTIONS[next].capability]; };
   const journey = selected ? admissionsJourney(selected) : null;
-  const listed = data.applications.filter(item => (!onlyMine || canProgress(item)) && (!filter || (filter === 'HISTORIQUE' ? !item.workflow_stage && item.status !== 'BROUILLON' : filter === 'BROUILLONS' ? !item.workflow_stage && item.status === 'BROUILLON' : filter === 'A_COMPLETER' ? ['INCOMPLET','A_COMPLETER'].includes(item.workflow_stage || '') : filter === 'ATTENTE_PAIEMENT' ? ['ADMISSIBLE','ATTENTE_PAIEMENT'].includes(item.workflow_stage || '') : item.workflow_stage === filter)) && `${item.identity.nom} ${item.identity.prenom} ${item.identity.email} ${item.reference}`.toLocaleLowerCase('fr').includes(search.toLocaleLowerCase('fr')));
+  const filiereOptions = data ? Array.from(new Set(data.applications.map(app => getCandidateProgramAndLevel(app, data.intakes).program).filter(Boolean))).sort() : [];
+  const niveauOptions = data ? Array.from(new Set(data.applications.map(app => getCandidateProgramAndLevel(app, data.intakes).level).filter(Boolean))).sort() : [];
+  const listed = (data?.applications || []).filter(item => {
+    if (onlyMine && !canProgress(item)) return false;
+    if (macroFilter !== 'ALL' && getApplicationMacroStage(item) !== macroFilter) return false;
+    const info = getCandidateProgramAndLevel(item, data?.intakes || []);
+    if (filiereFilter && info.program !== filiereFilter) return false;
+    if (niveauFilter && info.level !== niveauFilter) return false;
+    if (search) {
+      const term = search.toLocaleLowerCase('fr');
+      const matched = `${item.identity.nom} ${item.identity.prenom} ${item.identity.email} ${item.reference} ${info.program} ${info.level}`.toLocaleLowerCase('fr').includes(term);
+      if (!matched) return false;
+    }
+    return true;
+  });
   const actionable = selected ? (Object.entries(ADMISSION_ACTIONS) as [AdmissionAction, typeof ADMISSION_ACTIONS[AdmissionAction]][]).filter(([key, value]) => data.capabilities[value.capability] && value.from.includes(selected.workflow_stage) && (key !== 'create_student' || !selected.student_id) && (key !== 'review' || selected.status !== 'BROUILLON')) : [];
   const identityRows = selected ? formatCandidateIdentity(selected.identity) : [];
   const needsActionReason = Boolean(action && ['incomplete', 'request_changes', 'refuse', 'reverse_payment'].includes(action));
+
+  function exportExcel() {
+    if (!data || !listed.length) return;
+    const headers = ['Nom', 'Prénom', 'Email', 'Numéro de dossier', 'Filière', 'Niveau', 'Statut', 'Origine'];
+    const rows = listed.map(item => {
+      const info = getCandidateProgramAndLevel(item, data.intakes);
+      const badge = stageBadge(item);
+      return [
+        item.identity.nom || '',
+        item.identity.prenom || '',
+        item.identity.email || '',
+        item.reference,
+        info.program,
+        info.level,
+        badge.label,
+        item.entry_channel === 'ACCUEIL' ? 'Accueil ESCEN' : 'Site web',
+      ];
+    });
+    downloadCsv('etude-des-dossiers-candidatures.csv', headers, rows);
+  }
+
   return <div className="domain-workspace workspace-stack">
     <div className="page-intro">
       <div>
         <span className="page-eyebrow">SITE WEB & ADMISSIONS</span>
-        <h1>Candidatures</h1>
-        <p>Suivez chaque dossier, identifiez le responsable et effectuez la prochaine action.</p>
+        <h1>| Étude des Dossiers</h1>
+        <p>Gestion centralisée et validation des candidatures entrantes</p>
       </div>
       <div className="btn-group">
+        <button
+          type="button"
+          className="btn btn-primary"
+          style={{ display: 'inline-flex', alignItems: 'center', gap: '8px' }}
+          disabled={!listed.length}
+          onClick={exportExcel}
+        >
+          <Download size={16} aria-hidden="true" />
+          EXPORTER EN EXCEL
+        </button>
         <button className="btn btn-outline" disabled={busy} onClick={() => { void refresh().catch(error => setError(error.message)); }}>Actualiser les dossiers</button>
-        {data.capabilities.review && year && <button className="btn btn-primary" onClick={() => { setError(''); setCreateToken(newToken()); }}>Saisir une candidature à ESCEN</button>}
+        {data.capabilities.review && year && <button className="btn btn-outline" onClick={() => { setError(''); setCreateToken(newToken()); }}>Saisir une candidature</button>}
       </div>
     </div>
     {error && !selected && !createToken && <p role="alert" className="restricted-box">{error}</p>}{success && <p role="status" className="success-message">{success}</p>}
     {!data.mail_configured && <p className="restricted-box" role="status">Les mails sont conservés dans la file d’envoi. Le service d’envoi doit être configuré pour les transmettre.</p>}
-    <div className="admissions-summary" aria-label="Suivi des candidatures">{[['','Tous les dossiers'],['HISTORIQUE','Historiques à vérifier'],['BROUILLONS','Brouillons non soumis'],['NOUVELLE','Nouvelles'],['A_COMPLETER','À compléter'],['TRANSMIS_ACADEMIE','Pour l’académie'],['ATTENTE_PAIEMENT','Paiement attendu'],['ADMIS_OFFICIEL','Admissions officielles']].map(([stage,label]) => <button className="card" key={stage} onClick={() => setFilter(filter === stage ? '' : stage)} aria-pressed={filter === stage}><strong>{data.applications.filter(item => stage === '' || (stage === 'HISTORIQUE' && !item.workflow_stage && item.status !== 'BROUILLON') || (stage === 'BROUILLONS' && !item.workflow_stage && item.status === 'BROUILLON') || item.workflow_stage === stage || (stage === 'A_COMPLETER' && item.workflow_stage === 'INCOMPLET') || (stage === 'ATTENTE_PAIEMENT' && item.workflow_stage === 'ADMISSIBLE')).length}</strong><span>{label}</span></button>)}</div>
-    <section className="card"><div className="card-header"><h2>Dossiers de candidature</h2><span>{listed.length} dossier(s)</span></div><div className="form-grid"><label className="form-group">Rechercher un dossier<input className="input" type="search" placeholder="Nom, email ou référence" value={search} onChange={event => setSearch(event.target.value)} /></label><label className="form-group">Statut<select className="select-input" value={filter} onChange={event => setFilter(event.target.value)}><option value="">Tous les dossiers</option>{Object.entries(APPLICATION_STAGES).map(([key,label]) => <option key={key} value={key}>{label}</option>)}<option value="HISTORIQUE">Historiques à vérifier</option><option value="BROUILLONS">Brouillons non soumis</option></select></label></div><label className="candidate-consent" style={{ marginBottom: '0.75rem', display: 'inline-flex' }}><input type="checkbox" checked={onlyMine} onChange={event => setOnlyMine(event.target.checked)} />Afficher uniquement les dossiers que je peux faire avancer ({data.applications.filter(canProgress).length})</label>
-      {listed.length ? <div className="table-wrap"><ResponsiveTable className="data-table"><thead><tr><th>Candidat</th><th>Référence</th><th>Formation</th><th>Origine</th><th>Étape et responsable</th><th>Actions</th></tr></thead><tbody>{listed.map(item => <tr key={item.id}><td><strong>{item.identity.prenom} {item.identity.nom}</strong><div className="cell-sub">{item.identity.email}</div></td><td>{item.reference}</td><td>{item.intake_label || (item.legacy_state?.program_unresolved ? 'Filière à vérifier' : 'Formation non renseignée')}</td><td>{item.entry_channel === 'ACCUEIL' ? 'Accueil ESCEN' : 'Site web'}</td><td><span className={`pill admission-status admission-status--${stageTone(item)}`}>{stageLabel(item)}</span><div className="cell-sub">{admissionsJourney(item).owner}</div></td><td><IconButton label="Ouvrir le dossier" className="btn btn-outline" onClick={() => { setSelected(item); setAction(''); setError(''); setSuccess(''); }} /></td></tr>)}</tbody></ResponsiveTable></div> : <div className="empty-state"><strong>Aucune candidature pour ce filtre</strong><span>Les demandes en ligne et saisies à ESCEN suivent le même circuit.</span></div>}
+    <div className="admissions-pills-bar" role="toolbar" aria-label="Filtrer par statut">
+      {MACRO_STAGES.map(stage => {
+        const count = data.applications.filter(item => stage.id === 'ALL' || getApplicationMacroStage(item) === stage.id).length;
+        const isActive = macroFilter === stage.id;
+        return (
+          <button
+            key={stage.id}
+            type="button"
+            className="admissions-pill-btn"
+            aria-pressed={isActive}
+            onClick={() => setMacroFilter(stage.id)}
+          >
+            <span className={`admissions-pill-dot admissions-pill-dot--${stage.dot}`} aria-hidden="true" />
+            <span>{stage.label} ({count})</span>
+          </button>
+        );
+      })}
+    </div>
+    <section className="card">
+      <div className="card-header">
+        <h2>Dossiers de candidature</h2>
+        <span>{listed.length} dossier(s)</span>
+      </div>
+      <div className="form-grid" style={{ marginBottom: '1rem' }}>
+        <label className="form-group" style={{ flex: '1 1 280px' }}>
+          Rechercher un candidat...
+          <input
+            className="input"
+            type="search"
+            placeholder="Rechercher par nom, email, référence..."
+            value={search}
+            onChange={event => setSearch(event.target.value)}
+          />
+        </label>
+        <label className="form-group" style={{ flex: '0 1 220px' }}>
+          Filières
+          <select
+            className="select-input"
+            value={filiereFilter}
+            onChange={event => setFiliereFilter(event.target.value)}
+          >
+            <option value="">Toutes les filières</option>
+            {filiereOptions.map(opt => <option key={opt} value={opt}>{opt}</option>)}
+          </select>
+        </label>
+        <label className="form-group" style={{ flex: '0 1 180px' }}>
+          Niveaux
+          <select
+            className="select-input"
+            value={niveauFilter}
+            onChange={event => setNiveauFilter(event.target.value)}
+          >
+            <option value="">Tous les niveaux</option>
+            {niveauOptions.map(opt => <option key={opt} value={opt}>{opt}</option>)}
+          </select>
+        </label>
+      </div>
+      <label className="candidate-consent" style={{ marginBottom: '0.75rem', display: 'inline-flex' }}>
+        <input type="checkbox" checked={onlyMine} onChange={event => setOnlyMine(event.target.checked)} />
+        Afficher uniquement les dossiers que je peux faire avancer ({data.applications.filter(canProgress).length})
+      </label>
+      {listed.length ? (
+        <div className="table-wrap">
+          <ResponsiveTable className="data-table">
+            <thead>
+              <tr>
+                <th>CANDIDAT</th>
+                <th>NUMÉRO DE DOSSIER</th>
+                <th>FILIÈRE</th>
+                <th>NIVEAU</th>
+                <th>STATUT DOSSIER</th>
+                <th>ACTION</th>
+              </tr>
+            </thead>
+            <tbody>
+              {listed.map(item => {
+                const info = getCandidateProgramAndLevel(item, data.intakes);
+                const badge = stageBadge(item);
+                const initials = `${item.identity.prenom?.[0] || ''}${item.identity.nom?.[0] || ''}`.toUpperCase() || 'C';
+                return (
+                  <tr key={item.id}>
+                    <td>
+                      <div className="candidate-cell-flex">
+                        <div className="candidate-avatar-circle" aria-hidden="true">
+                          {initials}
+                        </div>
+                        <div>
+                          <strong>{item.identity.nom} {item.identity.prenom}</strong>
+                          <div className="cell-sub">{item.identity.email}</div>
+                        </div>
+                      </div>
+                    </td>
+                    <td><code>{item.reference}</code></td>
+                    <td>{info.program}</td>
+                    <td>{info.level}</td>
+                    <td>
+                      <span className={`pill admission-status admission-status--${badge.tone}`}>
+                        {badge.label}
+                      </span>
+                    </td>
+                    <td>
+                      <button
+                        type="button"
+                        aria-label="Ouvrir le dossier"
+                        className="btn btn-primary"
+                        style={{ minHeight: '32px', padding: '4px 14px', fontSize: '0.78rem', fontWeight: 600 }}
+                        onClick={() => { setSelected(item); setAction(''); setError(''); setSuccess(''); }}
+                      >
+                        OUVRIR
+                      </button>
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </ResponsiveTable>
+        </div>
+      ) : (
+        <div className="empty-state">
+          <strong>Aucune candidature pour ce filtre</strong>
+          <span>Les demandes en ligne et saisies à ESCEN suivent le même circuit.</span>
+        </div>
+      )}
     </section>
     {createToken && <WorkPage title="Saisir une candidature à ESCEN" busy={busy} onClose={() => setCreateToken('')}><ApplicationIntakeForm intakes={data.intakes} busy={busy} error={error} onSave={create} title="Confirmer la candidature saisie à ESCEN" /></WorkPage>}
     {selected && <WorkPage title={`Dossier ${selected.reference}`} busy={busy} onClose={() => { setSelected(null); setAction(''); }}><div className="workspace-stack">

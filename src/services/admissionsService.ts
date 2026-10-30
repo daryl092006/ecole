@@ -15,6 +15,49 @@ export const admissionCommandSchema = z.discriminatedUnion('action', [
 export function stageLabel(application: Pick<AdmissionApplication, 'workflow_stage' | 'legacy_state' | 'status'>): string {
   return application.workflow_stage ? APPLICATION_STAGES[application.workflow_stage] : application.legacy_state?.admitted ? 'Admis · historique à vérifier' : application.status === 'BROUILLON' ? 'Brouillon' : 'Dossier historique à vérifier';
 }
+
+export type MacroStage = 'ALL' | 'VALIDE' | 'ETUDE' | 'ACADEMIE' | 'CORRIGER' | 'REJETE';
+
+export const MACRO_STAGES: { id: MacroStage; label: string; dot: 'blue' | 'green' | 'purple' | 'sky' | 'orange' | 'red' }[] = [
+  { id: 'ALL', label: 'TOTAL', dot: 'blue' },
+  { id: 'VALIDE', label: 'VALIDÉS', dot: 'green' },
+  { id: 'ETUDE', label: 'EN ÉTUDE', dot: 'purple' },
+  { id: 'ACADEMIE', label: 'À L’ACADÉMIE', dot: 'sky' },
+  { id: 'CORRIGER', label: 'À CORRIGER', dot: 'orange' },
+  { id: 'REJETE', label: 'REJETÉS', dot: 'red' },
+];
+
+export function getApplicationMacroStage(item: AdmissionApplication): MacroStage {
+  if (item.workflow_stage === 'REFUSE') return 'REJETE';
+  if (item.workflow_stage === 'TRANSMIS_ACADEMIE') return 'ACADEMIE';
+  if (['INCOMPLET', 'A_COMPLETER'].includes(item.workflow_stage || '')) return 'CORRIGER';
+  if (['ADMISSIBLE', 'ATTENTE_PAIEMENT', 'ADMIS_OFFICIEL'].includes(item.workflow_stage || '') || Boolean(item.student_id) || Boolean(item.legacy_state?.admitted)) return 'VALIDE';
+  return 'ETUDE';
+}
+
+export function stageBadge(item: AdmissionApplication): { label: string; tone: string } {
+  if (item.student_id) {
+    return { label: 'DÉJÀ INSCRIT', tone: 'success' };
+  }
+  const macro = getApplicationMacroStage(item);
+  switch (macro) {
+    case 'VALIDE':
+      return {
+        label: item.workflow_stage === 'ADMIS_OFFICIEL' ? 'ADMIS OFFICIEL' : item.workflow_stage === 'ATTENTE_PAIEMENT' ? 'ATTENTE PAIEMENT' : 'VALIDÉ',
+        tone: 'success',
+      };
+    case 'ETUDE':
+      return { label: 'EN ÉTUDE', tone: 'purple' };
+    case 'ACADEMIE':
+      return { label: 'À L’ACADÉMIE', tone: 'sky' };
+    case 'CORRIGER':
+      return { label: 'À CORRIGER', tone: 'warning' };
+    case 'REJETE':
+      return { label: 'REJETÉ', tone: 'danger' };
+    default:
+      return { label: 'EN ÉTUDE', tone: 'purple' };
+  }
+}
 export const ADMISSION_ACTIONS: Record<AdmissionAction, { label: string; from: (ApplicationStage | null)[]; capability: 'review' | 'decide' | 'payment' | 'followup' }> = {
   acknowledge: { label: 'Accuser réception', from: ['NOUVELLE'], capability: 'review' },
   review: { label: 'Vérifier le dossier', from: [null,'NOUVELLE','RECUE','INCOMPLET','A_COMPLETER'], capability: 'review' },

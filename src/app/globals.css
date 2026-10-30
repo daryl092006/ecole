@@ -3814,12 +3814,28 @@ form > .drawer-form-actions,
 }
 
 /* Candidatures : distinguer les étapes et rendre les transitions explicites. */
-.admission-status { white-space: normal; }
+.admission-status { white-space: nowrap; font-weight: 600; font-size: 0.78rem; letter-spacing: 0.02em; padding: 4px 10px; border-radius: 9999px; }
 .admission-status--draft { background: #eef2f6; color: #475569; }
-.admission-status--historical, .admission-status--warning { background: #fff4d6; color: #805000; }
+.admission-status--historical, .admission-status--warning { background: #fef3c7; color: #b45309; }
 .admission-status--active { background: #e6efff; color: #234b91; }
-.admission-status--success { background: #dcf5e7; color: #16633b; }
-.admission-status--danger { background: #fde8e8; color: #a12626; }
+.admission-status--success { background: #dcfce7; color: #15803d; }
+.admission-status--danger { background: #fee2e2; color: #b91c1c; }
+.admission-status--purple { background: #f3e8ff; color: #7e22ce; }
+.admission-status--sky { background: #e0f2fe; color: #0369a1; }
+
+.admissions-pills-bar { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 1.25rem; }
+.admissions-pill-btn { display: inline-flex; align-items: center; gap: 8px; padding: 7px 14px; border-radius: 9999px; border: 1px solid var(--border); background: var(--bg-card, #ffffff); color: var(--text-secondary, #475569); font-size: 0.82rem; font-weight: 600; cursor: pointer; transition: all 0.15s ease; box-shadow: var(--shadow-sm); }
+.admissions-pill-btn:hover { border-color: var(--accent); color: var(--text-primary); }
+.admissions-pill-btn[aria-pressed="true"] { background: var(--accent-light, #eff6ff); border-color: var(--accent, #2563eb); color: var(--accent, #2563eb); }
+.admissions-pill-dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; flex-shrink: 0; }
+.admissions-pill-dot--blue { background: #2563eb; }
+.admissions-pill-dot--green { background: #16a34a; }
+.admissions-pill-dot--purple { background: #9333ea; }
+.admissions-pill-dot--sky { background: #0284c7; }
+.admissions-pill-dot--orange { background: #ea580c; }
+.admissions-pill-dot--red { background: #dc2626; }
+.candidate-cell-flex { display: flex; align-items: center; gap: 12px; }
+.candidate-avatar-circle { width: 36px; height: 36px; border-radius: 50%; background: #e0e7ff; color: #3730a3; display: grid; place-items: center; font-weight: 700; font-size: 0.8rem; letter-spacing: 0.03em; flex-shrink: 0; }
 .admission-process { margin-block: 20px; padding: 18px; border: 1px solid var(--border-color, #d7dee8); border-radius: 12px; }
 .admission-process > p { margin-block: 12px; line-height: 1.6; }
 .admission-actions { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 240px), 1fr)); gap: 12px; }
