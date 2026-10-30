@@ -2,7 +2,7 @@
 
 Généré avec `npm run db:describe` en exécutant les migrations dans PostgreSQL local (PGlite). Aucun accès à Supabase ou aux données de la sauvegarde.
 
-118 tables métier, 13 tables privées, 1037 colonnes, 293 clés étrangères, 245 CHECK de tables et 4 exclusions. Les domaines ajoutent les bornes des notes, des montants FCFA et des textes obligatoires.
+118 tables métier, 13 tables privées, 1042 colonnes, 293 clés étrangères, 246 CHECK de tables et 4 exclusions. Les domaines ajoutent les bornes des notes, des montants FCFA et des textes obligatoires.
 
 Toutes les tables ont RLS activée, sans accès applicatif permis à ce stade. Les noms techniques ne sont pas des libellés à afficher dans l’interface.
 
@@ -109,7 +109,7 @@ Toutes les tables ont RLS activée, sans accès applicatif permis à ce stade. L
 | escen | staff_contracts | 7 | 2 | Oui |
 | escen | student_contacts | 8 | 2 | Oui |
 | escen | student_documents | 9 | 6 | Oui |
-| escen | students | 7 | 1 | Oui |
+| escen | students | 12 | 1 | Oui |
 | escen | subjects | 7 | 1 | Oui |
 | escen | suppliers | 8 | 0 | Oui |
 | escen | support_categories | 4 | 0 | Oui |
@@ -4192,6 +4192,11 @@ CREATE UNIQUE INDEX student_documents_pkey ON escen.student_documents USING btre
 | archived_at | timestamptz | YES | — | NEVER |
 | created_at | timestamptz | NO | now() | NEVER |
 | reason | text | YES | — | NEVER |
+| m365_email | text | YES | — | NEVER |
+| m365_user_id | text | YES | — | NEVER |
+| m365_status | text | NO | 'PENDING'::text | NEVER |
+| m365_provisioned_at | timestamptz | YES | — | NEVER |
+| m365_error | text | YES | — | NEVER |
 
 Contraintes :
 
@@ -4199,6 +4204,9 @@ Contraintes :
 student_archive_reason: CHECK (((archived_at IS NULL) OR ((reason IS NOT NULL) AND (length(btrim(reason)) >= 3))))
 students_created_at_not_null: NOT NULL created_at
 students_id_not_null: NOT NULL id
+students_m365_email_key: UNIQUE (m365_email)
+students_m365_status_check: CHECK ((m365_status = ANY (ARRAY['PENDING'::text, 'ACTIVE'::text, 'FAILED'::text, 'SIMULATED'::text])))
+students_m365_status_not_null: NOT NULL m365_status
 students_matricule_key: UNIQUE (matricule)
 students_matricule_not_null: NOT NULL matricule
 students_person_id_fkey: FOREIGN KEY (person_id) REFERENCES escen.people(id) ON DELETE RESTRICT
@@ -4211,6 +4219,8 @@ Index :
 
 ```sql
 CREATE INDEX fk_17079 ON escen.students USING btree (person_id)
+CREATE INDEX idx_students_m365_email ON escen.students USING btree (m365_email)
+CREATE UNIQUE INDEX students_m365_email_key ON escen.students USING btree (m365_email)
 CREATE UNIQUE INDEX students_matricule_key ON escen.students USING btree (matricule)
 CREATE UNIQUE INDEX students_person_id_key ON escen.students USING btree (person_id)
 CREATE UNIQUE INDEX students_pkey ON escen.students USING btree (id)

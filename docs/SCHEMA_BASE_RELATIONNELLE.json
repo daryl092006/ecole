@@ -2,9 +2,9 @@
   "stats": {
     "businessTables": 118,
     "privateTables": 13,
-    "columns": 1037,
+    "columns": 1042,
     "foreignKeys": 293,
-    "checks": 245,
+    "checks": 246,
     "exclusions": 4
   },
   "tables": [
@@ -8058,6 +8058,51 @@
       "schema": "escen",
       "table": "students",
       "name": "reason",
+      "type": "text",
+      "nullable": "YES",
+      "default": null,
+      "generated": "NEVER"
+    },
+    {
+      "schema": "escen",
+      "table": "students",
+      "name": "m365_email",
+      "type": "text",
+      "nullable": "YES",
+      "default": null,
+      "generated": "NEVER"
+    },
+    {
+      "schema": "escen",
+      "table": "students",
+      "name": "m365_user_id",
+      "type": "text",
+      "nullable": "YES",
+      "default": null,
+      "generated": "NEVER"
+    },
+    {
+      "schema": "escen",
+      "table": "students",
+      "name": "m365_status",
+      "type": "text",
+      "nullable": "NO",
+      "default": "'PENDING'::text",
+      "generated": "NEVER"
+    },
+    {
+      "schema": "escen",
+      "table": "students",
+      "name": "m365_provisioned_at",
+      "type": "timestamptz",
+      "nullable": "YES",
+      "default": null,
+      "generated": "NEVER"
+    },
+    {
+      "schema": "escen",
+      "table": "students",
+      "name": "m365_error",
       "type": "text",
       "nullable": "YES",
       "default": null,
@@ -18739,6 +18784,27 @@
     {
       "schema": "escen",
       "table": "students",
+      "name": "students_m365_email_key",
+      "type": "u",
+      "definition": "UNIQUE (m365_email)"
+    },
+    {
+      "schema": "escen",
+      "table": "students",
+      "name": "students_m365_status_check",
+      "type": "c",
+      "definition": "CHECK ((m365_status = ANY (ARRAY['PENDING'::text, 'ACTIVE'::text, 'FAILED'::text, 'SIMULATED'::text])))"
+    },
+    {
+      "schema": "escen",
+      "table": "students",
+      "name": "students_m365_status_not_null",
+      "type": "n",
+      "definition": "NOT NULL m365_status"
+    },
+    {
+      "schema": "escen",
+      "table": "students",
       "name": "students_matricule_key",
       "type": "u",
       "definition": "UNIQUE (matricule)"
@@ -23787,6 +23853,18 @@
       "table": "students",
       "name": "fk_17079",
       "definition": "CREATE INDEX fk_17079 ON escen.students USING btree (person_id)"
+    },
+    {
+      "schema": "escen",
+      "table": "students",
+      "name": "idx_students_m365_email",
+      "definition": "CREATE INDEX idx_students_m365_email ON escen.students USING btree (m365_email)"
+    },
+    {
+      "schema": "escen",
+      "table": "students",
+      "name": "students_m365_email_key",
+      "definition": "CREATE UNIQUE INDEX students_m365_email_key ON escen.students USING btree (m365_email)"
     },
     {
       "schema": "escen",
