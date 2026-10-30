@@ -295,7 +295,7 @@ Vos accès informatiques officiels et votre compte étudiant ont été activés 
 • Mot de passe initial temporaire : ${pwdDisplay}
 
 Comment accéder à vos services :
-1. Votre Portail Étudiant ESCEN : https://portal.escen.university/
+1. Votre Portail Étudiant ESCEN : https://portail.escen.university/
    (Identifiant : votre adresse ${m365Email})
 2. Vos outils Microsoft 365 (Word, Excel, Teams, OneDrive) : https://office.com
 
@@ -317,7 +317,7 @@ La Direction et toute l’équipe de l’ESCEN vous souhaitent une excellente re
 </div>
 <p><strong>Vos accès directs :</strong></p>
 <ol>
-  <li><a href="https://portal.escen.university/" style="color: #0f4c81; font-weight: bold;">Accéder au Portail Étudiant ESCEN</a> (utilisez votre email institutionnel)</li>
+  <li><a href="https://portail.escen.university/" style="color: #0f4c81; font-weight: bold;">Accéder au Portail Étudiant ESCEN</a> (utilisez votre email institutionnel)</li>
   <li><a href="https://office.com" style="color: #0f4c81; font-weight: bold;">Accéder à vos outils Microsoft 365 (Office, Teams, OneDrive)</a></li>
 </ol>
 <p style="font-size: 13px; color: #64748b;">Lors de votre première connexion, il vous sera demandé de personnaliser votre mot de passe.</p>
