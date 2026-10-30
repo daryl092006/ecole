@@ -129,6 +129,7 @@ export default function AdmissionsWorkflowPanel() {
   if (!data) return <section className="card"><h1>Candidatures</h1><p role="alert" className="restricted-box">{error || 'Les candidatures sont indisponibles.'}</p><button className="btn btn-outline" onClick={() => setRetry(value => value + 1)}>Réessayer</button></section>;
   const canProgress = (item: AdmissionApplication) => { const next = admissionsJourney(item).primary; return next !== null && data.capabilities[ADMISSION_ACTIONS[next].capability]; };
   const journey = selected ? admissionsJourney(selected) : null;
+  const linkedStudent = selected ? portal.students.find(s => Boolean(s.email && selected.identity.email) && s.email.toLowerCase() === selected.identity.email.toLowerCase()) : null;
   const filiereOptions = data ? Array.from(new Set(data.applications.map(app => getCandidateProgramAndLevel(app, data.intakes).program).filter(Boolean))).sort() : [];
   const niveauOptions = data ? Array.from(new Set(data.applications.map(app => getCandidateProgramAndLevel(app, data.intakes).level).filter(Boolean))).sort() : [];
   const listed = (data?.applications || []).filter(item => {
@@ -333,6 +334,11 @@ export default function AdmissionsWorkflowPanel() {
             <div className="dossier-hero-meta">
               <span className="dossier-meta-badge"><GraduationCap size={16} aria-hidden="true" /> {selected.intake_label || 'Formation à vérifier'}</span>
               <span className="dossier-meta-badge"><Folder size={16} aria-hidden="true" /> Réf. {selected.reference}</span>
+              {linkedStudent && (
+                <span className="dossier-meta-badge" style={{ background: '#ecfdf5', color: '#065f46', borderColor: '#a7f3d0' }}>
+                  <UserRound size={16} aria-hidden="true" /> Matricule {linkedStudent.matricule}
+                </span>
+              )}
               <span className="dossier-meta-badge">{selected.entry_channel === 'ACCUEIL' ? <><Landmark size={16} aria-hidden="true" /> Accueil ESCEN</> : <><Globe size={16} aria-hidden="true" /> Dépôt en ligne</>}</span>
             </div>
           </div>
@@ -412,6 +418,16 @@ export default function AdmissionsWorkflowPanel() {
                   <strong className="dossier-owner-name">{journey.owner}</strong>
                 </div>
               </div>
+
+              {journey.step === 4 && (
+                <div style={{ marginTop: '1rem', background: '#ecfdf5', border: '1px solid #10b981', color: '#065f46', display: 'flex', alignItems: 'center', gap: '12px', padding: '12px 16px', borderRadius: '8px' }}>
+                  <CircleCheck size={20} color="#10b981" aria-hidden="true" />
+                  <div>
+                    <strong>Étudiant officiellement inscrit pour l’année scolaire</strong>
+                    <p style={{ margin: 0, fontSize: '0.85rem' }}>Le dossier est validé et l’inscription annuelle est active.</p>
+                  </div>
+                </div>
+              )}
 
               {!year && (
                 <div className="dossier-callout dossier-callout--warning">

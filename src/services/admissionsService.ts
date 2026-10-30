@@ -13,9 +13,8 @@ export const admissionCommandSchema = z.discriminatedUnion('action', [
   z.object({ ...command, action: z.literal('create_student'), matricule: z.string().trim().min(1).max(160), existing_student_id: z.uuid().nullable() }).strict(),
 ]);
 export function stageLabel(application: Pick<AdmissionApplication, 'workflow_stage' | 'legacy_state' | 'status' | 'student_id'>): string {
+  if (application.student_id || application.legacy_state?.admitted || application.legacy_state?.validated || application.workflow_stage === 'ADMIS_OFFICIEL') return 'Inscrit';
   if (application.workflow_stage) return APPLICATION_STAGES[application.workflow_stage];
-  if (application.student_id) return 'Inscrit';
-  if (application.legacy_state?.admitted || application.legacy_state?.validated) return 'Validé';
   if (application.status === 'BROUILLON') return 'Brouillon';
   return 'En étude';
 }
@@ -24,7 +23,7 @@ export type MacroStage = 'ALL' | 'VALIDE' | 'ETUDE' | 'ACADEMIE' | 'CORRIGER' | 
 
 export const MACRO_STAGES: { id: MacroStage; label: string; dot: 'blue' | 'green' | 'purple' | 'sky' | 'orange' | 'red' }[] = [
   { id: 'ALL', label: 'TOTAL', dot: 'blue' },
-  { id: 'VALIDE', label: 'VALIDÉS', dot: 'green' },
+  { id: 'VALIDE', label: 'INSCRITS / VALIDÉS', dot: 'green' },
   { id: 'ETUDE', label: 'EN ÉTUDE', dot: 'purple' },
   { id: 'ACADEMIE', label: 'À L’ACADÉMIE', dot: 'sky' },
   { id: 'CORRIGER', label: 'À CORRIGER', dot: 'orange' },
@@ -35,19 +34,19 @@ export function getApplicationMacroStage(item: AdmissionApplication): MacroStage
   if (item.workflow_stage === 'REFUSE') return 'REJETE';
   if (item.workflow_stage === 'TRANSMIS_ACADEMIE') return 'ACADEMIE';
   if (['INCOMPLET', 'A_COMPLETER'].includes(item.workflow_stage || '')) return 'CORRIGER';
-  if (['ADMISSIBLE', 'ATTENTE_PAIEMENT', 'ADMIS_OFFICIEL'].includes(item.workflow_stage || '') || Boolean(item.student_id) || Boolean(item.legacy_state?.admitted)) return 'VALIDE';
+  if (['ADMISSIBLE', 'ATTENTE_PAIEMENT', 'ADMIS_OFFICIEL'].includes(item.workflow_stage || '') || Boolean(item.student_id) || Boolean(item.legacy_student_id) || Boolean(item.legacy_state?.admitted) || Boolean(item.legacy_state?.validated)) return 'VALIDE';
   return 'ETUDE';
 }
 
 export function stageBadge(item: AdmissionApplication): { label: string; tone: string } {
-  if (item.student_id) {
-    return { label: 'DÉJÀ INSCRIT', tone: 'success' };
+  if (item.student_id || item.legacy_student_id || item.legacy_state?.admitted || item.legacy_state?.validated || item.workflow_stage === 'ADMIS_OFFICIEL') {
+    return { label: 'INSCRIT', tone: 'success' };
   }
   const macro = getApplicationMacroStage(item);
   switch (macro) {
     case 'VALIDE':
       return {
-        label: item.workflow_stage === 'ADMIS_OFFICIEL' ? 'ADMIS OFFICIEL' : item.workflow_stage === 'ATTENTE_PAIEMENT' ? 'ATTENTE PAIEMENT' : 'VALIDÉ',
+        label: item.workflow_stage === 'ATTENTE_PAIEMENT' ? 'ATTENTE PAIEMENT' : 'INSCRIT',
         tone: 'success',
       };
     case 'ETUDE':
