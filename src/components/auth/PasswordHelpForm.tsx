@@ -21,7 +21,7 @@ export default function PasswordHelpForm() {
     } finally { pending.current = false; setSubmitting(false); }
   }
   return <div className="auth-form-card"><Link className="auth-back-link" href="/connexion">Retour à la connexion</Link><h2>Mot de passe oublié</h2><p className="auth-form-description">Indiquez l’adresse email de votre compte. Si elle est reconnue, vous recevrez un lien pour choisir un nouveau mot de passe.</p>
-    {!done ? <form aria-busy={submitting} onSubmit={event => { event.preventDefault(); void requestReset(); }}><label className="form-group">Adresse email<input required disabled={submitting} className="input" type="email" maxLength={254} autoComplete="email" value={email} onChange={event => setEmail(event.target.value)} /></label><button className="btn btn-primary auth-submit" disabled={submitting}>{submitting ? 'Envoi…' : 'Recevoir un lien de réinitialisation'}</button></form> : <Link className="btn btn-primary auth-submit" href="/connexion">Revenir à la connexion</Link>}
+    {!done ? <form aria-busy={submitting} onSubmit={event => { event.preventDefault(); void requestReset(); }}><label className="form-group">Adresse email<input required disabled={submitting} className="input" type="email" maxLength={254} autoComplete="email" placeholder="votre.adresse@escen.university" value={email} onChange={event => setEmail(event.target.value)} /></label><button className="btn btn-primary auth-submit" disabled={submitting}>{submitting ? 'Envoi…' : 'Recevoir un lien de réinitialisation'}</button></form> : <Link className="btn btn-primary auth-submit" href="/connexion">Revenir à la connexion</Link>}
     {feedback && <div className={done ? 'info-box mt-2' : 'auth-error'} role={done ? 'status' : 'alert'}>{feedback}</div>}
   </div>;
 }

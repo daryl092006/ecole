@@ -1160,18 +1160,18 @@ textarea.input { min-height: 100px; resize: vertical; }
 .route-loading .school-logo { width: min(320px, 80vw); }
 .route-loading-inline { padding: 2rem; color: var(--text-secondary); }
 .route-denied p { margin: 1rem 0; color: var(--text-secondary); }
-.auth-layout { display: grid; grid-template-columns: minmax(0, 1fr) minmax(420px, 1fr); min-height: 100dvh; background: #f8fafc; color: #0f172a; }
-.auth-brand-panel { display: flex; flex-direction: column; justify-content: space-between; padding: clamp(2rem, 5vw, 5rem); border-right: 1px solid #e2e8f0; background: white; }
-.auth-brand-link { display: block; width: min(430px, 100%); }
-.auth-brand-copy { margin: 4rem 0; max-width: 500px; }
+.auth-layout { display: grid; grid-template-columns: minmax(360px, 1fr) minmax(440px, 1fr); min-height: 100dvh; background: #f8fafc; color: #0f172a; }
+.auth-brand-panel { display: flex; flex-direction: column; justify-content: space-between; padding: clamp(2rem, 3.5vw, 4rem); border-right: 1px solid #e2e8f0; background: white; overflow-y: auto; }
+.auth-brand-link { display: block; width: min(380px, 100%); }
+.auth-brand-copy { margin: clamp(1.5rem, 3.5vh, 3rem) 0; max-width: 480px; }
 .auth-eyebrow { display: block; color: #2563eb; letter-spacing: .12em; font-size: .75rem; font-weight: 600; text-transform: uppercase; }
-.auth-brand-copy h1 { font-size: clamp(2.8rem, 4.4vw, 4.7rem); letter-spacing: -.04em; line-height: 1.05; font-weight: 600; margin: 1.4rem 0; color: #0f172a; }
-.auth-brand-copy > p { color: #475569; font-size: 1.05rem; line-height: 1.75; max-width: 440px; }
-.auth-domains { display: grid; gap: .8rem; border-top: 1px solid #e2e8f0; padding-top: 1.5rem; margin-top: 2rem; color: #475569; font-size: .88rem; }
+.auth-brand-copy h1 { font-size: clamp(2.2rem, 3.2vw, 3.6rem); letter-spacing: -.03em; line-height: 1.1; font-weight: 600; margin: clamp(0.75rem, 1.8vh, 1.2rem) 0; color: #0f172a; text-wrap: balance; }
+.auth-brand-copy > p { color: #475569; font-size: clamp(0.95rem, 1.1vw, 1.05rem); line-height: 1.65; max-width: 420px; }
+.auth-domains { display: grid; gap: .65rem; border-top: 1px solid #e2e8f0; padding-top: clamp(0.85rem, 2vh, 1.25rem); margin-top: clamp(1rem, 2.5vh, 1.75rem); color: #475569; font-size: .88rem; }
 .auth-domains span { padding-left: .85rem; border-left: 2px solid #0284c7; }
-.auth-brand-footer { display: flex; flex-direction: column; gap: .5rem; color: #64748b; font-size: .76rem; line-height: 1.5; }
+.auth-brand-footer { display: flex; flex-direction: column; gap: .35rem; color: #64748b; font-size: .78rem; line-height: 1.45; padding-top: 1rem; }
 .auth-brand-footer > span:first-child { color: #0f172a; font-weight: 600; }
-.auth-form-panel { display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 3rem 2rem; }
+.auth-form-panel { display: flex; flex-direction: column; align-items: center; justify-content: center; padding: clamp(2rem, 4vw, 3.5rem) 2rem; overflow-y: auto; }
 .auth-form-card { width: 100%; max-width: 440px; padding: 2.5rem; background: white; border: 1px solid #e2e8f0; border-radius: 16px; box-shadow: 0 10px 25px -5px rgba(15, 23, 42, 0.08), 0 8px 10px -6px rgba(15, 23, 42, 0.04); }
 .auth-form-card h2 { font-size: 1.85rem; font-weight: 600; color: #0f172a; margin: .75rem 0; letter-spacing: -.03em; }
 .auth-form-description { color: #64748b; font-size: .88rem; line-height: 1.6; margin-bottom: 1.75rem; }
@@ -1200,20 +1200,20 @@ textarea.input { min-height: 100px; resize: vertical; }
 .not-found-code { font-size: 4rem; color: #222b50; font-weight: 600; letter-spacing: -.05em; }
 .not-found-page p { color: #63758a; max-width: 460px; line-height: 1.6; }
 @media (max-width: 1024px) {
-  .auth-layout { grid-template-columns: minmax(0, .85fr) minmax(380px, 1fr); }
-  .auth-brand-panel { padding: 2.5rem; }
-  .auth-form-panel { padding: 2rem 1.5rem; }
-  .auth-form-card { padding: 1.75rem; }
+  .auth-layout { display: flex; flex-direction: column; min-height: 100dvh; }
+  .auth-brand-panel { border-right: 0; border-bottom: 1px solid #e2e8f0; padding: 1.5rem 2rem; }
+  .auth-brand-link { width: min(340px, 100%); margin: 0 auto; }
+  .auth-brand-copy, .auth-brand-footer { display: none; }
+  .auth-form-panel { padding: 2.5rem 1.5rem; flex: 1; justify-content: center; }
+  .auth-form-card { padding: 2rem; max-width: 440px; }
 }
 @media (max-width: 768px) {
   .topbar-logo { min-width: 0; }
   .header-school-logo { width: min(126px, 100%); }
   .role-select { max-width: 108px; }
-  .auth-layout { display: flex; flex-direction: column; }
-  .auth-brand-panel { border-right: 0; border-bottom: 1px solid #e2e8f0; padding: 1.5rem; }
-  .auth-brand-link { width: min(330px, 100%); margin: 0 auto; }
-  .auth-brand-copy, .auth-brand-footer { display: none; }
-  .auth-form-panel { padding: 2rem 1rem; flex: 1; }
+  .auth-brand-panel { padding: 1.25rem 1rem; }
+  .auth-brand-link { width: min(280px, 100%); }
+  .auth-form-panel { padding: 1.5rem 1rem; }
   .auth-form-card { padding: 1.5rem; }
   .auth-form-card h2 { font-size: 1.7rem; }
   .auth-form-footer { margin-top: 1.5rem; }
