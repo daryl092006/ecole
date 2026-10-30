@@ -236,7 +236,7 @@ export default function ProfileWorkspace() {
                 onChange={event => setForm(prev => ({ ...prev, city: event.target.value }))}
               />
             </label>
-            <label className="form-group">
+            <label className="form-group card-full">
               Adresse de résidence (quartier, rue)
               <input
                 className="input"

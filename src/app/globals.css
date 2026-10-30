@@ -1476,6 +1476,10 @@ form { scroll-margin-top: 1rem; }
 @media(max-width:1024px) {
   .home-destinations { grid-template-columns: repeat(2,minmax(0,1fr)); }
   .home-bottom-grid { grid-template-columns: 1fr; }
+  .record-details-grid { grid-template-columns: repeat(2,minmax(0,1fr)); }
+  .page-intro { flex-direction: column; align-items: stretch; gap: 14px; }
+  .page-intro .btn-group { display: flex; flex-wrap: wrap; gap: 8px; width: 100%; }
+  .page-intro .btn-group > .btn { flex: 1 1 auto; }
 }
 @media(max-width:768px) { .main-content { padding: 18px 15px 36px; } .home-hero { flex-direction: column; align-items: flex-start; gap: 16px; } .home-metrics { grid-template-columns: repeat(2,minmax(0,1fr)); } .home-bottom-grid { grid-template-columns: 1fr; } .directory-toolbar { grid-template-columns: 1fr; } .record-details-grid { grid-template-columns: repeat(2,minmax(0,1fr)); } .connected-data-bar { flex-wrap: wrap; } .sidebar-close { color: white; } }
 @media(max-width:480px) { .page-intro { flex-direction: column; align-items: flex-start; gap: 12px; } .page-intro h1, .home-hero h1 { font-size: 25px; } .home-destinations { grid-template-columns: 1fr; } .home-metrics > div { padding: 16px; } .home-metrics span { font-size: 10px; } .directory-switch { gap: 7px; } .directory-switch button { flex-direction: column; align-items: flex-start; padding: 12px; gap: 4px; font-size: 10px; } .dataset-selector { gap: 6px; } .record-value { max-width: none; } .browser-search { min-width: 100%; } .browser-toolbar > .btn { width: 100%; } .record-details-grid { grid-template-columns: 1fr; } }
@@ -3727,9 +3731,11 @@ body.transcript-print-body { page: transcript; display: block; width: 190mm; hei
 .attendance-session-sheet > .card-header { margin-top: 16px; }
 .year-preparation-help { margin-bottom: 16px; color: var(--text-secondary); line-height: 1.6; }
 .phone-field > label { display: block; margin-bottom: .35rem; }
-.phone-input-row { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: .5rem; }
+.phone-input-row { display: grid; grid-template-columns: minmax(130px, 175px) minmax(0, 1fr); gap: .5rem; }
 .phone-input-row > :is(input, select) { min-width: 0; width: 100%; }
 @media (max-width: 480px) { .phone-input-row { grid-template-columns: minmax(0, 1fr); } }
+form > .drawer-form-actions,
+.reviewed-form-fields + .drawer-form-actions { margin-top: 1.5rem; }
 .browser-toolbar:empty { display: none; }
 .student-record-context { margin: 0 0 12px; color: var(--text-secondary); }
 .candidate-public-page { min-height: 100vh; background: var(--bg-main, #f4f6fa); color: var(--text-primary, #182333); }
