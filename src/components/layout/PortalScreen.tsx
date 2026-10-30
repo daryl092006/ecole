@@ -50,7 +50,7 @@ export default function PortalScreen({ section }: { tab: string; section: string
   if (state.session && ['espace_support', 'sys_support'].includes(section)) return <SupportWorkspace key={`${activeRole}:${state.academicYearSelection}`} />;
   if (state.session && ['espace_announcements', 'comm_announcements'].includes(section)) return <CommunicationsWorkspace key={`${activeRole}:${state.academicYearSelection}`} />;
   if (state.session && section === 'log_purchases') return <PurchasesWorkspace key={`${activeRole}:${state.academicYearSelection}`} />;
-  if (state.session && ['espace_documents', 'stud_cards'].includes(section)) return <StudentDocumentsWorkspace key={`${activeRole}:${state.academicYearSelection}`} />;
+  if (state.session && ['espace_documents', 'stud_cards'].includes(section)) return <StudentDocumentsWorkspace studentMatricule={section === 'espace_documents' ? (state.session.matricule || undefined) : undefined} key={`${activeRole}:${state.academicYearSelection}`} />;
   if (state.session && section === 'sys_logs') return <AuditJournalPanel />;
   if (state.session && section === 'sys_emails') return <EmailOutboxPanel key={`${activeRole}:${state.academicYearSelection}`} />;
   if (state.session && section === 'sys_backups') return <AuditJournalPanel exportMode />;
