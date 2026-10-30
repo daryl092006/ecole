@@ -174,7 +174,7 @@ export function getAvailableTabs(role: RoleName, permissions?: Permission[], glo
           if (!globalAccess) return false;
           const effective = permissions || roleAccess.permissions;
           if (subTab.id === 'web_applications') return effective.includes('application.view');
-          if (['web_applications', 'web_documents'].includes(subTab.id)) return [ROLES.DG, ROLES.DGA, ROLES.DA, ROLES.LOG, ROLES.RAF, ROLES.IT].includes(role as typeof ROLES.DG) && effective.includes('student.view');
+          if (['web_applications', 'web_documents'].includes(subTab.id)) return [ROLES.DG, ROLES.DGA, ROLES.DA, ROLES.LOG, ROLES.RAF, ROLES.MKT, ROLES.CC, ROLES.IT].includes(role as typeof ROLES.DG) && effective.includes('student.view');
           return effective.includes('communication.view') && ![ROLES.STUD, ROLES.DEL, ROLES.ENS].includes(role as typeof ROLES.STUD);
         }
         const effectiveRequired = SUBTAB_PERMISSIONS[subTab.id];
