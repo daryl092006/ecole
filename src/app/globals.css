@@ -1473,7 +1473,10 @@ form { scroll-margin-top: 1rem; }
 .record-details-grid dt { font-size: 11px; color: #64748b; margin-bottom: 5px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.04em; }
 .record-details-grid dd { font-size: 13px; color: #0f172a; overflow-wrap: anywhere; white-space: pre-wrap; font-weight: 500; }
 .data-browser .pill { gap: 4px; }
-@media(max-width:1024px) { .home-destinations { grid-template-columns: repeat(2,minmax(0,1fr)); } }
+@media(max-width:1024px) {
+  .home-destinations { grid-template-columns: repeat(2,minmax(0,1fr)); }
+  .home-bottom-grid { grid-template-columns: 1fr; }
+}
 @media(max-width:768px) { .main-content { padding: 18px 15px 36px; } .home-hero { flex-direction: column; align-items: flex-start; gap: 16px; } .home-metrics { grid-template-columns: repeat(2,minmax(0,1fr)); } .home-bottom-grid { grid-template-columns: 1fr; } .directory-toolbar { grid-template-columns: 1fr; } .record-details-grid { grid-template-columns: repeat(2,minmax(0,1fr)); } .connected-data-bar { flex-wrap: wrap; } .sidebar-close { color: white; } }
 @media(max-width:480px) { .page-intro { flex-direction: column; align-items: flex-start; gap: 12px; } .page-intro h1, .home-hero h1 { font-size: 25px; } .home-destinations { grid-template-columns: 1fr; } .home-metrics > div { padding: 16px; } .home-metrics span { font-size: 10px; } .directory-switch { gap: 7px; } .directory-switch button { flex-direction: column; align-items: flex-start; padding: 12px; gap: 4px; font-size: 10px; } .dataset-selector { gap: 6px; } .record-value { max-width: none; } .browser-search { min-width: 100%; } .browser-toolbar > .btn { width: 100%; } .record-details-grid { grid-template-columns: 1fr; } }
 
@@ -1595,7 +1598,7 @@ form { scroll-margin-top: 1rem; }
 .sidebar .nav-item { font-size: 14px; min-height: 44px; }
 .sidebar .subnav-item { font-size: 13px; padding: 10px; }
 .sidebar .nav-toggle { min-width: 40px; min-height: 44px; }
-.workspace-location { display: flex; align-items: center; justify-content: space-between; gap: 16px; margin-bottom: 14px; padding-bottom: 10px; border-bottom: 1px solid #f1f5f9; }
+.workspace-location { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 12px; margin-bottom: 14px; padding-bottom: 10px; border-bottom: 1px solid #f1f5f9; }
 .workspace-location .workspace-breadcrumb { margin: 0; }
 .connected-data-bar { border-top: 1px solid #e1e7eb; padding-top: 10px; margin-bottom: 18px; }
 
@@ -1757,8 +1760,8 @@ form { scroll-margin-top: 1rem; }
   .account-popover { position: fixed; top: 68px; right: 10px; width: min(320px, calc(100vw - 20px)); max-height: calc(100dvh - 80px); overflow-y: auto; }
 }
 
-.academic-year-control { display: flex; align-items: center; gap: 8px; min-width: 0; font-size: 12px; color: #475569; }
-.academic-year-control .select-input { min-width: 0; max-width: 310px; width: auto; padding: 8px 30px 8px 10px; font-size: 12px; }
+.academic-year-control { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; min-width: 0; font-size: 13px; color: #475569; }
+.academic-year-control .select-input { min-width: 0; width: auto; max-width: 100%; padding: 8px 30px 8px 10px; font-size: 13px; }
 .academic-year-control > a { color: #2563eb; font-weight: 600; }
 .academic-year-row { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px; padding: 14px 0; border-top: 1px solid #e2e8f0; }
 .year-summary-box { background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 14px 16px; margin: 12px 0 16px; }
@@ -3046,7 +3049,7 @@ input[type="radio"] {
 .home-navigation .card a:hover, .home-navigation .card a:focus-visible { background: var(--accent-light); }
 .home-navigation .card a svg { flex-shrink: 0; }
 
-.quick-actions-bar { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 160px), 1fr)); gap: .75rem; margin-top: .6rem; }
+.quick-actions-bar { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 180px), 1fr)); gap: .75rem; margin-top: .6rem; }
 .quick-action-btn { display: inline-flex; align-items: center; gap: .55rem; padding: .65rem 1.05rem; background: var(--bg-card); border: 1px solid var(--border-color); border-radius: 8px; color: var(--text-primary); text-decoration: none; font-size: .88rem; font-weight: 600; box-shadow: 0 1px 2px rgba(0,0,0,0.04); transition: all .15s ease; }
 .quick-action-btn:hover, .quick-action-btn:focus-visible { background: var(--accent-light); border-color: var(--color-primary, #2563eb); color: var(--color-primary, #2563eb); transform: translateY(-1px); box-shadow: 0 2px 5px rgba(0,0,0,0.08); }
 .quick-action-btn svg { flex-shrink: 0; }
