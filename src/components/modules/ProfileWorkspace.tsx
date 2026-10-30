@@ -89,9 +89,9 @@ export default function ProfileWorkspace() {
     <div className="domain-workspace workspace-stack">
       <div className="page-intro">
         <div>
-          <span className="page-eyebrow">ESPACE PERSONNEL ESCEN</span>
+          <span className="page-eyebrow">ESPACE PERSONNEL</span>
           <h1>Mon profil et mes coordonnées</h1>
-          <p>Consultez votre identité officielle et complétez vos informations personnelles. Toute mise à jour est immédiatement ajoutée à votre dossier ESCEN.</p>
+          <p>Consultez et mettez à jour vos coordonnées personnelles.</p>
         </div>
         <div className="btn-group">
           <Link className="btn btn-outline" href="/mot-de-passe-modifier">Modifier mon mot de passe</Link>
@@ -103,10 +103,7 @@ export default function ProfileWorkspace() {
 
       <section className="card card-full">
         <div className="card-header">
-          <div>
-            <h2>Identité officielle et rattachement</h2>
-            <p className="cell-sub">Ces informations d’état civil et d’affectation sont gérées par l’administration ESCEN.</p>
-          </div>
+          <h2>Identité officielle et rattachement</h2>
         </div>
         <dl className="record-details-grid">
           <div>
@@ -142,10 +139,7 @@ export default function ProfileWorkspace() {
 
       <section className="card card-full">
         <div className="card-header">
-          <div>
-            <h2>Compléter ou mettre à jour mes informations de dossier</h2>
-            <p className="cell-sub">Vos coordonnées téléphoniques (avec indicatif pays), votre adresse, votre nationalité et votre date de naissance alimentent directement votre fiche officielle.</p>
-          </div>
+          <h2>Coordonnées personnelles</h2>
         </div>
 
         <ReviewedForm
@@ -153,7 +147,7 @@ export default function ProfileWorkspace() {
           error={error}
           confirmLabel="Enregistrer dans mon dossier"
           fields={changedFields.length > 0 ? changedFields : [{ label: 'Profil', value: 'Confirmation des coordonnées actuelles' }]}
-          consequence="Ces informations seront enregistrées dans votre dossier officiel ESCEN (table des personnes) et visibles par les services habilités."
+          consequence="Ces informations seront enregistrées dans votre dossier officiel ESCEN."
           onConfirm={event => {
             event.preventDefault();
             setSaving(true);

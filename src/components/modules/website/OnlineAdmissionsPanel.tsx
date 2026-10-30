@@ -523,7 +523,7 @@ export default function OnlineAdmissionsPanel({
               { label: 'Formation', value: convertingApp.intake_label || 'Non renseignée' },
               { label: 'Motif', value: convReason },
             ]}
-            consequence="Le dossier étudiant sera créé dans la base de données sous ce matricule. La candidature sera classée pour admission, puis la fenêtre d’inscription annuelle s’ouvrira immédiatement pour finaliser la classe et le contrat."
+            consequence="Le dossier étudiant officiel sera créé avec ce matricule. La candidature sera validée pour l’inscription annuelle."
             onConfirm={async event => {
               event.preventDefault();
               setConvBusy(true);
