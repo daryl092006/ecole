@@ -40,6 +40,36 @@ test('Contrat en brouillon : approbation et continuité dans Frais et versements
  expect(operations).toHaveLength(1);
  expect(operations[0]).toMatchObject({action:'approve_contract',enrollmentId:'00000000-0000-4000-8000-000000000101',dueOn:'2026-10-15'});
 });
+for (const width of [390, 1440]) test(`Approbation : contrat et échéance correspondent à l’inscription sélectionnée à ${width}px`, async ({page}) => {
+ await page.setViewportSize({width,height:1000});
+ const operations:Record<string,unknown>[]=[];
+ const first='00000000-0000-4000-8000-000000000101';
+ const second='00000000-0000-4000-8000-000000000102';
+ const withoutDraft='00000000-0000-4000-8000-000000000103';
+ await page.route('**/api/students/*/operations',route=>{
+  if(route.request().method()==='POST'){operations.push(route.request().postDataJSON());return route.fulfill({status:201,json:{revision:2}});}
+  return route.fulfill({json:{revision:1,enrollments:[{id:first,status:'INSCRIT',enrolledOn:'2026-10-15'},{id:second,status:'INSCRIT',enrolledOn:'2026-10-20'},{id:withoutDraft,status:'INSCRIT',enrolledOn:'2026-10-22'}],contracts:[{id:'C1',versionId:'V1',enrollmentId:first,reference:'CON-001',status:'DRAFT',amount:530000},{id:'C2',versionId:'V2',enrollmentId:second,reference:'CON-002',status:'DRAFT',amount:220000}],payments:[],paid:0}});
+ });
+ await page.goto('/etudiants/ESCEN-TEST-001');
+ await page.getByRole('navigation',{name:'Sections du dossier étudiant'}).getByRole('button',{name:'Frais et versements',exact:true}).click();
+ await page.getByRole('button',{name:'Approuver le contrat',exact:true}).click();
+ const dialog=page.getByRole('dialog');
+ const enrollment=dialog.getByRole('combobox',{name:'Inscription',exact:true});
+ await expect(enrollment.locator(`option[value="${withoutDraft}"]`)).toHaveCount(0);
+ await enrollment.selectOption(second);
+ await expect(dialog.getByLabel('Date d’échéance contractuelle',{exact:true})).toHaveValue('2026-10-20');
+ await dialog.getByLabel('Motif',{exact:true}).fill('Approbation du second contrat vérifiée');
+ await dialog.getByRole('button',{name:'Vérifier l’opération'}).click();
+ const review=dialog.getByRole('region',{name:'Vérification avant enregistrement'});
+ await expect(review).toContainText('CON-002');
+ await expect(review).not.toContainText('CON-001');
+ expect(operations).toHaveLength(0);
+ await dialog.getByRole('button',{name:'Confirmer l’approbation du contrat',exact:true}).click();
+ await expect(dialog).toHaveCount(0);
+ expect(operations).toHaveLength(1);
+ expect(operations[0]).toMatchObject({action:'approve_contract',enrollmentId:second,dueOn:'2026-10-20'});
+});
+
 test('Changement de groupe relu et enregistré une seule fois',async({page})=>{
  await authenticateFixture(page);
  const operations:Record<string,unknown>[]=[];
