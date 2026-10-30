@@ -10,6 +10,7 @@ export const ALL_TABS = [
     subTabs: [
       { id: 'espace_dashboard', name: 'Tableau de bord' },
       { id: 'espace_profile', name: 'Mon profil' },
+      { id: 'espace_attendance', name: 'Mon assiduité' },
       { id: 'espace_support', name: 'Support technique' },
       { id: 'espace_announcements', name: 'Annonces & Actualités' },
       { id: 'espace_exams', name: 'Mes épreuves en ligne' },
@@ -121,6 +122,7 @@ export const ALL_TABS = [
 
 const SUBTAB_PERMISSIONS: Record<string, Permission[]> = {
   espace_exams: ['exam.take'],
+  espace_attendance: ['attendance.view'],
   web_applications: ['application.view', 'student.view'],
   web_documents: ['student.view'],
   web_brochures: ['communication.view'],
@@ -182,7 +184,7 @@ export function getAvailableTabs(role: RoleName, permissions?: Permission[], glo
         if (permissions && effectiveRequired && !effectiveRequired.some(permission => permissions.includes(permission))) return false;
         if (role === ROLES.IT && !permissions) return true;
         if (role === ROLES.IT && permissions) { const required = SUBTAB_PERMISSIONS[subTab.id]; return !required || required.some(permission => permissions.includes(permission)); }
-        if (['espace_documents', 'espace_finance'].includes(subTab.id)) return role === ROLES.STUD || role === ROLES.DEL;
+        if (['espace_documents', 'espace_finance', 'espace_attendance'].includes(subTab.id)) return role === ROLES.STUD || role === ROLES.DEL;
         if (subTab.id === 'acad_jury') return [ROLES.DG, ROLES.DGA, ROLES.DA, ROLES.LOG].includes(role as typeof ROLES.DG);
         if (subTab.id === 'acad_settings') return role === ROLES.DA || role === ROLES.DG;
         if (subTab.id === 'staff_records') return canStaff && (permissions || roleAccess.permissions).includes('staff.view');

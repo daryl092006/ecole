@@ -426,7 +426,7 @@ export default function WorkspaceHome({ mode = 'home' }: { mode?: 'home' | 'over
     [ROLES.ACHATS]: ['log_purchases', 'log_suppliers', 'log_assets'],
     [ROLES.SITE]: ['web_applications', 'web_documents', 'web_brochures', 'comm_news'],
     [ROLES.IT]: ['staff_list', 'stud_accounts', 'sys_support', 'acad_reference', 'sys_logs'],
-    [ROLES.STUD]: ['acad_schedule', 'espace_exams', 'espace_documents', 'espace_finance', 'espace_announcements', 'espace_support'],
+    [ROLES.STUD]: ['acad_schedule', 'espace_attendance', 'espace_exams', 'espace_documents', 'espace_finance', 'espace_announcements', 'espace_support'],
     [ROLES.DEL]: ['acad_attendance', 'espace_exams', 'espace_documents', 'espace_finance', 'acad_complaints', 'espace_support'],
     [ROLES.STG]: ['stud_list', 'acad_schedule', 'espace_announcements', 'espace_support'],
   };
@@ -436,7 +436,7 @@ export default function WorkspaceHome({ mode = 'home' }: { mode?: 'home' | 'over
     acad_grades: BookOpen, acad_schedule: CalendarDays, acad_attendance: ClipboardCheck,
     staff_teachers: Users, staff_list: Users, stud_accounts: Users, acad_reference: CalendarDays,
     acad_program: BookOpen, log_purchases: Package, log_suppliers: Package, log_assets: Package,
-    espace_exams: ClipboardCheck, espace_documents: GraduationCap, espace_finance: Wallet,
+    espace_attendance: ClipboardCheck, espace_exams: ClipboardCheck, espace_documents: GraduationCap, espace_finance: Wallet,
     sys_logs: ShieldCheck, sys_support: Server,
   };
   const authorizedPages = state.availableTabs.flatMap(tab => tab.subTabs || []);

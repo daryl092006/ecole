@@ -3,6 +3,7 @@ export const PORTAL_ROUTES: PortalRoute[] = [
   { tab: 'espace', section: 'espace_exams', href: '/mon-espace/epreuves', title: 'Mes épreuves en ligne' },
   { tab: 'espace', section: 'espace_dashboard', href: '/mon-espace', title: 'Mon espace' },
   { tab: 'espace', section: 'espace_profile', href: '/mon-espace/profil', title: 'Mon profil' },
+  { tab: 'espace', section: 'espace_attendance', href: '/mon-espace/assiduite', title: 'Mon assiduité' },
   { tab: 'espace', section: 'espace_support', href: '/mon-espace/support', title: 'Support technique' },
   { tab: 'espace', section: 'espace_announcements', href: '/mon-espace/annonces', title: 'Annonces et actualités' },
   { tab: 'espace', section: 'espace_documents', href: '/mon-espace/documents', title: 'Mes documents' },

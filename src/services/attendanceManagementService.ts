@@ -24,7 +24,7 @@ export function attendanceSessions(snapshot: RelationalSnapshot, context: Persis
       && (!grant.academic_year_id || grant.academic_year_id === offering.academic_year_id))) return false;
     if (context.role === ROLES.ENS) return !!context.teacherId && (session.replacement_teacher_id || session.teacher_id) === context.teacherId;
     if (context.role === ROLES.SURV) return supervised.has(session.id);
-    if (context.role === ROLES.DEL) {
+    if (context.role === ROLES.DEL || context.role === ROLES.STUD) {
       const day = text(session.starts_at).slice(0, 10);
       return !!context.studentId && rows('enrollment_groups').some(link => link.group_id === session.group_id
         && link.offering_id === session.offering_id && text(link.valid_from) <= day

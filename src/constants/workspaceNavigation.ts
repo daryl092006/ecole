@@ -8,7 +8,7 @@ export interface NavigationGroup {
 
 // Presentation only: destinations are intersected with the existing authorized pages.
 export const WORKSPACE_NAVIGATION: NavigationGroup[] = [
-  { id: 'home', name: 'Mon espace', icon: 'Home', category: 'Accueil et suivi', sections: ['espace_exams', 'espace_dashboard', 'espace_profile', 'espace_announcements', 'espace_documents', 'espace_finance', 'espace_support'] },
+  { id: 'home', name: 'Mon espace', icon: 'Home', category: 'Accueil et suivi', sections: ['espace_exams', 'espace_dashboard', 'espace_profile', 'espace_attendance', 'espace_announcements', 'espace_documents', 'espace_finance', 'espace_support'] },
   { id: 'overview', name: 'Pilotage', icon: 'BarChart2', category: 'Accueil et suivi', sections: ['dashboard_kpis', 'dashboard_reports'] },
   { id: 'year', name: 'Année scolaire', icon: 'CalendarDays', category: 'Scolarité', sections: ['acad_reference', 'acad_settings'] },
   { id: 'applications', name: 'Candidatures', icon: 'ClipboardCheck', category: 'Scolarité', sections: ['web_applications'] },
@@ -36,7 +36,7 @@ export function getWorkspaceNavigation(tabs: AuthorizedTab[], options?: { hideSt
     pages: group.sections
       .filter(id => {
         if (!shouldDeduplicateStaffHome) return true;
-        if (['espace_documents', 'espace_finance'].includes(id)) return false;
+        if (['espace_documents', 'espace_finance', 'espace_attendance'].includes(id)) return false;
         if (id === 'espace_announcements' && (pageIds.has('comm_announcements') || pageIds.has('comm_news'))) return false;
         if (id === 'espace_support' && pageIds.has('sys_support')) return false;
         return true;

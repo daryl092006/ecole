@@ -134,8 +134,9 @@ export function filterRelationalSnapshot(snapshot: RelationalSnapshot, context: 
     source[name] = collection.filter(row => {
       if (name === 'purchases') return purchaseIds.has(row.id);
       if (name === 'purchase_lines' || name === 'purchase_receipts') return purchaseIds.has(field(row, 'purchase_id'));
-      if (name === 'attendances' || name === 'teacher_attendances') return attendanceSessionIds.has(field(row, 'session_id'));
-      if (name === 'absence_justifications') return attendanceIds.has(field(row, 'attendance_id')) && (context.role !== ROLES.DEL
+      if (name === 'attendances') return attendanceSessionIds.has(field(row, 'session_id')) && (context.role !== ROLES.STUD || personalEnrollments.has(field(row, 'enrollment_id')));
+      if (name === 'teacher_attendances') return context.role !== ROLES.STUD && attendanceSessionIds.has(field(row, 'session_id'));
+      if (name === 'absence_justifications') return attendanceIds.has(field(row, 'attendance_id')) && (!self
         || rows('attendances').some(attendance => attendance.id === row.attendance_id && personalEnrollments.has(field(attendance, 'enrollment_id'))));
       if (name === 'people') return peopleIds.has(row.id);
       if (name === 'staff' || name === 'staff_contracts') return unscoped || (name === 'staff' ? row.person_id === context.personId : rows('staff').some(staff => staff.id === row.staff_id && staff.person_id === context.personId));
