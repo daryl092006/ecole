@@ -87,8 +87,8 @@ export async function updatePersonnel(personId: string, values: import('@/types/
 export async function archivePersonnel(personId:string, revision:number, reason:string, role:RoleName):Promise<void> {
   await readResponse(await fetch(`/api/staff/${encodeURIComponent(personId)}`,{method:'DELETE',headers:{...await headers(role),'Content-Type':'application/json'},body:JSON.stringify({revision,reason})}));
 }
-export async function createStudentRecord(matricule:string, person:Record<string,string>,role:RoleName):Promise<{matricule:string}> {
-  return readResponse(await fetch('/api/students',{method:'POST',headers:{...await headers(role),'Content-Type':'application/json'},body:JSON.stringify({matricule,person})}));
+export async function createStudentRecord(matricule:string | undefined, person:Record<string,string>,role:RoleName):Promise<{matricule:string}> {
+  return readResponse(await fetch('/api/students',{method:'POST',headers:{...await headers(role),'Content-Type':'application/json'},body:JSON.stringify({...(matricule ? {matricule} : {}),person})}));
 }
 export async function archiveStudentRecord(matricule:string, reason:string, role:RoleName):Promise<void> {
   await readResponse(await fetch(`/api/students/${encodeURIComponent(matricule)}`,{method:'DELETE',headers:{...await headers(role),'Content-Type':'application/json'},body:JSON.stringify({reason})}));
