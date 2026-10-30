@@ -10,7 +10,7 @@ export const admissionCommandSchema = z.discriminatedUnion('action', [
   z.object({ ...command, action: z.literal('complete'), checked_documents: z.array(z.uuid()).max(24), identity_checked: z.literal(true), guardians_checked: z.literal(true) }).strict(),
   z.object({ ...command, action: z.literal('confirm_payment'), amount: z.number().int().positive().max(999999999999), channel_id: z.uuid(), reference: z.string().trim().min(3).max(160) }).strict(),
   z.object({ ...command, action: z.literal('reverse_payment'), payment_id: z.uuid() }).strict(),
-  z.object({ ...command, action: z.literal('create_student'), matricule: z.string().trim().min(1).max(160), existing_student_id: z.uuid().nullable() }).strict(),
+  z.object({ ...command, action: z.literal('create_student'), matricule: z.string().trim().min(1).max(160).optional(), existing_student_id: z.uuid().nullable() }).strict(),
 ]);
 export function stageLabel(application: Pick<AdmissionApplication, 'workflow_stage' | 'legacy_state' | 'status' | 'student_id'>): string {
   if (application.student_id || application.legacy_state?.admitted || application.legacy_state?.validated || application.workflow_stage === 'ADMIS_OFFICIEL') return 'Inscrit';

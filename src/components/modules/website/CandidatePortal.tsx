@@ -74,6 +74,19 @@ export default function CandidatePortal({ tracking = false }: { tracking?: boole
         {['NOUVELLE','RECUE','INCOMPLET','A_COMPLETER'].includes(app.workflow_stage || '') && <button className="btn btn-primary" onClick={() => setEditing(true)}>Compléter mon dossier</button>}
         {app.registration_fee_due !== null && <p>Frais d’inscription : {Number(app.registration_fee_due).toLocaleString('fr-FR')} FCFA · Confirmé : {Number(app.registration_fee_paid).toLocaleString('fr-FR')} FCFA.</p>}
         {app.workflow_stage === 'ADMISSIBLE' || app.workflow_stage === 'ATTENTE_PAIEMENT' ? <p>L’admissibilité est sous réserve du règlement des frais d’inscription. Votre admission sera officielle après confirmation du paiement par ESCEN.</p> : null}
+        {(app.workflow_stage === 'ADMIS_OFFICIEL' || Boolean(app.student_id)) && (
+          <div className="restricted-box" style={{ marginTop: 16 }}>
+            <h2>Félicitations, votre admission est officielle !</h2>
+            <p>Vos accès officiels ont été activés. Vous pouvez dès à présent vous connecter à votre Espace Étudiant et à vos outils Microsoft 365.</p>
+            <div style={{ marginTop: 12, marginBottom: 12, display: 'flex', gap: 10, flexWrap: 'wrap' }}>
+              <Link href="/" className="btn btn-primary">Se connecter à mon Espace Étudiant</Link>
+              <a href="https://office.com" target="_blank" rel="noreferrer" className="btn btn-outline">Ouvrir Microsoft 365 (Office, Teams)</a>
+            </div>
+            <p style={{ fontSize: 13, margin: 0 }}>
+              Vos identifiants officiels (matricule et email institutionnel @escen.university) vous ont été transmis par email sur <strong>{app.identity.email}</strong>.
+            </p>
+          </div>
+        )}
       </section><section className="card"><h2>Suivi de mon dossier</h2><ol className="candidate-history">{app.events.map(event => <li key={event.id}><strong>{new Date(event.created_at).toLocaleString('fr-FR')}</strong><p>{event.reason}</p></li>)}</ol></section>
       <section className="card"><h2>Mes documents</h2>{app.documents.length ? <ul>{app.documents.map(doc => <li key={doc.id}>{DOCUMENT_LABELS[doc.document_key] || doc.document_key} · {doc.filename}</li>)}</ul> : <p>Aucune pièce déposée. Vous pourrez compléter votre dossier si l’admission le demande.</p>}</section>
       <section className="card"><h2>Mes courriers</h2>{app.letters.length ? app.letters.map(letter => <p key={letter.id}><a className="btn btn-outline" href={`/api/candidate-dossier?letter=${letter.id}`} target="_blank" rel="noreferrer">Ouvrir {letter.kind === 'ADMISSIBILITE' ? 'la lettre d’admissibilité' : letter.kind === 'REFUS' ? 'la lettre de refus' : 'la confirmation d’admission'}</a></p>) : <p>Les décisions et courriers apparaîtront ici.</p>}</section>

@@ -5,6 +5,7 @@ import { boundedRequest, hashWebsiteToken, websiteRpc } from '@/server/website';
 import { admissionCommandSchema, applicationLetterHtml, ADMISSION_ACTIONS } from '@/services/admissionsService';
 import { attemptApplicationEmails, portalOrigin, submissionSchema, submitApplication } from '@/server/admissions';
 import { emailConfiguration } from '@/server/emailTransport';
+import { generateNextStudentMatricule, provisionStudentComplete } from '@/services/studentProvisioningService';
 import type { AdmissionsContext } from '@/types/admissions';
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
@@ -72,7 +73,32 @@ export async function POST(request: Request) {
       const token = randomBytes(32).toString('hex');
       payload.access_token_hash = hashWebsiteToken(token); payload.access_url = `${portalOrigin(request)}/candidature/suivi#access=${token}`;
     }
+    if (input.action === 'create_student' && !payload.existing_student_id && !payload.matricule) {
+      payload.matricule = await generateNextStudentMatricule(client, yearId);
+    }
     const data = await websiteRpc(client, 'escen_application_command', { p_actor_id: context.accountId, p_role_code: context.roleCode, p_year_id: yearId, p_action: input.action, p_data: payload });
+
+    if (input.action === 'create_student' && data?.student_id) {
+      const studentId = String(data.student_id);
+      const { data: studentRow } = await client.from('students').select('person_id').eq('id', studentId).maybeSingle();
+      const personId = String(studentRow?.person_id || '');
+      const identity = (data.identity || {}) as Record<string, unknown>;
+
+      if (personId) {
+        await provisionStudentComplete(client, {
+          applicationId: String(data.id),
+          studentId,
+          personId,
+          firstname: String(identity.prenom || ''),
+          lastname: String(identity.nom || ''),
+          personalEmail: String(identity.email || ''),
+          intakeId: data.intake_id ? String(data.intake_id) : null,
+          academicYearId: yearId,
+          actorId: context.accountId,
+        });
+      }
+    }
+
     await attemptApplicationEmails(client);
     return Response.json(data, { headers: { 'Cache-Control': 'no-store' } });
   } catch (error) { return errorResponse(error); }

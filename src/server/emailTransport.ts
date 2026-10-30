@@ -9,7 +9,9 @@ export function emailConfiguration(env: Environment = process.env): EmailConfigu
   const provider = env.ESCEN_EMAIL_PROVIDER === 'resend' ? 'resend' : env.ESCEN_EMAIL_PROVIDER === 'microsoft' ? 'microsoft' : null;
   const from = z.email().safeParse(env.ESCEN_EMAIL_FROM?.trim());
   const credentials = provider === 'microsoft'
-    ? z.uuid().safeParse(env.MICROSOFT_TENANT_ID?.trim()).success && z.uuid().safeParse(env.MICROSOFT_CLIENT_ID?.trim()).success && !!env.MICROSOFT_CLIENT_SECRET?.trim()
+    ? z.uuid().safeParse((env.MICROSOFT_TENANT_ID || env.AZURE_TENANT_ID)?.trim()).success &&
+      z.uuid().safeParse((env.MICROSOFT_CLIENT_ID || env.AZURE_CLIENT_ID)?.trim()).success &&
+      !!(env.MICROSOFT_CLIENT_SECRET || env.AZURE_CLIENT_SECRET)?.trim()
     : !!env.RESEND_API_KEY?.trim();
   const ready = !!(provider && from.success && credentials && env.ESCEN_EMAIL_ENABLED === 'true');
   return { ready, provider, from: from.success ? from.data : null,
@@ -37,12 +39,16 @@ export async function deliverEmail(message: QueuedEmail, env: Environment = proc
 
 async function deliverMicrosoftEmail(message: QueuedEmail, from: string, env: Environment, send: typeof fetch): Promise<EmailOutcome> {
   let accessToken: string;
+  const tenantId = (env.MICROSOFT_TENANT_ID || env.AZURE_TENANT_ID)?.trim();
+  const clientId = (env.MICROSOFT_CLIENT_ID || env.AZURE_CLIENT_ID)?.trim();
+  const clientSecret = env.MICROSOFT_CLIENT_SECRET || env.AZURE_CLIENT_SECRET;
+  if (!tenantId || !clientId || !clientSecret) return { status: 'FAILED', error: 'CONFIGURATION' };
   // Authentication cannot send a message: failures here are safe to classify as FAILED.
   try {
-    const response = await send(`https://login.microsoftonline.com/${env.MICROSOFT_TENANT_ID!.trim()}/oauth2/v2.0/token`, {
+    const response = await send(`https://login.microsoftonline.com/${tenantId}/oauth2/v2.0/token`, {
       method: 'POST', signal: AbortSignal.timeout(4000), redirect: 'error', cache: 'no-store',
       headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-      body: new URLSearchParams({ client_id: env.MICROSOFT_CLIENT_ID!.trim(), client_secret: env.MICROSOFT_CLIENT_SECRET!,
+      body: new URLSearchParams({ client_id: clientId, client_secret: clientSecret,
         grant_type: 'client_credentials', scope: 'https://graph.microsoft.com/.default' }),
     });
     if (!response.ok) return { status: 'FAILED', error: 'CONFIGURATION' };
