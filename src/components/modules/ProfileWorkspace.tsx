@@ -7,6 +7,7 @@ import PhoneInput from '@/components/ui/PhoneInput';
 import CountrySelect from '@/components/ui/CountrySelect';
 import ReviewedForm from '@/components/ui/ReviewedForm';
 import DrawerActions from '@/components/ui/DrawerActions';
+import StudentIdCardBadge from '@/components/modules/student/StudentIdCardBadge';
 import { saveOwnProfile } from '@/services/remoteCampusService';
 import { displayedPhoneNumber } from '@/services/phoneNumberService';
 
@@ -100,6 +101,18 @@ export default function ProfileWorkspace() {
       </div>
 
       {success && <p className="card" role="status">{success}</p>}
+
+      {session?.matricule && (
+        <StudentIdCardBadge
+          firstname={displayFirstname}
+          lastname={displayLastname}
+          matricule={session.matricule}
+          filiere={studentDossier?.filiere || ''}
+          niveau={studentDossier?.niveau || ''}
+          groupe={studentDossier?.groupe || ''}
+          academicYear={portal.academicYearContext?.years?.find(y => y.id === portal.academicYearContext?.selectedYearId)?.name || '2026-2027'}
+        />
+      )}
 
       <section className="card card-full">
         <div className="card-header">
