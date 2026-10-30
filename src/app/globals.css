@@ -4689,3 +4689,121 @@ form > .drawer-form-actions,
 .schedule-date-selection li { display: flex; align-items: center; justify-content: space-between; gap: .5rem; padding: .4rem 0; border-bottom: 1px solid var(--border); }
 .schedule-date-selection time { min-width: 0; overflow-wrap: anywhere; }
 .schedule-date-selection button { flex-shrink: 0; }
+
+/* ==========================================================================
+   GLOBAL REFINEMENT & VISUAL LIGHTENING (Allègement visuel et titres)
+   ========================================================================== */
+:root {
+  --radius-lg: 10px;
+  --radius-xl: 12px;
+}
+
+/* 1. Titres plus fins, modernes et aérés */
+.page-intro h1,
+.module-header h1,
+.home-hero h1,
+.app-wrapper .page-intro h1,
+.app-wrapper .module-header h1 {
+  font-size: clamp(1.25rem, 1.8vw, 1.55rem) !important;
+  font-weight: 600 !important;
+  letter-spacing: -0.025em !important;
+  line-height: 1.25 !important;
+  margin: 0.2rem 0 0.4rem 0 !important;
+  color: #0f172a !important;
+  border-left: none !important;
+  padding-left: 0 !important;
+}
+
+.card h2,
+.card-header h2,
+.detail-drawer-header h2 {
+  font-size: 1.05rem !important;
+  font-weight: 600 !important;
+  letter-spacing: -0.015em !important;
+  color: #1e293b !important;
+}
+
+.card h3,
+.page-eyebrow {
+  font-size: 0.8rem !important;
+  font-weight: 600 !important;
+  text-transform: uppercase !important;
+  letter-spacing: 0.05em !important;
+}
+
+.page-intro p,
+.module-header p {
+  font-size: 0.82rem !important;
+  color: #64748b !important;
+  line-height: 1.5 !important;
+  margin-top: 0.2rem !important;
+}
+
+/* 2. Cartes et conteneurs allégés */
+.card {
+  padding: 1.15rem !important;
+  border: 1px solid #e2e8f0 !important;
+  border-radius: 10px !important;
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.03) !important;
+}
+
+.card-header {
+  padding-bottom: 0.75rem !important;
+  margin-bottom: 0.85rem !important;
+  border-bottom: 1px solid #f1f5f9 !important;
+}
+
+/* 3. Tableaux compacts et lisibles */
+.data-table th {
+  padding: 0.55rem 0.85rem !important;
+  font-size: 0.72rem !important;
+  font-weight: 600 !important;
+  background: #f8fafc !important;
+  color: #475569 !important;
+  border-bottom: 1px solid #e2e8f0 !important;
+}
+
+.data-table td {
+  padding: 0.55rem 0.85rem !important;
+  font-size: 0.825rem !important;
+  line-height: 1.4 !important;
+  border-bottom: 1px solid #f1f5f9 !important;
+}
+
+.cell-main {
+  font-weight: 500 !important;
+  font-size: 0.84rem !important;
+}
+
+.cell-sub {
+  font-size: 0.72rem !important;
+  color: #64748b !important;
+  margin-top: 0.1rem !important;
+}
+
+/* 4. Encadrés d'information affinés */
+.info-box,
+.review-notice {
+  padding: 0.6rem 0.85rem !important;
+  border-radius: 6px !important;
+  font-size: 0.8rem !important;
+  line-height: 1.45 !important;
+  margin: 0.65rem 0 !important;
+  border-width: 1px !important;
+  border-left-width: 3px !important;
+  border-left-color: #2563eb !important;
+}
+
+/* 5. Boutons et contrôles plus fins */
+.btn {
+  min-height: 36px !important;
+  padding: 0.4rem 0.85rem !important;
+  font-size: 0.82rem !important;
+  border-radius: 6px !important;
+}
+
+.btn-sm {
+  min-height: 28px !important;
+  padding: 0.25rem 0.55rem !important;
+  font-size: 0.75rem !important;
+}
