@@ -12,7 +12,7 @@ export interface WebsiteIntake {
 export interface OnlineApplication {
   legacy_source_row_id?: string | null;
   legacy_student_id?: string | null;
-  legacy_state?: { admitted: boolean; admission_date?: string | null; program_unresolved: boolean; missing_documents: number; source_year?: string; } | null;
+  legacy_state?: { admitted: boolean; admission_date?: string | null; program_unresolved: boolean; missing_documents: number; source_year?: string; validated?: boolean; fees_paid?: boolean; } | null;
   id: string; reference: string; identity: Record<string, string>;
   diploma: Record<string, string>; guardians: Record<string, string>[];
   academic_year_id?: string | null; intake_id: string | null; status: 'BROUILLON' | 'RECU' | 'EN_ANALYSE' | 'CLASSE';

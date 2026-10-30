@@ -29,8 +29,8 @@ const ACTION_RESULTS: Record<AdmissionAction, string> = {
   create_student: 'Admission conservée ; dossier étudiant créé ou relié',
 };
 function stageTone(item: AdmissionApplication) {
-  if (!item.workflow_stage) return item.status === 'BROUILLON' ? 'draft' : 'historical';
-  if (item.workflow_stage === 'ADMIS_OFFICIEL') return 'success';
+  if (item.workflow_stage === 'ADMIS_OFFICIEL' || item.student_id || item.legacy_student_id || item.legacy_state?.admitted || item.legacy_state?.validated) return 'success';
+  if (!item.workflow_stage) return item.status === 'BROUILLON' ? 'draft' : 'active';
   if (item.workflow_stage === 'REFUSE') return 'danger';
   if (['INCOMPLET','A_COMPLETER','ADMISSIBLE','ATTENTE_PAIEMENT'].includes(item.workflow_stage)) return 'warning';
   return 'active';
@@ -338,11 +338,11 @@ export default function AdmissionsWorkflowPanel() {
           </div>
         </div>
 
-        {!selected.workflow_stage && (
+        {!selected.workflow_stage && !selected.legacy_state?.admitted && !selected.legacy_state?.validated && !selected.student_id && !selected.legacy_student_id && (
           <div className="dossier-callout dossier-callout--info">
             <span className="dossier-callout-icon"><Info size={19} aria-hidden="true" /></span>
             <div className="dossier-callout-content">
-              <strong>Dossier importé de l’historique</strong>
+              <strong>Dossier en cours d’intégration</strong>
               <p>Vérifiez les informations personnelles et les pièces justificatives avant de confirmer l’avancement dans le parcours.</p>
             </div>
           </div>

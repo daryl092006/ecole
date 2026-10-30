@@ -12,8 +12,12 @@ export const admissionCommandSchema = z.discriminatedUnion('action', [
   z.object({ ...command, action: z.literal('reverse_payment'), payment_id: z.uuid() }).strict(),
   z.object({ ...command, action: z.literal('create_student'), matricule: z.string().trim().min(1).max(160), existing_student_id: z.uuid().nullable() }).strict(),
 ]);
-export function stageLabel(application: Pick<AdmissionApplication, 'workflow_stage' | 'legacy_state' | 'status'>): string {
-  return application.workflow_stage ? APPLICATION_STAGES[application.workflow_stage] : application.legacy_state?.admitted ? 'Admis · historique à vérifier' : application.status === 'BROUILLON' ? 'Brouillon' : 'Dossier historique à vérifier';
+export function stageLabel(application: Pick<AdmissionApplication, 'workflow_stage' | 'legacy_state' | 'status' | 'student_id'>): string {
+  if (application.workflow_stage) return APPLICATION_STAGES[application.workflow_stage];
+  if (application.student_id) return 'Inscrit';
+  if (application.legacy_state?.admitted || application.legacy_state?.validated) return 'Validé';
+  if (application.status === 'BROUILLON') return 'Brouillon';
+  return 'En étude';
 }
 
 export type MacroStage = 'ALL' | 'VALIDE' | 'ETUDE' | 'ACADEMIE' | 'CORRIGER' | 'REJETE';
