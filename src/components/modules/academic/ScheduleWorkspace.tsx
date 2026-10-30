@@ -10,6 +10,7 @@ import ConnectedDomainWorkspace from '../ConnectedDomainWorkspace';
 import LoadingState from '@/components/ui/LoadingState';
 import ErrorState from '@/components/ui/ErrorState';
 import ScheduleCalendar from '@/components/ui/ScheduleCalendar';
+import ScheduleDatePicker from '@/components/ui/ScheduleDatePicker';
 import ScheduleGroupFilter from '@/components/ui/ScheduleGroupFilter';
 import WorkPage from '@/components/ui/WorkPage';
 import ReviewedForm, { type ReviewField } from '@/components/ui/ReviewedForm';
@@ -42,34 +43,11 @@ const QUICK_TIME_PRESETS = [
   { label: 'Journée (08:00 – 17:00)', start: '08:00', end: '17:00' },
 ] as const;
 
-const WEEKDAYS = [
-  { day: 1, short: 'Lun', label: 'Lundi' },
-  { day: 2, short: 'Mar', label: 'Mardi' },
-  { day: 3, short: 'Mer', label: 'Mercredi' },
-  { day: 4, short: 'Jeu', label: 'Jeudi' },
-  { day: 5, short: 'Ven', label: 'Vendredi' },
-  { day: 6, short: 'Sam', label: 'Samedi' },
-] as const;
-
 // The institution uses Africa/Lome (UTC). Keep input and review independent of browser timezone.
 const localTime = (value: string) => value ? new Date(value).toISOString().slice(0, 16) : '';
 const iso = (value: string) => new Date(`${value}:00Z`).toISOString();
 const displayTime = (value: string) => new Intl.DateTimeFormat('fr-FR', { dateStyle: 'short', timeStyle: 'short', timeZone: 'Africa/Lome' }).format(new Date(value));
 const blank = () => ({ assignmentId: '', startsAt: '', endsAt: '', mode: 'COURS' as SessionMode, roomId: '', teacherId: '', name: '', kind: 'AUTRE' as 'AUTRE' | 'JOUR_FERIE' | 'VACANCES' | 'FERMETURE' | 'EXAMEN', siteId: '', reason: '' });
-
-function computeWeekRange(baseDateStr: string, includeSaturday = false): { from: string; until: string } {
-  const base = baseDateStr ? new Date(`${baseDateStr}T00:00:00Z`) : new Date();
-  const utcDay = base.getUTCDay(); // 0 = Sun, 1 = Mon, ...
-  const diffToMonday = utcDay === 0 ? -6 : 1 - utcDay;
-  const monday = new Date(base);
-  monday.setUTCDate(base.getUTCDate() + diffToMonday);
-  const end = new Date(monday);
-  end.setUTCDate(monday.getUTCDate() + (includeSaturday ? 5 : 4));
-  return {
-    from: monday.toISOString().slice(0, 10),
-    until: end.toISOString().slice(0, 10),
-  };
-}
 
 export default function ScheduleWorkspace() {
   const portal = usePortal();
@@ -93,13 +71,12 @@ function ScheduleManager() {
   const [saving, setSaving] = useState(false), [saveError, setSaveError] = useState('');
   const [groupSelection, setGroupSelection] = useState({ yearId: '', groupId: '' });
 
-  // Multi-session / full-week scheduling state
+  // Explicit dates share the same time range and are sent in one transaction.
   const [cadence, setCadence] = useState<ScheduleCadence>('single');
-  const [multiFromDate, setMultiFromDate] = useState('');
-  const [multiUntilDate, setMultiUntilDate] = useState('');
+  const [selectedDates, setSelectedDates] = useState<string[]>([]);
   const [multiStartTime, setMultiStartTime] = useState('08:00');
   const [multiEndTime, setMultiEndTime] = useState('12:00');
-  const [multiDays, setMultiDays] = useState<number[]>([1, 2, 3, 4, 5]);
+
 
   useEffect(() => {
     const controller = new AbortController();
@@ -118,37 +95,20 @@ function ScheduleManager() {
     if (!assignment && !hasGroup && (!requestedComponent || !directory.components.some(row => row.id === requestedComponent))) return;
     openedRequest.current = request; setDetail(null); setSaveError('');
     setCadence('single');
+    setSelectedDates([]);
     setForm({ ...blank(), assignmentId: assignment?.id || '', mode: assignment ? params.get('mode') === 'EN_LIGNE' ? 'EN_LIGNE' : 'PAPIER' : 'COURS' });
     setOperation({ action: 'create_session' });
   }, [directory, requestedComponent, requestedGroup, requestedAssignment, activeRole, academicYearSelection, params]);
 
   const multiSlots = useMemo(() => {
-    if (cadence !== 'multi' || !multiFromDate || !multiUntilDate || !multiStartTime || !multiEndTime || multiEndTime <= multiStartTime || multiUntilDate < multiFromDate) {
-      return [];
-    }
-    const slots: { date: string; startsAt: string; endsAt: string; label: string }[] = [];
-    const cursor = new Date(`${multiFromDate}T00:00:00Z`);
-    const end = new Date(`${multiUntilDate}T00:00:00Z`);
-    let guard = 0;
-    while (cursor <= end && guard < 90) {
-      guard += 1;
-      const dayOfWeek = cursor.getUTCDay();
-      if (multiDays.includes(dayOfWeek) && slots.length < 60) {
-        const dateStr = cursor.toISOString().slice(0, 10);
-        const startsAt = iso(`${dateStr}T${multiStartTime}`);
-        const endsAt = iso(`${dateStr}T${multiEndTime}`);
-        const weekdayName = WEEKDAYS.find(w => w.day === dayOfWeek)?.short || '';
-        slots.push({
-          date: dateStr,
-          startsAt,
-          endsAt,
-          label: `${weekdayName} ${dateStr.split('-').reverse().join('/')} (${multiStartTime}–${multiEndTime})`,
-        });
-      }
-      cursor.setUTCDate(cursor.getUTCDate() + 1);
-    }
-    return slots;
-  }, [cadence, multiFromDate, multiUntilDate, multiStartTime, multiEndTime, multiDays]);
+    if (cadence !== 'multi' || !multiStartTime || !multiEndTime || multiEndTime <= multiStartTime) return [];
+    return [...selectedDates].sort().map(date => ({
+      date,
+      startsAt: iso(date + 'T' + multiStartTime),
+      endsAt: iso(date + 'T' + multiEndTime),
+      label: date.split('-').reverse().join('/') + ' (' + multiStartTime + '–' + multiEndTime + ')',
+    }));
+  }, [cadence, selectedDates, multiStartTime, multiEndTime]);
 
   if (loading) return <LoadingState label="Chargement du planning…" variant="cards" />;
   if (error || !directory) return <ErrorState title="Planning indisponible" message={error || 'Les séances n’ont pas pu être chargées.'} onRetry={() => setReload(value => value + 1)} />;
@@ -165,12 +125,10 @@ function ScheduleManager() {
   const open = (action: Action, session?: ManagedSession) => {
     setDetail(null); setSaveError(''); setOperation({ action, session });
     setCadence('single');
-    const defaultWeek = computeWeekRange(new Date().toISOString().slice(0, 10), false);
-    setMultiFromDate(defaultWeek.from);
-    setMultiUntilDate(defaultWeek.until);
+    setSelectedDates([]);
     setMultiStartTime('08:00');
     setMultiEndTime('12:00');
-    setMultiDays([1, 2, 3, 4, 5]);
+
     setForm({ ...blank(), siteId: directory.canBlockAllSites ? '' : directory.sites[0]?.id || '', ...(session ? {
       assignmentId: session.assignmentId, startsAt: localTime(session.startsAt), endsAt: localTime(session.endsAt), mode: session.mode,
       roomId: session.roomId || '', teacherId: session.replacementTeacherId || '',
@@ -202,13 +160,16 @@ function ScheduleManager() {
   const nextAccess = movingExam && current ? shiftExamAccess(movingExam, current.startsAt, iso(effectiveStartsAt)) : null;
   const assignment = directory.assignments.find(row => row.id === form.assignmentId);
   const siteId = directory.offerings.find(offering => offering.id === assignment?.offeringId)?.siteId;
+  const selectedYear = portal.academicYearContext?.years.find(year => year.id === directory.selectedYearId);
+  const dateMin = [selectedYear?.starts_on, assignment?.validFrom].filter((date): date is string => Boolean(date)).sort().at(-1);
+  const dateMax = [selectedYear?.ends_on, assignment?.validUntil].filter((date): date is string => Boolean(date)).sort()[0];
 
   const fields: ReviewField[] = [
     ...(editing ? [{ label: 'Cours', value: assignmentName(form.assignmentId), ...(current ? { previous: assignmentName(current.assignmentId) } : {}) },
       { label: 'Type de séance', value: form.mode, previous: current?.mode }, { label: 'Salle prévue', value: roomName(form.roomId || null), ...(current ? { previous: roomName(current.roomId) } : {}) }] : []),
     ...(isMultiCreate ? [
-      { label: 'Période programmée', value: `Du ${multiFromDate} au ${multiUntilDate} (${multiStartTime} – ${multiEndTime})` },
-      { label: 'Séances générées', value: `${multiSlots.length} séance(s) : ${multiSlots.slice(0, 6).map(s => s.label).join(', ')}${multiSlots.length > 6 ? '…' : ''}` },
+      { label: 'Nombre de séances', value: String(multiSlots.length) },
+      ...multiSlots.map((slot, index) => ({ label: `Séance ${index + 1}`, value: slot.label })),
     ] : timed ? [{ label: 'Début (heure de Lomé)', value: effectiveStartsAt ? displayTime(iso(effectiveStartsAt)) : '', ...(current ? { previous: displayTime(current.startsAt) } : {}) },
       { label: 'Fin (heure de Lomé)', value: effectiveEndsAt ? displayTime(iso(effectiveEndsAt)) : '', ...(current ? { previous: displayTime(current.endsAt) } : {}) }] : []),
     ...(movingExam && nextAccess ? [{ label: 'Épreuve déplacée', value: movingExam.name },
@@ -235,7 +196,7 @@ function ScheduleManager() {
   const active = sessions.filter(session => !['ANNULE', 'REPORTE'].includes(session.status));
 
   return <div className="domain-workspace workspace-stack">
-    <div className="page-intro"><div><h1>Séances et emploi du temps</h1><p>Horaires en heure de Lomé (UTC). Programmation à l’heure précise, par séance ou sur toute une semaine.</p></div><div className="btn-group">
+    <div className="page-intro"><div><h1>Séances et emploi du temps</h1><p>Horaires en heure de Lomé (UTC). Programmation à l’heure précise, par séance ou sur plusieurs dates.</p></div><div className="btn-group">
       {directory.canCreate && <button className="btn btn-primary" onClick={() => open('create_session')}>Programmer un cours</button>}
       {directory.canUpdate && (directory.canBlockAllSites || directory.sites.length > 0) && <button className="btn btn-outline" onClick={() => open('block_period')}>Bloquer une période</button>}
       <Link className="btn btn-outline" href="/academique/referentiel?collection=groups">Créer / gérer une classe</Link>
@@ -265,7 +226,9 @@ function ScheduleManager() {
       validate={() => {
         if (editing && !assignment) return 'Choisissez le groupe, la matière et l’enseignant du cours.';
         if (isMultiCreate) {
-          if (!multiSlots.length) return 'Sélectionnez une période valide, au moins un jour de cours et des heures cohérentes.';
+          if (!multiSlots.length) return 'Sélectionnez au moins une date et des heures cohérentes.';
+          if (multiSlots.length > 60) return 'Sélectionnez au maximum 60 dates par enregistrement.';
+          if (selectedDates.some(date => (dateMin && date < dateMin) || (dateMax && date > dateMax))) return 'Les dates doivent appartenir à l’année scolaire et à la période d’affectation de l’enseignant.';
         } else if (timed && effectiveEndsAt <= effectiveStartsAt) {
           return 'La fin doit être postérieure au début.';
         }
@@ -315,13 +278,9 @@ function ScheduleManager() {
               Séance unique
             </button>
             <button type="button" className={`btn btn-sm ${cadence === 'multi' ? 'btn-primary' : 'btn-outline'}`} onClick={() => {
-              const baseDate = form.startsAt ? form.startsAt.slice(0, 10) : (assignment?.validFrom || new Date().toISOString().slice(0, 10));
-              const week = computeWeekRange(baseDate, false);
-              if (!multiFromDate) setMultiFromDate(week.from);
-              if (!multiUntilDate) setMultiUntilDate(week.until);
               setCadence('multi');
             }}>
-              Semaine entière / Plusieurs séances d’un coup
+              Récurrence / Plusieurs dates
             </button>
           </div>
         </div>
@@ -353,48 +312,8 @@ function ScheduleManager() {
       )}
       {isMultiCreate && (
         <fieldset className="card">
-          <legend>Programmation sur une semaine ou plusieurs jours</legend>
-          <div className="btn-group mb-1">
-            <button type="button" className="btn btn-sm btn-outline" onClick={() => {
-              const week = computeWeekRange(multiFromDate || assignment?.validFrom || new Date().toISOString().slice(0, 10), false);
-              setMultiFromDate(week.from);
-              setMultiUntilDate(week.until);
-              setMultiDays([1, 2, 3, 4, 5]);
-            }}>
-              Toute la semaine (Lun → Ven)
-            </button>
-            <button type="button" className="btn btn-sm btn-outline" onClick={() => {
-              const week = computeWeekRange(multiFromDate || assignment?.validFrom || new Date().toISOString().slice(0, 10), true);
-              setMultiFromDate(week.from);
-              setMultiUntilDate(week.until);
-              setMultiDays([1, 2, 3, 4, 5, 6]);
-            }}>
-              Semaine complète (Lun → Sam)
-            </button>
-          </div>
-          <div className="form-grid">
-            <label className="form-group">Du (premier jour)<input className="input" type="date" required value={multiFromDate} onChange={event => setMultiFromDate(event.target.value)} /></label>
-            <label className="form-group">Au (dernier jour)<input className="input" type="date" required min={multiFromDate || undefined} value={multiUntilDate} onChange={event => setMultiUntilDate(event.target.value)} /></label>
-          </div>
-          <div className="form-group">
-            <span className="form-label">Jours de cours dans la semaine</span>
-            <div className="btn-group">
-              {WEEKDAYS.map(item => {
-                const selected = multiDays.includes(item.day);
-                return (
-                  <button
-                    key={item.day}
-                    type="button"
-                    className={`btn btn-sm ${selected ? 'btn-primary' : 'btn-outline'}`}
-                    aria-pressed={selected}
-                    onClick={() => setMultiDays(prev => prev.includes(item.day) ? prev.filter(d => d !== item.day) : [...prev, item.day].sort())}
-                  >
-                    {item.label}
-                  </button>
-                );
-              })}
-            </div>
-          </div>
+          <legend>Dates et horaires des séances</legend>
+          <ScheduleDatePicker dates={selectedDates} onChange={setSelectedDates} min={dateMin} max={dateMax} initialDate={form.startsAt.slice(0, 10) || assignment?.validFrom || dateMin || new Date().toISOString().slice(0, 10)} />
           <div className="form-group">
             <span className="form-label">Créneaux horaires rapides</span>
             <div className="btn-group mb-1">
@@ -418,7 +337,7 @@ function ScheduleManager() {
             <strong>{multiSlots.length} séance(s) à programmer :</strong>{' '}
             {multiSlots.length > 0
               ? multiSlots.map(s => s.label).join(' · ')
-              : 'Choisissez les dates, les jours et les heures de début et de fin.'}
+              : 'Choisissez au moins une date et des heures de début et de fin cohérentes.'}
           </div>
         </fieldset>
       )}

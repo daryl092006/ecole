@@ -72,7 +72,7 @@ export default function EmailOutboxPanel() {
     {error ? <ErrorState title="Mails indisponibles" message={error} onRetry={() => setRevision(value => value + 1)} /> : !page ? <LoadingState label="Chargement des mails…" variant="table" /> : <>
       {!page.configuration.ready && <p className="info-box" role="status">Envoi non configuré. Les messages restent en attente.</p>}
       <p className="cell-sub">« Accepté par le service » ne confirme pas la réception dans la boîte mail.</p>
-      <ResponsiveTable className="data-table"><thead><tr><th>Date</th><th>Destinataire</th><th>Objet</th><th>État</th><th>Actions</th></tr></thead><tbody>
+      <ResponsiveTable pageSize={0} className="data-table"><thead><tr><th>Date</th><th>Destinataire</th><th>Objet</th><th>État</th><th>Actions</th></tr></thead><tbody>
         {page.records.map(record => <tr key={record.id}>
           <td>{date(record.created_at)}</td><td>{record.recipient_name}<div className="cell-sub audit-values">{record.recipient_email}</div></td><td>{record.subject}</td>
           <td><span className={`pill ${record.status === 'ACCEPTED' ? 'pill-success' : record.status === 'FAILED' || record.status === 'UNKNOWN' ? 'pill-warning' : 'pill-default'}`}>{statuses[record.status]}</span></td>

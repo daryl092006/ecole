@@ -52,7 +52,7 @@ export default function StudentDossierPicker({ students, onSelect }: Props) {
       </div>
 
       <div className="table-wrap">
-        <ResponsiveTable className="data-table">
+        <ResponsiveTable pageSize={0} className="data-table">
           <thead>
             <tr>
               <th>Étudiant</th>
@@ -61,7 +61,7 @@ export default function StudentDossierPicker({ students, onSelect }: Props) {
             </tr>
           </thead>
           <tbody>
-            {results.slice(offset, offset + 25).map(student => (
+            {results.slice(offset, offset + 10).map(student => (
               <tr key={student.matricule}>
                 <td>
                   <strong>
@@ -106,23 +106,23 @@ export default function StudentDossierPicker({ students, onSelect }: Props) {
         </ResponsiveTable>
       </div>
 
-      {results.length > 25 && (
+      {results.length > 10 && (
         <div className="browser-pagination">
           <span>
-            {offset + 1}–{Math.min(offset + 25, results.length)} sur {results.length}
+            {offset + 1}–{Math.min(offset + 10, results.length)} sur {results.length}
           </span>
           <div className="btn-group">
             <button
               className="btn btn-outline"
               disabled={!offset}
-              onClick={() => setOffset(value => Math.max(0, value - 25))}
+              onClick={() => setOffset(value => Math.max(0, value - 10))}
             >
               Dossiers précédents
             </button>
             <button
               className="btn btn-outline"
-              disabled={offset + 25 >= results.length}
-              onClick={() => setOffset(value => value + 25)}
+              disabled={offset + 10 >= results.length}
+              onClick={() => setOffset(value => value + 10)}
             >
               Dossiers suivants
             </button>

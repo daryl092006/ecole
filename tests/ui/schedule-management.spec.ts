@@ -44,6 +44,104 @@ async function confirm(dialog: Locator) {
   await expect(dialog).not.toBeVisible();
 }
 
+async function openDateSelection(page: Page) {
+  const fixture = await connectedSchedule(page);
+  const year = fixture.snapshot.tables.academic_years.find(row => row.id === id.year)!;
+  Object.assign(year, { starts_on: '2026-10-01', ends_on: '2027-07-01' });
+  await page.goto(`/academique/emploi-du-temps?affectation=${id.assignment(0)}`);
+  const dialog = page.getByRole('dialog', { name: 'Nouvelle séance', exact: true });
+  await dialog.getByRole('combobox', { name: 'Type de séance', exact: true }).selectOption('COURS');
+  await dialog.getByRole('combobox', { name: 'Salle prévue', exact: true }).selectOption(uuid(950));
+  await dialog.getByRole('button', { name: 'Récurrence / Plusieurs dates', exact: true }).click();
+  await dialog.getByLabel('Mois des séances', { exact: true }).fill('2026-10');
+  return { fixture, dialog, picker: dialog.getByRole('region', { name: 'Choisir les dates des séances' }) };
+}
+
+for (const width of [360, 390, 768, 1024, 1440]) test(`Calendrier de récurrence : dates choisies, conservées et confirmées à ${width}px`, async ({ page }) => {
+  await page.setViewportSize({ width, height: 900 });
+  const { fixture, dialog, picker } = await openDateSelection(page);
+  const day = picker.getByRole('button', { name: 'mercredi 21 octobre 2026', exact: true });
+  await day.click();
+  await expect(day).toHaveAttribute('aria-pressed', 'true');
+  await day.press('Enter');
+  await expect(day).toHaveAttribute('aria-pressed', 'false');
+  await day.click();
+  await picker.getByRole('button', { name: 'Mois suivant des dates de cours' }).click();
+  await picker.getByRole('button', { name: 'mercredi 4 novembre 2026', exact: true }).click();
+  await picker.getByRole('button', { name: 'Mois précédent des dates de cours' }).click();
+  await expect(day).toHaveAttribute('aria-pressed', 'true');
+  await expect(picker.getByRole('status')).toHaveText('2 date(s) sélectionnée(s) sur 60 maximum.');
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+  await picker.screenshot({ path: `tmp/screenshots/schedule-date-picker/${width}.png` });
+  await dialog.getByRole('button', { name: 'Vérifier les informations', exact: true }).click();
+  const review = dialog.getByRole('region', { name: 'Vérification avant enregistrement' });
+  await expect(review).toContainText('21/10/2026 (08:00–12:00)');
+  await expect(review).toContainText('04/11/2026 (08:00–12:00)');
+  expect(fixture.transactions).toHaveLength(0);
+  await dialog.getByRole('button', { name: /^Confirmer/ }).click();
+  await expect(dialog).toHaveCount(0);
+  expect(fixture.transactions).toHaveLength(1);
+  expect(fixture.transactions[0].filter(change => change.table === 'sessions').map(change => change.record.starts_at)).toEqual(['2026-10-21T08:00:00.000Z', '2026-11-04T08:00:00.000Z']);
+});
+
+test('Calendrier de récurrence : raccourcis sans doublons, retrait et récapitulatif complet', async ({ page }) => {
+  const { dialog, picker } = await openDateSelection(page);
+  await dialog.getByRole('button', { name: 'Vérifier les informations', exact: true }).click();
+  await expect(dialog.getByRole('alert')).toContainText('Sélectionnez au moins une date');
+  await picker.getByRole('button', { name: 'Tous les lundis du mois' }).click();
+  await picker.getByRole('button', { name: 'Tous les lundis du mois' }).click();
+  await expect(picker.getByRole('status')).toContainText('4 date(s)');
+  await picker.getByRole('button', { name: 'Tous les mercredis du mois' }).click();
+  await expect(picker.getByRole('status')).toContainText('8 date(s)');
+  await picker.getByRole('button', { name: 'Retirer le lundi 5 octobre 2026', exact: true }).click();
+  await dialog.getByRole('button', { name: 'Vérifier les informations', exact: true }).click();
+  const review = dialog.getByRole('region', { name: 'Vérification avant enregistrement' });
+  await expect(review).toContainText('Séance 7');
+  await expect(review).toContainText('28/10/2026');
+  await expect(review).not.toContainText('05/10/2026');
+  await dialog.getByRole('button', { name: 'Revenir aux informations' }).click();
+  await picker.getByRole('button', { name: 'Vider la sélection' }).click();
+  await expect(picker.getByRole('status')).toContainText('0 date(s)');
+});
+
+test('Calendrier de récurrence : un conflit refuse tout le lot et conserve la sélection', async ({ page }) => {
+  const { fixture, dialog, picker } = await openDateSelection(page);
+  await picker.getByRole('button', { name: 'mardi 20 octobre 2026', exact: true }).click();
+  await picker.getByRole('button', { name: 'mercredi 21 octobre 2026', exact: true }).click();
+  await dialog.getByRole('button', { name: 'Vérifier les informations', exact: true }).click();
+  await dialog.getByRole('button', { name: /^Confirmer/ }).click();
+  await expect(dialog.getByRole('alert')).toBeVisible();
+  expect(fixture.transactions).toHaveLength(0);
+  await dialog.getByRole('button', { name: 'Revenir aux informations' }).click();
+  await expect(picker.getByRole('status')).toContainText('2 date(s)');
+  await dialog.getByRole('button', { name: 'Fermer le détail', exact: true }).click();
+  await expect(dialog.getByRole('heading', { name: 'Quitter sans enregistrer ?' })).toBeVisible();
+});
+
+test('Calendrier de récurrence : limite de 60 dates et bornes de l’année', async ({ page }) => {
+  const { picker } = await openDateSelection(page);
+  await expect(picker.getByRole('button', { name: 'Mois précédent des dates de cours' })).toBeDisabled();
+  for (const month of ['2026-10', '2026-11']) {
+    await picker.getByLabel('Mois des séances').fill(month);
+    const days = picker.getByRole('group', { name: 'Calendrier de sélection des séances' }).getByRole('button');
+    const count = month === '2026-10' ? 31 : 29;
+    for (let index = 0; index < count; index++) await days.nth(index).click();
+  }
+  await expect(picker.getByRole('status')).toContainText('60 date(s)');
+  await expect(picker.getByRole('button', { name: 'lundi 30 novembre 2026', exact: true })).toBeDisabled();
+  await picker.getByRole('button', { name: 'Tous les lundis du mois' }).click();
+  await expect(picker.getByRole('alert')).toContainText('maximum 60 dates');
+  await expect(picker.getByRole('status')).toContainText('60 date(s)');
+  await picker.getByRole('button', { name: 'dimanche 29 novembre 2026', exact: true }).click();
+  await picker.getByRole('button', { name: 'lundi 30 novembre 2026', exact: true }).click();
+  await expect(picker.getByRole('status')).toContainText('60 date(s)');
+  await picker.getByRole('button', { name: 'Vider la sélection' }).click();
+  await picker.getByLabel('Mois des séances').fill('2027-07');
+  await expect(picker.getByRole('button', { name: 'Mois suivant des dates de cours' })).toBeDisabled();
+  await expect(picker.getByRole('button', { name: 'jeudi 1 juillet 2027', exact: true })).toBeEnabled();
+  await expect(picker.getByRole('button', { name: 'vendredi 2 juillet 2027', exact: true })).toBeDisabled();
+});
+
 test('Programmer un cours : affecter un enseignant ici puis enregistrer le créneau', async ({ page }) => {
   const fixture = await connectedSchedule(page);
   const source = fixture.snapshot.tables.teaching_assignments.find(row => row.id === id.assignment(0))!;
