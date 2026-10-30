@@ -150,9 +150,8 @@ for (const width of [360, 390]) {
     await dialog.getByRole('combobox', { name: 'Groupe', exact: true }).selectOption('GROUP');
     await dialog.getByRole('combobox', { name: 'Tarif de scolarité', exact: true }).selectOption('TUITION');
     await dialog.getByRole('combobox', { name: 'Tarif d’inscription', exact: true }).selectOption('REGISTRATION');
-    await dialog.getByLabel('Date d’inscription', { exact: true }).fill('2026-10-18');
-    const reason = dialog.getByRole('textbox', { name: 'Motif', exact: true }); await reason.fill('Inscription annuelle vérifiée');
-    await visibleActions(page, dialog); await reducedViewport(page, dialog, reason, width);
+    const registration = dialog.getByRole('combobox', { name: 'Tarif d’inscription', exact: true });
+    await visibleActions(page, dialog); await reducedViewport(page, dialog, registration, width);
     await dialog.getByRole('button', { name: 'Vérifier l’inscription', exact: true }).click();
     expect(fixture.commands).toHaveLength(0); await visibleActions(page, dialog);
     await dialog.getByRole('button', { name: 'Confirmer la nouvelle inscription', exact: true }).click();

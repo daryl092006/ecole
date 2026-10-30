@@ -21,7 +21,7 @@ const screens: Screen[] = [
   ...Object.entries(MODULE_PATHS).map(([key, href]) => ({ key: `module_${key}`, name: `Accueil ${key}`, href, account: 'staff' as const })),
   { key: 'student_record', name: 'Dossier individuel étudiant', href: studentPath('ESCEN-TEST-001'), account: 'staff' },
   { key: 'student_home', name: 'Accueil étudiant', href: '/mon-espace', account: 'student' },
-  { key: 'alias_actualites', name: 'Ancienne adresse des actualités', href: '/communication/actualites', destination: '/site-web/articles', readyHeading: 'Actualités institutionnelles', account: 'staff' },
+  { key: 'alias_actualites', name: 'Ancienne adresse des actualités', href: '/communication/actualites', destination: '/site-web/articles', readyHeading: 'Espace éditorial & Actualités', account: 'staff' },
   { key: 'root', name: 'Racine du site', href: '/', destination: '/connexion', readyHeading: 'Connexion', account: 'anonymous' },
   ...['acad_program', 'acad_reference'].flatMap(section => CRUD_SECTIONS[section].map(key => ({
     key: `catalog_${key}`, name: `Référentiel · ${CRUD_CATALOG.find(spec => spec.key === key)!.title}`,

@@ -73,10 +73,11 @@ for (const width of [390, 1440]) test(`Enseignant : lire la bonne copie sans per
   const copy = page.getByRole('dialog', { name: 'Copies en ligne', exact: true });
   await expect(copy.getByRole('heading', { name: /Boris Copie/ })).toBeVisible();
   await expect(copy.getByRole('heading', { name: /Anne Première/ })).toHaveCount(0);
-  await copy.getByRole('button', { name: 'Lire les réponses', exact: true }).click();
-  await expect(copy.getByRole('heading', { name: 'Question pour le candidat 1', exact: true })).toBeVisible();
-  await expect(copy.locator('.online-exam-question p')).toContainText('Réponse du candidat 1');
-  await expect(copy.locator('.online-exam-question p')).toHaveCSS('white-space', 'pre-wrap');
+  await copy.getByRole('button', { name: 'Consulter et noter', exact: true }).click();
+  await expect(copy.locator('.subject-text')).toContainText('Question pour le candidat 1');
+  const response = copy.locator('.online-exam-answer-box p');
+  await expect(response).toContainText('Réponse du candidat 1');
+  await expect(response).toHaveCSS('white-space', 'pre-wrap');
   await copy.getByRole('button', { name: 'Fermer le détail', exact: true }).click();
   await expect(student.getByRole('spinbutton')).toHaveValue('14.5');
   await expect(grades.getByRole('button', { name: 'Soumettre à la direction académique', exact: true })).toBeVisible();
