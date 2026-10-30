@@ -21,6 +21,8 @@ const snapshot: RelationalSnapshot = { revision: 5, tables: {
   exam_questions: [{ id:'q1',paper_id:'paper1',prompt:'Secret',configuration:{ answer:'Secret' } }],
   exam_options: [{ id:'option1',question_id:'q1',is_correct:true,label:'Secret' }],
   financial_contracts: [{ id:'contract1',enrollment_id:'n1' },{ id:'contract2',enrollment_id:'n2' }],
+  programs: [{ id:'prg1',name:'IA' }],
+  levels: [{ id:'lvl1',name:'L1' }],
   payments: [{ id:'payment1',enrollment_id:'n1',amount:100 },{ id:'payment2',enrollment_id:'n2',amount:200 }],
   accounts: [{ id:'account1',auth_user_id:'secret-auth' }],
   communications: [{ id:'draft',title:'Draft',published_at:null }],
@@ -32,6 +34,8 @@ const context = (role: RoleName, extra: Partial<PersistentContext> = {}): Persis
 });
 const student = filterRelationalSnapshot(snapshot,context(ROLES.STUD,{ personId:'p1',studentId:'s1' })).tables;
 assert.deepEqual(student.students.map(row => row.id),['s1']);
+assert.deepEqual(student.programs.map(row => row.id),['prg1']);
+assert.deepEqual(student.levels.map(row => row.id),['lvl1']);
 assert.deepEqual(student.payments.map(row => row.id),['payment1']);
 assert.deepEqual(student.grades.map(row => row.id),['mark1']);
 assert.deepEqual(student.exam_options,[{ id:'option1' }]);

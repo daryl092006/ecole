@@ -28,7 +28,7 @@ export function projectRelationalCampus(snapshot: RelationalSnapshot, now = new 
   const enrollmentOffering = (enrollment: DatabaseRow) => offerings.get(text(enrollment, 'offering_id'));
   const enrollmentYear = (enrollment: DatabaseRow) => text(enrollmentOffering(enrollment), 'academic_year_id');
   const membership = (enrollmentId: string) => rows('enrollment_groups').filter(row => row.enrollment_id === enrollmentId
-    && text(row, 'valid_from') <= today && (!text(row, 'valid_until') || text(row, 'valid_until') > today))
+    && (!row.valid_from || text(row, 'valid_from') <= today) && (!text(row, 'valid_until') || text(row, 'valid_until') > today))
     .sort((a, b) => text(b, 'valid_from').localeCompare(text(a, 'valid_from')))[0];
 
   const financials = (enrollmentId: string): Dataset['students'][number]['financials'] => {
@@ -58,7 +58,7 @@ export function projectRelationalCampus(snapshot: RelationalSnapshot, now = new 
     const programIds = [...new Set(linkedCurricula.map(curriculum => text(curriculum, 'program_id')).filter(Boolean))];
     return { id: row.id, name: text(row, 'name'), academicYearId: text(row, 'academic_year_id'), academicYear: text(years.get(text(row, 'academic_year_id')), 'name'), levelId: text(row, 'level_id'), niveau: text(levels.get(text(row, 'level_id')), 'name'), programIds,
       filieres: programIds.map(id => text(programs.get(id), 'name')).filter(Boolean), trackIds: [...new Set(linkedCurricula.map(curriculum => text(curriculum, 'track_id')).filter(Boolean))],
-      studentIds: rows('enrollment_groups').filter(link => link.group_id === row.id && text(link, 'valid_from') <= today && (!text(link, 'valid_until') || text(link, 'valid_until') > today))
+      studentIds: rows('enrollment_groups').filter(link => link.group_id === row.id && (!link.valid_from || text(link, 'valid_from') <= today) && (!text(link, 'valid_until') || text(link, 'valid_until') > today))
         .flatMap(link => { const enrollment = rows('enrollments').find(item => item.id === link.enrollment_id); const matricule = enrollment && studentMatricules.get(text(enrollment, 'student_id')); return matricule ? [matricule] : []; }) };
   });
   data.students = rows('students').filter(row => !row.archived_at).flatMap(row => {

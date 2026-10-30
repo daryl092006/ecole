@@ -381,14 +381,24 @@ export default function WorkspaceHome({ mode = 'home' }: { mode?: 'home' | 'over
 
     if (state.perms.scope.ownDataOnly) {
       const me = state.students.find(student => student.matricule === state.session?.matricule);
+      const studentSessions = activeRows('sessions');
       return [
         {
-          title: 'Mon Suivi',
-          href: '/mon-espace/documents',
+          title: 'Mon Parcours',
+          href: '/mon-espace/profil',
           icon: GraduationCap,
           items: [
-            { label: 'Niveau', value: me?.niveau || '—' },
-            { label: 'Groupe', value: me?.groupe || '—' },
+            { label: 'Filière', value: me?.filiere && me.filiere !== 'Filière non renseignée' ? me.filiere : '—' },
+            { label: 'Niveau', value: me?.niveau && me.niveau !== 'Niveau non renseigné' ? me.niveau : '—' },
+            { label: 'Groupe', value: me?.groupe && me.groupe !== 'Non affecté' ? me.groupe : '—' },
+            { label: 'Séances', value: `${studentSessions.length}` },
+          ],
+        },
+        {
+          title: 'Ma Scolarité',
+          href: '/mon-espace/scolarite',
+          icon: Wallet,
+          items: [
             { label: 'Notes', value: `${count('grades')}` },
             { label: 'Payé', value: me?.financials?.available ? fmtCompactFcfa(me.financials.paid) : '—' },
             { label: 'Reste', value: me?.financials?.available ? fmtCompactFcfa(me.financials.remaining) : '—' },
@@ -416,7 +426,7 @@ export default function WorkspaceHome({ mode = 'home' }: { mode?: 'home' | 'over
     [ROLES.ACHATS]: ['log_purchases', 'log_suppliers', 'log_assets'],
     [ROLES.SITE]: ['web_applications', 'web_documents', 'web_brochures', 'comm_news'],
     [ROLES.IT]: ['staff_list', 'stud_accounts', 'sys_support', 'acad_reference', 'sys_logs'],
-    [ROLES.STUD]: ['espace_exams', 'espace_documents', 'espace_finance', 'espace_announcements', 'espace_support'],
+    [ROLES.STUD]: ['acad_schedule', 'espace_exams', 'espace_documents', 'espace_finance', 'espace_announcements', 'espace_support'],
     [ROLES.DEL]: ['acad_attendance', 'espace_exams', 'espace_documents', 'espace_finance', 'acad_complaints', 'espace_support'],
     [ROLES.STG]: ['stud_list', 'acad_schedule', 'espace_announcements', 'espace_support'],
   };

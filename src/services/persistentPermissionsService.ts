@@ -56,6 +56,9 @@ export function filterRelationalSnapshot(snapshot: RelationalSnapshot, context: 
   const groupIds = new Set(rows('group_offerings').filter(row => offeringIds.has(field(row,'offering_id')) && (self || teacher || supervisor || rows('academic_offerings').some(offering => offering.id === row.offering_id && grantsOffering(offering,row.group_id))) && (!teacher && !supervisor && !self
     || (self ? rows('enrollment_groups').some(link => personalEnrollments.has(field(link,'enrollment_id')) && link.group_id === row.group_id)
       : assignments.some(link => link.group_id === row.group_id)))).map(row => field(row,'group_id')));
+  if (self) {
+    rows('enrollment_groups').filter(link => personalEnrollments.has(field(link, 'enrollment_id'))).forEach(link => groupIds.add(field(link, 'group_id')));
+  }
   const enrollments = rows('enrollments').filter(row => self ? personalEnrollments.has(row.id)
     : teacher || supervisor ? rows('enrollment_groups').some(link => link.enrollment_id === row.id && groupIds.has(field(link,'group_id')))
     : offeringIds.has(field(row,'offering_id')) && (unscoped || rows('enrollment_groups').some(link => link.enrollment_id === row.id && groupIds.has(field(link,'group_id')))));
@@ -142,6 +145,7 @@ export function filterRelationalSnapshot(snapshot: RelationalSnapshot, context: 
       if (name === 'communication_reads') return communicationIds.has(field(row,'communication_id')) && row.account_id === context.accountId;
       if (name === 'communication_files') return communicationIds.has(field(row,'communication_id'));
       if (name === 'file_objects') return false; // Autorisation séparée par le propriétaire de la pièce.
+      if (['cycles','levels','programs','tracks','subjects','sites','buildings','rooms','academic_years','document_types','document_requirements','fee_types','fee_rates','annual_fee_schedules','annual_payment_channels'].includes(name)) return true;
       if (name === 'accounts') return unscoped && can('user.manage') || row.id === context.accountId;
       if (name === 'role_grants') return unscoped || row.account_id === context.accountId;
       if (name === 'teaching_assignments') return assignmentIds.has(row.id);
@@ -152,7 +156,7 @@ export function filterRelationalSnapshot(snapshot: RelationalSnapshot, context: 
       if (name === 'curriculum_semesters') return unscoped && !self && !teacher && !supervisor || semesterIds.has(row.id);
       if (name === 'students') return studentIds.has(row.id);
       if (name === 'enrollments') return enrollmentIds.has(row.id);
-      if (name === 'sessions') return supervisor ? assignedSessionIds.has(row.id) : assignmentIds.has(field(row,'assignment_id'));
+      if (name === 'sessions') return supervisor ? assignedSessionIds.has(row.id) : (assignmentIds.has(field(row,'assignment_id')) || (self && groupIds.has(field(row,'group_id'))));
       if (name === 'session_supervisors') return supervisor ? row.account_id === context.accountId : rows('sessions').some(item => item.id === row.session_id && assignmentIds.has(field(item,'assignment_id')));
       if (name === 'evaluations') return evaluationIds.has(row.id);
       if (name === 'evaluation_candidates') return candidateIds.has(row.id);
