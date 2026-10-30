@@ -7,10 +7,12 @@ import { PaymentAdjustmentError, assertPaymentAdjustment, paymentAdjustmentDirec
 import { paymentReceiptDocument } from '@/services/paymentReceiptService';
 import { netContractAmount, netPaymentTotal } from '@/services/financialProjectionService';
 import { availableEnrollmentGroupLinks } from '@/services/enrollmentGroupReferenceService';
+import { ROLES } from '@/types/permissions';
 import type { PersistentChange, RelationalSnapshot } from '@/types/persistence';
 export const dynamic='force-dynamic';
 async function scope(request: Request, matricule: string) {
-  const auth=await requireAccount(request); requirePermission(auth.context,'student.view');
+  const auth=await requireAccount(request);
+  if (auth.context.role !== ROLES.STUD && auth.context.role !== ROLES.DEL) requirePermission(auth.context,'student.view');
   const result=await auth.client.rpc('escen_backend_snapshot');
   if(result.error)throw new RequestError(503,'Dossier indisponible.');
   const snapshot=result.data as RelationalSnapshot;
@@ -29,7 +31,7 @@ export async function GET(request:Request,{params}:Params){try{
   const {snapshot,scoped,enrollments,context,year}=await scope(request,(await params).matricule);
   const ids=new Set(enrollments.map(row=>row.id));
   if(new URL(request.url).searchParams.has('receiptId')){
-    requirePermission(context,'finance.view');
+    if (context.role !== ROLES.STUD && context.role !== ROLES.DEL) requirePermission(context,'finance.view');
     const receiptId=z.uuid().parse(new URL(request.url).searchParams.get('receiptId'));
     const receipt=paymentReceiptDocument(scoped,ids,receiptId);
     if(!receipt)throw new RequestError(404,'Reçu introuvable dans ce dossier et cette année.');
