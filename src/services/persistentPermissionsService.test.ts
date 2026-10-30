@@ -67,6 +67,16 @@ assert.deepEqual(marketingFiltered.groups.map(row => row.id),['g1','g2']);
 assert.equal(marketingFiltered.grades,undefined);
 assert.equal(marketingFiltered.payments,undefined);
 assert.equal(marketingFiltered.communications?.length ?? 0,1);
+const rafFiltered = filterRelationalSnapshot(snapshot,context(ROLES.RAF,{ roleCode:'RAF' })).tables;
+assert.deepEqual(rafFiltered.students.map(row => row.id),['s1','s2']);
+assert.deepEqual(rafFiltered.academic_offerings.map(row => row.id),['o1']);
+assert.deepEqual(rafFiltered.groups.map(row => row.id),['g1','g2']);
+assert.deepEqual(rafFiltered.payments.map(row => row.id),['payment1','payment2']);
+const ccFiltered = filterRelationalSnapshot(snapshot,context(ROLES.CC,{ roleCode:'CC' })).tables;
+assert.deepEqual(ccFiltered.students.map(row => row.id),['s1','s2']);
+assert.deepEqual(ccFiltered.academic_offerings.map(row => row.id),['o1']);
+assert.deepEqual(ccFiltered.groups.map(row => row.id),['g1','g2']);
+assert.equal(ccFiltered.payments,undefined);
 for (const role of [ROLES.STG,ROLES.ACHATS]) {
   const filtered = filterRelationalSnapshot(snapshot,context(role)).tables;
   assert.deepEqual(filtered.people.map(row => row.id),['pm']);

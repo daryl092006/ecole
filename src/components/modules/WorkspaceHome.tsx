@@ -333,6 +333,22 @@ export default function WorkspaceHome({ mode = 'home' }: { mode?: 'home' | 'over
       ];
     }
 
+    if (role === ROLES.CC) {
+      return [
+        {
+          title: 'Candidatures & Étudiants',
+          href: '/site-web/candidatures',
+          icon: Megaphone,
+          items: [
+            { label: 'Candidatures', value: `${count('online_applications')}` },
+            { label: 'Étudiants', value: `${totalStudents}` },
+            { label: 'Filières', value: `${programsCount}` },
+            { label: 'Groupes', value: `${count('groups')}` },
+          ],
+        },
+      ];
+    }
+
     if (role === ROLES.MKT || role === ROLES.SITE) {
       const publishedComms = activeRows('communications').filter(c => c.published_at && !c.withdrawn_at).length;
       return [
@@ -391,7 +407,7 @@ export default function WorkspaceHome({ mode = 'home' }: { mode?: 'home' | 'over
     [ROLES.DG]: ['dashboard_kpis', 'stud_list', 'fin_kpis', 'acad_grades', 'comm_announcements'],
     [ROLES.DGA]: ['dashboard_kpis', 'stud_list', 'fin_kpis', 'acad_grades', 'comm_announcements'],
     [ROLES.DA]: ['acad_exams', 'acad_grades', 'acad_schedule', 'stud_list', 'acad_reference'],
-    [ROLES.CC]: ['web_applications'],
+    [ROLES.CC]: ['web_applications', 'stud_list'],
     [ROLES.LOG]: ['acad_schedule', 'acad_attendance', 'staff_teachers', 'acad_program'],
     [ROLES.ENS]: ['acad_schedule', 'acad_subjects', 'acad_grades', 'acad_attendance', 'acad_complaints'],
     [ROLES.SURV]: ['acad_exams', 'acad_attendance', 'acad_schedule'],

@@ -17,7 +17,7 @@ try {
  }
  // Le transfert est limité aux admissions ; les fonctions académiques et financières sont préservées.
  const permissions=async(role)=>(await run('select p.code from escen.role_permissions rp join escen.permissions p on p.id=rp.permission_id where rp.role_id=$1 order by p.code',[roles[role]])).map(row=>row.code);
- assert.deepEqual(await permissions('CC'),['application.followup','application.payment.confirm','application.review','application.view']);checks++;
+ assert.deepEqual(await permissions('CC'),['academic.view','application.followup','application.payment.confirm','application.review','application.view','schedule.view','student.view']);checks++;
  for(const role of ['LOG','RAF']){
   assert.ok(!(await permissions(role)).some(code=>code.startsWith('application.')));
   await assert.rejects(rpc('escen_admissions_context',[actors[role],role,null]),/refusé/);checks++;
