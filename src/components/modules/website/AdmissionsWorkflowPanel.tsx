@@ -496,27 +496,54 @@ export default function AdmissionsWorkflowPanel() {
                 </details>
               )}
 
-              {selected.student_id && (() => {
-                const linked = (portal.relationalSnapshot.tables.students || []).find(item => item.id === selected.student_id);
-                const linkedMat = linked?.matricule ? String(linked.matricule) : '';
-                if (!linkedMat) return null;
-                return (
-                  <div className="dossier-enrolled-box">
-                    <span className="dossier-enrolled-badge"><CircleCheck size={19} aria-hidden="true" /> Étudiant officiellement admis</span>
-                    <div className="btn-group">
-                      {portal.perms.permissions.includes('student.lifecycle.manage') && portal.perms.permissions.includes('payment.record') && (
-                        <button type="button" className="btn btn-primary btn-sm" onClick={() => setEnrollingMatricule(linkedMat)}>
-                          Inscrire au groupe et créer le contrat ({linkedMat})
-                        </button>
-                      )}
-                      {portal.perms.permissions.includes('student.view') && (
-                        <Link className="btn btn-outline btn-sm" href={`/etudiants/${encodeURIComponent(linkedMat)}`}>
-                          Ouvrir le dossier étudiant ({linkedMat})
-                        </Link>
-                      )}
+              {(() => {
+                const linkedMat = linkedStudent?.matricule || (() => {
+                  const sId = selected.student_id || selected.legacy_student_id;
+                  const row = (portal.relationalSnapshot.tables.students || []).find(item => item.id === sId);
+                  return row?.matricule ? String(row.matricule) : null;
+                })();
+
+                if (linkedMat) {
+                  return (
+                    <div className="dossier-enrolled-box">
+                      <span className="dossier-enrolled-badge"><CircleCheck size={19} aria-hidden="true" /> Dossier étudiant actif · Matricule {linkedMat}</span>
+                      <div className="btn-group">
+                        {portal.perms.permissions.includes('student.view') && (
+                          <Link className="btn btn-primary btn-sm" href={`/etudiants/${encodeURIComponent(linkedMat)}`}>
+                            Ouvrir le dossier étudiant ({linkedMat})
+                          </Link>
+                        )}
+                        {portal.perms.permissions.includes('student.lifecycle.manage') && portal.perms.permissions.includes('payment.record') && (
+                          <button type="button" className="btn btn-outline btn-sm" onClick={() => setEnrollingMatricule(linkedMat)}>
+                            Affecter au groupe & contrat
+                          </button>
+                        )}
+                      </div>
                     </div>
-                  </div>
-                );
+                  );
+                }
+
+                if (selected.legacy_state?.admitted || selected.legacy_state?.validated || selected.workflow_stage === 'ADMIS_OFFICIEL') {
+                  return (
+                    <div className="dossier-enrolled-box">
+                      <span className="dossier-enrolled-badge"><CircleCheck size={19} aria-hidden="true" /> Candidature admise · Fiche étudiante</span>
+                      <div className="btn-group">
+                        {portal.perms.permissions.includes('application.review') && (
+                          <button
+                            type="button"
+                            className="btn btn-primary btn-sm"
+                            disabled={busy}
+                            onClick={() => chooseAction('create_student')}
+                          >
+                            Créer la fiche dans Dossiers étudiants
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                  );
+                }
+
+                return null;
               })()}
             </div>
           </div>
