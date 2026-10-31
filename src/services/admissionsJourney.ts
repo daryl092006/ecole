@@ -19,7 +19,16 @@ export function admissionsJourney(application: AdmissionApplication): { step: nu
     case 'TRANSMIS_ACADEMIE': return { step: 1, owner: 'Direction académique', instruction: 'Prendre en charge le dossier transmis, puis examiner la candidature avant de décider.', primary: 'study' };
     case 'ETUDE_ACADEMIQUE': return { step: 1, owner: 'Direction académique', instruction: 'Examiner le dossier puis prononcer l’admissibilité ou un refus motivé. L’admissibilité ouvre le règlement des frais ; elle ne vaut pas admission officielle.', primary: 'admissible' };
     case 'ADMISSIBLE': case 'ATTENTE_PAIEMENT': return { step: 2, owner: 'Chargé de clientèle', instruction: 'Indiquer le montant réellement reçu, le moyen de paiement et la référence du reçu. Un paiement partiel conserve l’attente ; le solde intégral déclenche l’admission officielle.', primary: 'confirm_payment' };
-    case 'ADMIS_OFFICIEL': return { step: 4, owner: 'Traitement terminé', instruction: 'Admission officielle validée. L’étudiant est inscrit pour l’année scolaire.', primary: null };
+    case 'ADMIS_OFFICIEL':
+      if (!application.student_id) {
+        return {
+          step: 3,
+          owner: 'Chargé de clientèle / Scolarité',
+          instruction: 'Le candidat est admis officiellement. Créez son dossier étudiant pour générer son matricule automatique, ses accès officiels Microsoft 365 / Portail et transférer ses pièces.',
+          primary: 'create_student',
+        };
+      }
+      return { step: 4, owner: 'Traitement terminé', instruction: 'Admission officielle validée. L’étudiant est inscrit pour l’année scolaire avec ses accès et son dossier complet.', primary: null };
     case 'REFUSE': return { step: 1, owner: 'Traitement terminé', instruction: 'La candidature a été refusée. La décision et le courrier restent consultables ; aucune progression n’est disponible.', primary: null };
   }
 }
