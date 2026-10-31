@@ -1,4 +1,5 @@
 'use client';
+import PageHeader from '@/components/ui/PageHeader';
 import Link from 'next/link';
 import DrawerActions from '@/components/ui/DrawerActions';
 import IconButton from '@/components/ui/IconButton';
@@ -92,17 +93,15 @@ export default function WebsiteArticlesPanel() {
 
   return <section>
     <FormFeedback message={success} error={false} />
-    <div className="module-header">
-      <div>
-        <h1>Espace éditorial & Actualités</h1>
-        <p>Rédaction, publication et gestion des articles du site web ESCEN</p>
-      </div>
-      <div className="btn-group">
-        <Link className="btn btn-outline" href="/site-web/brochures">Brochures PDF</Link>
-        <button className="btn btn-outline" onClick={() => setArchives(true)}>Consulter les archives</button>
-        {canManage && <button className="btn btn-primary" onClick={() => { setSuccess(''); setEditing({ ...emptyArticle }); setSlugTouched(false); setReason(''); setConfirm(false); }}>Rédiger un article</button>}
-      </div>
-    </div>
+    <PageHeader
+      eyebrow="COMMUNICATION & SITE WEB"
+      title="Espace éditorial & Actualités"
+      description="Rédaction, publication et gestion des articles d’actualité diffusés sur le site officiel ESCEN."
+    >
+      <Link className="btn btn-outline" href="/site-web/brochures">Brochures PDF</Link>
+      <button className="btn btn-outline" onClick={() => setArchives(true)}>Consulter les archives</button>
+      {canManage && <button className="btn btn-primary" onClick={() => { setSuccess(''); setEditing({ ...emptyArticle }); setSlugTouched(false); setReason(''); setConfirm(false); }}>+ Rédiger un article</button>}
+    </PageHeader>
 
     <div className="editorial-stats-grid" aria-label="Synthèse éditoriale">
       <div className="editorial-stat-card"><span>Total des articles</span><strong>{counts.total}</strong></div>

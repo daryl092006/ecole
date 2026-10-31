@@ -1,4 +1,5 @@
 'use client';
+import PageHeader from '@/components/ui/PageHeader';
 import SecondaryDetails from '@/components/ui/SecondaryDetails';
 import DrawerActions from '@/components/ui/DrawerActions';
 import { useEffect, useState } from 'react';
@@ -115,7 +116,21 @@ export default function ComplaintsPanel() {
   const records = directory?.complaints.filter(row => !filter || (filter === 'EN_COURS' ? row.status !== 'CLOTUREE' : row.status === filter)) || [];
   const chosenGrade = eligibleGrades.find(row => row.id === gradeId);
   return <div>
-    <div className="module-header"><h1>Réclamations académiques</h1>{canDeposit && preciseYear && <button className="btn btn-primary" disabled={!directory || !!loadError} onClick={() => { setCreating(true); setGradeId(''); setReason(''); setError(''); }}>Déposer une réclamation</button>}</div>
+    <PageHeader
+      eyebrow="ÉVALUATIONS & EXAMENS"
+      title="Réclamations académiques"
+      description="Suivi, traitement et décisions officielles sur les contestations de notes et d’évaluations."
+    >
+      {canDeposit && preciseYear && (
+        <button
+          className="btn btn-primary"
+          disabled={!directory || !!loadError}
+          onClick={() => { setCreating(true); setGradeId(''); setReason(''); setError(''); }}
+        >
+          + Déposer une réclamation
+        </button>
+      )}
+    </PageHeader>
     {!preciseYear && <p className="info-box">Toutes les années : consultation uniquement. Choisissez une année précise pour déposer ou traiter une réclamation.</p>}
     {message && <p role="status">{message}</p>}
     {loadError ? <section className="card" role="alert"><p>{loadError}</p><button className="btn btn-outline" onClick={() => setRetry(value => value + 1)}>Réessayer</button></section> : !directory ? <LoadingState label="Chargement des réclamations…" /> : <section className="card card-full">

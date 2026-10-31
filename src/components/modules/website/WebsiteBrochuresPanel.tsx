@@ -1,4 +1,5 @@
 'use client';
+import PageHeader from '@/components/ui/PageHeader';
 import SecondaryDetails from '@/components/ui/SecondaryDetails';
 import DrawerActions from '@/components/ui/DrawerActions';
 import { useEffect, useState } from 'react';
@@ -92,7 +93,14 @@ export default function WebsiteBrochuresPanel({ onBack }: { onBack?: () => void 
 
   return <section>
     <FormFeedback message={success} error={false} />
-    <div className="module-header"><div><h1>Brochures du site</h1><p>Documents PDF à télécharger par filière et cycle</p></div><div className="btn-group">{onBack && <button className="btn btn-outline" onClick={onBack}>Articles du site</button>}{canManage && <button className="btn btn-primary" onClick={() => edit({ ...empty })}>Ajouter une brochure</button>}</div></div>
+    <PageHeader
+      eyebrow="COMMUNICATION & SITE WEB"
+      title="Brochures du site"
+      description="Documents PDF officiels téléchargeables par filière et cycle d’études sur le site public."
+    >
+      {onBack && <button className="btn btn-outline" onClick={onBack}>Articles du site</button>}
+      {canManage && <button className="btn btn-primary" onClick={() => edit({ ...empty })}>+ Ajouter une brochure</button>}
+    </PageHeader>
     {loading ? <LoadingState label="Chargement des brochures…" variant="cards" /> : error ? <ErrorState title="Brochures indisponibles" message={error} onRetry={() => setRevision(value => value + 1)} /> : <div className="brochure-catalogue">{!rows.length && <p className="card">Aucune brochure pour cette année.</p>}{cycles.map(cycle => {
       const documents = rows.filter(row => (row.cycle || 'GENERAL') === cycle).sort((a, b) => (a.program_name || a.title).localeCompare(b.program_name || b.title, 'fr'));
       if (!documents.length) return null;
