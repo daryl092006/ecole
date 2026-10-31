@@ -137,7 +137,7 @@ export default function AttendanceWorkspace() {
           event.preventDefault(); setSaving(true); setSaveError('');
           try {
             const command: AttendanceCommand = operation.kind === 'students' ? { action: 'record_students', sessionId: session.id, revision: directory.revision,
-              ...(reason.trim() ? { reason: reason.trim() } : {}), entries: changed.map(student => { const draft = drafts[student.enrollmentId]; return { enrollmentId: student.enrollmentId, status: draft.status as AttendanceStatus,
+              ...((reason.trim() || (correcting ? "Correction de présence" : "Émargement de séance")) ? { reason: reason.trim() || (correcting ? "Correction de présence" : "Émargement de séance") } : {}), entries: changed.map(student => { const draft = drafts[student.enrollmentId]; return { enrollmentId: student.enrollmentId, status: draft.status as AttendanceStatus,
                 arrivedAt: instant(draft.arrivedAt), leftAt: instant(draft.leftAt), lateMinutes: draft.lateMinutes === '' ? null : Number(draft.lateMinutes), comment: draft.comment } satisfies AttendanceEntry; }) }
               : operation.kind === 'teacher' ? { action: 'record_teacher', sessionId: session.id, revision: directory.revision, arrivedAt: instant(teacher.arrivedAt)!, leftAt: instant(teacher.leftAt), comment: teacher.comment }
                 : { action: 'review_justification', justificationId: operation.justification.id, decision: operation.decision, revision: directory.revision, reason: reason.trim() };
@@ -159,7 +159,7 @@ export default function AttendanceWorkspace() {
           })}</>}
           {operation.kind === 'teacher' && <><p>{session.teacherName}</p><label className="form-group">Arrivée enseignante<input className="input" type="datetime-local" step={1} required value={teacher.arrivedAt} onChange={event => setTeacher({ ...teacher, arrivedAt: event.target.value })} /></label><label className="form-group">Départ enseignant<input className="input" type="datetime-local" step={1} value={teacher.leftAt} onChange={event => setTeacher({ ...teacher, leftAt: event.target.value })} /></label><label className="form-group">Commentaire enseignant<textarea className="input" maxLength={4000} value={teacher.comment} onChange={event => setTeacher({ ...teacher, comment: event.target.value })} /></label></>}
           {operation.kind === 'review' && <p>{operation.justification.studentName} · {operation.justification.reason}</p>}
-          {operation.kind !== 'teacher' && <label className="form-group">Motif<textarea className="input" minLength={3} maxLength={1000} required={operation.kind === 'review' || correcting} value={reason} onChange={event => setReason(event.target.value)} /></label>}
+          {operation.kind === 'review' && <label className="form-group">Motif de la décision<textarea className="input" minLength={3} maxLength={1000} required value={reason} onChange={event => setReason(event.target.value)} /></label>}
           <DrawerActions><button className="btn btn-primary">Vérifier les informations</button></DrawerActions>
         </fieldset>
       </ReviewedForm></WorkPage>}

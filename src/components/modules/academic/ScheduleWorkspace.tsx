@@ -153,7 +153,12 @@ function ScheduleManager() {
   const effectiveEndsAt = isMultiCreate ? (multiSlots[0] ? localTime(multiSlots[0].endsAt) : '') : form.endsAt;
   const effectiveReason = form.reason.trim() || (action === 'create_session'
     ? (isMultiCreate && multiSlots.length > 1 ? `Programmation groupée de ${multiSlots.length} séances de cours` : 'Programmation pédagogique du cours')
-    : '');
+    : action === 'update_session' ? 'Mise à jour des horaires ou de la salle du cours'
+    : action === 'move_session' ? 'Déplacement de séance de cours'
+    : action === 'replace_teacher' ? 'Remplacement d’enseignant pour la séance'
+    : action === 'cancel_session' ? 'Annulation de la séance de cours'
+    : action === 'block_period' ? (form.name ? `Période bloquée : ${form.name}` : 'Période bloquée')
+    : 'Opération sur le planning');
 
   const movingExam = current?.exam && timed && effectiveStartsAt && effectiveEndsAt
     && (Date.parse(iso(effectiveStartsAt)) !== Date.parse(current.startsAt) || Date.parse(iso(effectiveEndsAt)) !== Date.parse(current.endsAt)) ? current.exam : null;
@@ -232,7 +237,6 @@ function ScheduleManager() {
         } else if (timed && effectiveEndsAt <= effectiveStartsAt) {
           return 'La fin doit être postérieure au début.';
         }
-        if (effectiveReason.length < 3) return 'Le motif doit contenir au moins 3 caractères.';
         return null;
       }}
       onConfirm={event => {
@@ -343,7 +347,7 @@ function ScheduleManager() {
       )}
       {action === 'replace_teacher' && current && <label className="form-group">Remplaçant<select className="select-input" value={form.teacherId} onChange={event => setForm({ ...form, teacherId: event.target.value })}><option value="">Enseignant d’origine : {teacherName(current.teacherId)}</option>{directory.teachers.filter(teacher => teacher.active && teacher.id !== current.teacherId).map(teacher => <option key={teacher.id} value={teacher.id}>{teacher.name}</option>)}</select></label>}
       {action === 'cancel_session' && current && <p>{assignmentName(current.assignmentId)} · {displayTime(current.startsAt)} → ANNULE</p>}
-      <label className="form-group">Motif<textarea className="input" required={action !== 'create_session'} minLength={action !== 'create_session' ? 3 : undefined} maxLength={1000} placeholder={action === 'create_session' ? 'Facultatif à la création (renseigné automatiquement)' : undefined} value={form.reason} onChange={event => setForm({ ...form, reason: event.target.value })} /></label>
+      {action === 'cancel_session' && <label className="form-group">Motif d’annulation (facultatif)<textarea className="input" maxLength={1000} placeholder="Facultatif — ex. indisponibilité de l’enseignant" value={form.reason} onChange={event => setForm({ ...form, reason: event.target.value })} /></label>}
       <DrawerActions><button className="btn btn-primary">Vérifier les informations</button><DrawerCloseButton className="btn btn-outline" disabled={saving}>Annuler</DrawerCloseButton></DrawerActions>
     </ReviewedForm></WorkPage>}
     {assigning && <CourseAssignmentDialog {...assigning} onClose={() => setAssigning(null)} onSaved={async id => {

@@ -15,7 +15,7 @@ export default function CourseAssignmentDialog({ groupId, offeringId, componentI
   const portal = usePortal();
   const [directory, setDirectory] = useState<TeacherDirectory | null>(null);
   const [error, setError] = useState(''), [retry, setRetry] = useState(0), [busy, setBusy] = useState(false);
-  const [teacherId, setTeacherId] = useState(''), [from, setFrom] = useState(''), [until, setUntil] = useState(''), [reason, setReason] = useState('');
+  const [teacherId, setTeacherId] = useState(''), [from, setFrom] = useState(''), [until, setUntil] = useState('');
   const [savedId, setSavedId] = useState('');
   useEffect(() => {
     const controller = new AbortController(); setError('');
@@ -24,7 +24,7 @@ export default function CourseAssignmentDialog({ groupId, offeringId, componentI
   }, [portal.activeRole, retry]);
   const offering = directory?.offerings.find(row => row.id === offeringId);
   const valid = directory?.canManageAssignments && directory.groups.some(row => row.id === groupId && row.offeringIds.includes(offeringId)) && directory.components.some(row => row.id === componentId && row.curriculumId === offering?.curriculumId);
-  const effectiveReason = reason.trim() || 'Affectation pédagogique depuis l’emploi du temps';
+  const effectiveReason = 'Affectation pédagogique depuis l’emploi du temps';
   return <WorkPage title="Choisir l’enseignant de ce cours" busy={busy} onClose={onClose}>
     {!directory ? error ? <div role="alert"><p>{error}</p><button className="btn btn-outline" onClick={() => setRetry(value => value + 1)}>Réessayer</button></div> : <LoadingState label="Chargement des enseignants…" /> : !valid ? <p role="alert">L’affectation n’est pas disponible pour ce groupe, cette matière ou cette année. Actualisez le planning.</p> : <ReviewedForm busy={busy} error={error} confirmLabel="Confirmer l’enseignant" fields={[
       { label: 'Groupe', value: directory.groups.find(row => row.id === groupId)?.label || '' }, { label: 'Formation', value: offering?.label || '' },
@@ -48,7 +48,6 @@ export default function CourseAssignmentDialog({ groupId, offeringId, componentI
       {!directory.teachers.some(row => row.active) && <p>Aucun enseignant actif. <Link href="/personnel/enseignants">Complétez les profils dans « Enseignants et affectations »</Link> avant de programmer ce cours.</p>}
       <label className="form-group">Début de l’enseignement<input className="input" type="date" required value={from} onChange={event => setFrom(event.target.value)} /></label>
       <label className="form-group">Fin de l’enseignement (facultative)<input className="input" type="date" min={from} value={until} onChange={event => setUntil(event.target.value)} /></label>
-      <label className="form-group">Motif<textarea className="input" maxLength={1000} placeholder="Facultatif — renseigné automatiquement si laissé vide" value={reason} onChange={event => setReason(event.target.value)} /></label>
       <DrawerActions><button className="btn btn-primary" disabled={busy || !directory.teachers.some(row => row.active)}>Vérifier l’enseignant</button></DrawerActions>
       </fieldset>
     </ReviewedForm>}
