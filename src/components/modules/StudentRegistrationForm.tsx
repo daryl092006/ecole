@@ -12,12 +12,12 @@ export default function StudentRegistrationForm({ groups, onCreate }: Props) {
   const group = groups.find(item => item.id === input.groupId);
   return <ActionPanel label="Ajouter un étudiant inscrit"><form className="action-form" onSubmit={event => {
     event.preventDefault();
-    try { onCreate(input); setInput(empty); setFeedback('Dossier enregistré.'); }
+    try { const autoMatricule = input.matricule.trim() || `${String(Math.floor(100 + Math.random() * 900))}-ESC-${new Date().getFullYear()}`; onCreate({ ...input, matricule: autoMatricule }); setInput(empty); setFeedback('Dossier enregistré.'); }
     catch (error) { setFeedback(error instanceof Error ? error.message : 'Enregistrement impossible.', true); }
   }}>
 
     <div className="form-row">
-      {(['matricule', 'firstname', 'lastname', 'email'] as const).map((field, index) => <label className="form-group" key={field}>{['Matricule', 'Prénom', 'Nom', 'Email'][index]}<input className="input" type={field === 'email' ? 'email' : 'text'} required={field !== 'email'} value={input[field]} onChange={event => setInput({ ...input, [field]: event.target.value })} /></label>)}
+      <div className="form-group"><label className="form-label">Matricule</label><span className="badge badge-success" style={{ display: "inline-block", padding: "6px 12px" }}>Génération automatique</span></div>{(["firstname", "lastname", "email"] as const).map((field, index) => <label className="form-group" key={field}>{["Prénom", "Nom", "Email"][index]}<input className="input" type={field === "email" ? "email" : "text"} required={field !== "email"} value={input[field]} onChange={event => setInput({ ...input, [field]: event.target.value })} /></label>)}
       <label className="form-group">Groupe<select className="select-input" required value={input.groupId} onChange={event => setInput({ ...input, groupId: event.target.value, filiere: '' })}><option value="">Sélectionner</option>{groups.map(item => <option key={item.id} value={item.id}>{item.name} · {item.academicYear}</option>)}</select></label>
       <label className="form-group">Filière<select className="select-input" required value={input.filiere} onChange={event => setInput({ ...input, filiere: event.target.value })}><option value="">Sélectionner</option>{group?.filieres.map(name => <option key={name}>{name}</option>)}</select></label>
     </div><button className="btn btn-primary" disabled={!groups.length}>Enregistrer le dossier</button>

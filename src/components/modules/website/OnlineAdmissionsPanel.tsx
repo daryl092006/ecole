@@ -74,7 +74,6 @@ export default function OnlineAdmissionsPanel({
   // Admission conversion flow
   const [enrollingMatricule, setEnrollingMatricule] = useState('');
   const [convertingApp, setConvertingApp] = useState<OnlineApplication | null>(null);
-  const [convMatricule, setConvMatricule] = useState('');
   const [convNom, setConvNom] = useState('');
   const [convPrenom, setConvPrenom] = useState('');
   const [convEmail, setConvEmail] = useState('');
@@ -140,17 +139,14 @@ export default function OnlineAdmissionsPanel({
 
   const startConversion = (app: OnlineApplication) => {
     setConvertingApp(app);
-    const currentYear = new Date().getFullYear();
-    const cleanRef = app.reference.replace(/[^A-Za-z0-9]/g, '');
-    setConvMatricule(`ESCEN-${currentYear}-${cleanRef}`);
-    setConvNom(app.identity.nom || '');
-    setConvPrenom(app.identity.prenom || '');
-    setConvEmail(app.identity.email || '');
-    setConvPhone(app.identity.tel || '');
-    setConvGenre(app.identity.genre || '');
-    setConvBirthDate(app.identity.date_naissance ? app.identity.date_naissance.slice(0, 10) : '');
-    setConvNationality(app.identity.nationalite || '');
-    setConvCity(app.identity.lieu_naissance || '');
+    setConvNom(app.identity.nom || "");
+    setConvPrenom(app.identity.prenom || "");
+    setConvEmail(app.identity.email || "");
+    setConvPhone(app.identity.tel || "");
+    setConvGenre(app.identity.genre || "");
+    setConvBirthDate(app.identity.date_naissance ? app.identity.date_naissance.slice(0, 10) : "");
+    setConvNationality(app.identity.nationalite || "");
+    setConvCity(app.identity.lieu_naissance || "");
     setConvReason(`Admission et création du dossier étudiant suite à candidature en ligne réf. ${app.reference}`);
     setConvError('');
   };
@@ -508,7 +504,6 @@ export default function OnlineAdmissionsPanel({
             busy={convBusy}
             error={convError}
             validate={() => {
-              if (!convMatricule.trim()) return 'Le matricule est obligatoire.';
               if (!convNom.trim()) return 'Le nom de famille est obligatoire.';
               if (!convPrenom.trim()) return 'Le prénom est obligatoire.';
               if (!convReason.trim() || convReason.trim().length < 3) return 'Le motif d’admission (min 3 caractères) est requis.';
@@ -517,20 +512,19 @@ export default function OnlineAdmissionsPanel({
             confirmLabel="Confirmer l’admission et créer le dossier"
             fields={[
               { label: 'Candidat', value: `${convPrenom} ${convNom}` },
-              { label: 'Matricule attribué', value: convMatricule },
+              { label: 'Matricule officiel', value: 'Généré automatiquement (NNN-ESC-AAAA)' },
               { label: 'Email', value: convEmail || 'Non renseigné' },
               { label: 'Téléphone', value: convPhone || 'Non renseigné' },
               { label: 'Formation', value: convertingApp.intake_label || 'Non renseignée' },
               { label: 'Motif', value: convReason },
             ]}
-            consequence="Le dossier étudiant officiel sera créé avec ce matricule. La candidature sera validée pour l’inscription annuelle."
+            consequence="Le dossier étudiant officiel sera créé avec un matricule automatique. La candidature sera validée pour l’inscription annuelle."
             onConfirm={async event => {
               event.preventDefault();
               setConvBusy(true);
               setConvError('');
               try {
-                await createStudentRecord(
-                  convMatricule.trim(),
+                const res = await createStudentRecord(undefined,
                   {
                     firstname: convPrenom.trim(),
                     lastname: convNom.trim(),
@@ -557,7 +551,7 @@ export default function OnlineAdmissionsPanel({
                   role
                 );
 
-                const matricule = convMatricule.trim();
+                const matricule = res.matricule;
                 state.reportActionOutcome({
                   title: 'Candidat admis avec succès',
                   detail: `Le dossier étudiant ${convPrenom} ${convNom} a été créé (Matricule : ${matricule}). L’inscription annuelle peut maintenant être finalisée.`,
@@ -584,16 +578,7 @@ export default function OnlineAdmissionsPanel({
               </div>
 
               <div className="form-grid">
-                <label className="form-group">
-                  Matricule étudiant
-                  <input
-                    className="input"
-                    required
-                    maxLength={160}
-                    value={convMatricule}
-                    onChange={e => setConvMatricule(e.target.value)}
-                  />
-                </label>
+                <div className="form-group" style={{ gridColumn: "1 / -1" }}><span className="badge badge-success">Attribution automatique</span><p style={{ marginTop: 6, fontSize: 13, color: "var(--text-muted)" }}>Le matricule officiel (ex: <code>NNN-ESC-2026</code>) sera généré automatiquement selon la séquence officielle de l’école.</p></div>
                 <label className="form-group">
                   Sexe
                   <select
