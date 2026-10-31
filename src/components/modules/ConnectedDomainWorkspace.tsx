@@ -23,6 +23,7 @@ import ArchiveFinanceWorkspace from './history/ArchiveFinanceWorkspace';
 import GroupSubjectGradesPanel from './academic/GroupSubjectGradesPanel';
 import TranscriptPrintAction from './academic/TranscriptPrintAction';
 import ReceiptPrintAction from './finance/ReceiptPrintAction';
+import PageHeader from '@/components/ui/PageHeader';
 
 export default function ConnectedDomainWorkspace({ section, studentMatricule, onlyCollection }: { section: string; studentMatricule?: string; onlyCollection?: string }) {
   const portal = usePortal(); const base = DOMAIN_WORKSPACES[section]; const definition = onlyCollection ? { ...base, collections: base.collections.filter(item => item.table === onlyCollection) } : base; const snapshot = portal.relationalSnapshot;
@@ -126,8 +127,88 @@ export default function ConnectedDomainWorkspace({ section, studentMatricule, on
       </div>
     </section>
   ) : <StudentDossierPicker students={portal.students} onSelect={selectDossier} /> : null;
-  if (contextual && !student && !studentMatricule) return <div className="domain-workspace"><div className="page-intro"><div><h1>{title}</h1></div></div>{section === 'acad_grades' && <GroupSubjectGradesPanel snapshot={snapshot} canViewStudents={portal.perms.permissions.includes('student.view')} onSelectStudent={selectDossier} />}{section === 'acad_jury' && <section className="card card-full mb-2"><div className="card-header"><div><h2>Jurys enregistrés ({(snapshot.tables.juries || []).length})</h2><p className="cell-sub">{definition.availability}</p></div><span className="pill pill-default">{(snapshot.tables.jury_decisions || []).length} décision(s) · {(snapshot.tables.generated_documents || []).length} document(s)</span></div>{(snapshot.tables.juries || []).length > 0 ? <div className="table-wrap"><ResponsiveTable className="data-table"><thead><tr><th>Semestre</th><th>Tenue le</th><th>Décisions</th><th>Procès-verbal</th></tr></thead><tbody>{(snapshot.tables.juries || []).map(jury => <tr key={jury.id}><td><strong>{connectedRecordValue('juries', 'offering_semester_id', jury.offering_semester_id, snapshot)}</strong></td><td>{connectedRecordValue('juries', 'held_at', jury.held_at, snapshot)}</td><td>{(snapshot.tables.jury_decisions || []).filter(d => d.jury_id === jury.id).length}</td><td>{String(jury.minutes || '—')}</td></tr>)}</tbody></ResponsiveTable></div> : <p className="cell-sub">Aucun jury enregistré pour l’année consultée. Sélectionnez un dossier étudiant ci-dessous pour consulter ses décisions ou relevés.</p>}</section>}{dossierPicker}</div>;
-  return <div className="domain-workspace">{!studentMatricule && <div className="page-intro"><div><h1>{title}</h1></div>{canOpenFinancialDossier && <button className="btn btn-primary" onClick={() => setPaymentPicker(true)}>{section === 'fin_contracts' ? 'Gérer un contrat' : 'Enregistrer un paiement'}</button>}</div>}
+  const workspaceEyebrow = section.startsWith('acad_')
+    ? 'PÉDAGOGIE & SCOLARITÉ'
+    : section.startsWith('fin_')
+    ? 'FINANCES & COMPTABILITÉ'
+    : section.startsWith('stud_')
+    ? 'DOSSIERS ÉTUDIANTS'
+    : section.startsWith('comm_')
+    ? 'COMMUNICATION'
+    : section.startsWith('sys_')
+    ? 'SYSTÈME & CONTRÔLE'
+    : section.startsWith('log_')
+    ? 'LOGISTIQUE & ACHATS'
+    : section.startsWith('staff_')
+    ? 'RESSOURCES HUMAINES'
+    : 'ESPACE CAMPUS';
+
+  if (contextual && !student && !studentMatricule) {
+    return (
+      <div className="domain-workspace">
+        <PageHeader eyebrow={workspaceEyebrow} title={title} description={definition.purpose} />
+        {section === 'acad_grades' && (
+          <GroupSubjectGradesPanel snapshot={snapshot} canViewStudents={portal.perms.permissions.includes('student.view')} onSelectStudent={selectDossier} />
+        )}
+        {section === 'acad_jury' && (
+          <section className="card card-full mb-2">
+            <div className="card-header">
+              <div>
+                <h2>Jurys enregistrés ({(snapshot.tables.juries || []).length})</h2>
+                <p className="cell-sub">{definition.availability}</p>
+              </div>
+              <span className="pill pill-default">
+                {(snapshot.tables.jury_decisions || []).length} décision(s) · {(snapshot.tables.generated_documents || []).length} document(s)
+              </span>
+            </div>
+            {(snapshot.tables.juries || []).length > 0 ? (
+              <div className="table-wrap">
+                <ResponsiveTable className="data-table">
+                  <thead>
+                    <tr>
+                      <th>Semestre</th>
+                      <th>Tenue le</th>
+                      <th>Décisions</th>
+                      <th>Procès-verbal</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {(snapshot.tables.juries || []).map(jury => (
+                      <tr key={jury.id}>
+                        <td>
+                          <strong>{connectedRecordValue('juries', 'offering_semester_id', jury.offering_semester_id, snapshot)}</strong>
+                        </td>
+                        <td>{connectedRecordValue('juries', 'held_at', jury.held_at, snapshot)}</td>
+                        <td>{(snapshot.tables.jury_decisions || []).filter(d => d.jury_id === jury.id).length}</td>
+                        <td>{String(jury.minutes || '—')}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </ResponsiveTable>
+              </div>
+            ) : (
+              <p className="cell-sub">
+                Aucun jury enregistré pour l’année consultée. Sélectionnez un dossier étudiant ci-dessous pour consulter ses décisions ou relevés.
+              </p>
+            )}
+          </section>
+        )}
+        {dossierPicker}
+      </div>
+    );
+  }
+
+  return (
+    <div className="domain-workspace">
+      {!studentMatricule && (
+        <PageHeader eyebrow={workspaceEyebrow} title={title} description={definition.purpose}>
+          {canOpenFinancialDossier && (
+            <button className="btn btn-primary" onClick={() => setPaymentPicker(true)}>
+              {section === 'fin_contracts' ? 'Gérer un contrat' : 'Enregistrer un paiement'}
+            </button>
+          )}
+        </PageHeader>
+      )}
     {dossierPicker}
 
 
@@ -157,5 +238,6 @@ export default function ConnectedDomainWorkspace({ section, studentMatricule, on
       })()}<dl className="record-details-grid">{Object.entries(selected).filter(([key]) => [...(config?.columns || []), 'reference', 'reason', 'comment', 'description', 'content'].includes(key)).map(([key, value]) => <div key={key}><dt>{connectedFieldLabel(key)}</dt><dd>{connectedRecordValue(collection, key, value, snapshot)}</dd></div>)}</dl>{!studentMatricule && portal.perms.permissions.includes('student.view') && (() => { const paymentRow = selected.payment_id ? snapshot.tables.payments?.find(p => p.id === selected.payment_id) : undefined; const versionRow = selected.version_id ? snapshot.tables.contract_versions?.find(v => v.id === selected.version_id) : undefined; const contractRow = (selected.contract_id || versionRow?.contract_id) ? snapshot.tables.financial_contracts?.find(c => c.id === (selected.contract_id || versionRow?.contract_id)) : undefined; const enrId = selected.enrollment_id || paymentRow?.enrollment_id || contractRow?.enrollment_id || (collection === 'enrollments' ? selected.id : undefined); const studId = selected.student_id || (enrId ? snapshot.tables.enrollments?.find(e => e.id === enrId)?.student_id : undefined); const mat = studId ? snapshot.tables.students?.find(s => s.id === studId)?.matricule : undefined; return mat ? <div className="btn-group">{canOpenFinancialDossier && <button type="button" className="btn btn-primary" onClick={() => { setSelected(null); setPaymentDossier(String(mat)); }}>{section === 'fin_contracts' ? 'Gérer le contrat' : 'Gérer les versements'}</button>}<Link className="btn btn-outline" href={`/etudiants/${encodeURIComponent(String(mat))}`}>Ouvrir le dossier étudiant ({String(mat)})</Link></div> : null; })()}</WorkPage>}
     </>}
 
-  </div>;
+    </div>
+  );
 }
