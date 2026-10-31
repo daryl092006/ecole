@@ -1,4 +1,4 @@
-import IconButton from '@/components/ui/IconButton';
+
 import type { RoleName, Student } from '@/types';
 import { EMPTY_STUDENT_FILTERS, type StudentFilters } from '@/services/studentQueryService';
 import { filterRegisteredStudents, studentGroupFilterKey, studentFilterValue, MISSING_STUDENT_VALUE } from '@/services/studentQueryService';
@@ -26,9 +26,9 @@ export default function StudentFiltersPanel({ students, filters, onChange, role 
     {demographicFilter('gender', 'Sexe', 'Tous les sexes', 'Non renseigné')}
     {demographicFilter('status', 'Statut', 'Tous les statuts', 'Non renseigné')}
   </div></section><div className="student-filter-footer"><p role="status">{results.length} résultat(s) sur {students.length} dossier(s).</p>
-    <div className="btn-group">{(filters.search || activeFilters > 0) && <button className="btn btn-outline" onClick={() => onChange(EMPTY_STUDENT_FILTERS)}>Effacer les filtres</button>}{results.length > 0 && <IconButton className="btn btn-outline" onClick={() => {
+    <div className="btn-group">{(filters.search || activeFilters > 0) && <button className="btn btn-outline" onClick={() => onChange(EMPTY_STUDENT_FILTERS)}>Effacer les filtres</button>}{results.length > 0 && <button className="btn btn-outline" onClick={() => {
       const permitted = filterRegisteredStudents(students, filters, role);
       downloadCsv('escen-etudiants.csv', ['Matricule', 'Prénom', 'Nom', 'Email', 'Nationalité', 'Sexe', 'Filière', 'Niveau', 'Groupe', 'Statut'], permitted.map(item => [item.matricule, item.firstname, item.lastname, item.email, item.nationality, item.gender, item.filiere, item.niveau, item.groupe, item.status]));
-    }} label="Exporter les résultats CSV" />}</div></div>
+    }}>Exporter CSV ({results.length})</button>}</div></div>
   </div>;
 }

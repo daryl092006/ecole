@@ -98,7 +98,7 @@ export default function ProfileWorkspace() {
         <Link className="btn btn-outline" href="/mon-espace/support">Signaler une erreur d’état civil</Link>
       </PageHeader>
 
-      {success && <p className="card" role="status">{success}</p>}
+      {success && <p className="info-box" role="status">{success}</p>}
 
       {session?.matricule && (
         <StudentIdCardBadge
