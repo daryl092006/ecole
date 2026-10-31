@@ -286,6 +286,25 @@ export async function syncStudentApplicationDocuments(
     academicYearId?: string | null;
   }
 ): Promise<{ transferredCount: number; errors: string[] }> {
+  // 1. Tenter la RPC PostgreSQL transactionnelle si disponible
+  if (typeof client.rpc === 'function') {
+    try {
+      const rpcRes = await client.rpc('escen_sync_student_application_documents', {
+        p_student_id: params.studentId,
+        p_actor_id: params.actorId || null,
+      });
+      if (!rpcRes.error && rpcRes.data && typeof rpcRes.data === 'object') {
+        const payload = rpcRes.data as { transferredCount?: number };
+        return {
+          transferredCount: Number(payload.transferredCount || 0),
+          errors: [],
+        };
+      }
+    } catch {
+      // Si la RPC échoue ou n'est pas configurée dans le mock, poursuivre vers le repli
+    }
+  }
+
   let enrollmentId: string | null = null;
   const { data: enrollments } = await client
     .from('enrollments')
