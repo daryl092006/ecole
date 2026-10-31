@@ -11,6 +11,7 @@ export interface Student {
   firstname: string;
   lastname: string;
   email: string;
+  institutionalEmail?: string;
   phone: string;
   gender: string;
   birthDate: string;

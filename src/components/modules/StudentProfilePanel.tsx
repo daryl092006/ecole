@@ -28,7 +28,7 @@ function formatCivilValue(key: string, val: string | undefined): ReactNode {
   return val;
 }
 
-const labels = { firstname: 'Prénom', lastname: 'Nom', email: 'Email', phone: 'Téléphone', birthDate: 'Date de naissance', nationality: 'Nationalité', address: 'Adresse', city: 'Ville', country: 'Pays' };
+const labels = { firstname: 'Prénom', lastname: 'Nom', email: 'Email personnel (privé)', phone: 'Téléphone', birthDate: 'Date de naissance', nationality: 'Nationalité', address: 'Adresse', city: 'Ville', country: 'Pays' };
 export default function StudentProfilePanel({ student, compact = false, onSaved }: { student: Student; compact?: boolean; onSaved?: () => void }) {
   const state = usePortal(); const [editing, setEditing] = useState(false);
   const initial = { firstname: student.firstname, lastname: student.lastname, email: student.email, phone: student.phone, gender: student.gender, birthDate: student.birthDate, nationality: student.nationality, address: student.address, city: student.city, country: student.country };
@@ -81,6 +81,17 @@ export default function StudentProfilePanel({ student, compact = false, onSaved 
                 </span>
               </div>
             ))}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                <span style={{ fontSize: '11px', fontWeight: 600, color: '#0369a1', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+                  Email institutionnel (Pro)
+                </span>
+                <span className="pill pill-info" style={{ fontSize: '10px', padding: '1px 6px', fontWeight: 600 }}>M365</span>
+              </div>
+              <span style={{ fontSize: '14.5px', fontWeight: 600, color: '#0369a1' }}>
+                {student.institutionalEmail || `${student.matricule.toLowerCase()}@escen.university`}
+              </span>
+            </div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
               <span style={{ fontSize: '11px', fontWeight: 600, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
                 Genre / Sexe
