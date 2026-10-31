@@ -125,8 +125,8 @@ export default function StudentRecordPanel({ studentId, embedded = false, initia
       )}
       <div className="page-intro">
         <div>
-          <span className="page-eyebrow">DOSSIER ÉTUDIANT · {student.matricule}</span>
-          <h1>
+          {!embedded && <span className="page-eyebrow">DOSSIER ÉTUDIANT · {student.matricule}</span>}
+          <h1 style={embedded ? { fontSize: '1.5rem', marginBottom: '0.25rem' } : undefined}>
             {student.firstname} {student.lastname}
           </h1>
           <p>
@@ -156,7 +156,6 @@ export default function StudentRecordPanel({ studentId, embedded = false, initia
       {section === 'identity' ? (
         <>
           <section className="card card-full">
-            <h2>Identité et contacts</h2>
             <StudentProfilePanel key={student.matricule} student={student} />
           </section>
         </>

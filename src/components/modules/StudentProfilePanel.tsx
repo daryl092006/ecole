@@ -44,13 +44,13 @@ export default function StudentProfilePanel({ student, compact = false, onSaved 
         {!compact && (
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '18px', flexWrap: 'wrap', gap: '12px' }}>
             <div>
-              <h2 style={{ fontSize: '1.2rem', fontWeight: 600, margin: 0, color: '#0f172a' }}>Identité et coordonnées civiles</h2>
+              <h2 style={{ fontSize: '1.2rem', fontWeight: 600, margin: 0, color: 'var(--text-main, #0f172a)' }}>Identité et coordonnées civiles</h2>
               <p className="cell-sub" style={{ margin: '3px 0 0' }}>Informations personnelles officielles enregistrées pour ce dossier.</p>
             </div>
             {canEdit && (
               <button
                 type="button"
-                className="btn btn-primary"
+                className="btn btn-outline"
                 style={{ display: 'inline-flex', alignItems: 'center', gap: '8px' }}
                 onClick={() => { setForm(initial); setRevision(state.campusRevision); setEditing(true); setError(''); }}
               >
@@ -73,30 +73,30 @@ export default function StudentProfilePanel({ student, compact = false, onSaved 
           }}>
             {Object.entries(labels).map(([key, label]) => (
               <div key={key} style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                <span style={{ fontSize: '11px', fontWeight: 600, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+                <span style={{ fontSize: '11px', fontWeight: 600, color: 'var(--text-muted, #64748b)', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
                   {label}
                 </span>
-                <span style={{ fontSize: '14.5px', fontWeight: 600, color: '#0f172a' }}>
+                <span style={{ fontSize: '14.5px', fontWeight: 600, color: 'var(--text-main, #0f172a)' }}>
                   {formatCivilValue(key, student[key as keyof typeof labels])}
                 </span>
               </div>
             ))}
             <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                <span style={{ fontSize: '11px', fontWeight: 600, color: '#0369a1', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+                <span style={{ fontSize: '11px', fontWeight: 600, color: 'var(--primary, #0369a1)', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
                   Email institutionnel (Pro)
                 </span>
                 <span className="pill pill-info" style={{ fontSize: '10px', padding: '1px 6px', fontWeight: 600 }}>M365</span>
               </div>
-              <span style={{ fontSize: '14.5px', fontWeight: 600, color: '#0369a1' }}>
+              <span style={{ fontSize: '14.5px', fontWeight: 600, color: 'var(--primary, #0369a1)' }}>
                 {student.institutionalEmail || `${student.matricule.toLowerCase()}@escen.university`}
               </span>
             </div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-              <span style={{ fontSize: '11px', fontWeight: 600, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+              <span style={{ fontSize: '11px', fontWeight: 600, color: 'var(--text-muted, #64748b)', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
                 Genre / Sexe
               </span>
-              <span style={{ fontSize: '14.5px', fontWeight: 600, color: '#0f172a' }}>
+              <span style={{ fontSize: '14.5px', fontWeight: 600, color: 'var(--text-main, #0f172a)' }}>
                 {formatCivilValue('gender', student.gender)}
               </span>
             </div>
