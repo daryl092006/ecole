@@ -419,7 +419,7 @@ export default function WorkspaceHome({ mode = 'home' }: { mode?: 'home' | 'over
     [ROLES.DA]: ['acad_exams', 'acad_grades', 'acad_schedule', 'stud_list', 'acad_reference'],
     [ROLES.CC]: ['web_applications', 'stud_list'],
     [ROLES.LOG]: ['acad_schedule', 'acad_attendance', 'staff_teachers', 'acad_program'],
-    [ROLES.ENS]: ['acad_schedule', 'acad_subjects', 'acad_grades', 'acad_attendance', 'acad_complaints'],
+    [ROLES.ENS]: ['acad_schedule', 'acad_subjects', 'acad_grades', 'acad_complaints'],
     [ROLES.SURV]: ['acad_exams', 'acad_attendance', 'acad_schedule'],
     [ROLES.RAF]: ['fin_payments', 'fin_kpis', 'fin_contracts', 'fin_reports', 'stud_list'],
     [ROLES.MKT]: ['comm_announcements', 'web_applications', 'stud_list', 'acad_schedule', 'acad_program', 'comm_news', 'web_brochures'],

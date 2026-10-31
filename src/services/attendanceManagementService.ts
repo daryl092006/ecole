@@ -84,7 +84,7 @@ export function attendanceDirectory(snapshot: RelationalSnapshot, context: Persi
             status: row.status as 'EN_ATTENTE' | 'VALIDE' | 'REFUSE', reviewReason: text(row.review_reason), reviewedAt: timestamp(row.reviewed_at),
             hasFile: rows('file_objects').some(file => file.id === row.file_id) }] : [];
         }),
-        canRecordStudents: writable && context.permissions.includes('attendance.record') && [ROLES.ENS, ROLES.SURV, ROLES.DEL, ROLES.IT].includes(context.role as typeof ROLES.ENS),
+        canRecordStudents: writable && context.permissions.includes('attendance.record') && [ROLES.SURV, ROLES.DEL, ROLES.IT].includes(context.role as typeof ROLES.SURV),
         canRecordTeacher: writable && context.permissions.includes('attendance.record') && [ROLES.SURV, ROLES.DEL, ROLES.IT].includes(context.role as typeof ROLES.SURV) && !!person && person.id !== context.personId,
         canReview: writable && context.permissions.includes('attendance.review') && [ROLES.DA, ROLES.IT].includes(context.role as typeof ROLES.DA),
       };
