@@ -81,11 +81,12 @@ export function filterRelationalSnapshot(snapshot: RelationalSnapshot, context: 
   const attempts = rows('exam_attempts').filter(row => candidateIds.has(field(row,'candidate_id')));
   const attemptIds = new Set(attempts.map(row => row.id));
   const answerIds = new Set(rows('exam_answers').filter(row => attemptIds.has(field(row,'attempt_id'))).map(row => row.id));
-  const contractIds = new Set(rows('financial_contracts').filter(row => enrollmentIds.has(field(row,'enrollment_id'))).map(row => row.id));
-  const versionIds = new Set(rows('contract_versions').filter(row => contractIds.has(field(row,'contract_id'))).map(row => row.id));
-  const lineIds = new Set(rows('contract_lines').filter(row => contractIds.has(field(row,'contract_id'))).map(row => row.id));
-  const paymentIds = new Set(rows('payments').filter(row => enrollmentIds.has(field(row,'enrollment_id'))).map(row => row.id));
-  const allocationIds = new Set(rows('payment_allocations').filter(row => paymentIds.has(field(row,'payment_id'))).map(row => row.id));
+  const financialUnscoped = can('finance.view') && unscoped && !self && !teacher && !supervisor;
+  const contractIds = new Set(rows('financial_contracts').filter(row => financialUnscoped || enrollmentIds.has(field(row,'enrollment_id'))).map(row => row.id));
+  const versionIds = new Set(rows('contract_versions').filter(row => financialUnscoped || contractIds.has(field(row,'contract_id'))).map(row => row.id));
+  const lineIds = new Set(rows('contract_lines').filter(row => financialUnscoped || contractIds.has(field(row,'contract_id'))).map(row => row.id));
+  const paymentIds = new Set(rows('payments').filter(row => financialUnscoped || enrollmentIds.has(field(row,'enrollment_id'))).map(row => row.id));
+  const allocationIds = new Set(rows('payment_allocations').filter(row => financialUnscoped || paymentIds.has(field(row,'payment_id'))).map(row => row.id));
   const decisionIds = new Set(rows('jury_decisions').filter(row => enrollmentIds.has(field(row,'enrollment_id')) && (!self || row.decision !== undefined)).map(row => row.id));
   const communicationAccess = can('communication.view') || self;
   const communicationAdministration = communicationAccess && unscoped && !self && !teacher && !supervisor

@@ -540,6 +540,7 @@ export default function WorkspaceHome({ mode = 'home' }: { mode?: 'home' | 'over
     {mode === 'home' && <>
       <p className="auth-form-description">Votre tableau de bord · {state.activeRole}. Les informations correspondent à votre périmètre et à l’année consultée.</p>
       {renderKpiCards()}
+      {renderPopulationBreakdown()}
       <section className="card" aria-label="Éléments à suivre">
         <div className="card-header"><h2>À suivre</h2></div>
         {followUps.length > 0 ? <div className="home-record-counts">{followUps.map(item => <div key={item.label}><Link href={item.href}>{item.label}</Link><strong>{item.count}</strong></div>)}</div>
