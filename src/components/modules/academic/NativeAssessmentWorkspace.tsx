@@ -17,6 +17,7 @@ import EvaluationGradeDialog from './EvaluationGradeDialog';
 import EvaluationCreateDialog from './EvaluationCreateDialog';
 import PersistentExamCopies from './PersistentExamCopies';
 import ExamDeliveryScheduleDialog from './ExamDeliveryScheduleDialog';
+import PageHeader from '@/components/ui/PageHeader';
 import {
   evaluationCandidateStatusLabel,
   evaluationGradeIsComplete,
@@ -120,20 +121,17 @@ export default function NativeAssessmentWorkspace({ category }: { category: Asse
   const candidates = allCandidates.filter(row => selectedMemberIds.has(String(row.evaluation_id)));
   if (copies && source) return <ExamCopies exam={source} onBack={() => setCopies(false)} backLabel="Revenir à l’épreuve" />;
   return <div>
-    <div className="page-intro">
-      <div>
-
-        <h1>{ASSESSMENT_LABELS[category]}</h1>
-
-      </div>
-      <div className="btn-group">
-        {perms.permissions.includes('evaluation.create') && (
-          <button className="btn btn-primary" onClick={() => setCreatingEval(true)}>
-            Nouvelle évaluation
-          </button>
-        )}
-      </div>
-    </div>
+    <PageHeader
+      eyebrow="ÉVALUATIONS & EXAMENS"
+      title={ASSESSMENT_LABELS[category]}
+      description="Gestion des épreuves, anonymat, surveillance et saisie des notes par matière et par groupe."
+    >
+      {perms.permissions.includes('evaluation.create') && (
+        <button className="btn btn-primary" onClick={() => setCreatingEval(true)}>
+          Nouvelle évaluation
+        </button>
+      )}
+    </PageHeader>
     <section className="card card-full">
       {linkedKeys.size > 1 && <p role="status">Ce lien regroupe plusieurs épreuves. Choisissez celle à consulter.</p>}
       <ListFilters count={allGroupedItems.length} active={Boolean(query || groupFilter || subjectFilter || statusFilter)}><div className="browser-toolbar">

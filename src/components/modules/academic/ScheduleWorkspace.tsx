@@ -19,6 +19,7 @@ import { DrawerCloseButton } from '@/components/ui/DetailDrawer';
 import { useSearchParams } from 'next/navigation';
 import ScheduleCourseSelector from './ScheduleCourseSelector';
 import CourseAssignmentDialog from './CourseAssignmentDialog';
+import PageHeader from '@/components/ui/PageHeader';
 
 type Action = ScheduleCommand['action'];
 type Operation = { action: Action; session?: ManagedSession };
@@ -201,11 +202,15 @@ function ScheduleManager() {
   const active = sessions.filter(session => !['ANNULE', 'REPORTE'].includes(session.status));
 
   return <div className="domain-workspace workspace-stack">
-    <div className="page-intro"><div><h1>Séances et emploi du temps</h1><p>Horaires en heure de Lomé (UTC). Programmation à l’heure précise, par séance ou sur plusieurs dates.</p></div><div className="btn-group">
+    <PageHeader
+      eyebrow="PLANNING & LOGISTIQUE ACADÉMIQUE"
+      title="Séances et emploi du temps"
+      description="Horaires en heure de Lomé (UTC). Programmation à l’heure précise, par séance ou sur plusieurs dates."
+    >
       {directory.canCreate && <button className="btn btn-primary" onClick={() => open('create_session')}>Programmer un cours</button>}
       {directory.canUpdate && (directory.canBlockAllSites || directory.sites.length > 0) && <button className="btn btn-outline" onClick={() => open('block_period')}>Bloquer une période</button>}
       <Link className="btn btn-outline" href="/academique/referentiel?collection=groups">Créer / gérer une classe</Link>
-    </div></div>
+    </PageHeader>
     {params.get('epreuve') && <Link className="btn btn-outline mb-2" href={`/academique/examens?${new URLSearchParams({ epreuve: params.get('epreuve')!, ...(params.get('nature') === 'resit' ? { session: 'rattrapage' } : params.get('nature') === 'control' ? { session: 'controle' } : {}) })}`}>Revenir à la préparation de l’épreuve</Link>}
     {success && <p className="card" role="status">{success}</p>}
     {!directory.selectedYearId && <p className="restricted-box">Choisissez une année scolaire précise pour gérer le planning.</p>}

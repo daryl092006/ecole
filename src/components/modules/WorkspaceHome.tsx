@@ -1,5 +1,6 @@
 'use client';
 import IconButton from '@/components/ui/IconButton';
+import PageHeader from '@/components/ui/PageHeader';
 import Link from 'next/link';
 import { ArrowUpRight, GraduationCap, Wallet, BookOpen, Users, ShieldCheck, CalendarDays, TrendingUp, Award, Server, Package, Megaphone, ClipboardCheck } from 'lucide-react';
 import { usePortal } from '@/hooks/usePortal';
@@ -532,9 +533,43 @@ export default function WorkspaceHome({ mode = 'home' }: { mode?: 'home' | 'over
     </div>
   );
 
-  if (mode === 'reports') return <div className="workspace-home"><div className="page-intro"><div><h1>{title}</h1></div></div><div className="home-destinations">{reports.map(report => <Link key={report.id} href={report.href}><ArrowUpRight size={18} className="destination-arrow" /><h3>{report.name}</h3><span>Consulter</span></Link>)}</div>{!reports.length && <section className="card"><p>Aucun rapport disponible.</p></section>}</div>;
-  return <div className="workspace-home">
-    <div className="home-hero"><div><h1>{title}</h1></div></div>
+  if (mode === 'reports') {
+    return (
+      <div className="workspace-home">
+        <PageHeader
+          eyebrow="PILOTAGE & EXTRACTIONS"
+          title="Rapports de pilotage"
+          description="Accédez aux journaux d’audit, archives financières et exports consolidés de données."
+        />
+        <div className="home-destinations">
+          {reports.map(report => (
+            <Link key={report.id} href={report.href}>
+              <ArrowUpRight size={18} className="destination-arrow" />
+              <h3>{report.name}</h3>
+              <span>Consulter</span>
+            </Link>
+          ))}
+        </div>
+        {!reports.length && (
+          <section className="card">
+            <p>Aucun rapport disponible.</p>
+          </section>
+        )}
+      </div>
+    );
+  }
+
+  return (
+    <div className="workspace-home">
+      <PageHeader
+        eyebrow={state.perms.scope.ownDataOnly ? 'ESPACE PERSONNEL' : 'TABLEAU DE BORD'}
+        title={title}
+        description={
+          state.perms.scope.ownDataOnly
+            ? 'Bienvenue sur votre portail universitaire. Retrouvez vos cours, notes, présences et démarches administratives.'
+            : 'Vue d’ensemble des activités, effectifs et opérations du campus pour l’année sélectionnée.'
+        }
+      />
     {error && <div className="review-notice" role="alert"><span>{error}</span><IconButton className="btn btn-outline" onClick={retry} label="Réessayer" /></div>}
 
     {mode === 'home' && <>
@@ -564,5 +599,6 @@ export default function WorkspaceHome({ mode = 'home' }: { mode?: 'home' | 'over
         {state.activeRole === ROLES.IT && state.history.enabled && state.perms.permissions.includes('system.audit.view') && <section className="card"><div className="card-header"><h2><ShieldCheck size={18} /> Contrôle de reprise des données</h2><Link href="/systeme/donnees">Voir les données</Link></div><strong className="review-count">{catalog ? flagged : '…'}</strong><div className="home-source-summary">{(Object.keys(HISTORY_DOMAINS) as HistoryDomain[]).map(domain => { const tables = HISTORY_TABLES.filter(item => item.domain === domain).map(item => item.table); const total = catalog?.datasets.filter(item => tables.includes(item.table)).reduce((sum, item) => sum + item.count, 0); return <span key={domain}>{HISTORY_DOMAINS[domain]} <strong>{total?.toLocaleString('fr-FR') ?? '…'}</strong></span>; })}</div></section>}
       </div>
     </>}
-  </div>;
+    </div>
+  );
 }

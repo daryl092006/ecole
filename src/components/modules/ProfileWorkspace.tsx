@@ -8,6 +8,7 @@ import CountrySelect from '@/components/ui/CountrySelect';
 import ReviewedForm from '@/components/ui/ReviewedForm';
 import DrawerActions from '@/components/ui/DrawerActions';
 import StudentIdCardBadge from '@/components/modules/student/StudentIdCardBadge';
+import PageHeader from '@/components/ui/PageHeader';
 import { saveOwnProfile } from '@/services/remoteCampusService';
 import { displayedPhoneNumber } from '@/services/phoneNumberService';
 
@@ -88,17 +89,14 @@ export default function ProfileWorkspace() {
 
   return (
     <div className="domain-workspace workspace-stack">
-      <div className="page-intro">
-        <div>
-          <span className="page-eyebrow">ESPACE PERSONNEL</span>
-          <h1>Mon profil et mes coordonnées</h1>
-          <p>Consultez et mettez à jour vos coordonnées personnelles.</p>
-        </div>
-        <div className="btn-group">
-          <Link className="btn btn-outline" href="/mot-de-passe-modifier">Modifier mon mot de passe</Link>
-          <Link className="btn btn-outline" href="/mon-espace/support">Signaler une erreur d’état civil</Link>
-        </div>
-      </div>
+      <PageHeader
+        eyebrow="ESPACE PERSONNEL"
+        title="Mon profil et mes coordonnées"
+        description="Consultez et mettez à jour vos coordonnées personnelles et professionnelles."
+      >
+        <Link className="btn btn-outline" href="/mot-de-passe-modifier">Modifier mon mot de passe</Link>
+        <Link className="btn btn-outline" href="/mon-espace/support">Signaler une erreur d’état civil</Link>
+      </PageHeader>
 
       {success && <p className="card" role="status">{success}</p>}
 

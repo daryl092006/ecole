@@ -14,6 +14,7 @@ import ReviewedForm from '@/components/ui/ReviewedForm';
 import DrawerActions from '@/components/ui/DrawerActions';
 import ConnectedDomainWorkspace from './ConnectedDomainWorkspace';
 import TranscriptPrintAction from './academic/TranscriptPrintAction';
+import PageHeader from '@/components/ui/PageHeader';
 import { connectedRecordValue } from '@/services/connectedRecordDisplayService';
 const labels: Record<string, string> = { A_VERIFIER: 'À vérifier', CONFORME: 'Conforme', NON_CONFORME: 'Non conforme' };
 type Action = { kind: 'upload'; previous?: DatabaseRow } | { kind: 'review'; row: DatabaseRow; status: 'CONFORME' | 'NON_CONFORME' };
@@ -80,17 +81,14 @@ export default function StudentDocumentsWorkspace({ studentMatricule }: { studen
         </div>
       </div>
     ) : (
-      <div className="page-intro">
-        <div>
-          <span className="page-eyebrow">DOSSIERS & ÉTUDIANTS</span>
-          <h1>Pièces étudiantes</h1>
-          <p>Vérifiez la conformité des pièces déposées et suivez les versions officielles.</p>
-        </div>
-        <div className="btn-group">
-          <button className="btn btn-outline" onClick={() => setReload(value => value + 1)}>Actualiser</button>
-          {directory.canUpload && <button className="btn btn-primary" disabled={!directory.yearId || !students.length} onClick={() => open({ kind: 'upload' })}>Ajouter une pièce</button>}
-        </div>
-      </div>
+      <PageHeader
+        eyebrow="DOSSIERS & ÉTUDIANTS"
+        title="Pièces administratives étudiantes"
+        description="Vérifiez la conformité des pièces déposées, contrôlez la validité légale et suivez les versions officielles."
+      >
+        <button className="btn btn-outline" onClick={() => setReload(value => value + 1)}>Actualiser</button>
+        {directory.canUpload && <button className="btn btn-primary" disabled={!directory.yearId || !students.length} onClick={() => open({ kind: 'upload' })}>+ Ajouter une pièce</button>}
+      </PageHeader>
     )}
     {!studentMatricule && issuedDocuments.length > 0 && <button className="btn btn-outline" onClick={() => setIssued(true)}>Consulter les documents établis</button>}{!directory.yearId && <p className="info-box">Toutes les années : consultation uniquement.</p>}{success && <p className="info-box" role="status">{success}</p>}{loadError && <p className="restricted-box" role="alert">{loadError}</p>}
     {!studentMatricule && <ListFilters count={directory.documents.length} active={Boolean(filter)}><section className="card"><label className="form-group">Rechercher une pièce<input className="input" type="search" value={filter} onChange={event => setFilter(event.target.value)} /></label></section></ListFilters>}

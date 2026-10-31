@@ -23,6 +23,7 @@ import WorkPage from '@/components/ui/WorkPage';
 import { DrawerCloseButton, useDrawer } from '@/components/ui/DetailDrawer';
 import ReviewedForm from '@/components/ui/ReviewedForm';
 import ActionResult from '@/components/ui/ActionResult';
+import PageHeader from '@/components/ui/PageHeader';
 import { historyValue } from '@/services/historyDisplayService';
 import { displayLabel } from '@/utils/display';
 import { generateResaoSubjectCode, deriveResaoDiscipline, resaoSubjectFields } from '@/services/resaoCodeService';
@@ -689,20 +690,26 @@ function ReferenceCrudContent({
     </>}
   </div>;
   return <div className={preparingAnnualFees ? 'annual-fee-workspace' : preparingPaymentChannels ? 'annual-payment-workspace' : undefined}>
-    <div className={setup ? 'setup-actions' : 'page-intro'}>
-      {setup ? (
+    {setup ? (
+      <div className="setup-actions">
         <div>
           <h2>{preparingFinancialSettings ? stepTitle : spec.title}</h2>
         </div>
-      ) : (
-        <div>
-          <span className="page-eyebrow">{section.startsWith('log_') ? 'ACHATS ET LOGISTIQUE' : 'GESTION ACADÉMIQUE'}</span>
-          <h1>{section === 'acad_program' ? 'Programmes de cours et matières' : collection === 'academic_years' ? 'Années scolaires' : section === 'acad_reference' ? 'Préparer et gérer l’année' : spec.title}</h1>
-
-        </div>
-      )}
-      {canEdit && !dialog && <button className="btn btn-primary" disabled={!data} onClick={() => prerequisites.length ? setGuided(true) : open('create')}>{collection === 'academic_offerings' ? 'Ajouter une filière pour cette année' : `Ajouter ${spec.singular}`}</button>}
-    </div>
+        {canEdit && !dialog && <button className="btn btn-primary" disabled={!data} onClick={() => prerequisites.length ? setGuided(true) : open('create')}>{collection === 'academic_offerings' ? 'Ajouter une filière pour cette année' : `+ Ajouter ${spec.singular}`}</button>}
+      </div>
+    ) : (
+      <PageHeader
+        eyebrow={section.startsWith('log_') ? 'ACHATS & LOGISTIQUE' : 'STRUCTURE ACADÉMIQUE'}
+        title={section === 'acad_program' ? 'Programmes de cours et matières' : collection === 'academic_years' ? 'Années scolaires' : section === 'acad_reference' ? 'Préparer et gérer l’année' : spec.title}
+        description="Gestion des entités de référence du campus, des structures pédagogiques et des paramètres opérationnels."
+      >
+        {canEdit && !dialog && (
+          <button className="btn btn-primary" disabled={!data} onClick={() => prerequisites.length ? setGuided(true) : open('create')}>
+            {collection === 'academic_offerings' ? 'Ajouter une filière pour cette année' : `+ Ajouter ${spec.singular}`}
+          </button>
+        )}
+      </PageHeader>
+    )}
     {!setup && choices.length > 1 && <label className="workspace-picker">Rubrique<select className="select-input" value={collection} onChange={event => choose(event.target.value)}>{choices.map(key => <option value={key} key={key}>{catalogSpec(key).title}</option>)}</select></label>}
     {collection === 'academic_years' && data && <AcademicYearLifecycle rows={data.tables.academic_years || []} revision={data.revision} onView={row => open('details', row)} onEdit={canEdit ? row => open('edit', row) : undefined} onSaved={() => { setRetry(value => value + 1); portal.reloadCampus(); portal.history.retry(); }} />}
     {feedback && setup && collection === 'academic_offerings' ? <p className="annual-offering-feedback" role="status">{feedback}</p> : feedback && <ActionResult title={feedback} nextLabel={setup ? 'Retourner à la préparation de l’année' : (nextCollection ? journey.nextLabel : undefined)} onNext={setup ? (collection === 'groups' && setup.onDone ? setup.onDone : () => setup.onSaved()) : (nextCollection ? () => choose(nextCollection) : undefined)} onDismiss={() => setFeedback('')}>{journey?.result}</ActionResult>}

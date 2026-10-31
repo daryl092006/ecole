@@ -12,6 +12,7 @@ import ErrorState from '@/components/ui/ErrorState';
 import ResponsiveTable from '@/components/ui/ResponsiveTable';
 import WorkPage from '@/components/ui/WorkPage';
 import IconButton from '@/components/ui/IconButton';
+import PageHeader from '@/components/ui/PageHeader';
 
 interface AuditRecord {
   id: string; date: string | null; actorId: string | null; actorName: string | null;
@@ -107,7 +108,11 @@ export default function AuditJournalPanel({ exportMode = false }: { exportMode?:
 
   if (!allowed) return <section className="card"><h1>Journal d’activité</h1><p role="alert">Cette consultation est réservée au DG et à l’Informaticien avec accès global et permission d’audit.</p></section>;
   return <div>
-    <div className="page-intro"><div><h1>{exportMode ? 'Export du journal' : 'Journal d’activité'}</h1><p>Consultez séparément les opérations actuelles et les événements conservés de l’ancien système.</p></div></div>
+    <PageHeader
+      eyebrow="AUDIT & CONTRÔLE SYSTÈME"
+      title={exportMode ? 'Export du journal d’audit' : 'Journal d’activité & audit'}
+      description="Consultez séparément les opérations actuelles et les événements conservés de l’ancien système avec traçabilité intégrale."
+    />
     <label className="workspace-picker">Source du journal<select className="select-input" value={source} onChange={event => { setSource(event.target.value as typeof source); setDraft(emptyFilters); setFilters(emptyFilters); resetPage(); }}><option value="current">Opérations actuelles</option><option value="history">Journal historique</option></select></label>
     <p className="info-box">{source === 'history' ? 'Les auteurs sont des références de l’ancien système, sans correspondance de compte supposée. Les dates sont celles de la source. Ce journal sans rattachement annuel confirmé est consultable avec « Toutes les années ».' : portal.academicYearContext?.selectedYearId ? 'Seuls les événements reliés à l’année consultée par leurs références sont affichés. Choisissez « Toutes les années » pour les identités, paramètres communs et événements sans année confirmée.' : 'Consultation de toutes les années, y compris les identités, paramètres communs et événements sans année confirmée.'}</p>
     <form className="card card-full mb-2" onSubmit={event => { event.preventDefault(); setFilters({ ...draft }); resetPage(); }}>

@@ -1,5 +1,6 @@
 import SecondaryDetails from '@/components/ui/SecondaryDetails';
 import ResponsiveTable from '@/components/ui/ResponsiveTable';
+import PageHeader from '@/components/ui/PageHeader';
 import { useRef, useState } from 'react';
 import type { RoleName } from '@/types';
 import type { DemoUser } from '@/types/user';
@@ -25,7 +26,11 @@ export default function RolesPermissionsPanel({ mode, users, actor }: Props) {
   const rows = primary.domains.filter(domain => !domainId || domain.id === domainId).flatMap(domain => domain.permissions.map(permission => ({ ...permission, domain: domain.label, compared: comparedPermissions.get(permission.code) || false })))
     .filter(row => (!differences || row.granted !== row.compared) && normalize(`${row.label} ${row.domain}`).includes(normalize(query.trim())));
   return <div className="roles-workspace workspace-stack">
-    <div className="module-header"><h1>{mode === 'roles' ? 'Rôles ESCEN' : 'Matrice des permissions'}</h1></div>
+    <PageHeader
+      eyebrow="SÉCURITÉ & ACCÈS"
+      title={mode === 'roles' ? 'Rôles & responsabilités ESCEN' : 'Matrice des permissions'}
+      description={mode === 'roles' ? 'Catalogue officiel des rôles d’utilisateurs et détail des privilèges accordés.' : 'Comparaison différentielle des droits d’accès et périmètres d’action entre rôles.'}
+    />
     {mode === 'roles' ? <div className="roles-overview">
       <label className="form-group roles-mobile-selector">Rôle à consulter<select className="select-input" value={selected} onChange={event => setSelected(event.target.value as RoleName)}>{roleOptions}</select></label>
       <div className="card roles-catalog-card"><h2>Catalogue ({roles.length})</h2><label className="form-group mt-2">Rechercher un rôle<input className="input" type="search" value={query} onChange={event => setQuery(event.target.value)} placeholder="Nom du rôle ou responsabilité" /></label>

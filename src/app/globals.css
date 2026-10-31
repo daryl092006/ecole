@@ -3607,8 +3607,8 @@ body.transcript-print-body { page: transcript; display: block; width: 190mm; hei
 }
 .app-wrapper .workspace-location { border-bottom-color: var(--border); }
 .app-wrapper .page-intro h1, .app-wrapper .module-header h1 {
-  padding-left: .85rem;
-  border-left: 3px solid var(--accent);
+  padding-left: 0;
+  border-left: none;
 }
 .app-wrapper :is(.browser-toolbar, .directory-toolbar) {
   padding: 1rem;

@@ -14,6 +14,7 @@ import { updatePersistentAccount } from '@/services/remoteCampusService';
 import { usePortal } from '@/hooks/usePortal';
 import WorkPage from '@/components/ui/WorkPage';
 import ResponsiveTable from '@/components/ui/ResponsiveTable';
+import PageHeader from '@/components/ui/PageHeader';
 import RolePermissionDetails from './RolePermissionDetails';
 import { getRolePermissionSummary } from '@/services/permissionCatalogService';
 interface Props { users: DemoUser[]; actor: RoleName; addUser?: (name: string, email: string, role: RoleName) => void; toggleUser?: (id: string, reason: string) => void; changeUserRole?: (id: string, role: RoleName, reason: string) => void; category?: 'staff' | 'student'; }
@@ -33,7 +34,11 @@ export default function UserDirectoryPanel({ users, actor, category = 'staff' }:
   const label = kind === 'student' ? 'Comptes étudiants' : kind === 'staff' ? 'Comptes du personnel' : 'Comptes à classer';
   const open = (user: DemoUser, operation: typeof action) => { setSelected(user); setAction(operation); setTarget(user.role ?? ROLES.STG); setReason(''); setError(''); };
   return <div className="directory-workspace">
-    <div className="page-intro"><div><h1>{label}</h1></div></div>
+    <PageHeader
+      eyebrow="ANNUAIRE & UTILISATEURS"
+      title={label}
+      description="Consultez les comptes utilisateurs, gérez les attributions de rôles et contrôlez l’état des accès."
+    />
     <div className="directory-switch" aria-label="Catégorie de comptes">{(['staff', 'student', 'unclassified'] as const).map(value => <button className={kind === value ? 'selected' : ''} key={value} aria-pressed={kind === value} onClick={() => { setKind(value); router.push(value === 'student' ? '/etudiants/comptes' : '/personnel/utilisateurs' + (value === 'unclassified' ? '?categorie=unclassified' : '')); setFilters({ search: '', role: '', status: '' }); setSelected(null); }}><span>{value === 'staff' ? 'Personnel' : value === 'student' ? 'Étudiants' : 'À classer'}</span><strong>{users.filter(user => (user.kind ?? 'unclassified') === value).length}</strong></button>)}</div>
     <div className="card card-full"><ListFilters count={categorized.length} active={Boolean(filters.search || filters.role || filters.status)}><div className="directory-toolbar"><label>Rechercher<input className="input" type="search" placeholder="Nom, email ou rôle" value={filters.search} onChange={event => setFilters({ ...filters, search: event.target.value })} /></label><label>Rôle<select className="select-input" value={filters.role} onChange={event => setFilters({ ...filters, role: event.target.value })}><option value="">Tous les rôles</option>{Object.values(ROLES).map(role => <option key={role}>{role}</option>)}</select></label><label>Accès<select className="select-input" value={filters.status} onChange={event => setFilters({ ...filters, status: event.target.value })}><option value="">Tous les accès</option><option value="ACTIF">Actifs</option><option value="INACTIF">Désactivés</option></select></label></div></ListFilters>
       <div className="card-header"><h2>Annuaire ({filtered.length} / {categorized.length})</h2><span className="cell-sub">{categorized.filter(user => user.active).length} accès actif(s)</span></div>

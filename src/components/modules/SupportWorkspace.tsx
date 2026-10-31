@@ -11,6 +11,7 @@ import WorkPage from '@/components/ui/WorkPage';
 import ReviewedForm from '@/components/ui/ReviewedForm';
 import DrawerActions from '@/components/ui/DrawerActions';
 import ResponsiveTable from '@/components/ui/ResponsiveTable';
+import PageHeader from '@/components/ui/PageHeader';
 
 type Action = { kind: 'create' } | { kind: 'reply'; ticketId: string } | { kind: 'transition'; ticketId: string; target: 'IN_PROGRESS' | 'RESOLVED' };
 const priorities: Record<string, string> = { LOW: 'Faible', MEDIUM: 'Normale', HIGH: 'Haute', CRITICAL: 'Critique' };
@@ -58,17 +59,14 @@ export default function SupportWorkspace() {
     finally { setBusy(false); }
   }
   return <div className="domain-workspace workspace-stack support-workspace">
-    <div className="page-intro">
-      <div>
-        <span className="page-eyebrow">ASSISTANCE & SUPPORT</span>
-        <h1>{directory.canManage ? 'Centre de support' : 'Mes demandes de support'}</h1>
-        <p>Suivez vos demandes d’assistance, échangez avec le support technique et consultez les résolutions.</p>
-      </div>
-      <div className="btn-group">
-        <button className="btn btn-outline" onClick={() => setReload(value => value + 1)}>Actualiser</button>
-        <button className="btn btn-primary" disabled={!directory.yearId} onClick={() => open({ kind: 'create' })}>Ouvrir une demande</button>
-      </div>
-    </div>
+    <PageHeader
+      eyebrow="ASSISTANCE & SUPPORT"
+      title={directory.canManage ? 'Centre de support' : 'Mes demandes de support'}
+      description="Suivez vos demandes d’assistance, échangez avec le support technique et consultez les résolutions."
+    >
+      <button className="btn btn-outline" onClick={() => setReload(value => value + 1)}>Actualiser</button>
+      <button className="btn btn-primary" disabled={!directory.yearId} onClick={() => open({ kind: 'create' })}>+ Ouvrir une demande</button>
+    </PageHeader>
     {!directory.yearId && <p className="info-box">Toutes les années : consultation uniquement. Choisissez une année précise pour écrire.</p>}
     {success && <p role="status" className="info-box">{success}</p>}
     {loadError && <p role="alert" className="restricted-box">{loadError}<button className="btn btn-outline" onClick={() => setReload(value => value + 1)}>Réessayer</button></p>}

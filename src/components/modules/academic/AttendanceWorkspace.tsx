@@ -13,6 +13,7 @@ import ReviewedForm from '@/components/ui/ReviewedForm';
 import DrawerActions from '@/components/ui/DrawerActions';
 import HistoricalWorkspace from '@/components/modules/history/HistoricalWorkspace';
 import StudentRecordDialog from '../StudentRecordDialog';
+import PageHeader from '@/components/ui/PageHeader';
 
 type Draft = { status: AttendanceStatus | ''; arrivedAt: string; leftAt: string; lateMinutes: string; comment: string };
 type Operation = { kind: 'students' } | { kind: 'teacher' } | { kind: 'review'; justification: AttendanceJustification; decision: 'VALIDE' | 'REFUSE' };
@@ -92,7 +93,13 @@ export default function AttendanceWorkspace() {
       { label: 'Décision', value: justificationStatus[operation.decision], previous: 'En attente' },
     ] : [];
   return <div className="attendance-workspace workspace-stack">
-    <header className="page-intro"><div><h1>Feuilles de présence</h1></div>{portal.history.enabled && activeRole !== ROLES.DEL && <button className="btn btn-outline" onClick={() => setArchives(true)}>Consulter les séances historiques</button>}</header>
+    <PageHeader
+      eyebrow="ASSIDUITÉ & VIE SCOLAIRE"
+      title="Feuilles de présence"
+      description="Émargement des séances, pointage des heures d'arrivée et traitement des justificatifs d'absence."
+    >
+      {portal.history.enabled && activeRole !== ROLES.DEL && <button className="btn btn-outline" onClick={() => setArchives(true)}>Consulter les séances historiques</button>}
+    </PageHeader>
     {activeRole === ROLES.DEL && <p className="info-box">Vous pouvez faire l’appel de votre groupe et enregistrer les horaires du professeur prévu ou de son remplaçant. Les justificatifs sont traités par la direction académique.</p>}
     {success && <p role="status" className="attendance-success">{success}</p>}
     {fileError && <p role="alert" className="restricted-box">{fileError}</p>}
