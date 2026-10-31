@@ -9,6 +9,7 @@ const resolve = Module._resolveFilename;
 Module._resolveFilename = function (request, parent, ...rest) {
   return resolve.call(this, request.startsWith('@/') ? path.join(root, 'src', request.slice(2)) : request, parent, ...rest);
 };
+require.cache[require.resolve('server-only')] = { exports: {}, loaded: true };
 require.extensions['.ts'] = (module, filename) => {
   const result = ts.transpileModule(fs.readFileSync(filename, 'utf8'), { compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2020, esModuleInterop: true } });
   module._compile(result.outputText, filename);
@@ -243,3 +244,4 @@ require('../src/services/evaluationGradePolicy.test.ts');
 require('../src/services/onlineExamDraftService.test.ts');
 require('../src/services/persistentSupportService.test.ts');
 require('../src/services/persistentPurchaseService.test.ts');
+require('../src/services/studentProvisioningDocuments.test.ts');

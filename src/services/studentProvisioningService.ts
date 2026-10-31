@@ -23,6 +23,305 @@ export interface StudentProvisionResult {
   accountCreated: boolean;
   enrolled: boolean;
   emailQueued: boolean;
+  documentsTransferred?: number;
+}
+
+export interface StandardDocumentTypeDefinition {
+  code: string;
+  name: string;
+  multiple: boolean;
+  accepted_mime_types: string[];
+  max_byte_size: number;
+}
+
+export const STANDARD_DOCUMENT_TYPES: readonly StandardDocumentTypeDefinition[] = [
+  {
+    code: 'photo_identite_file',
+    name: 'Photo d’identité',
+    multiple: false,
+    accepted_mime_types: ['image/jpeg', 'image/png'],
+    max_byte_size: 5242880,
+  },
+  {
+    code: 'naissance_file',
+    name: 'Acte de naissance',
+    multiple: false,
+    accepted_mime_types: ['application/pdf', 'image/jpeg', 'image/png'],
+    max_byte_size: 5242880,
+  },
+  {
+    code: 'nationalite_file',
+    name: 'Pièce d’identité / Nationalité',
+    multiple: false,
+    accepted_mime_types: ['application/pdf', 'image/jpeg', 'image/png'],
+    max_byte_size: 5242880,
+  },
+  {
+    code: 'diplome_file',
+    name: 'Dernier diplôme / Attestation',
+    multiple: false,
+    accepted_mime_types: ['application/pdf', 'image/jpeg', 'image/png'],
+    max_byte_size: 5242880,
+  },
+  {
+    code: 'releve_notes',
+    name: 'Relevés de notes',
+    multiple: true,
+    accepted_mime_types: ['application/pdf', 'image/jpeg', 'image/png'],
+    max_byte_size: 5242880,
+  },
+  {
+    code: 'certificat_medical_file',
+    name: 'Certificat médical',
+    multiple: false,
+    accepted_mime_types: ['application/pdf', 'image/jpeg', 'image/png'],
+    max_byte_size: 5242880,
+  },
+  {
+    code: 'cv_file',
+    name: 'Curriculum vitæ',
+    multiple: false,
+    accepted_mime_types: ['application/pdf', 'image/jpeg', 'image/png'],
+    max_byte_size: 5242880,
+  },
+  {
+    code: 'autre_document',
+    name: 'Autre pièce justificative',
+    multiple: true,
+    accepted_mime_types: ['application/pdf', 'image/jpeg', 'image/png'],
+    max_byte_size: 5242880,
+  },
+] as const;
+
+/**
+ * Associe une clé de document de candidature à un code de type officiel dans escen.document_types
+ */
+export function mapDocumentKeyToTypeCode(key: string): string {
+  const normalized = key.toLowerCase().trim();
+  if (normalized.includes('photo')) return 'photo_identite_file';
+  if (normalized.includes('naissance')) return 'naissance_file';
+  if (
+    normalized.includes('nationalite') ||
+    normalized.includes('cni') ||
+    normalized.includes('identite') ||
+    normalized.includes('passeport')
+  ) {
+    return 'nationalite_file';
+  }
+  if (
+    normalized.includes('diplome') ||
+    (normalized.includes('bac') && !normalized.includes('releve') && !normalized.includes('notes'))
+  ) {
+    return 'diplome_file';
+  }
+  if (
+    normalized.includes('releve') ||
+    normalized.includes('bulletin') ||
+    normalized.includes('notes')
+  ) {
+    return 'releve_notes';
+  }
+  if (normalized.includes('medical') || normalized.includes('sante')) {
+    return 'certificat_medical_file';
+  }
+  if (normalized.includes('cv') || normalized.includes('curriculum')) {
+    return 'cv_file';
+  }
+  return 'autre_document';
+}
+
+/**
+ * Garantit que les types de documents officiels sont initialisés dans escen.document_types
+ */
+export async function ensureStandardDocumentTypes(
+  client: SupabaseClient
+): Promise<Map<string, string>> {
+  const typeMap = new Map<string, string>();
+
+  const { data: existing } = await client
+    .from('document_types')
+    .select('id, code, name');
+
+  if (existing && existing.length > 0) {
+    for (const t of existing) {
+      if (t.code && t.id) typeMap.set(String(t.code), String(t.id));
+      if (t.name && t.id) typeMap.set(String(t.name).toLowerCase(), String(t.id));
+    }
+  }
+
+  for (const def of STANDARD_DOCUMENT_TYPES) {
+    if (!typeMap.has(def.code)) {
+      const id = randomUUID();
+      const { error } = await client.from('document_types').insert({
+        id,
+        code: def.code,
+        name: def.name,
+        multiple: def.multiple,
+        accepted_mime_types: def.accepted_mime_types,
+        max_byte_size: def.max_byte_size,
+      });
+      if (!error) {
+        typeMap.set(def.code, id);
+        typeMap.set(def.name.toLowerCase(), id);
+      }
+    }
+  }
+
+  return typeMap;
+}
+
+/**
+ * Transfère les pièces justificatives d'une candidature en ligne vers le dossier officiel
+ * de l'étudiant dans escen.file_objects et escen.student_documents (statut A_VERIFIER).
+ */
+export async function transferApplicationDocumentsToStudent(
+  client: SupabaseClient,
+  params: {
+    applicationId: string;
+    studentId: string;
+    enrollmentId?: string | null;
+    academicYearId?: string | null;
+    actorId: string;
+  }
+): Promise<{ transferredCount: number; errors: string[] }> {
+  const errors: string[] = [];
+  let transferredCount = 0;
+
+  const { data: appDocs, error: appDocsError } = await client
+    .from('application_documents')
+    .select('*')
+    .eq('application_id', params.applicationId);
+
+  if (appDocsError || !appDocs || appDocs.length === 0) {
+    return { transferredCount: 0, errors: appDocsError ? [appDocsError.message] : [] };
+  }
+
+  const typeMap = await ensureStandardDocumentTypes(client);
+
+  const { data: existingStudentDocs } = await client
+    .from('student_documents')
+    .select('file_id')
+    .eq('student_id', params.studentId);
+
+  const existingFileIds = new Set(
+    (existingStudentDocs || []).map(d => String(d.file_id))
+  );
+
+  for (const doc of appDocs) {
+    try {
+      let fileId: string | null = null;
+      const { data: existingFile } = await client
+        .from('file_objects')
+        .select('id')
+        .eq('bucket', doc.bucket)
+        .eq('object_path', doc.object_path)
+        .maybeSingle();
+
+      if (existingFile?.id) {
+        fileId = String(existingFile.id);
+      } else {
+        fileId = randomUUID();
+        const { error: insertFileError } = await client.from('file_objects').insert({
+          id: fileId,
+          bucket: doc.bucket,
+          object_path: doc.object_path,
+          original_name: doc.filename,
+          mime_type: doc.mime_type,
+          byte_size: doc.byte_size,
+          sha256: doc.sha256 || null,
+          uploaded_by: params.actorId,
+        });
+        if (insertFileError) {
+          errors.push(`Erreur file_object pour ${doc.filename}: ${insertFileError.message}`);
+          continue;
+        }
+      }
+
+      if (existingFileIds.has(fileId)) {
+        continue;
+      }
+
+      const typeCode = mapDocumentKeyToTypeCode(String(doc.document_key || ''));
+      const typeId = typeMap.get(typeCode) || typeMap.get('autre_document');
+
+      if (!typeId) {
+        errors.push(`Type de document introuvable pour ${doc.document_key}`);
+        continue;
+      }
+
+      const docId = randomUUID();
+      const { error: insertDocError } = await client.from('student_documents').insert({
+        id: docId,
+        student_id: params.studentId,
+        enrollment_id: params.enrollmentId || null,
+        document_type_id: typeId,
+        file_id: fileId,
+        version: 1,
+        status: 'A_VERIFIER',
+        academic_year_id: params.academicYearId || null,
+      });
+
+      if (insertDocError) {
+        errors.push(`Erreur student_document pour ${doc.filename}: ${insertDocError.message}`);
+      } else {
+        existingFileIds.add(fileId);
+        transferredCount++;
+      }
+    } catch (err) {
+      errors.push(`Exception sur pièce ${doc.filename}: ${err instanceof Error ? err.message : String(err)}`);
+    }
+  }
+
+  return { transferredCount, errors };
+}
+
+/**
+ * Synchronise les pièces d'un étudiant depuis toutes ses candidatures en ligne enregistrées
+ */
+export async function syncStudentApplicationDocuments(
+  client: SupabaseClient,
+  params: {
+    studentId: string;
+    actorId: string;
+    academicYearId?: string | null;
+  }
+): Promise<{ transferredCount: number; errors: string[] }> {
+  let enrollmentId: string | null = null;
+  const { data: enrollments } = await client
+    .from('enrollments')
+    .select('id')
+    .eq('student_id', params.studentId)
+    .is('archived_at', null);
+
+  if (enrollments && enrollments.length > 0) {
+    enrollmentId = String(enrollments[0].id);
+  }
+
+  const { data: apps } = await client
+    .from('online_applications')
+    .select('id, academic_year_id')
+    .eq('student_id', params.studentId);
+
+  if (!apps || apps.length === 0) {
+    return { transferredCount: 0, errors: [] };
+  }
+
+  let totalTransferred = 0;
+  const allErrors: string[] = [];
+
+  for (const app of apps) {
+    const res = await transferApplicationDocumentsToStudent(client, {
+      applicationId: String(app.id),
+      studentId: params.studentId,
+      enrollmentId,
+      academicYearId: params.academicYearId || (app.academic_year_id ? String(app.academic_year_id) : null),
+      actorId: params.actorId,
+    });
+    totalTransferred += res.transferredCount;
+    allErrors.push(...res.errors);
+  }
+
+  return { transferredCount: totalTransferred, errors: allErrors };
 }
 
 /**
@@ -210,6 +509,7 @@ export async function provisionStudentComplete(
 
   // 5. Inscription pédagogique & groupe si non déjà inscrit
   let enrolled = false;
+  let enrollmentId: string | null = null;
   if (params.intakeId) {
     // Récupérer la formation de l'intake
     const { data: intake } = await client
@@ -235,8 +535,9 @@ export async function provisionStudentComplete(
           .eq('offering_id', offering.id)
           .maybeSingle();
 
-        let enrollmentId = existingEnrollment?.id;
-        if (!enrollmentId) {
+        if (existingEnrollment?.id) {
+          enrollmentId = String(existingEnrollment.id);
+        } else {
           enrollmentId = randomUUID();
           await client.from('enrollments').insert({
             id: enrollmentId,
@@ -280,7 +581,20 @@ export async function provisionStudentComplete(
     }
   }
 
-  // 6. Placer l'email de bienvenue avec les identifiants officiels dans la file d'envoi
+  // 6. Transférer les pièces justificatives de la candidature en ligne vers le dossier étudiant
+  let documentsTransferred = 0;
+  if (params.applicationId) {
+    const transferRes = await transferApplicationDocumentsToStudent(client, {
+      applicationId: params.applicationId,
+      studentId: params.studentId,
+      enrollmentId,
+      academicYearId: params.academicYearId,
+      actorId: params.actorId,
+    });
+    documentsTransferred = transferRes.transferredCount;
+  }
+
+  // 7. Placer l'email de bienvenue avec les identifiants officiels dans la file d'envoi
   let emailQueued = false;
   if (params.personalEmail && m365Email) {
     const subject = 'Bienvenue à l’ESCEN — Vos identifiants officiels d’accès';
@@ -351,5 +665,6 @@ La Direction et toute l’équipe de l’ESCEN vous souhaitent une excellente re
     accountCreated,
     enrolled,
     emailQueued,
+    documentsTransferred,
   };
 }

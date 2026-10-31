@@ -9,6 +9,7 @@ import { sniffDocument } from '@/services/websiteService';
 import { canUploadStudentDocument, canReviewStudentDocument, documentUploadPlan, studentDocumentUploadSchema, studentDocumentReviewSchema } from '@/services/studentDocumentPolicy';
 import { ROLES } from '@/types/permissions';
 import { connectedRecordName } from '@/services/connectedRecordDisplayService';
+import { syncStudentApplicationDocuments } from '@/services/studentProvisioningService';
 import type { RelationalSnapshot } from '@/types/persistence';
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
@@ -25,7 +26,34 @@ async function load(request: Request) {
 }
 export async function GET(request: Request) {
   try {
-    const { client, context, raw, scoped, year } = await load(request);
+    const loaded = await load(request);
+    const { client, context, year } = loaded;
+    let { raw, scoped } = loaded;
+
+    // Synchronisation automatique des pièces depuis les candidatures en ligne
+    // si l'étudiant connecté ou ciblé n'a pas encore ses pièces rattachées
+    const targetStudentId = context.studentId || (scoped.tables.students?.length === 1 ? scoped.tables.students[0].id : null);
+    if (targetStudentId) {
+      const hasDocs = (scoped.tables.student_documents || []).some(d => d.student_id === targetStudentId);
+      if (!hasDocs) {
+        const syncRes = await syncStudentApplicationDocuments(client, {
+          studentId: targetStudentId,
+          actorId: context.accountId,
+          academicYearId: year.selectedYearId,
+        });
+        if (syncRes.transferredCount > 0) {
+          const reloaded = await client.rpc('escen_backend_snapshot');
+          if (!reloaded.error && reloaded.data) {
+            raw = reloaded.data as RelationalSnapshot;
+            scoped = filterSnapshotForAcademicYear(
+              filterRelationalSnapshot(raw, context),
+              year.selectedYearId || (year.selection === 'all' ? null : '00000000-0000-0000-0000-000000000000')
+            );
+          }
+        }
+      }
+    }
+
     const documents = scoped.tables.student_documents || []; const ids = new Set(documents.map(row => row.id));
     const fileId = new URL(request.url).searchParams.get('file');
     if (fileId) {
