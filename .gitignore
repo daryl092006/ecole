@@ -97,3 +97,7 @@ next-env.d.ts
 /tmp/admissions-deployment/
 /tmp/next-support-workspace/
 /tmp/rpc-conflict-deployment/
+
+# Local tools and cloned repos
+/tmp/vercel-tools/
+/escen-website/
