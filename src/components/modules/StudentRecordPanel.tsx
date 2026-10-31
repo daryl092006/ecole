@@ -257,7 +257,7 @@ export default function StudentRecordPanel({ studentId, embedded = false, initia
             </section>
           )}
           {section === 'notes' && !studentEvaluationsSummary.length && <section className="card"><h2>Notes</h2><p>Aucune évaluation renseignée pour l’année consultée.</p></section>}
-          {['finance', 'notes', 'parcours'].includes(section) ? null : section === 'assiduite' ? <StudentAttendancePanel matricule={student.matricule} /> : section === 'documents' ? <StudentDocumentsWorkspace studentMatricule={student.matricule} /> : <ConnectedDomainWorkspace
+          {['finance', 'notes', 'parcours'].includes(section) ? null : section === 'assiduite' ? <StudentAttendancePanel matricule={student.matricule} embedded /> : section === 'documents' ? <StudentDocumentsWorkspace studentMatricule={student.matricule} /> : <ConnectedDomainWorkspace
             key={`workspace:${section}`}
             section={sections.find(item => item.id === section)!.native}
             studentMatricule={student.matricule}

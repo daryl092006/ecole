@@ -24,7 +24,7 @@ function justificationPill(status: string) {
   return <span className="pill pill-warning">En attente</span>;
 }
 
-export default function StudentAttendancePanel({ matricule }: { matricule: string }) {
+export default function StudentAttendancePanel({ matricule, embedded = false }: { matricule: string; embedded?: boolean }) {
   const portal = usePortal();
   const snapshot = portal.relationalSnapshot;
   const isSelfStudent = portal.activeRole === ROLES.STUD && portal.session?.matricule === matricule;
@@ -42,13 +42,15 @@ export default function StudentAttendancePanel({ matricule }: { matricule: strin
 
   return (
     <section className="card card-full">
-      <div className="page-intro">
-        <div>
-          <span className="page-eyebrow">SCOLARITÉ & PÉDAGOGIE</span>
-          <h1>{isSelfStudent ? 'Mon assiduité' : 'Assiduité et présences'}</h1>
-          <p>{isSelfStudent ? 'Consultez l’historique complet de vos pointages de présence et le suivi de vos absences pour l’année universitaire.' : 'Historique des pointages de présence et suivi de l’assiduité de l’étudiant pour l’année universitaire.'}</p>
+      {!embedded && (
+        <div className="page-intro">
+          <div>
+            <span className="page-eyebrow">SCOLARITÉ & PÉDAGOGIE</span>
+            <h1>{isSelfStudent ? 'Mon assiduité' : 'Assiduité et présences'}</h1>
+            <p>{isSelfStudent ? 'Consultez l’historique complet de vos pointages de présence et le suivi de vos absences pour l’année universitaire.' : 'Historique des pointages de présence et suivi de l’assiduité de l’étudiant pour l’année universitaire.'}</p>
+          </div>
         </div>
-      </div>
+      )}
 
       <div className="kpi-grid" style={{ marginBottom: '1.25rem' }}>
         <div className="kpi-card">

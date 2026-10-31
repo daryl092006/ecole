@@ -64,20 +64,36 @@ export default function StudentDocumentsWorkspace({ studentMatricule }: { studen
     }
   }
   return <div className="domain-workspace workspace-stack student-document-workspace">
-    <div className="page-intro">
-      <div>
-        <span className="page-eyebrow">DOSSIERS & ÉTUDIANTS</span>
-        <h1>{studentMatricule ? 'Pièces du dossier étudiant' : 'Pièces étudiantes'}</h1>
-        <p>Vérifiez la conformité des pièces déposées et suivez les versions officielles.</p>
+    {studentMatricule ? (
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px', flexWrap: 'wrap', gap: '10px' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+          <h2 style={{ fontSize: '1.15rem', fontWeight: 600, margin: 0 }}>Pièces justificatives</h2>
+          <span className="pill pill-default">{documents.length} pièce(s)</span>
+        </div>
+        <div className="btn-group">
+          <button className="btn btn-sm btn-outline" onClick={() => setReload(value => value + 1)}>Actualiser</button>
+          {directory.canUpload && (
+            <button className="btn btn-sm btn-primary" disabled={!directory.yearId || !students.length} onClick={() => open({ kind: 'upload' })}>
+              + Ajouter une pièce
+            </button>
+          )}
+        </div>
       </div>
-      <div className="btn-group">
-        <button className="btn btn-outline" onClick={() => setReload(value => value + 1)}>Actualiser</button>
-        {directory.canUpload && <button className="btn btn-primary" disabled={!directory.yearId || !students.length} onClick={() => open({ kind: 'upload' })}>Ajouter une pièce</button>}
+    ) : (
+      <div className="page-intro">
+        <div>
+          <span className="page-eyebrow">DOSSIERS & ÉTUDIANTS</span>
+          <h1>Pièces étudiantes</h1>
+          <p>Vérifiez la conformité des pièces déposées et suivez les versions officielles.</p>
+        </div>
+        <div className="btn-group">
+          <button className="btn btn-outline" onClick={() => setReload(value => value + 1)}>Actualiser</button>
+          {directory.canUpload && <button className="btn btn-primary" disabled={!directory.yearId || !students.length} onClick={() => open({ kind: 'upload' })}>Ajouter une pièce</button>}
+        </div>
       </div>
-    </div>
+    )}
     {!studentMatricule && issuedDocuments.length > 0 && <button className="btn btn-outline" onClick={() => setIssued(true)}>Consulter les documents établis</button>}{!directory.yearId && <p className="info-box">Toutes les années : consultation uniquement.</p>}{success && <p className="info-box" role="status">{success}</p>}{loadError && <p className="restricted-box" role="alert">{loadError}</p>}
     {!studentMatricule && <ListFilters count={directory.documents.length} active={Boolean(filter)}><section className="card"><label className="form-group">Rechercher une pièce<input className="input" type="search" value={filter} onChange={event => setFilter(event.target.value)} /></label></section></ListFilters>}
-    {!documents.length && <section className="card"><p>{studentMatricule ? 'Aucune pièce déposée.' : 'Aucune pièce pour ces critères.'}</p></section>}
     {documents.map(row => <section className="card publication-card" key={row.id}><div className="card-header"><h2>{String(row.filename)}</h2><span className="pill pill-default">{superseded.has(row.id) ? 'Ancienne version' : labels[String(row.status)]}</span></div><p>{!studentMatricule && `${studentName(row.student_id)} · `}{String(directory.types.find(type => type.id === row.document_type_id)?.name || 'Pièce')}{(!studentMatricule || Number(row.version) > 1) && ` · Version ${String(row.version)}`}</p><div className="btn-group"><button className="btn btn-outline" onClick={() => { void download(row.id); }}>Télécharger</button>{directory.yearId && !superseded.has(row.id) && <>{directory.canUpload && <button className="btn btn-outline" onClick={() => open({ kind: 'upload', previous: row })}>Remplacer la pièce</button>}{directory.canReview && <>{row.status !== 'CONFORME' && <button className="btn btn-primary" onClick={() => open({ kind: 'review', row, status: 'CONFORME' })}>Déclarer conforme</button>}{row.status !== 'NON_CONFORME' && <button className="btn btn-outline" onClick={() => open({ kind: 'review', row, status: 'NON_CONFORME' })}>Déclarer non conforme</button>}</>}</>}</div>{directory.reviews.some(review => review.document_id === row.id) && <SecondaryDetails title="Historique de vérification">{directory.reviews.filter(review => review.document_id === row.id).map(review => <p key={review.id}>{labels[String(review.status)]} · {String(review.reason)}</p>)}</SecondaryDetails>}</section>)}
     {studentMatricule && issuedDocuments.length > 0 && <section className="card"><div className="card-header"><h2>Documents établis & Relevés officiels</h2><span className="pill pill-default">{issuedDocuments.length} document(s)</span></div><div className="workspace-stack" style={{ gap: '0.75rem', marginTop: '0.75rem' }}>{issuedDocuments.map(document => <div key={document.id} className="dossier-doc-card"><div className="dossier-doc-main"><div><strong>{document.kind === 'RELEVE' ? 'Relevé de notes officiel REESAO' : String(document.reference || 'Document établi')}</strong><div className="cell-sub">Réf. {String(document.reference || '—')} · Émis le {connectedRecordValue('generated_documents', 'issued_at', document.issued_at, portal.relationalSnapshot)}</div></div></div><div className="btn-group">{document.kind === 'RELEVE' && <TranscriptPrintAction document={document} />}</div></div>)}</div></section>}
     {previewDoc && (
