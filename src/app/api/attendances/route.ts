@@ -72,7 +72,9 @@ export async function POST(request: Request) {
           throw new RequestError(403, 'Le délégué ne peut pas attribuer ni modifier une justification ou une dispense.');
         }
         if (existing && !body.reason) throw new RequestError(400, 'Un motif de 3 à 1000 caractères est obligatoire pour corriger une présence.');
-        if (['ABSENT_JUSTIFIE', 'RETARD_JUSTIFIE'].includes(entry.status) && existing?.status !== entry.status) throw new RequestError(409, 'Acceptez un justificatif pour enregistrer une absence ou un retard justifié.');
+        if (['ABSENT_JUSTIFIE', 'RETARD_JUSTIFIE'].includes(entry.status) && existing?.status !== entry.status && !body.reason) {
+          throw new RequestError(400, 'Un motif est obligatoire pour justifier une absence ou un retard.');
+        }
         changes.push({ table: 'attendances', operation: existing ? 'update' : 'insert', record: {
           id: existing?.id || crypto.randomUUID(), status: entry.status, arrived_at: entry.arrivedAt, left_at: entry.leftAt,
           late_minutes: entry.lateMinutes, comment: entry.comment || null, ...(body.reason ? { reason: body.reason } : {}),
