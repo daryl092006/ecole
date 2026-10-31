@@ -4,6 +4,7 @@ import { usePortal } from '@/hooks/usePortal';
 import ResponsiveTable from '@/components/ui/ResponsiveTable';
 import { ATTENDANCE_LABELS, type AttendanceStatus } from '@/types/attendanceManagement';
 import { connectedRecordValue } from '@/services/connectedRecordDisplayService';
+import { ROLES } from '@/types/permissions';
 
 function statusPill(status: string) {
   const code = String(status).toUpperCase();
@@ -24,7 +25,9 @@ function justificationPill(status: string) {
 }
 
 export default function StudentAttendancePanel({ matricule }: { matricule: string }) {
-  const { relationalSnapshot: snapshot } = usePortal();
+  const portal = usePortal();
+  const snapshot = portal.relationalSnapshot;
+  const isSelfStudent = portal.activeRole === ROLES.STUD && portal.session?.matricule === matricule;
   const student = snapshot.tables.students?.find(row => row.matricule === matricule);
   const enrollments = new Set((snapshot.tables.enrollments || []).filter(row => student && row.student_id === student.id).map(row => row.id));
   const records = (snapshot.tables.attendances || []).filter(row => enrollments.has(String(row.enrollment_id)) && !row.archived_at);
@@ -42,8 +45,8 @@ export default function StudentAttendancePanel({ matricule }: { matricule: strin
       <div className="page-intro">
         <div>
           <span className="page-eyebrow">SCOLARITÉ & PÉDAGOGIE</span>
-          <h1>Mon assiduité</h1>
-          <p>Consultez l'historique complet de vos pointages de présence et le suivi de vos absences pour l'année universitaire.</p>
+          <h1>{isSelfStudent ? 'Mon assiduité' : 'Assiduité et présences'}</h1>
+          <p>{isSelfStudent ? 'Consultez l’historique complet de vos pointages de présence et le suivi de vos absences pour l’année universitaire.' : 'Historique des pointages de présence et suivi de l’assiduité de l’étudiant pour l’année universitaire.'}</p>
         </div>
       </div>
 
