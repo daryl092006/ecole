@@ -3829,6 +3829,7 @@ form > .drawer-form-actions,
 .admissions-pill-btn[aria-pressed="true"] { background: var(--accent-light, #eff6ff); border-color: var(--accent, #2563eb); color: var(--accent, #2563eb); }
 .admissions-pill-dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; flex-shrink: 0; }
 .admissions-pill-dot--blue { background: #2563eb; }
+.admissions-pill-dot--amber { background: #d97706; }
 .admissions-pill-dot--green { background: #16a34a; }
 .admissions-pill-dot--purple { background: #9333ea; }
 .admissions-pill-dot--sky { background: #0284c7; }

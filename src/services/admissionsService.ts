@@ -16,15 +16,16 @@ export function stageLabel(application: Pick<AdmissionApplication, 'workflow_sta
   if (application.student_id || application.legacy_state?.admitted || application.legacy_state?.validated || application.workflow_stage === 'ADMIS_OFFICIEL') return 'Inscrit';
   if (application.workflow_stage) return APPLICATION_STAGES[application.workflow_stage];
   if (application.status === 'BROUILLON') return 'Brouillon';
-  return 'En étude';
+  return 'Non finalisé';
 }
 
-export type MacroStage = 'ALL' | 'VALIDE' | 'ETUDE' | 'ACADEMIE' | 'CORRIGER' | 'REJETE';
+export type MacroStage = 'ALL' | 'NON_FINALISE' | 'VALIDE' | 'ETUDE' | 'ACADEMIE' | 'CORRIGER' | 'REJETE';
 
-export const MACRO_STAGES: { id: MacroStage; label: string; dot: 'blue' | 'green' | 'purple' | 'sky' | 'orange' | 'red' }[] = [
+export const MACRO_STAGES: { id: MacroStage; label: string; dot: 'blue' | 'amber' | 'green' | 'purple' | 'sky' | 'orange' | 'red' }[] = [
   { id: 'ALL', label: 'TOTAL', dot: 'blue' },
+  { id: 'NON_FINALISE', label: 'NON FINALISÉS', dot: 'amber' },
   { id: 'VALIDE', label: 'INSCRITS / VALIDÉS', dot: 'green' },
-  { id: 'ETUDE', label: 'EN ÉTUDE', dot: 'purple' },
+  { id: 'ETUDE', label: 'EN ÉTUDE ACADÉMIQUE', dot: 'purple' },
   { id: 'ACADEMIE', label: 'À L’ACADÉMIE', dot: 'sky' },
   { id: 'CORRIGER', label: 'À CORRIGER', dot: 'orange' },
   { id: 'REJETE', label: 'REJETÉS', dot: 'red' },
@@ -35,7 +36,8 @@ export function getApplicationMacroStage(item: AdmissionApplication): MacroStage
   if (item.workflow_stage === 'TRANSMIS_ACADEMIE') return 'ACADEMIE';
   if (['INCOMPLET', 'A_COMPLETER'].includes(item.workflow_stage || '')) return 'CORRIGER';
   if (['ADMISSIBLE', 'ATTENTE_PAIEMENT', 'ADMIS_OFFICIEL'].includes(item.workflow_stage || '') || Boolean(item.student_id) || Boolean(item.legacy_student_id) || Boolean(item.legacy_state?.admitted) || Boolean(item.legacy_state?.validated)) return 'VALIDE';
-  return 'ETUDE';
+  if (item.workflow_stage === 'ETUDE_ACADEMIQUE' || item.workflow_stage === 'COMPLET') return 'ETUDE';
+  return 'NON_FINALISE';
 }
 
 export function stageBadge(item: AdmissionApplication): { label: string; tone: string } {
@@ -49,6 +51,8 @@ export function stageBadge(item: AdmissionApplication): { label: string; tone: s
         label: item.workflow_stage === 'ATTENTE_PAIEMENT' ? 'ATTENTE PAIEMENT' : 'INSCRIT',
         tone: 'success',
       };
+    case 'NON_FINALISE':
+      return { label: 'NON FINALISÉ', tone: 'warning' };
     case 'ETUDE':
       return { label: 'EN ÉTUDE', tone: 'purple' };
     case 'ACADEMIE':
@@ -58,7 +62,7 @@ export function stageBadge(item: AdmissionApplication): { label: string; tone: s
     case 'REJETE':
       return { label: 'REJETÉ', tone: 'danger' };
     default:
-      return { label: 'EN ÉTUDE', tone: 'purple' };
+      return { label: 'NON FINALISÉ', tone: 'warning' };
   }
 }
 export const ADMISSION_ACTIONS: Record<AdmissionAction, { label: string; from: (ApplicationStage | null)[]; capability: 'review' | 'decide' | 'payment' | 'followup' }> = {
