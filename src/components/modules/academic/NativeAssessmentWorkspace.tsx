@@ -1,5 +1,5 @@
 'use client';
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
 import { usePortal } from '@/hooks/usePortal';
@@ -113,6 +113,35 @@ export default function NativeAssessmentWorkspace({ category }: { category: Asse
   const rows = allGroupedItems.filter(item => (!statusFilter || item.statusLabel === statusFilter) && (!groupFilter || item.groupLabel === groupFilter)
     && (!subjectFilter || item.subjectLabel === subjectFilter)
     && `${item.primary.name} ${item.subjectLabel} ${item.groupLabel} ${item.statusLabel}`.toLocaleLowerCase('fr').includes(query.toLocaleLowerCase('fr')));
+
+  const classSubjectTree = useMemo(() => {
+    const map = new Map<string, Map<string, typeof rows>>();
+    for (const item of rows) {
+      const g = item.groupLabel || 'Classe non renseignée';
+      const s = item.subjectLabel || 'Matière non renseignée';
+      if (!map.has(g)) map.set(g, new Map());
+      const sMap = map.get(g)!;
+      if (!sMap.has(s)) sMap.set(s, []);
+      sMap.get(s)!.push(item);
+    }
+    return [...map.entries()]
+      .sort((a, b) => a[0].localeCompare(b[0], 'fr'))
+      .map(([groupName, subjectsMap]) => {
+        const sortedSubjects = [...subjectsMap.entries()]
+          .sort((a, b) => a[0].localeCompare(b[0], 'fr'))
+          .map(([subjName, items]) => ({
+            subjectName: subjName,
+            items,
+            totalExams: items.length,
+          }));
+        const totalGroupExams = sortedSubjects.reduce((sum, s) => sum + s.totalExams, 0);
+        return {
+          groupName,
+          subjects: sortedSubjects,
+          totalExams: totalGroupExams,
+        };
+      });
+  }, [rows]);
   const selectedMembers = linkedKeys.size === 1 ? linkedRaw : undefined;
   const selected = selectedMembers?.[0];
   const selectedStatusLabel = selected ? allGroupedItems.find(item => item.key === groupKey(selected))?.statusLabel : undefined;
@@ -143,7 +172,122 @@ export default function NativeAssessmentWorkspace({ category }: { category: Asse
       </div></ListFilters>
       {(withdrawn || allEvaluations.some(row => row.cancelled_at || row.archived_at)) && <label className="checkbox-field"><input type="checkbox" checked={withdrawn} onChange={event => { setWithdrawn(event.target.checked); setStatusFilter(''); setExported(false); }} /> Épreuves retirées</label>}
       {exported && <p role="status">{rows.length} épreuve(s) exportée(s).</p>}
-      <ResponsiveTable className="data-table"><thead><tr><th>Épreuve</th><th>Matière</th><th>Groupe</th><th>Notes et moyenne</th><th>État de l’épreuve</th><th>Actions</th></tr></thead><tbody>{rows.map(item => <tr key={item.primary.id}><td>{String(item.primary.name)}</td><td>{item.subjectLabel}</td><td>{item.groupLabel}</td><td>{item.statsLabel}</td><td>{item.statusLabel}</td><td><div className="btn-group"><IconButton className="btn btn-outline" label="Ouvrir le détail" onClick={() => { setSelectedId(item.primary.id); setCopies(false); }} />{(perms.permissions.includes('grade.enter') || perms.permissions.includes('grade.review') || perms.permissions.includes('grade.approve') || perms.permissions.includes('grade.publish')) && <IconButton className="btn btn-primary" label="Saisir / Gérer" onClick={() => setManagingEvalIds(item.members.map(m => String(m.id)))} />}</div></td></tr>)}{!rows.length && <tr><td colSpan={6}>Aucune épreuve pour cette catégorie et ces filtres.</td></tr>}</tbody></ResponsiveTable>
+      {rows.length === 0 ? (
+        <div className="empty-state" style={{ padding: '36px 16px' }}>
+          <p>Aucune épreuve pour cette catégorie et ces filtres.</p>
+        </div>
+      ) : (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '24px', marginTop: '16px' }}>
+          {classSubjectTree.map(classGroup => (
+            <div
+              key={classGroup.groupName}
+              style={{
+                border: '1px solid var(--border-color, #e2e8f0)',
+                borderRadius: '8px',
+                overflow: 'hidden',
+                background: '#ffffff',
+              }}
+            >
+              {/* En-tête Classe */}
+              <div
+                style={{
+                  background: '#f8fafc',
+                  padding: '12px 18px',
+                  borderBottom: '1px solid var(--border-color, #e2e8f0)',
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  alignItems: 'center',
+                  flexWrap: 'wrap',
+                  gap: '8px',
+                }}
+              >
+                <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                  <h3 style={{ margin: 0, fontSize: '15px', color: '#0f172a' }}>
+                    Classe : {classGroup.groupName}
+                  </h3>
+                  <span className="pill pill-default" style={{ fontSize: '12px' }}>
+                    {classGroup.totalExams} épreuve{classGroup.totalExams > 1 ? 's' : ''}
+                  </span>
+                  <span className="cell-sub">
+                    ({classGroup.subjects.length} matière{classGroup.subjects.length > 1 ? 's' : ''})
+                  </span>
+                </div>
+              </div>
+
+              {/* Matières de la classe */}
+              <div style={{ padding: '16px 18px', display: 'flex', flexDirection: 'column', gap: '20px' }}>
+                {classGroup.subjects.map(subj => (
+                  <div key={subj.subjectName}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
+                      <strong style={{ fontSize: '14px', color: 'var(--primary, #2563eb)' }}>
+                        Matière : {subj.subjectName}
+                      </strong>
+                      <span className="pill pill-info" style={{ fontSize: '11px' }}>
+                        {subj.totalExams} épreuve{subj.totalExams > 1 ? 's' : ''}
+                      </span>
+                    </div>
+
+                    <div className="table-wrap">
+                      <ResponsiveTable className="data-table">
+                        <thead>
+                          <tr>
+                            <th>Épreuve</th>
+                            <th>Notes et moyenne</th>
+                            <th>État de l’épreuve</th>
+                            <th style={{ textAlign: 'right' }}>Actions</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {subj.items.map(item => (
+                            <tr key={item.primary.id}>
+                              <td>
+                                <strong>{String(item.primary.name)}</strong>
+                              </td>
+                              <td>{item.statsLabel}</td>
+                              <td>
+                                <span
+                                  className={`pill ${
+                                    item.statusLabel.includes('publiée') || item.statusLabel.includes('Validée')
+                                      ? 'pill-success'
+                                      : item.statusLabel.includes('corriger')
+                                      ? 'pill-warning'
+                                      : 'pill-default'
+                                  }`}
+                                >
+                                  {item.statusLabel}
+                                </span>
+                              </td>
+                              <td style={{ textAlign: 'right' }}>
+                                <div className="btn-group" style={{ justifyContent: 'flex-end' }}>
+                                  <IconButton
+                                    className="btn btn-sm btn-outline"
+                                    label="Ouvrir le détail"
+                                    onClick={() => { setSelectedId(item.primary.id); setCopies(false); }}
+                                  />
+                                  {(perms.permissions.includes('grade.enter') ||
+                                    perms.permissions.includes('grade.review') ||
+                                    perms.permissions.includes('grade.approve') ||
+                                    perms.permissions.includes('grade.publish')) && (
+                                    <IconButton
+                                      className="btn btn-sm btn-primary"
+                                      label="Saisir / Gérer"
+                                      onClick={() => setManagingEvalIds(item.members.map(m => String(m.id)))}
+                                    />
+                                  )}
+                                </div>
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </ResponsiveTable>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
     </section>
     {selected && selectedMembers && (() => {
       const selectedPaper = (data.tables.exam_papers || [])
