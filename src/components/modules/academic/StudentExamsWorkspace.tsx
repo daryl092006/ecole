@@ -62,6 +62,9 @@ function OnlineExamEditor({ initial, onBack }: { initial: OnlineExamView; onBack
     } catch { return 0; }
   });
   const [isFullscreen, setIsFullscreen] = useState(false);
+  const [isLockedOut, setIsLockedOut] = useState<boolean>(() => {
+    return initial.attempt.status === 'EN_COURS' && typeof document !== 'undefined' && !document.fullscreenElement;
+  });
 
   const recordAntiCheatIncident = useCallback((type: string, message: string) => {
     if (current.current.attempt.status !== 'EN_COURS') return;
@@ -189,6 +192,7 @@ function OnlineExamEditor({ initial, onBack }: { initial: OnlineExamView; onBack
     const handleVisibility = () => {
       if (document.hidden && current.current.attempt.status === 'EN_COURS') {
         recordAntiCheatIncident('TAB_SWITCH', 'Sortie d’écran ou changement d’onglet');
+        setIsLockedOut(true);
       } else if (!document.hidden) {
         void refreshRef.current().then(() => pumpRef.current());
       }
@@ -196,31 +200,46 @@ function OnlineExamEditor({ initial, onBack }: { initial: OnlineExamView; onBack
     const handleBlur = () => {
       if (current.current.attempt.status === 'EN_COURS') {
         recordAntiCheatIncident('WINDOW_BLUR', 'Perte de focus de la fenêtre d’examen');
+        setIsLockedOut(true);
+      }
+    };
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (current.current.attempt.status !== 'EN_COURS') return;
+      if (
+        e.key === 'F12' ||
+        (e.ctrlKey && e.shiftKey && ['I', 'i', 'J', 'j', 'C', 'c'].includes(e.key)) ||
+        (e.ctrlKey && ['u', 'U', 'p', 'P', 's', 'S'].includes(e.key)) ||
+        (e.altKey && e.key === 'Tab')
+      ) {
+        e.preventDefault();
+        recordAntiCheatIncident('SHORTCUT_BLOCKED', `Raccourci système bloqué (${e.key})`);
+        setIsLockedOut(true);
       }
     };
     const handleContextMenu = (e: MouseEvent) => {
       if (current.current.attempt.status === 'EN_COURS') {
         e.preventDefault();
-        recordAntiCheatIncident('CONTEXT_MENU', 'Tentative d’ouverture du menu contextuel (clic droit)');
+        recordAntiCheatIncident('CONTEXT_MENU', 'Tentative de clic droit');
       }
     };
     const handleCopy = (e: ClipboardEvent) => {
       if (current.current.attempt.status === 'EN_COURS') {
         e.preventDefault();
-        recordAntiCheatIncident('COPY_ATTEMPT', 'Tentative de copie du sujet d’examen');
+        recordAntiCheatIncident('COPY_ATTEMPT', 'Tentative de copie du sujet');
       }
     };
     const handlePaste = (e: ClipboardEvent) => {
       if (current.current.attempt.status === 'EN_COURS') {
         e.preventDefault();
-        recordAntiCheatIncident('PASTE_ATTEMPT', 'Tentative de collage de texte externe');
+        recordAntiCheatIncident('PASTE_ATTEMPT', 'Tentative de collage externe');
       }
     };
     const handleFullscreenChange = () => {
       const isFull = Boolean(document.fullscreenElement);
       setIsFullscreen(isFull);
       if (!isFull && current.current.attempt.status === 'EN_COURS') {
-        recordAntiCheatIncident('FULLSCREEN_EXIT', 'Sortie du mode plein écran');
+        recordAntiCheatIncident('FULLSCREEN_EXIT', 'Sortie du mode plein écran obligatoire');
+        setIsLockedOut(true);
       }
     };
     const leave = (event: BeforeUnloadEvent) => { if (current.current.attempt.status === 'EN_COURS' && !examAnswersEqual(draft.current, current.current.answers)) { event.preventDefault(); } };
@@ -228,6 +247,7 @@ function OnlineExamEditor({ initial, onBack }: { initial: OnlineExamView; onBack
     window.addEventListener('pageshow', handleVisibility);
     document.addEventListener('visibilitychange', handleVisibility);
     window.addEventListener('blur', handleBlur);
+    window.addEventListener('keydown', handleKeyDown);
     document.addEventListener('contextmenu', handleContextMenu);
     document.addEventListener('copy', handleCopy);
     document.addEventListener('paste', handlePaste);
@@ -240,6 +260,7 @@ function OnlineExamEditor({ initial, onBack }: { initial: OnlineExamView; onBack
       window.removeEventListener('pageshow', handleVisibility);
       document.removeEventListener('visibilitychange', handleVisibility);
       window.removeEventListener('blur', handleBlur);
+      window.removeEventListener('keydown', handleKeyDown);
       document.removeEventListener('contextmenu', handleContextMenu);
       document.removeEventListener('copy', handleCopy);
       document.removeEventListener('paste', handlePaste);
@@ -256,7 +277,96 @@ function OnlineExamEditor({ initial, onBack }: { initial: OnlineExamView; onBack
   const update = (id: string, value: OnlineExamAnswer) => {
     const next = { ...draft.current, [id]: value }; draft.current = next; setAnswers(next); persist();
   };
-  return <section className="card online-exam-workspace" aria-label="Ma copie">
+  return (
+    <div style={{ position: 'fixed', inset: 0, zIndex: 9999, background: 'var(--bg-primary, #f8fafc)', overflowY: 'auto', padding: '24px 16px' }}>
+      {/* Overlay Bloquant Anti-Triche */}
+      {isLockedOut && !terminal && (
+        <div
+          style={{
+            position: 'fixed',
+            inset: 0,
+            zIndex: 100000,
+            background: 'rgba(15, 23, 42, 0.92)',
+            backdropFilter: 'blur(12px)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            padding: '24px',
+          }}
+        >
+          <div
+            className="card"
+            style={{
+              maxWidth: '560px',
+              width: '100%',
+              textAlign: 'center',
+              padding: '36px 28px',
+              background: '#ffffff',
+              borderRadius: '16px',
+              boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.35)',
+              border: '2px solid #ef4444',
+            }}
+          >
+            <div
+              style={{
+                width: '64px',
+                height: '64px',
+                borderRadius: '50%',
+                background: '#fee2e2',
+                color: '#dc2626',
+                display: 'grid',
+                placeItems: 'center',
+                margin: '0 auto 16px',
+                fontSize: '32px',
+              }}
+            >
+              🔒
+            </div>
+            <h2 style={{ fontSize: '20px', color: '#991b1b', margin: '0 0 12px' }}>
+              ÉCRAN VERROUILLÉ — SORTIE D'ÉCRAN DÉTECTÉE
+            </h2>
+            <p style={{ color: '#334155', fontSize: '14px', lineHeight: 1.6, margin: '0 0 16px' }}>
+              Le règlement des examens ESCEN <strong>interdit formellement de quitter l'écran de composition</strong>, de changer d’onglet, de minimiser le navigateur ou de quitter le plein écran.
+            </p>
+            <div
+              style={{
+                padding: '10px 14px',
+                background: '#fef2f2',
+                border: '1px solid #fecaca',
+                borderRadius: '8px',
+                color: '#b91c1c',
+                fontWeight: 600,
+                fontSize: '13px',
+                marginBottom: '20px',
+              }}
+            >
+              ⚠️ Infraction n°{antiCheatCount} enregistrée et portée au rapport de correction.
+            </div>
+            <button
+              type="button"
+              className="btn btn-primary"
+              style={{
+                width: '100%',
+                padding: '12px 20px',
+                fontSize: '15px',
+                fontWeight: 700,
+                background: '#dc2626',
+                borderColor: '#dc2626',
+              }}
+              onClick={async () => {
+                await toggleFullscreen();
+                setIsLockedOut(false);
+              }}
+            >
+              Réactiver le plein écran et déverrouiller
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Conteneur principal de l'examen */}
+      <div style={{ maxWidth: '960px', margin: '0 auto', filter: isLockedOut && !terminal ? 'blur(10px)' : 'none', pointerEvents: isLockedOut && !terminal ? 'none' : 'auto', userSelect: 'none' }}>
+        <section className="card online-exam-workspace" aria-label="Ma copie">
     <h1>{view.paper.title}</h1>
     {(() => {
       const hours = Math.floor(remaining / 3600);
@@ -390,5 +500,8 @@ function OnlineExamEditor({ initial, onBack }: { initial: OnlineExamView; onBack
       {terminal && <button className="btn btn-outline" onClick={onBack}>Retour aux épreuves</button>}
       {!terminal && <p>Gardez une connexion active. À l’échéance, seules les réponses déjà reçues par le serveur seront remises.</p>}
     </div>
-  </section>;
+        </section>
+      </div>
+    </div>
+  );
 }
