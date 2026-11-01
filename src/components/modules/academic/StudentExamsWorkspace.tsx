@@ -62,6 +62,16 @@ function OnlineExamEditor({ initial, onBack }: { initial: OnlineExamView; onBack
     } catch { return 0; }
   });
   const [isFullscreen, setIsFullscreen] = useState(false);
+  const [flagged, setFlagged] = useState<Record<string, boolean>>({});
+  const toggleFlag = (id: string) => setFlagged(prev => ({ ...prev, [id]: !prev[id] }));
+  const countWords = (text: string) => {
+    const trimmed = (text || '').trim();
+    return trimmed ? trimmed.split(/\s+/).length : 0;
+  };
+  const jumpToQuestion = (id: string) => {
+    const el = typeof document !== 'undefined' ? document.getElementById(`exam-q-${id}`) : null;
+    if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  };
   const [isLockedOut, setIsLockedOut] = useState<boolean>(() => {
     return initial.attempt.status === 'EN_COURS' && typeof document !== 'undefined' && !document.fullscreenElement;
   });
@@ -481,24 +491,546 @@ function OnlineExamEditor({ initial, onBack }: { initial: OnlineExamView; onBack
       try { const next = await readOnlineExam(portal.activeRole, initial.attempt.id); pending.current = null; draft.current = next.answers; setAnswers(next.answers); blocked.current = false; setConflict(false); setError(''); apply(next); }
       catch (cause) { setError(cause instanceof Error ? cause.message : 'Rechargement impossible.'); }
     }}>Recharger la version enregistrée</button>}
-    {view.paper.parts.map(part => <section key={part.id}><h2>{part.caseStudy ? `Étude de cas : ${part.title}` : part.title}</h2>{part.instructions && <p className="subject-text">{part.instructions}</p>}{part.questions.map((question, index) => {
-      const answer = answers[question.id] || emptyExamAnswer();
-      return <fieldset className="online-exam-question" disabled={locked} key={question.id}><legend>{index + 1}. ({question.points} points)</legend><SubjectRichText value={question.prompt} />
-        {question.kind.startsWith('QCM') ? <>
-          {question.options.map(option => <label className="checkbox-field" key={option.id}><input type={question.kind === 'QCM_SIMPLE' ? 'radio' : 'checkbox'} name={question.id} checked={answer.option_ids.includes(option.id)} onChange={event => update(question.id, { text: question.requiresJustification ? answer.text : '', option_ids: question.kind === 'QCM_SIMPLE' ? [option.id] : event.target.checked ? [...answer.option_ids, option.id] : answer.option_ids.filter(id => id !== option.id) })} />{option.label}</label>)}
-          {question.requiresJustification && <label className="form-group">Justifiez votre réponse<textarea className="input" rows={3} maxLength={20000} value={answer.text} onChange={event => update(question.id, { ...answer, text: event.target.value })} /></label>}
-        </> : <label className="form-group">Votre réponse<textarea className="input" rows={question.presentation === 'SHORT_TEXT' ? 2 : 6} maxLength={20000} value={answer.text} onChange={event => update(question.id, { text: event.target.value, option_ids: [] })} /></label>}
-      </fieldset>;
-    })}</section>)}
-    {review && !terminal && <ReviewedForm reviewInitially busy={submitting} error={error} confirmLabel="Confirmer la remise de ma copie"
-      fields={[{ label: 'Réponses renseignées', value: `${examAnsweredCount(answers)} / ${questions.length}` }, { label: 'Échéance', value: dateLabel(view.attempt.deadlineAt) }]}
-      consequence="La copie sera définitivement remise avec les réponses reçues avant l’échéance. Vous ne pourrez plus les modifier. Une copie vide conserve le statut non traité et vaut 0/20."
-      onCancelReview={() => setReview(false)} onConfirm={async () => { setSubmitting(true); await pumpRef.current(true); if (mounted.current) setSubmitting(false); }} />}
+
+    {/* Palette de navigation rapide des questions */}
+    {questions.length > 1 && !terminal && (
+      <nav
+        aria-label="Palette des questions"
+        style={{
+          display: 'flex',
+          alignItems: 'center',
+          gap: '8px',
+          flexWrap: 'wrap',
+          padding: '12px 16px',
+          background: '#f1f5f9',
+          borderRadius: '10px',
+          marginBottom: '20px',
+          border: '1px solid #e2e8f0',
+        }}
+      >
+        <span style={{ fontSize: '12px', fontWeight: 700, color: '#475569', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+          Questions :
+        </span>
+        <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap', alignItems: 'center' }}>
+          {questions.map((q, idx) => {
+            const ans = answers[q.id] || emptyExamAnswer();
+            const isAns = Boolean(ans.text.trim() || ans.option_ids.length);
+            const isFlg = Boolean(flagged[q.id]);
+            return (
+              <button
+                key={q.id}
+                type="button"
+                onClick={() => jumpToQuestion(q.id)}
+                title={`Question ${idx + 1} (${q.points} pt${q.points > 1 ? 's' : ''}) — ${isAns ? 'Répondue' : 'En attente'}${isFlg ? ' (Marquée 🚩)' : ''}`}
+                style={{
+                  minWidth: '34px',
+                  height: '34px',
+                  padding: '0 6px',
+                  borderRadius: '6px',
+                  border: isFlg ? '2px solid #eab308' : isAns ? '1.5px solid #16a34a' : '1px solid #cbd5e1',
+                  background: isFlg ? '#fef9c3' : isAns ? '#dcfce7' : '#ffffff',
+                  color: isFlg ? '#854d0e' : isAns ? '#15803d' : '#334155',
+                  fontWeight: isAns || isFlg ? 700 : 500,
+                  fontSize: '12px',
+                  cursor: 'pointer',
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: '2px',
+                  transition: 'all 0.15s ease',
+                  boxShadow: '0 1px 2px rgba(0,0,0,0.04)',
+                }}
+              >
+                {idx + 1}
+                {isFlg && <span style={{ fontSize: '9px' }}>🚩</span>}
+              </button>
+            );
+          })}
+        </div>
+      </nav>
+    )}
+
+    {/* Parties et questions de l'épreuve */}
+    {view.paper.parts.map(part => (
+      <section key={part.id} style={{ marginBottom: '32px' }}>
+        {/* En-tête de partie */}
+        <div
+          style={{
+            padding: '14px 18px',
+            background: '#f8fafc',
+            borderLeft: '4px solid var(--primary, #2563eb)',
+            borderRadius: '0 8px 8px 0',
+            marginBottom: '16px',
+            borderTop: '1px solid #e2e8f0',
+            borderRight: '1px solid #e2e8f0',
+            borderBottom: '1px solid #e2e8f0',
+          }}
+        >
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '8px' }}>
+            <h2 style={{ margin: 0, fontSize: '1.15rem', color: '#0f172a', fontWeight: 700 }}>
+              {part.caseStudy ? `Étude de cas : ${part.title}` : part.title}
+            </h2>
+            <span className="pill pill-subtle" style={{ fontWeight: 600 }}>
+              {part.questions.length} question(s) · {part.questions.reduce((sum, q) => sum + (Number(q.points) || 0), 0)} pts
+            </span>
+          </div>
+
+          {/* Dossier documentaire pour étude de cas */}
+          {part.caseStudy && (
+            <div
+              style={{
+                marginTop: '12px',
+                padding: '14px 16px',
+                background: '#ffffff',
+                border: '1px solid #bfdbfe',
+                borderRadius: '8px',
+                boxShadow: '0 1px 3px rgba(0,0,0,0.04)',
+              }}
+            >
+              <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontWeight: 700, color: '#1e40af', marginBottom: '8px', fontSize: '13px' }}>
+                <span>📑</span> DOSSIER DOCUMENTAIRE & SITUATION DU CAS
+              </div>
+              {part.instructions && (
+                <div style={{ fontSize: '14px', lineHeight: 1.6, color: '#1e293b', whiteSpace: 'pre-wrap' }}>
+                  {part.instructions}
+                </div>
+              )}
+            </div>
+          )}
+          {!part.caseStudy && part.instructions && (
+            <p className="subject-text" style={{ margin: '8px 0 0', fontSize: '13px', color: '#475569' }}>
+              {part.instructions}
+            </p>
+          )}
+        </div>
+
+        {/* Liste des questions */}
+        {part.questions.map(question => {
+          const globalIndex = questions.findIndex(q => q.id === question.id);
+          const answer = answers[question.id] || emptyExamAnswer();
+          const isAns = Boolean(answer.text.trim() || answer.option_ids.length);
+          const isFlg = Boolean(flagged[question.id]);
+          const isTrueFalse = question.presentation === 'TRUE_FALSE';
+          const isShortText = question.presentation === 'SHORT_TEXT';
+          const isLongText = question.kind === 'TEXTE' || question.presentation === 'LONG_TEXT';
+          const isQcmSimple = question.kind === 'QCM_SIMPLE' && !isTrueFalse;
+          const isQcmMultiple = question.kind === 'QCM_MULTIPLE';
+
+          return (
+            <div
+              key={question.id}
+              id={`exam-q-${question.id}`}
+              style={{
+                margin: '18px 0',
+                padding: '18px 20px',
+                background: '#ffffff',
+                border: isFlg ? '2px solid #eab308' : isAns ? '1px solid #cbd5e1' : '1px solid #e2e8f0',
+                borderRadius: '10px',
+                boxShadow: isFlg ? '0 0 8px rgba(234, 179, 8, 0.2)' : '0 1px 4px rgba(0,0,0,0.04)',
+                transition: 'all 0.2s ease',
+              }}
+            >
+              {/* En-tête de la question */}
+              <div
+                style={{
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  alignItems: 'center',
+                  flexWrap: 'wrap',
+                  gap: '10px',
+                  paddingBottom: '10px',
+                  borderBottom: '1px solid #f1f5f9',
+                  marginBottom: '14px',
+                }}
+              >
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+                  <strong style={{ fontSize: '15px', color: '#0f172a' }}>
+                    Question {globalIndex + 1}
+                  </strong>
+                  <span className="pill pill-default" style={{ fontWeight: 600 }}>
+                    {question.points} {question.points > 1 ? 'points' : 'point'}
+                  </span>
+                  <span className="pill pill-subtle" style={{ fontSize: '11px', textTransform: 'uppercase' }}>
+                    {isTrueFalse
+                      ? '⚖️ Vrai / Faux'
+                      : isQcmSimple
+                      ? '🔘 Choix unique'
+                      : isQcmMultiple
+                      ? '☑️ Choix multiples'
+                      : isShortText
+                      ? '💬 Réponse courte'
+                      : '📝 Rédaction'}
+                  </span>
+                  {isAns ? (
+                    <span className="pill pill-success" style={{ fontSize: '11px' }}>
+                      ✓ Répondue
+                    </span>
+                  ) : (
+                    <span className="pill pill-warning" style={{ fontSize: '11px' }}>
+                      À traiter
+                    </span>
+                  )}
+                </div>
+
+                {!locked && (
+                  <button
+                    type="button"
+                    className="btn btn-sm btn-outline"
+                    onClick={() => toggleFlag(question.id)}
+                    style={{
+                      fontSize: '11px',
+                      padding: '3px 8px',
+                      borderColor: isFlg ? '#eab308' : undefined,
+                      background: isFlg ? '#fef9c3' : undefined,
+                      color: isFlg ? '#854d0e' : undefined,
+                    }}
+                  >
+                    {isFlg ? '🚩 Marquée pour relecture' : '🏳️ Marquer pour relecture'}
+                  </button>
+                )}
+              </div>
+
+              {/* Énoncé de la question */}
+              <div style={{ fontSize: '15px', lineHeight: 1.6, color: '#1e293b', marginBottom: '16px' }}>
+                <SubjectRichText value={question.prompt} />
+              </div>
+
+              {/* Types de réponses */}
+              {/* 1. Vrai / Faux */}
+              {isTrueFalse && (
+                <div>
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: '12px', marginBottom: '14px' }}>
+                    {question.options.map(option => {
+                      const selected = answer.option_ids.includes(option.id);
+                      const isVrai = option.label.toLowerCase().includes('vrai');
+                      return (
+                        <button
+                          key={option.id}
+                          type="button"
+                          disabled={locked}
+                          onClick={() =>
+                            update(question.id, {
+                              text: question.requiresJustification ? answer.text : '',
+                              option_ids: [option.id],
+                            })
+                          }
+                          style={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            gap: '10px',
+                            padding: '14px 20px',
+                            borderRadius: '8px',
+                            border: selected ? '2px solid var(--primary, #2563eb)' : '1px solid #cbd5e1',
+                            background: selected ? (isVrai ? '#f0fdf4' : '#fef2f2') : '#f8fafc',
+                            color: selected ? (isVrai ? '#166534' : '#991b1b') : '#334155',
+                            fontWeight: selected ? 700 : 500,
+                            fontSize: '15px',
+                            cursor: locked ? 'not-allowed' : 'pointer',
+                            transition: 'all 0.15s ease',
+                          }}
+                        >
+                          <span style={{ fontSize: '18px' }}>{isVrai ? '✓' : '✗'}</span>
+                          <span>{option.label}</span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                  {question.requiresJustification && (
+                    <div style={{ marginTop: '12px' }}>
+                      <label style={{ display: 'block', fontSize: '13px', fontWeight: 600, color: '#334155', marginBottom: '6px' }}>
+                        Argumentaire / Justification de votre choix :
+                      </label>
+                      <textarea
+                        className="input"
+                        disabled={locked}
+                        rows={3}
+                        maxLength={20000}
+                        value={answer.text}
+                        onChange={event => update(question.id, { ...answer, text: event.target.value })}
+                        placeholder="Expliquez rigoureusement pourquoi cette affirmation est vraie ou fausse…"
+                        style={{ width: '100%', resize: 'vertical', lineHeight: 1.5 }}
+                      />
+                      <div style={{ display: 'flex', justifyContent: 'flex-end', fontSize: '11px', color: '#64748b', marginTop: '4px' }}>
+                        {countWords(answer.text)} mot(s) · {answer.text.length} car.
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* 2. QCM Simple */}
+              {isQcmSimple && (
+                <div>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginBottom: '14px' }}>
+                    {question.options.map((option, optIdx) => {
+                      const selected = answer.option_ids.includes(option.id);
+                      return (
+                        <label
+                          key={option.id}
+                          style={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '12px',
+                            padding: '12px 16px',
+                            borderRadius: '8px',
+                            border: selected ? '2px solid var(--primary, #2563eb)' : '1px solid #e2e8f0',
+                            background: selected ? '#eff6ff' : '#f8fafc',
+                            cursor: locked ? 'not-allowed' : 'pointer',
+                            transition: 'all 0.15s ease',
+                          }}
+                        >
+                          <input
+                            type="radio"
+                            name={`exam-radio-${question.id}`}
+                            disabled={locked}
+                            checked={selected}
+                            onChange={() =>
+                              update(question.id, {
+                                text: question.requiresJustification ? answer.text : '',
+                                option_ids: [option.id],
+                              })
+                            }
+                            style={{ width: '18px', height: '18px', accentColor: 'var(--primary, #2563eb)', cursor: locked ? 'not-allowed' : 'pointer' }}
+                          />
+                          <span style={{ fontSize: '14px', color: selected ? '#1e3a8a' : '#1e293b', fontWeight: selected ? 600 : 400 }}>
+                            <strong style={{ marginRight: '6px', color: '#64748b' }}>{String.fromCharCode(65 + optIdx)}.</strong>
+                            {option.label}
+                          </span>
+                        </label>
+                      );
+                    })}
+                  </div>
+                  {question.requiresJustification && (
+                    <div style={{ marginTop: '12px' }}>
+                      <label style={{ display: 'block', fontSize: '13px', fontWeight: 600, color: '#334155', marginBottom: '6px' }}>
+                        Justifiez votre choix :
+                      </label>
+                      <textarea
+                        className="input"
+                        disabled={locked}
+                        rows={3}
+                        maxLength={20000}
+                        value={answer.text}
+                        onChange={event => update(question.id, { ...answer, text: event.target.value })}
+                        placeholder="Précisez votre raisonnement…"
+                        style={{ width: '100%', resize: 'vertical' }}
+                      />
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* 3. QCM Multiple */}
+              {isQcmMultiple && (
+                <div>
+                  <div style={{ fontSize: '12px', color: '#475569', fontStyle: 'italic', marginBottom: '8px' }}>
+                    ℹ️ Plusieurs réponses possibles. Cochez toutes les options exactes.
+                  </div>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginBottom: '14px' }}>
+                    {question.options.map((option, optIdx) => {
+                      const selected = answer.option_ids.includes(option.id);
+                      return (
+                        <label
+                          key={option.id}
+                          style={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '12px',
+                            padding: '12px 16px',
+                            borderRadius: '8px',
+                            border: selected ? '2px solid var(--primary, #2563eb)' : '1px solid #e2e8f0',
+                            background: selected ? '#eff6ff' : '#f8fafc',
+                            cursor: locked ? 'not-allowed' : 'pointer',
+                            transition: 'all 0.15s ease',
+                          }}
+                        >
+                          <input
+                            type="checkbox"
+                            disabled={locked}
+                            checked={selected}
+                            onChange={event => {
+                              const nextIds = event.target.checked
+                                ? [...answer.option_ids, option.id]
+                                : answer.option_ids.filter(id => id !== option.id);
+                              update(question.id, {
+                                text: question.requiresJustification ? answer.text : '',
+                                option_ids: nextIds,
+                              });
+                            }}
+                            style={{ width: '18px', height: '18px', accentColor: 'var(--primary, #2563eb)', cursor: locked ? 'not-allowed' : 'pointer' }}
+                          />
+                          <span style={{ fontSize: '14px', color: selected ? '#1e3a8a' : '#1e293b', fontWeight: selected ? 600 : 400 }}>
+                            <strong style={{ marginRight: '6px', color: '#64748b' }}>{String.fromCharCode(65 + optIdx)}.</strong>
+                            {option.label}
+                          </span>
+                        </label>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+
+              {/* 4. Texte Court */}
+              {isShortText && (
+                <div>
+                  <label style={{ display: 'block', fontSize: '13px', fontWeight: 600, color: '#334155', marginBottom: '6px' }}>
+                    Votre réponse concise :
+                  </label>
+                  <textarea
+                    className="input"
+                    disabled={locked}
+                    rows={2}
+                    maxLength={20000}
+                    value={answer.text}
+                    onChange={event => update(question.id, { text: event.target.value, option_ids: [] })}
+                    placeholder="Formulez une réponse synthétique et précise…"
+                    style={{ width: '100%', resize: 'vertical', lineHeight: 1.5, fontSize: '14px' }}
+                  />
+                  <div style={{ display: 'flex', justifyContent: 'flex-end', fontSize: '11px', color: '#64748b', marginTop: '4px' }}>
+                    {countWords(answer.text)} mot(s)
+                  </div>
+                </div>
+              )}
+
+              {/* 5. Texte Long / Développement / Rédaction */}
+              {isLongText && (
+                <div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
+                    <label style={{ fontSize: '13px', fontWeight: 600, color: '#334155' }}>
+                      Votre développement / argumentation détaillée :
+                    </label>
+                    <span style={{ fontSize: '12px', color: '#64748b', fontWeight: 500 }}>
+                      📝 {countWords(answer.text)} mot(s) · {answer.text.length} caractère(s)
+                    </span>
+                  </div>
+                  <textarea
+                    className="input"
+                    disabled={locked}
+                    rows={8}
+                    maxLength={20000}
+                    value={answer.text}
+                    onChange={event => update(question.id, { text: event.target.value, option_ids: [] })}
+                    placeholder="Rédigez votre analyse, argumentation ou développement structuré ici…"
+                    style={{
+                      width: '100%',
+                      minHeight: '180px',
+                      resize: 'vertical',
+                      lineHeight: 1.6,
+                      fontSize: '14px',
+                      padding: '12px 14px',
+                      fontFamily: 'inherit',
+                    }}
+                  />
+                </div>
+              )}
+            </div>
+          );
+        })}
+      </section>
+    ))}
+
+    {/* Récapitulatif avant remise */}
+    {review && !terminal && (
+      <div style={{ margin: '24px 0', padding: '20px', background: '#f8fafc', border: '1px solid #cbd5e1', borderRadius: '10px' }}>
+        <h3 style={{ margin: '0 0 12px', fontSize: '1.1rem', color: '#0f172a' }}>
+          📋 Bilan de composition avant remise finale
+        </h3>
+        {(() => {
+          const missing = questions.filter(q => {
+            const a = answers[q.id] || emptyExamAnswer();
+            return !a.text.trim() && !a.option_ids.length;
+          });
+          const flaggedList = questions.filter(q => flagged[q.id]);
+          return (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginBottom: '16px' }}>
+              {missing.length > 0 ? (
+                <div style={{ padding: '10px 14px', background: '#fef2f2', border: '1px solid #fecaca', borderRadius: '6px', color: '#b91c1c', fontSize: '13px' }}>
+                  ⚠️ <strong>{missing.length} question(s) sans réponse :</strong>{' '}
+                  {missing.map((q, i) => {
+                    const idx = questions.findIndex(item => item.id === q.id);
+                    return (
+                      <button
+                        key={q.id}
+                        type="button"
+                        onClick={() => { setReview(false); jumpToQuestion(q.id); }}
+                        style={{ textDecoration: 'underline', background: 'none', border: 'none', color: '#b91c1c', fontWeight: 700, cursor: 'pointer', margin: '0 4px' }}
+                      >
+                        Q{idx + 1}{i < missing.length - 1 ? ',' : ''}
+                      </button>
+                    );
+                  })}
+                </div>
+              ) : (
+                <div style={{ padding: '8px 12px', background: '#f0fdf4', border: '1px solid #bbf7d0', borderRadius: '6px', color: '#166534', fontSize: '13px', fontWeight: 600 }}>
+                  ✓ Toutes les questions ont reçu au moins un élément de réponse.
+                </div>
+              )}
+
+              {flaggedList.length > 0 && (
+                <div style={{ padding: '10px 14px', background: '#fffbeb', border: '1px solid #fde68a', borderRadius: '6px', color: '#854d0e', fontSize: '13px' }}>
+                  🚩 <strong>{flaggedList.length} question(s) encore marquée(s) pour relecture :</strong>{' '}
+                  {flaggedList.map((q, i) => {
+                    const idx = questions.findIndex(item => item.id === q.id);
+                    return (
+                      <button
+                        key={q.id}
+                        type="button"
+                        onClick={() => { setReview(false); jumpToQuestion(q.id); }}
+                        style={{ textDecoration: 'underline', background: 'none', border: 'none', color: '#854d0e', fontWeight: 700, cursor: 'pointer', margin: '0 4px' }}
+                      >
+                        Q{idx + 1}{i < flaggedList.length - 1 ? ',' : ''}
+                      </button>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+          );
+        })()}
+
+        <ReviewedForm
+          reviewInitially
+          busy={submitting}
+          error={error}
+          confirmLabel="Confirmer la remise définitive de ma copie"
+          fields={[
+            { label: 'Réponses renseignées', value: `${examAnsweredCount(answers)} / ${questions.length}` },
+            { label: 'Échéance limite', value: dateLabel(view.attempt.deadlineAt) },
+          ]}
+          consequence="La copie sera définitivement remise avec les réponses enregistrées sur le serveur. Vous ne pourrez plus modifier votre copie. Une copie vide conserve le statut non traité et vaut 0/20."
+          onCancelReview={() => setReview(false)}
+          onConfirm={async () => {
+            setSubmitting(true);
+            await pumpRef.current(true);
+            if (mounted.current) setSubmitting(false);
+          }}
+        />
+      </div>
+    )}
+
+    {/* Actions en bas de page */}
     <div className="online-exam-actions">
-      {!terminal && <button className="btn btn-primary" disabled={locked} onClick={() => setReview(true)}>Remettre ma copie</button>}
-      {!terminal && <button className="btn btn-outline" disabled={saving || submitting} onClick={() => void pumpRef.current()}>Enregistrer maintenant</button>}
-      {terminal && <button className="btn btn-outline" onClick={onBack}>Retour aux épreuves</button>}
-      {!terminal && <p>Gardez une connexion active. À l’échéance, seules les réponses déjà reçues par le serveur seront remises.</p>}
+      {!terminal && !review && (
+        <button className="btn btn-primary" disabled={locked} onClick={() => setReview(true)}>
+          Vérifier et remettre ma copie
+        </button>
+      )}
+      {!terminal && (
+        <button className="btn btn-outline" disabled={saving || submitting} onClick={() => void pumpRef.current()}>
+          Enregistrer maintenant
+        </button>
+      )}
+      {terminal && (
+        <button className="btn btn-outline" onClick={onBack}>
+          Retour aux épreuves
+        </button>
+      )}
+      {!terminal && (
+        <p style={{ fontSize: '12px', color: '#64748b' }}>
+          Gardez une connexion active. À l’échéance de la minuterie, seules les réponses déjà reçues par le serveur seront validées.
+        </p>
+      )}
     </div>
         </section>
       </div>
