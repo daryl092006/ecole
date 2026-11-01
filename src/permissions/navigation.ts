@@ -33,6 +33,7 @@ export const ALL_TABS = [
     icon: 'BookOpen',
     subTabs: [
       { id: 'acad_program', name: 'Filières & Matières' },
+      { id: 'acad_groups', name: 'Classes & Groupes' },
       { id: 'acad_reference', name: 'Référentiel académique' },
       { id: 'acad_schedule', name: 'Emploi du temps' },
       { id: 'acad_attendance', name: 'Feuilles de présence' },
@@ -121,6 +122,7 @@ export const ALL_TABS = [
 ];
 
 const SUBTAB_PERMISSIONS: Record<string, Permission[]> = {
+  acad_groups: ['academic.view', 'student.view'],
   espace_exams: ['exam.take'],
   espace_attendance: ['attendance.view'],
   web_applications: ['application.view', 'student.view'],

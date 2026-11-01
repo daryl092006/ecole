@@ -11,6 +11,7 @@ export const PORTAL_ROUTES: PortalRoute[] = [
   { tab: 'dashboard_global', section: 'dashboard_kpis', href: '/tableau-de-bord', title: 'Vue d’ensemble' },
   { tab: 'dashboard_global', section: 'dashboard_reports', href: '/tableau-de-bord/rapports', title: 'Rapports de pilotage' },
   { tab: 'academique', section: 'acad_program', href: '/academique/filieres', title: 'Programmes de cours et matières' },
+  { tab: 'academique', section: 'acad_groups', href: '/academique/groupes', title: 'Classes et groupes' },
   { tab: 'academique', section: 'acad_reference', href: '/academique/referentiel', title: 'Préparer et gérer l’année' },
   { tab: 'academique', section: 'acad_schedule', href: '/academique/emploi-du-temps', title: 'Emploi du temps' },
   { tab: 'academique', section: 'acad_attendance', href: '/academique/presences', title: 'Feuilles de présence' },
