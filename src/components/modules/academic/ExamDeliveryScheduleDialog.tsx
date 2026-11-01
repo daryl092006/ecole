@@ -330,12 +330,12 @@ export default function ExamDeliveryScheduleDialog({
             </label>
 
             <DrawerActions>
-              <button className="btn btn-primary" disabled={busy}>
-                Vérifier la programmation
-              </button>
               <DrawerCloseButton className="btn btn-outline" disabled={busy}>
                 Annuler
               </DrawerCloseButton>
+              <button className="btn btn-primary" disabled={busy}>
+                Vérifier la programmation
+              </button>
             </DrawerActions>
           </fieldset>
         </ReviewedForm>

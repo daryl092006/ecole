@@ -567,8 +567,8 @@ export default function StudentOperationsPanel({
                 </label>
               )}
               <DrawerActions>
-                <button className="btn btn-primary">Vérifier l’opération</button>
                 <DrawerCloseButton className="btn btn-outline">Annuler</DrawerCloseButton>
+                <button className="btn btn-primary">Vérifier l’opération</button>
               </DrawerActions>
             </ReviewedForm>
           </>

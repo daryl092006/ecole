@@ -154,7 +154,7 @@ export default function WebsiteBrochuresPanel({ onBack }: { onBack?: () => void 
           {!confirm && <DrawerActions><button className="btn btn-primary" disabled={programsLoading || !!programsError}>Vérifier la brochure</button></DrawerActions>}
         </fieldset>
         {saveError && <p role="alert" className="auth-error">{saveError}</p>}
-        {confirm && <div className="card" role="region" aria-label="Confirmation de la brochure"><h2>{editing.title}</h2><p>{file?.name || editing.filename}</p><p>{editing.status === 'PUBLIE' ? 'Visible sur le site lorsque cette année est l’année de travail.' : editing.status === 'RETIRE' ? 'Le téléchargement sera retiré du site.' : 'Le PDF restera privé.'}</p><DrawerActions><button type="button" className="btn btn-primary" disabled={busy} onClick={() => void save()}>{busy ? 'Enregistrement…' : 'Confirmer l’enregistrement'}</button><button type="button" className="btn btn-outline" disabled={busy} onClick={() => setConfirm(false)}>Modifier</button></DrawerActions></div>}
+        {confirm && <div className="card" role="region" aria-label="Confirmation de la brochure"><h2>{editing.title}</h2><p>{file?.name || editing.filename}</p><p>{editing.status === 'PUBLIE' ? 'Visible sur le site lorsque cette année est l’année de travail.' : editing.status === 'RETIRE' ? 'Le téléchargement sera retiré du site.' : 'Le PDF restera privé.'}</p><DrawerActions><button type="button" className="btn btn-outline" disabled={busy} onClick={() => setConfirm(false)}>Modifier</button><button type="button" className="btn btn-primary" disabled={busy} onClick={() => void save()}>{busy ? 'Enregistrement…' : 'Confirmer l’enregistrement'}</button></DrawerActions></div>}
       </form>
     </WorkPage>}
   </section>;

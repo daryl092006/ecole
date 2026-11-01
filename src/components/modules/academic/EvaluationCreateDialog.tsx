@@ -222,6 +222,9 @@ export default function EvaluationCreateDialog({
         </div>
 
         <DrawerActions>
+          <DrawerCloseButton className="btn btn-outline" disabled={busy}>
+            Annuler
+          </DrawerCloseButton>
           <button
             type="submit"
             className="btn btn-primary"
@@ -229,9 +232,6 @@ export default function EvaluationCreateDialog({
           >
             Créer l’évaluation en brouillon
           </button>
-          <DrawerCloseButton className="btn btn-outline" disabled={busy}>
-            Annuler
-          </DrawerCloseButton>
         </DrawerActions>
       </ReviewedForm>
     </WorkPage>

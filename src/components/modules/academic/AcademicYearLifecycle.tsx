@@ -280,7 +280,7 @@ export default function AcademicYearLifecycle({
         </>}
         {error && <p role="alert">{error}</p>}
         {busy && <p role="status">Vérification et changement de l’année en cours…</p>}
-        <DrawerActions>{error && <button className="btn btn-outline" disabled={busy} onClick={() => void beginYearChange(pendingYear.id)}>Actualiser les informations</button>}<button className="btn btn-primary" disabled={busy} onClick={() => void handleToggle(pendingYear)}>Confirmer le changement d’année</button><DrawerCloseButton className="btn btn-outline" disabled={busy}>Annuler</DrawerCloseButton></DrawerActions>
+        <DrawerActions><DrawerCloseButton className="btn btn-outline" disabled={busy}>Annuler</DrawerCloseButton>{error && <button className="btn btn-outline" disabled={busy} onClick={() => void beginYearChange(pendingYear.id)}>Actualiser les informations</button>}<button className="btn btn-primary" disabled={busy} onClick={() => void handleToggle(pendingYear)}>Confirmer le changement d’année</button></DrawerActions>
       </WorkPage>}
       {preparing && (
         <YearPreparationPanel

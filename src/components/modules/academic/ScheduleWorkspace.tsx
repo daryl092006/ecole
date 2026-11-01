@@ -353,7 +353,7 @@ function ScheduleManager() {
       {action === 'replace_teacher' && current && <label className="form-group">Remplaçant<select className="select-input" value={form.teacherId} onChange={event => setForm({ ...form, teacherId: event.target.value })}><option value="">Enseignant d’origine : {teacherName(current.teacherId)}</option>{directory.teachers.filter(teacher => teacher.active && teacher.id !== current.teacherId).map(teacher => <option key={teacher.id} value={teacher.id}>{teacher.name}</option>)}</select></label>}
       {action === 'cancel_session' && current && <p>{assignmentName(current.assignmentId)} · {displayTime(current.startsAt)} → ANNULE</p>}
       {action === 'cancel_session' && <label className="form-group">Motif d’annulation (facultatif)<textarea className="input" maxLength={1000} placeholder="Facultatif — ex. indisponibilité de l’enseignant" value={form.reason} onChange={event => setForm({ ...form, reason: event.target.value })} /></label>}
-      <DrawerActions><button className="btn btn-primary">Vérifier les informations</button><DrawerCloseButton className="btn btn-outline" disabled={saving}>Annuler</DrawerCloseButton></DrawerActions>
+      <DrawerActions><DrawerCloseButton className="btn btn-outline" disabled={saving}>Annuler</DrawerCloseButton><button className="btn btn-primary">Vérifier les informations</button></DrawerActions>
     </ReviewedForm></WorkPage>}
     {assigning && <CourseAssignmentDialog {...assigning} onClose={() => setAssigning(null)} onSaved={async id => {
       const updated = await loadSchedule(activeRole); setDirectory(updated); setForm(value => ({ ...value, assignmentId: id, roomId: '' })); setAssigning(null);

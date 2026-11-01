@@ -539,6 +539,9 @@ function EvaluationGrades({ evaluationId, busy, setBusy }: { evaluationId: strin
               </label>
             </div>
             <DrawerActions>
+              <DrawerCloseButton className="btn btn-outline" onClose={() => setCorrectingGradeId(null)}>
+                Annuler
+              </DrawerCloseButton>
               <button
                 className="btn btn-primary"
                 disabled={busy || !validCorrection || correctionReason.trim().length < 3}
@@ -546,9 +549,6 @@ function EvaluationGrades({ evaluationId, busy, setBusy }: { evaluationId: strin
               >
                 Valider la révision
               </button>
-              <DrawerCloseButton className="btn btn-outline" onClose={() => setCorrectingGradeId(null)}>
-                Annuler
-              </DrawerCloseButton>
             </DrawerActions>
           </ReviewedForm>
         )}
@@ -647,6 +647,9 @@ function EvaluationGrades({ evaluationId, busy, setBusy }: { evaluationId: strin
               onChange={e => setReturnReason(e.target.value)}
             />
             <DrawerActions>
+              <DrawerCloseButton className="btn btn-outline" onClose={() => setReturnOpen(false)}>
+                Annuler
+              </DrawerCloseButton>
               <button
                 className="btn btn-primary"
                 disabled={busy || returnReason.trim().length < 3}
@@ -654,9 +657,6 @@ function EvaluationGrades({ evaluationId, busy, setBusy }: { evaluationId: strin
               >
                 Confirmer le retour
               </button>
-              <DrawerCloseButton className="btn btn-outline" onClose={() => setReturnOpen(false)}>
-                Annuler
-              </DrawerCloseButton>
             </DrawerActions>
             </fieldset>
           </form>

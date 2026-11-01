@@ -66,7 +66,7 @@ export default function PaymentAllocationsPanel({ matricule, revision, directory
         })}
         <p>Total à affecter : {money(total)} · Reste à affecter : {money(selected.available - total)}</p>
         <label className="form-group">Motif de réaffectation<textarea className="input" required minLength={3} maxLength={1000} value={reason} onChange={event => setReason(event.target.value)} /></label>
-        <DrawerActions><button className="btn btn-primary">Vérifier la réaffectation</button><DrawerCloseButton className="btn btn-outline">Annuler</DrawerCloseButton></DrawerActions>
+        <DrawerActions><DrawerCloseButton className="btn btn-outline">Annuler</DrawerCloseButton><button className="btn btn-primary">Vérifier la réaffectation</button></DrawerActions>
       </ReviewedForm>
     </WorkPage>}
   </div>;

@@ -200,7 +200,7 @@ export default function TeachersWorkspace() {
       </div>}
       {operation.kind === 'end_assignment' && <label className="form-group">Fin de l’affectation<input className="input" type="date" required min={operation.assignment.validFrom} max={operation.assignment.validUntil || undefined} value={form.endOn} onChange={event => setForm({ ...form, endOn: event.target.value })} /></label>}
       <label className="form-group">Motif<textarea className="input" required={!isCreation} minLength={!isCreation ? 3 : undefined} maxLength={1000} placeholder={isCreation ? 'Facultatif à la création (renseigné automatiquement)' : undefined} value={form.reason} onChange={event => setForm({ ...form, reason: event.target.value })} /></label>
-      <DrawerActions><button className="btn btn-primary">Vérifier les informations</button><DrawerCloseButton className="btn btn-outline" disabled={saving}>Annuler</DrawerCloseButton></DrawerActions>
+      <DrawerActions><DrawerCloseButton className="btn btn-outline" disabled={saving}>Annuler</DrawerCloseButton><button className="btn btn-primary">Vérifier les informations</button></DrawerActions>
     </ReviewedForm></WorkPage>}
   </div>;
 }

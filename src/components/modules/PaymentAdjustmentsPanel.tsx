@@ -79,7 +79,7 @@ export default function PaymentAdjustmentsPanel({ matricule, revision, directory
         {!cancelling && <><p>Montant disponible : {money(maximum)}</p><label className="form-group">Montant FCFA<input className="input" required type="number" min="1" max={maximum} step="1" value={amount} onChange={event => setAmount(event.target.value)} /></label></>}
         {selection.action === 'refund_payment' && <label className="form-group">Référence du remboursement<input className="input" required minLength={2} maxLength={160} value={reference} onChange={event => setReference(event.target.value)} /></label>}
         <label className="form-group">Motif de l’opération<textarea className="input" required minLength={3} maxLength={1000} value={reason} onChange={event => setReason(event.target.value)} /></label>
-        <DrawerActions><button className="btn btn-primary">Vérifier l’opération financière</button><DrawerCloseButton className="btn btn-outline">Fermer</DrawerCloseButton></DrawerActions>
+        <DrawerActions><DrawerCloseButton className="btn btn-outline">Fermer</DrawerCloseButton><button className="btn btn-primary">Vérifier l’opération financière</button></DrawerActions>
       </ReviewedForm>
     </WorkPage>}
   </SecondaryDetails>;

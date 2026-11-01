@@ -665,12 +665,12 @@ export default function OnlineAdmissionsPanel({
               </label>
 
               <DrawerActions>
-                <button className="btn btn-primary" disabled={convBusy}>
-                  Vérifier l’admission
-                </button>
                 <DrawerCloseButton className="btn btn-outline" disabled={convBusy}>
                   Annuler
                 </DrawerCloseButton>
+                <button className="btn btn-primary" disabled={convBusy}>
+                  Vérifier l’admission
+                </button>
               </DrawerActions>
             </fieldset>
           </ReviewedForm>

@@ -221,8 +221,8 @@ export default function WebsiteArticlesPanel() {
           <div style={{ whiteSpace: 'pre-wrap', overflowWrap: 'anywhere' }}>{editing.content}</div>
           <p>{editing.status === 'PUBLIE' ? 'Cet article sera visible publiquement sur le site.' : editing.status === 'RETIRE' ? 'Cet article sera retiré du site ; son historique sera conservé.' : 'Ce brouillon restera privé.'}</p>
           <DrawerActions>
-            <button type="button" className="btn btn-primary" disabled={busy} onClick={() => void save()}>{busy ? 'Enregistrement…' : 'Confirmer l’enregistrement'}</button>
             <button type="button" className="btn btn-outline" disabled={busy} onClick={() => setConfirm(false)}>Reprendre la rédaction</button>
+            <button type="button" className="btn btn-primary" disabled={busy} onClick={() => void save()}>{busy ? 'Enregistrement…' : 'Confirmer l’enregistrement'}</button>
           </DrawerActions>
         </div>}
       </form>

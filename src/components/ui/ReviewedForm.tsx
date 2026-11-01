@@ -40,7 +40,23 @@ export default function ReviewedForm({ onConfirm, fields, consequence, confirmLa
       <dl className="review-values">{fields.map(field => <div key={field.label}><dt>{field.label}</dt><dd>{field.previous !== undefined && field.previous !== field.value && <span className="review-previous">Avant : {field.previous || 'Non renseigné'}<br /></span>}{field.value || 'Non renseigné'}</dd></div>)}</dl>
       <p className="action-consequence">{consequence}</p>
       {error && <p className="restricted-box" role="alert">{error}</p>}
-      <DrawerActions><button type="submit" className={`btn ${danger ? 'btn-danger' : 'btn-primary'}`} disabled={busy}>{busy ? 'Enregistrement…' : confirmLabel}</button><button type="button" className="btn btn-outline" disabled={busy} onClick={() => onCancelReview ? onCancelReview() : setReviewing(false)}>Revenir aux informations</button></DrawerActions>
+      <DrawerActions>
+        <button
+          type="button"
+          className="btn btn-outline"
+          disabled={busy}
+          onClick={() => onCancelReview ? onCancelReview() : setReviewing(false)}
+        >
+          Revenir aux informations
+        </button>
+        <button
+          type="submit"
+          className={`btn ${danger ? 'btn-danger' : 'btn-primary'}`}
+          disabled={busy}
+        >
+          {busy ? 'Enregistrement…' : confirmLabel}
+        </button>
+      </DrawerActions>
     </section>}
   </form>;
 }
