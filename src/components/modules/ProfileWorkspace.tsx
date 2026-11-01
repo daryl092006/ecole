@@ -69,7 +69,6 @@ export default function ProfileWorkspace() {
   const [form, setForm] = useState(initialForm);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
-  const [success, setSuccess] = useState('');
 
   useEffect(() => {
     setForm(initialForm);
@@ -97,8 +96,6 @@ export default function ProfileWorkspace() {
         <Link className="btn btn-outline" href="/mot-de-passe-modifier">Modifier mon mot de passe</Link>
         <Link className="btn btn-outline" href="/mon-espace/support">Signaler une erreur d’état civil</Link>
       </PageHeader>
-
-      {success && <p className="info-box" role="status">{success}</p>}
 
       {session?.matricule && (
         <StudentIdCardBadge
@@ -139,6 +136,14 @@ export default function ProfileWorkspace() {
               <dd><code>{session.matricule}</code></dd>
             </div>
           )}
+          {session?.matricule && (
+            <div>
+              <dt>Email institutionnel (M365)</dt>
+              <dd style={{ color: 'var(--primary, #0369a1)', fontWeight: 600 }}>
+                {studentDossier?.institutionalEmail || `${session.matricule.toLowerCase()}@escen.university`}
+              </dd>
+            </div>
+          )}
           {studentDossier && (
             <div>
               <dt>Formation et classe</dt>
@@ -163,10 +168,8 @@ export default function ProfileWorkspace() {
             event.preventDefault();
             setSaving(true);
             setError('');
-            setSuccess('');
             void saveOwnProfile(form, activeRole)
               .then(() => {
-                setSuccess('Vos informations personnelles ont été enregistrées et ajoutées à votre dossier officiel.');
                 portal.refreshCampus();
                 portal.reportActionOutcome({
                   title: 'Profil mis à jour',
@@ -263,4 +266,3 @@ export default function ProfileWorkspace() {
     </div>
   );
 }
-
