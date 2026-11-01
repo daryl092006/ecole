@@ -18,6 +18,7 @@ export interface SearchDestination {
 
 interface TopBarProps {
   userName: string;
+  userEmail?: string;
   activeRole: RoleName;
   availableRoles: RoleName[];
   searchQuery: string;
@@ -33,7 +34,7 @@ interface TopBarProps {
 
 const normalize = (value: string) => value.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
 
-export default function TopBar({ userName, activeRole, availableRoles, searchQuery, onSearchChange, onRoleChange, notifications, destinations, onDestination, menuOpen, onToggleMenu, onLogout }: TopBarProps) {
+export default function TopBar({ userName, userEmail, activeRole, availableRoles, searchQuery, onSearchChange, onRoleChange, notifications, destinations, onDestination, menuOpen, onToggleMenu, onLogout }: TopBarProps) {
   const applicationNotices = useApplicationNotices();
   const notificationCount = notifications.length + applicationNotices.notices.length;
   const pathname = usePathname();
@@ -43,6 +44,10 @@ export default function TopBar({ userName, activeRole, availableRoles, searchQue
   const searchResults = useRef<HTMLDivElement>(null);
   const accountControl = useRef<HTMLDetailsElement>(null);
   const displayName = userName.trim() || 'Mon compte';
+  const nameParts = displayName.split(/\s+/).filter(Boolean);
+  const shortName = nameParts.length > 2
+    ? `${nameParts[0]} ${nameParts[nameParts.length - 1]}`
+    : displayName;
   const initial = Array.from(userName.trim())[0]?.toLocaleUpperCase('fr') || '?';
   const query = normalize(searchQuery.trim());
   const matches = destinations.filter(item => normalize(item.label + ' ' + item.detail).includes(query)).slice(0, 8);
@@ -100,7 +105,57 @@ export default function TopBar({ userName, activeRole, availableRoles, searchQue
         <button className="notif-btn" aria-label={`Notifications : ${notificationCount}`} aria-expanded={panel === 'notifications'} onClick={() => { if (accountControl.current) accountControl.current.open = false; setPanel(current => current === 'notifications' ? null : 'notifications'); }}><Bell size={18} />{notificationCount > 0 && <span className="notif-badge">{notificationCount}</span>}</button>
         {panel === 'notifications' && <section className="header-popover notification-panel" aria-label="Notifications"><div className="popover-heading">Notifications</div>{notificationCount ? <ul>{notifications.map(item => <li key={`session-${item.id}`}>{item.text}</li>)}{applicationNotices.notices.map(item => <li key={item.id}><Link href="/site-web/demandes">{item.message}</Link></li>)}</ul> : <div className="empty-state"><strong>Vous êtes à jour</strong><span>Aucune notification pour ce rôle.</span></div>}{applicationNotices.notices.length > 0 && <button className="btn btn-outline" onClick={() => { void applicationNotices.markRead().catch(() => undefined); }}>Marquer les notifications de candidature comme lues</button>}</section>}
       </div>
-      <details className="account-control" ref={accountControl} onToggle={event => { if (event.currentTarget.open) setPanel(null); }}><summary className="account-summary" aria-label="Mon compte et mon rôle"><span className="account-avatar" aria-hidden="true">{initial}</span><span className="account-identity"><strong title={displayName}>{displayName}</strong><small title={activeRole}>{activeRole}</small></span></summary><div className="account-popover"><strong className="account-name">{displayName}</strong><div className="role-switcher"><span className="role-dot" style={{ backgroundColor: ROLE_COLORS[activeRole] }} />{availableRoles.length > 1 ? <><label htmlFor="active-role">Rôle autorisé</label><select id="active-role" className="role-select" value={activeRole} onChange={event => onRoleChange(event.target.value as RoleName)}>{availableRoles.map(role => <option key={role} value={role}>{role}</option>)}</select></> : <span className="role-select">{activeRole}</span>}</div><Link className="btn btn-outline" href="/mon-espace/profil"><User size={16} /> Mon profil</Link><button className="btn btn-outline" onClick={onLogout}><LogOut size={16} /> Se déconnecter</button></div></details>
+      <details className="account-control" ref={accountControl} onToggle={event => { if (event.currentTarget.open) setPanel(null); }}>
+        <summary className="account-summary" aria-label="Mon compte et mon rôle">
+          <span className="account-avatar" aria-hidden="true">{initial}</span>
+          <span className="account-identity">
+            <strong title={displayName}>{shortName}</strong>
+            <small title={activeRole}>{activeRole}</small>
+          </span>
+        </summary>
+        <div className="account-popover">
+          <div className="account-popover-header">
+            <span className="account-popover-avatar" aria-hidden="true">{initial}</span>
+            <div className="account-popover-user">
+              <strong className="account-popover-name" title={displayName}>{displayName}</strong>
+              {userEmail && <span className="account-popover-email" title={userEmail}>{userEmail}</span>}
+            </div>
+          </div>
+
+          <div className="account-popover-role-card">
+            <div className="role-pill">
+              <span className="role-dot" style={{ backgroundColor: ROLE_COLORS[activeRole] || '#2563eb' }} />
+              <span className="role-pill-label">{activeRole}</span>
+            </div>
+            {availableRoles.length > 1 && (
+              <div className="role-switcher-box">
+                <label htmlFor="active-role" className="role-switcher-label">Changer de rôle actif</label>
+                <select
+                  id="active-role"
+                  className="role-select"
+                  value={activeRole}
+                  onChange={event => onRoleChange(event.target.value as RoleName)}
+                >
+                  {availableRoles.map(role => (
+                    <option key={role} value={role}>{role}</option>
+                  ))}
+                </select>
+              </div>
+            )}
+          </div>
+
+          <div className="account-popover-menu">
+            <Link className="account-menu-item" href="/mon-espace/profil">
+              <User size={16} className="account-menu-icon" />
+              <span>Mon profil</span>
+            </Link>
+            <button className="account-menu-item account-menu-logout" onClick={onLogout}>
+              <LogOut size={16} className="account-menu-icon" />
+              <span>Se déconnecter</span>
+            </button>
+          </div>
+        </div>
+      </details>
     </div>
   </header>;
 }
