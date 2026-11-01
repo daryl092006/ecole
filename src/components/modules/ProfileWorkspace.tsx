@@ -9,8 +9,11 @@ import ReviewedForm from '@/components/ui/ReviewedForm';
 import DrawerActions from '@/components/ui/DrawerActions';
 import StudentIdCardBadge from '@/components/modules/student/StudentIdCardBadge';
 import PageHeader from '@/components/ui/PageHeader';
-import { saveOwnProfile } from '@/services/remoteCampusService';
+import LoadingState from '@/components/ui/LoadingState';
+import { loadOwnProfile, saveOwnProfile, type OwnProfileData } from '@/services/remoteCampusService';
 import { displayedPhoneNumber } from '@/services/phoneNumberService';
+import { ROLE_COLORS } from '@/hooks/useAppState';
+import { Mail, Shield, KeyRound, AlertCircle, CheckCircle2 } from 'lucide-react';
 
 const FIELD_LABELS = {
   phone: 'Téléphone',
@@ -27,58 +30,89 @@ export default function ProfileWorkspace() {
   const portal = usePortal();
   const { session, activeRole, relationalSnapshot } = portal;
 
-  const isStudent = Boolean(session?.studentId || session?.matricule || activeRole === 'Étudiant' || activeRole === 'Délégué');
-
-  const currentPerson = useMemo(() => {
-    const tables = relationalSnapshot.tables || {};
-    const people = tables.people || [];
-    if (session?.studentId) {
-      const studentRow = (tables.students || []).find(row => row.id === session.studentId);
-      if (studentRow) {
-        const found = people.find(p => p.id === studentRow.person_id);
-        if (found) return found;
-      }
-    }
-    if (session?.accountId) {
-      const accountRow = (tables.accounts || []).find(row => row.id === session.accountId);
-      if (accountRow) {
-        const found = people.find(p => p.id === accountRow.person_id);
-        if (found) return found;
-      }
-    }
-    const byEmail = session?.email
-      ? people.find(p => String(p.email || '').toLowerCase() === session.email.toLowerCase())
-      : undefined;
-    return byEmail || people[0] || null;
-  }, [relationalSnapshot.tables, session]);
-
-  const studentDossier = useMemo(() => {
-    if (!session?.matricule) return null;
-    return portal.students.find(s => s.matricule === session.matricule) || null;
-  }, [portal.students, session?.matricule]);
-
-  const studentProEmail = session?.matricule
-    ? (studentDossier?.institutionalEmail || `${session.matricule.toLowerCase()}@escen.university`)
-    : '';
-
-  const initialForm = useMemo(() => {
-    const rawEmail = String(currentPerson?.email ?? studentDossier?.email ?? '');
-    const cleanPersonalEmail = (isStudent && rawEmail.toLowerCase().endsWith('@escen.university')) ? '' : rawEmail;
-    return {
-      phone: displayedPhoneNumber(currentPerson?.phone ?? studentDossier?.phone ?? ''),
-      personalEmail: cleanPersonalEmail,
-      birthDate: String(currentPerson?.birth_date ?? studentDossier?.birthDate ?? ''),
-      gender: String(currentPerson?.gender ?? studentDossier?.gender ?? ''),
-      nationality: String(currentPerson?.nationality ?? studentDossier?.nationality ?? ''),
-      address: String(currentPerson?.address ?? studentDossier?.address ?? ''),
-      city: String(currentPerson?.city ?? studentDossier?.city ?? ''),
-      country: String(currentPerson?.country ?? studentDossier?.country ?? ''),
-    };
-  }, [currentPerson, studentDossier, isStudent]);
-
-  const [form, setForm] = useState(initialForm);
+  const [profile, setProfile] = useState<OwnProfileData | null>(null);
+  const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
+
+  // Chargement des données autorisées du profil connecté
+  useEffect(() => {
+    let active = true;
+    const controller = new AbortController();
+    setLoading(true);
+
+    void loadOwnProfile(activeRole, controller.signal)
+      .then(data => {
+        if (!active) return;
+        setProfile(data);
+      })
+      .catch(() => {
+        if (!active) return;
+        // Repli gracieux sur les données du snapshot si l'appel échoue
+        const tables = relationalSnapshot.tables || {};
+        const people = tables.people || [];
+        const studentRow = session?.studentId
+          ? (tables.students || []).find(r => r.id === session.studentId)
+          : undefined;
+        const matched = people.find(p => p.id === studentRow?.person_id)
+          || people.find(p => session?.email && String(p.email || '').toLowerCase() === session.email.toLowerCase())
+          || null;
+
+        const isStud = Boolean(session?.studentId || session?.matricule || activeRole === 'Étudiant' || activeRole === 'Délégué');
+        const studentInstEmail = session?.matricule ? `${session.matricule.toLowerCase()}@escen.university` : null;
+
+        const matchedEmail = matched?.email ? String(matched.email) : '';
+        setProfile({
+          personId: matched?.id ? String(matched.id) : '',
+          firstname: matched?.firstname ? String(matched.firstname) : (session?.name?.split(/\s+/)[0] || ''),
+          lastname: matched?.lastname ? String(matched.lastname) : (session?.name?.split(/\s+/).slice(1).join(' ') || ''),
+          loginEmail: (isStud ? studentInstEmail : session?.email) || matchedEmail,
+          personalEmail: (matchedEmail && !matchedEmail.toLowerCase().endsWith('@escen.university')) ? matchedEmail : '',
+          phone: matched?.phone ? String(matched.phone) : '',
+          birthDate: matched?.birth_date ? String(matched.birth_date) : '',
+          gender: matched?.gender ? String(matched.gender) : '',
+          nationality: matched?.nationality ? String(matched.nationality) : '',
+          address: matched?.address ? String(matched.address) : '',
+          city: matched?.city ? String(matched.city) : '',
+          country: matched?.country ? String(matched.country) : '',
+          matricule: session?.matricule || null,
+          institutionalEmail: studentInstEmail,
+          isStudent: isStud,
+        });
+      })
+      .finally(() => {
+        if (active) setLoading(false);
+      });
+
+    return () => {
+      active = false;
+      controller.abort();
+    };
+  }, [activeRole, session, relationalSnapshot.tables]);
+
+  const isStudent = Boolean(profile?.isStudent || session?.studentId || session?.matricule || activeRole === 'Étudiant' || activeRole === 'Délégué');
+
+  const studentDossier = useMemo(() => {
+    const matricule = profile?.matricule || session?.matricule;
+    if (!matricule) return null;
+    return portal.students.find(s => s.matricule === matricule) || null;
+  }, [portal.students, profile?.matricule, session?.matricule]);
+
+  const studentProEmail = profile?.institutionalEmail
+    || (session?.matricule ? `${session.matricule.toLowerCase()}@escen.university` : '');
+
+  const initialForm = useMemo(() => ({
+    phone: displayedPhoneNumber(profile?.phone || ''),
+    personalEmail: profile?.personalEmail || '',
+    birthDate: profile?.birthDate || '',
+    gender: profile?.gender || '',
+    nationality: profile?.nationality || '',
+    address: profile?.address || '',
+    city: profile?.city || '',
+    country: profile?.country || '',
+  }), [profile]);
+
+  const [form, setForm] = useState(initialForm);
 
   useEffect(() => {
     setForm(initialForm);
@@ -92,26 +126,75 @@ export default function ProfileWorkspace() {
       value: form[key] || 'Non renseigné',
     }));
 
-  const nameParts = (session?.name || '').trim().split(/\s+/);
-  const displayFirstname = String(currentPerson?.firstname || studentDossier?.firstname || nameParts[0] || '');
-  const displayLastname = String(currentPerson?.lastname || studentDossier?.lastname || nameParts.slice(1).join(' ') || '');
+  const displayFirstname = profile?.firstname || session?.name?.split(/\s+/)[0] || '';
+  const displayLastname = profile?.lastname || session?.name?.split(/\s+/).slice(1).join(' ') || '';
+  const displayFullname = `${displayFirstname} ${displayLastname}`.trim() || session?.name || 'Mon profil';
+  const initial = Array.from(displayFullname)[0]?.toLocaleUpperCase('fr') || '?';
+  const loginEmail = isStudent ? (studentProEmail || session?.email || '') : (profile?.loginEmail || session?.email || '');
+
+  if (loading && !profile) {
+    return (
+      <div className="domain-workspace workspace-stack">
+        <LoadingState label="Chargement de votre profil..." />
+      </div>
+    );
+  }
 
   return (
     <div className="domain-workspace workspace-stack">
       <PageHeader
         eyebrow="ESPACE PERSONNEL"
         title="Mon profil et mes coordonnées"
-        description="Consultez et mettez à jour vos coordonnées personnelles et professionnelles."
+        description="Consultez votre identité officielle enregistrée et mettez à jour vos coordonnées personnelles."
       >
-        <Link className="btn btn-outline" href="/mot-de-passe-modifier">Modifier mon mot de passe</Link>
-        <Link className="btn btn-outline" href="/mon-espace/support">Signaler une erreur d’état civil</Link>
+        <Link className="btn btn-outline" href="/mot-de-passe-modifier">
+          <KeyRound size={16} />
+          <span>Modifier mon mot de passe</span>
+        </Link>
+        <Link className="btn btn-outline" href="/mon-espace/support">
+          <AlertCircle size={16} />
+          <span>Signaler une erreur d’état civil</span>
+        </Link>
       </PageHeader>
 
-      {session?.matricule && (
+      {/* Carte d'identité visuelle de profil */}
+      <section className="profile-identity-banner card card-full">
+        <div className="profile-identity-main">
+          <div className="profile-avatar-large" aria-hidden="true">
+            {initial}
+          </div>
+          <div className="profile-identity-details">
+            <div className="profile-identity-title-row">
+              <h2 className="profile-identity-fullname">{displayFullname}</h2>
+              <span className="role-pill" style={{ borderColor: ROLE_COLORS[activeRole] || '#2563eb' }}>
+                <span className="role-dot" style={{ backgroundColor: ROLE_COLORS[activeRole] || '#2563eb' }} />
+                <span>{activeRole}</span>
+              </span>
+            </div>
+            <div className="profile-identity-meta">
+              {loginEmail && (
+                <span className="profile-meta-item">
+                  <Mail size={15} />
+                  <span>{loginEmail}</span>
+                </span>
+              )}
+              {isStudent && profile?.matricule && (
+                <span className="profile-meta-item">
+                  <Shield size={15} />
+                  <span>Matricule : <code>{profile.matricule}</code></span>
+                </span>
+              )}
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* Badge carte étudiante officielle pour les étudiants */}
+      {isStudent && (profile?.matricule || session?.matricule) && (
         <StudentIdCardBadge
           firstname={displayFirstname}
           lastname={displayLastname}
-          matricule={session.matricule}
+          matricule={profile?.matricule || session?.matricule || ''}
           filiere={studentDossier?.filiere || ''}
           niveau={studentDossier?.niveau || ''}
           groupe={studentDossier?.groupe || ''}
@@ -119,33 +202,47 @@ export default function ProfileWorkspace() {
         />
       )}
 
+      {/* Section lecture seule : identité officielle */}
       <section className="card card-full">
         <div className="card-header">
-          <h2>Identité officielle et rattachement</h2>
+          <div>
+            <h2>Identité officielle et rattachement</h2>
+            <p style={{ color: 'var(--text-muted, #64748b)', fontSize: '0.85rem', margin: '4px 0 0' }}>
+              Données issues de votre dossier administratif officiel ESCEN.
+            </p>
+          </div>
         </div>
         <dl className="record-details-grid">
           <div>
-            <dt>Prénom</dt>
+            <dt>Prénom(s)</dt>
             <dd>{displayFirstname || 'Non renseigné'}</dd>
           </div>
           <div>
-            <dt>Nom</dt>
+            <dt>Nom de famille</dt>
             <dd>{displayLastname || 'Non renseigné'}</dd>
           </div>
           <div>
-            <dt>Compte de connexion officiel (Email pro M365)</dt>
+            <dt>Compte de connexion officiel {isStudent ? '(Email pro M365)' : ''}</dt>
             <dd style={{ color: 'var(--primary, #0369a1)', fontWeight: 600 }}>
-              {isStudent ? (studentProEmail || session?.email || 'Non renseigné') : (session?.email || 'Non renseigné')}
+              {loginEmail || 'Non renseigné'}
             </dd>
           </div>
           <div>
             <dt>Rôle actif</dt>
             <dd>{activeRole}</dd>
           </div>
-          {session?.matricule && (
+          {isStudent && profile?.matricule && (
             <div>
               <dt>Matricule étudiant</dt>
-              <dd><code>{session.matricule}</code></dd>
+              <dd><code>{profile.matricule}</code></dd>
+            </div>
+          )}
+          {isStudent && (
+            <div>
+              <dt>Email institutionnel (M365)</dt>
+              <dd style={{ color: 'var(--primary, #0369a1)', fontWeight: 600 }}>
+                {studentProEmail || 'Non renseigné'}
+              </dd>
             </div>
           )}
           {studentDossier && (
@@ -155,11 +252,23 @@ export default function ProfileWorkspace() {
             </div>
           )}
         </dl>
+        <div className="profile-official-note">
+          <small style={{ color: 'var(--text-muted, #64748b)', fontSize: '0.85rem', display: 'flex', alignItems: 'center', gap: '6px' }}>
+            <AlertCircle size={14} style={{ flexShrink: 0 }} />
+            <span>Ces informations officielles sont protégées. Pour rectifier votre état civil ou votre filière, utilisez le bouton « Signaler une erreur d’état civil ».</span>
+          </small>
+        </div>
       </section>
 
+      {/* Section modifiable : coordonnées personnelles */}
       <section className="card card-full">
         <div className="card-header">
-          <h2>Coordonnées personnelles</h2>
+          <div>
+            <h2>Coordonnées personnelles</h2>
+            <p style={{ color: 'var(--text-muted, #64748b)', fontSize: '0.85rem', margin: '4px 0 0' }}>
+              Mettez à jour vos informations de contact et votre adresse de résidence.
+            </p>
+          </div>
         </div>
 
         <ReviewedForm
@@ -189,6 +298,8 @@ export default function ProfileWorkspace() {
                   title: 'Profil mis à jour',
                   detail: 'Vos coordonnées et informations civiles sont désormais à jour dans votre dossier ESCEN.',
                 });
+                // Actualiser les données du profil
+                void loadOwnProfile(activeRole).then(updated => setProfile(updated));
               })
               .catch(cause => setError(cause instanceof Error ? cause.message : 'Enregistrement impossible.'))
               .finally(() => setSaving(false));
@@ -295,8 +406,22 @@ export default function ProfileWorkspace() {
             </label>
           </div>
           <DrawerActions>
-            <button type="submit" className="btn btn-primary" disabled={saving || changedFields.length === 0}>
-              Vérifier et enregistrer mes informations
+            {changedFields.length === 0 ? (
+              <span style={{ color: 'var(--text-muted, #64748b)', fontSize: '0.9rem', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                <CheckCircle2 size={16} style={{ color: 'var(--success, #16a34a)' }} />
+                <span>Vos coordonnées sont à jour dans votre dossier.</span>
+              </span>
+            ) : null}
+            <button
+              type="submit"
+              className="btn btn-primary"
+              disabled={saving || changedFields.length === 0}
+            >
+              {saving
+                ? 'Enregistrement en cours…'
+                : changedFields.length > 0
+                ? `Vérifier et enregistrer (${changedFields.length} modification${changedFields.length > 1 ? 's' : ''})`
+                : 'Vérifier et enregistrer mes informations'}
             </button>
           </DrawerActions>
         </ReviewedForm>

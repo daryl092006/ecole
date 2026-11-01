@@ -251,6 +251,33 @@ export async function downloadAdmissionDocument(id: string, role: RoleName, file
   setTimeout(() => URL.revokeObjectURL(url), 1000);
 }
 
+export interface OwnProfileData {
+  personId: string;
+  firstname: string;
+  lastname: string;
+  loginEmail: string;
+  personalEmail: string;
+  phone: string;
+  birthDate: string;
+  gender: string;
+  nationality: string;
+  address: string;
+  city: string;
+  country: string;
+  matricule: string | null;
+  institutionalEmail: string | null;
+  isStudent: boolean;
+}
+
+export async function loadOwnProfile(role: RoleName, signal?: AbortSignal): Promise<OwnProfileData> {
+  const response = await readResponse(await fetch('/api/session/profile', {
+    headers: await headers(role),
+    cache: 'no-store',
+    signal,
+  }));
+  return response.profile;
+}
+
 export interface OwnProfileUpdateInput {
   phone: string;
   personalEmail: string;
