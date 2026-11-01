@@ -19,6 +19,7 @@ import ProgramsCoursesWorkspace from '@/components/modules/academic/ProgramsCour
 import SubjectStudio from '@/components/modules/academic/SubjectStudio';
 import ComplaintsPanel from '@/components/modules/academic/ComplaintsPanel';
 import GroupsWorkspace from '@/components/modules/academic/GroupsWorkspace';
+import GradesWorkspace from '@/components/modules/academic/GradesWorkspace';
 import { ROLES } from '@/types/permissions';
 import StudentExamsWorkspace from '@/components/modules/academic/StudentExamsWorkspace';
 import WorkspaceHome from '@/components/modules/WorkspaceHome';
@@ -99,6 +100,7 @@ export default function PortalScreen({ section }: { tab: string; section: string
   if (state.session && section === 'acad_subjects') return <SubjectStudio />;
   if (state.session && section === 'acad_program') return <ProgramsCoursesWorkspace key={`${activeRole}:${state.academicYearSelection}`} />;
   if (state.session && (section === 'acad_groups' || section === 'stud_groups')) return <GroupsWorkspace />;
+  if (state.session && section === 'acad_grades') return <GradesWorkspace />;
   if (state.session && section === 'acad_exams') return <ExamsWorkspace />;
   if (state.history.enabled && !state.relationalSnapshot.tables.evaluations?.length && ['acad_exams', 'acad_resits', 'acad_assessments'].includes(section)) {
     return <HistoricalExamsWorkspace key={section} category={section === 'acad_resits' ? 'resit' : section === 'acad_assessments' ? 'control' : 'exam'} />;
