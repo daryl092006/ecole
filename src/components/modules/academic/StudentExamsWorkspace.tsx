@@ -53,6 +53,43 @@ function OnlineExamEditor({ initial, onBack }: { initial: OnlineExamView; onBack
   const [conflict, setConflict] = useState(false);
   const [error, setError] = useState('');
   const [notice, setNotice] = useState('');
+  const antiCheatKey = `escen:anticheat:${initial.attempt.id}`;
+  const [antiCheatAlert, setAntiCheatAlert] = useState<string>('');
+  const [antiCheatCount, setAntiCheatCount] = useState<number>(() => {
+    try {
+      const stored = localStorage.getItem(antiCheatKey);
+      return stored ? Number(JSON.parse(stored).count) || 0 : 0;
+    } catch { return 0; }
+  });
+  const [isFullscreen, setIsFullscreen] = useState(false);
+
+  const recordAntiCheatIncident = useCallback((type: string, message: string) => {
+    if (current.current.attempt.status !== 'EN_COURS') return;
+    setAntiCheatCount(prev => {
+      const nextCount = prev + 1;
+      try {
+        const history = JSON.parse(localStorage.getItem(antiCheatKey) || '{"events":[]}');
+        history.count = nextCount;
+        history.events = history.events || [];
+        history.events.push({ type, time: new Date().toISOString(), message });
+        localStorage.setItem(antiCheatKey, JSON.stringify(history));
+      } catch { /* storage fallback */ }
+      setAntiCheatAlert(`⚠️ Incident anti-triche détecté (${nextCount}/3) : ${message}. Cet événement est consigné et transmis avec votre copie.`);
+      return nextCount;
+    });
+  }, [antiCheatKey]);
+
+  const toggleFullscreen = async () => {
+    try {
+      if (!document.fullscreenElement) {
+        await document.documentElement.requestFullscreen();
+        setIsFullscreen(true);
+      } else {
+        await document.exitFullscreen();
+        setIsFullscreen(false);
+      }
+    } catch { /* Fullscreen browser fallback */ }
+  };
   const current = useRef(initial);
   const draft = useRef(initial.answers);
   const pending = useRef<OnlineExamCommand | null>(null);
@@ -149,10 +186,66 @@ function OnlineExamEditor({ initial, onBack }: { initial: OnlineExamView; onBack
       }
     }, 750);
     setRemaining(Math.max(0, Math.ceil((Date.parse(initial.attempt.deadlineAt) - serverTime()) / 1000)));
-    const resync = () => { if (!document.hidden) void refreshRef.current().then(() => pumpRef.current()); };
+    const handleVisibility = () => {
+      if (document.hidden && current.current.attempt.status === 'EN_COURS') {
+        recordAntiCheatIncident('TAB_SWITCH', 'Sortie d’écran ou changement d’onglet');
+      } else if (!document.hidden) {
+        void refreshRef.current().then(() => pumpRef.current());
+      }
+    };
+    const handleBlur = () => {
+      if (current.current.attempt.status === 'EN_COURS') {
+        recordAntiCheatIncident('WINDOW_BLUR', 'Perte de focus de la fenêtre d’examen');
+      }
+    };
+    const handleContextMenu = (e: MouseEvent) => {
+      if (current.current.attempt.status === 'EN_COURS') {
+        e.preventDefault();
+        recordAntiCheatIncident('CONTEXT_MENU', 'Tentative d’ouverture du menu contextuel (clic droit)');
+      }
+    };
+    const handleCopy = (e: ClipboardEvent) => {
+      if (current.current.attempt.status === 'EN_COURS') {
+        e.preventDefault();
+        recordAntiCheatIncident('COPY_ATTEMPT', 'Tentative de copie du sujet d’examen');
+      }
+    };
+    const handlePaste = (e: ClipboardEvent) => {
+      if (current.current.attempt.status === 'EN_COURS') {
+        e.preventDefault();
+        recordAntiCheatIncident('PASTE_ATTEMPT', 'Tentative de collage de texte externe');
+      }
+    };
+    const handleFullscreenChange = () => {
+      const isFull = Boolean(document.fullscreenElement);
+      setIsFullscreen(isFull);
+      if (!isFull && current.current.attempt.status === 'EN_COURS') {
+        recordAntiCheatIncident('FULLSCREEN_EXIT', 'Sortie du mode plein écran');
+      }
+    };
     const leave = (event: BeforeUnloadEvent) => { if (current.current.attempt.status === 'EN_COURS' && !examAnswersEqual(draft.current, current.current.answers)) { event.preventDefault(); } };
-    window.addEventListener('online', resync); window.addEventListener('pageshow', resync); document.addEventListener('visibilitychange', resync); window.addEventListener('beforeunload', leave);
-    return () => { mounted.current = false; clearInterval(timer); window.removeEventListener('online', resync); window.removeEventListener('pageshow', resync); document.removeEventListener('visibilitychange', resync); window.removeEventListener('beforeunload', leave); };
+    window.addEventListener('online', handleVisibility);
+    window.addEventListener('pageshow', handleVisibility);
+    document.addEventListener('visibilitychange', handleVisibility);
+    window.addEventListener('blur', handleBlur);
+    document.addEventListener('contextmenu', handleContextMenu);
+    document.addEventListener('copy', handleCopy);
+    document.addEventListener('paste', handlePaste);
+    document.addEventListener('fullscreenchange', handleFullscreenChange);
+    window.addEventListener('beforeunload', leave);
+    return () => {
+      mounted.current = false;
+      clearInterval(timer);
+      window.removeEventListener('online', handleVisibility);
+      window.removeEventListener('pageshow', handleVisibility);
+      document.removeEventListener('visibilitychange', handleVisibility);
+      window.removeEventListener('blur', handleBlur);
+      document.removeEventListener('contextmenu', handleContextMenu);
+      document.removeEventListener('copy', handleCopy);
+      document.removeEventListener('paste', handlePaste);
+      document.removeEventListener('fullscreenchange', handleFullscreenChange);
+      window.removeEventListener('beforeunload', leave);
+    };
     // The editor is keyed by attempt. Timers read current values through refs.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [storageKey]);
@@ -165,10 +258,113 @@ function OnlineExamEditor({ initial, onBack }: { initial: OnlineExamView; onBack
   };
   return <section className="card online-exam-workspace" aria-label="Ma copie">
     <h1>{view.paper.title}</h1>
-    <div className="online-exam-status" role="status">{terminal
-      ? <p>Copie {view.attempt.status === 'INTERROMPUE' ? 'interrompue' : 'remise'}{view.attempt.submittedAt ? ` le ${dateLabel(view.attempt.submittedAt)}` : ''}{view.attempt.submissionKind === 'AUTO_DEADLINE' ? ' automatiquement à l’échéance' : ''}. {examAnsweredCount(view.answers)} / {questions.length} réponse(s) enregistrée(s). {view.attempt.completionStatus === 'NON_TRAITE' ? 'Copie non traitée : 0/20 à enregistrer dans les notes.' : ''}</p>
-      : <><p>Temps restant : {Math.floor(remaining / 60)} min {remaining % 60} s · Fin : {dateLabel(view.attempt.deadlineAt)}</p><p>{saving ? 'Enregistrement…' : dirty ? 'Changements en attente d’enregistrement' : 'Toutes les réponses sont enregistrées'}</p></>}
-    </div>
+    {(() => {
+      const hours = Math.floor(remaining / 3600);
+      const minutes = Math.floor((remaining % 3600) / 60);
+      const seconds = remaining % 60;
+      const timeDisplay = hours > 0
+        ? `${hours}h ${String(minutes).padStart(2, '0')}m ${String(seconds).padStart(2, '0')}s`
+        : `${minutes} min ${String(seconds).padStart(2, '0')} s`;
+      const answeredCount = examAnsweredCount(answers);
+      const progressPercent = questions.length > 0 ? Math.round((answeredCount / questions.length) * 100) : 0;
+
+      return (
+        <div className="online-exam-status" role="status" style={{ padding: '14px 18px', borderRadius: '10px', marginBottom: '20px', background: '#ffffff', boxShadow: '0 2px 10px rgba(0,0,0,0.06)', border: '1px solid var(--border-color, #e2e8f0)' }}>
+          {terminal ? (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+              <p style={{ margin: 0, fontWeight: 600, fontSize: '15px', color: '#0f172a' }}>
+                Copie {view.attempt.status === 'INTERROMPUE' ? 'interrompue' : 'remise'}
+                {view.attempt.submittedAt ? ` le ${dateLabel(view.attempt.submittedAt)}` : ''}
+                {view.attempt.submissionKind === 'AUTO_DEADLINE' ? ' automatiquement à l’échéance de la minuterie' : ''}.
+              </p>
+              <div style={{ display: 'flex', gap: '8px', alignItems: 'center', flexWrap: 'wrap' }}>
+                <span className="pill pill-default">
+                  {examAnsweredCount(view.answers)} / {questions.length} réponse(s) enregistrée(s)
+                </span>
+                {antiCheatCount > 0 ? (
+                  <span className="pill pill-warning">⚠️ {antiCheatCount} alerte(s) anti-triche consignée(s)</span>
+                ) : (
+                  <span className="pill pill-success">🛡️ Intégrité conforme</span>
+                )}
+                {view.attempt.completionStatus === 'NON_TRAITE' && (
+                  <span className="pill pill-danger">Copie non traitée (0/20)</span>
+                )}
+              </div>
+            </div>
+          ) : (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '12px' }}>
+                {/* Timer dynamique haute visibilité */}
+                <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flexWrap: 'wrap' }}>
+                  <span
+                    style={{
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: '8px',
+                      fontWeight: 700,
+                      fontSize: '15px',
+                      padding: '6px 16px',
+                      borderRadius: '20px',
+                      background: remaining <= 300 ? '#dc2626' : remaining <= 600 ? '#d97706' : '#2563eb',
+                      color: '#ffffff',
+                      boxShadow: remaining <= 300 ? '0 0 12px rgba(220, 38, 38, 0.4)' : 'none',
+                    }}
+                  >
+                    ⏱️ {timeDisplay}
+                  </span>
+                  <span className="cell-sub" style={{ fontSize: '13px' }}>
+                    Fin de l’épreuve : <strong>{dateLabel(view.attempt.deadlineAt)}</strong>
+                  </span>
+                </div>
+
+                {/* Progression & Actions d'intégrité */}
+                <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
+                  <span
+                    className={`pill ${answeredCount === questions.length ? 'pill-success' : 'pill-info'}`}
+                    style={{ fontWeight: 600 }}
+                  >
+                    📝 {answeredCount} / {questions.length} répondues ({progressPercent}%)
+                  </span>
+                  <button
+                    type="button"
+                    className="btn btn-sm btn-outline"
+                    onClick={toggleFullscreen}
+                    style={{ display: 'inline-flex', alignItems: 'center', gap: '4px' }}
+                  >
+                    {isFullscreen ? 'Quitter plein écran' : '🖥️ Plein écran'}
+                  </button>
+                  <span className="cell-sub" style={{ fontSize: '12px' }}>
+                    {saving ? 'Enregistrement…' : dirty ? 'Enregistrement en attente' : '✓ Enregistré'}
+                  </span>
+                </div>
+              </div>
+
+              {/* Barre de progression des questions */}
+              <div style={{ width: '100%', height: '4px', background: '#e2e8f0', borderRadius: '2px', overflow: 'hidden' }}>
+                <div style={{ width: `${progressPercent}%`, height: '100%', background: 'var(--primary, #2563eb)', transition: 'width 0.3s ease' }} />
+              </div>
+
+              {/* Alerte Urgence Moins de 5 minutes */}
+              {remaining > 0 && remaining <= 300 && (
+                <div style={{ padding: '8px 12px', background: '#fef2f2', border: '1px solid #fecaca', borderRadius: '6px', color: '#b91c1c', fontSize: '13px', fontWeight: 600 }}>
+                  ⚠️ Attention : il reste moins de 5 minutes ! Vos réponses enregistrées seront remises automatiquement à 00:00.
+                </div>
+              )}
+
+              {/* Alerte Anti-Triche */}
+              {antiCheatAlert && (
+                <div style={{ padding: '10px 14px', background: '#fffbeb', border: '1px solid #fde68a', borderRadius: '6px', color: '#b45309', fontSize: '13px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '8px' }}>
+                  <span>{antiCheatAlert}</span>
+                  <button type="button" className="btn btn-sm btn-outline" onClick={() => setAntiCheatAlert('')} style={{ fontSize: '11px', padding: '2px 8px' }}>
+                    J’ai compris
+                  </button>
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+      );
+    })()}
     {notice && <p role="status">{notice}</p>}
     {error && <p role="alert" className="restricted-box">{error}</p>}
     {conflict && <button className="btn btn-outline" onClick={async () => {

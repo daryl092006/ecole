@@ -153,6 +153,19 @@ export default function PersistentExamCopies({ evaluationId, candidateId, onClos
                       Remise : {new Date(String(attempt.submitted_at)).toLocaleString('fr-FR')}
                     </span>
                   )}
+                  {(() => {
+                    const raw = typeof window !== 'undefined' ? localStorage.getItem(`escen:anticheat:${attempt.id}`) : null;
+                    const count = raw ? Number(JSON.parse(raw).count) || 0 : 0;
+                    return count > 0 ? (
+                      <span className="pill pill-danger" style={{ fontWeight: 600 }}>
+                        ⚠️ {count} incident(s) anti-triche
+                      </span>
+                    ) : (
+                      <span className="pill pill-success" style={{ fontSize: '11px' }}>
+                        🛡️ Intégrité conforme
+                      </span>
+                    );
+                  })()}
                 </div>
               </div>
             </div>
@@ -174,6 +187,42 @@ export default function PersistentExamCopies({ evaluationId, candidateId, onClos
 
           {selected === attempt.id && (
             <div style={{ marginTop: '1.25rem', paddingTop: '1.25rem', borderTop: '1px solid var(--border)' }}>
+              {(() => {
+                const raw = typeof window !== 'undefined' ? localStorage.getItem(`escen:anticheat:${attempt.id}`) : null;
+                let data = { count: 0, events: [] };
+                try { if (raw) data = JSON.parse(raw); } catch {}
+                const events: { type: string; time: string; message: string }[] = data.events || [];
+                return (
+                  <div style={{ background: '#f8fafc', border: '1px solid var(--border-color, #e2e8f0)', borderRadius: '8px', padding: '12px 16px', marginBottom: '18px' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '8px', marginBottom: '8px' }}>
+                      <strong style={{ fontSize: '13px', color: '#0f172a' }}>
+                        🛡️ Audit de composition & Surveillance anti-triche
+                      </strong>
+                      <span className={`pill ${data.count > 0 ? 'pill-danger' : 'pill-success'}`}>
+                        {data.count > 0 ? `${data.count} alerte(s) consignée(s)` : 'Session 100% conforme'}
+                      </span>
+                    </div>
+                    <div className="record-details-grid" style={{ fontSize: '12px', gap: '8px' }}>
+                      <div><dt>Début d’épreuve :</dt><dd>{attempt.started_at ? new Date(String(attempt.started_at)).toLocaleString('fr-FR') : '—'}</dd></div>
+                      <div><dt>Échéance limite :</dt><dd>{attempt.deadline_at ? new Date(String(attempt.deadline_at)).toLocaleString('fr-FR') : '—'}</dd></div>
+                      <div><dt>Remise effective :</dt><dd>{attempt.submitted_at ? new Date(String(attempt.submitted_at)).toLocaleString('fr-FR') : 'En attente'}</dd></div>
+                      <div><dt>Type de remise :</dt><dd>{attempt.submission_kind === 'AUTO_DEADLINE' ? 'Automatique à échéance de la minuterie' : 'Remise volontaire par l’étudiant'}</dd></div>
+                    </div>
+                    {events.length > 0 && (
+                      <div style={{ marginTop: '10px', paddingTop: '8px', borderTop: '1px solid #e2e8f0' }}>
+                        <span className="cell-sub" style={{ fontWeight: 600, color: '#b91c1c' }}>Détail des infractions détectées pendant la composition :</span>
+                        <ul style={{ margin: '4px 0 0', paddingLeft: '18px', fontSize: '12px', color: '#b91c1c' }}>
+                          {events.map((ev, i) => (
+                            <li key={i}>
+                              <strong>{new Date(ev.time).toLocaleTimeString('fr-FR')}</strong> : {ev.message}
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+                    )}
+                  </div>
+                );
+              })()}
               {questions.map((question, qIndex) => {
                 const response = answers.find(row => row.question_id === question.id)?.response as OnlineExamAnswer | undefined;
                 const choices = response?.option_ids || [];

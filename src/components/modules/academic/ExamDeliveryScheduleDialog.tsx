@@ -316,6 +316,18 @@ export default function ExamDeliveryScheduleDialog({
               />
             </label>
 
+            <div style={{ margin: '14px 0', padding: '12px 16px', background: '#f8fafc', border: '1px solid var(--border-color, #e2e8f0)', borderRadius: '8px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '6px' }}>
+                <strong style={{ fontSize: '13px', color: '#0f172a' }}>🛡️ Sécurité & Surveillance anti-triche active</strong>
+                <span className="pill pill-success" style={{ fontSize: '11px' }}>Activée</span>
+              </div>
+              <ul style={{ margin: 0, paddingLeft: '18px', fontSize: '12px', color: '#64748b' }}>
+                <li><strong>Minuterie stricte :</strong> Décompte synchronisé sur le serveur et remise automatique des copies à l’échéance ({durationMinutes} min).</li>
+                <li><strong>Détection des sorties d’écran :</strong> Chaque changement d’onglet ou perte de focus est consigné avec horodatage.</li>
+                <li><strong>Protection des contenus :</strong> Clic droit et copier-coller bloqués pour préserver l’intégrité du sujet.</li>
+              </ul>
+            </div>
+
             <label className="form-group">
               Motif de programmation ou d’ajustement
               <textarea
