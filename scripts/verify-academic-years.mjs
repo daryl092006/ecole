@@ -28,7 +28,7 @@ export async function verifyAcademicYears({ db, check, insert, account, year, le
     assert.ok(allBlogs.records.some(row=>row.id===undatedBlog));
 
   });
-  await check('Années : activités obligatoirement rattachées, années figées et articles publics isolés', async () => {
+  await check('Années : activités obligatoirement rattachées, années figées et articles publics intemporels', async () => {
     const article={title:'Article annuel de recette',slug:'recette-annuelle-'+randomUUID(),excerpt:'Résumé',content:'Contenu',created_by:account.id,reason:'Rattachement annuel vérifié'};
     await assert.rejects(insert('website_articles',article),/année scolaire/i);
     const saved=await insert('website_articles',{...article,academic_year_id:year.id,status:'PUBLIE',published_at:new Date().toISOString()});
@@ -38,7 +38,7 @@ export async function verifyAcademicYears({ db, check, insert, account, year, le
     await command('current',year.id);
     const published=await value("select public.escen_website_public('articles') as value");
     assert.ok(published.some(row=>row.id===saved.id));
-    assert.equal(published.some(row=>row.id===other.id),false);
+    assert.ok(published.some(row=>row.id===other.id));
     assert.equal(await value('select count(*)::integer as value from escen.website_articles where id=$1',[other.id]),1);
     const subject=await insert('exam_papers',{academic_year_id:year.id,author_id:account.id,title:'Sujet annuel',version:1});
     await assert.rejects(insert('exam_papers',{academic_year_id:fresh.id,library_id:subject.library_id,author_id:account.id,title:'Autre année interdite',version:2}),/versions.*année/i);

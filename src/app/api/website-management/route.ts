@@ -28,9 +28,6 @@ export async function GET(request: Request) {
       const year = await resolveAcademicYear(request,client,context,snapshot.data as RelationalSnapshot);
       const selectedYearId=year.selectedYearId || (year.selection==='all'?null:'00000000-0000-0000-0000-000000000000');
       if (selectedYearId) {
-        if (kind === 'articles') {
-          return Response.json(data.filter((row:{academic_year_id:string})=>row.academic_year_id===selectedYearId),{headers:{'Cache-Control':'no-store'}});
-        }
         if (kind === 'document' && data?.academic_year_id !== selectedYearId) throw new RequestError(403,'Cette pièce appartient à une autre année.');
         if (kind === 'admissions') { data.applications = data.applications.filter((row:{academic_year_id:string})=>row.academic_year_id===selectedYearId); data.intakes = data.intakes.filter((row:{academic_year_id:string})=>row.academic_year_id===selectedYearId); if (data.level_document_rules) data.level_document_rules = data.level_document_rules.filter((row:{academic_year_id:string})=>row.academic_year_id===selectedYearId); }
       }
@@ -63,12 +60,8 @@ export async function POST(request: Request) {
       const snapshot = await client.rpc('escen_backend_snapshot');
       if (snapshot.error) throw new RequestError(503,'Contexte annuel indisponible.');
       const year = await resolveAcademicYear(request,client,context,snapshot.data as RelationalSnapshot);
-      if (!year.selectedYearId) throw new RequestError(409,'Choisissez une année scolaire précise avant toute modification.');
-      selectedYearId=year.selectedYearId;
-      if (body.action === 'article-save' && body.id) {
-        const articles=await websiteRpc(client,'escen_website_manage',{p_actor_id:context.accountId,p_role_code:context.roleCode,p_action:'articles',p_data:{}});
-        if (!articles.some((row:{id:string;academic_year_id:string})=>row.id===body.id && row.academic_year_id===selectedYearId)) throw new RequestError(403,'Cet article appartient à une autre année ou son année doit être confirmée.');
-      }
+      selectedYearId = String(year.selectedYearId || (snapshot.data as RelationalSnapshot).tables.academic_working_year?.[0]?.academic_year_id || '');
+      if (!year.selectedYearId && body.action !== 'article-save') throw new RequestError(409,'Choisissez une année scolaire précise avant toute modification.');
       if (body.action === 'level-documents-save') {
         requirePermission(context, 'student.lifecycle.manage');
         if (body.academic_year_id !== year.selectedYearId) throw new RequestError(409, 'Choisissez la même année que la consultation pour les pièces du niveau.');
