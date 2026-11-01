@@ -109,6 +109,7 @@ export default function FirstLoginForm() {
           if (!birthDate) return 'Veuillez renseigner votre date de naissance.';
           if (!displayedPhoneNumber(phone) || !isPhoneNumber(phone)) return 'Veuillez renseigner un numéro de téléphone valide avec son indicatif.';
           if (!personalEmail.trim() || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(personalEmail.trim())) return 'Veuillez renseigner une adresse email personnelle valide.';
+          if (personalEmail.trim().toLowerCase().endsWith('@escen.university')) return 'L’adresse institutionnelle @escen.university est votre identifiant de connexion. Renseignez votre adresse personnelle externe (ex. Gmail, Yahoo).';
           if (!address.trim()) return 'Veuillez renseigner votre adresse géographique (quartier, ville, rue...).';
         }
         if (decision === 'REPORT') {

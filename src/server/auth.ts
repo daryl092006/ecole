@@ -24,7 +24,7 @@ const profileSchema = z.object({
     city: z.string().nullable().optional(),
     country: z.string().nullable().optional(),
   }),
-  student: z.object({ id: z.uuid(), matricule: z.string() }).nullable(),
+  student: z.object({ id: z.uuid(), matricule: z.string(), m365_email: z.string().nullable().optional() }).nullable(),
   teacher: z.object({ id: z.uuid() }).nullable(),
   grants: z.array(grant),
   permissions: z.array(z.object({ role_code: z.string(), permission_code: z.string() })),
@@ -94,7 +94,9 @@ export async function requireAccount(request: Request) {
     studentId: profile.student?.id ?? null, teacherId: profile.teacher?.id ?? null,
     grants: available.filter(item => item.role_code === selected.role_code) as AccountGrant[],
   };
-  return { client, context, profile, user: authenticated.data.user, mustChangePassword, mustVerifyProfile, firstLoginRequired, availableRoles: [...new Set(available.map(item => item.role_name))], email: authenticated.data.user.email ?? profile.person.email ?? '' };
+  const studentInstEmail = profile.student ? (profile.student.m365_email || `${profile.student.matricule.toLowerCase()}@escen.university`) : null;
+  const loginEmail = (profile.student ? studentInstEmail : authenticated.data.user.email) || profile.person.email || '';
+  return { client, context, profile, user: authenticated.data.user, mustChangePassword, mustVerifyProfile, firstLoginRequired, availableRoles: [...new Set(available.map(item => item.role_name))], email: loginEmail };
 }
 export function requirePermission(context: PersistentContext, permission: Permission) {
   if (!context.permissions.includes(permission)) throw new RequestError(403, 'Opération non autorisée pour votre rôle.');

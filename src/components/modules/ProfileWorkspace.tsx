@@ -14,7 +14,7 @@ import { displayedPhoneNumber } from '@/services/phoneNumberService';
 
 const FIELD_LABELS = {
   phone: 'Téléphone',
-  personalEmail: 'Email de contact',
+  personalEmail: 'Email personnel de contact',
   birthDate: 'Date de naissance',
   gender: 'Genre',
   nationality: 'Nationalité',
@@ -26,6 +26,8 @@ const FIELD_LABELS = {
 export default function ProfileWorkspace() {
   const portal = usePortal();
   const { session, activeRole, relationalSnapshot } = portal;
+
+  const isStudent = Boolean(session?.studentId || session?.matricule || activeRole === 'Étudiant' || activeRole === 'Délégué');
 
   const currentPerson = useMemo(() => {
     const tables = relationalSnapshot.tables || {};
@@ -55,16 +57,24 @@ export default function ProfileWorkspace() {
     return portal.students.find(s => s.matricule === session.matricule) || null;
   }, [portal.students, session?.matricule]);
 
-  const initialForm = useMemo(() => ({
-    phone: displayedPhoneNumber(currentPerson?.phone ?? studentDossier?.phone ?? ''),
-    personalEmail: String(currentPerson?.email ?? studentDossier?.email ?? session?.email ?? ''),
-    birthDate: String(currentPerson?.birth_date ?? studentDossier?.birthDate ?? ''),
-    gender: String(currentPerson?.gender ?? studentDossier?.gender ?? ''),
-    nationality: String(currentPerson?.nationality ?? studentDossier?.nationality ?? ''),
-    address: String(currentPerson?.address ?? studentDossier?.address ?? ''),
-    city: String(currentPerson?.city ?? studentDossier?.city ?? ''),
-    country: String(currentPerson?.country ?? studentDossier?.country ?? ''),
-  }), [currentPerson, studentDossier, session?.email]);
+  const studentProEmail = session?.matricule
+    ? (studentDossier?.institutionalEmail || `${session.matricule.toLowerCase()}@escen.university`)
+    : '';
+
+  const initialForm = useMemo(() => {
+    const rawEmail = String(currentPerson?.email ?? studentDossier?.email ?? '');
+    const cleanPersonalEmail = (isStudent && rawEmail.toLowerCase().endsWith('@escen.university')) ? '' : rawEmail;
+    return {
+      phone: displayedPhoneNumber(currentPerson?.phone ?? studentDossier?.phone ?? ''),
+      personalEmail: cleanPersonalEmail,
+      birthDate: String(currentPerson?.birth_date ?? studentDossier?.birthDate ?? ''),
+      gender: String(currentPerson?.gender ?? studentDossier?.gender ?? ''),
+      nationality: String(currentPerson?.nationality ?? studentDossier?.nationality ?? ''),
+      address: String(currentPerson?.address ?? studentDossier?.address ?? ''),
+      city: String(currentPerson?.city ?? studentDossier?.city ?? ''),
+      country: String(currentPerson?.country ?? studentDossier?.country ?? ''),
+    };
+  }, [currentPerson, studentDossier, isStudent]);
 
   const [form, setForm] = useState(initialForm);
   const [saving, setSaving] = useState(false);
@@ -123,8 +133,10 @@ export default function ProfileWorkspace() {
             <dd>{displayLastname || 'Non renseigné'}</dd>
           </div>
           <div>
-            <dt>Compte de connexion</dt>
-            <dd>{session?.email || 'Non renseigné'}</dd>
+            <dt>Compte de connexion officiel (Email pro M365)</dt>
+            <dd style={{ color: 'var(--primary, #0369a1)', fontWeight: 600 }}>
+              {isStudent ? (studentProEmail || session?.email || 'Non renseigné') : (session?.email || 'Non renseigné')}
+            </dd>
           </div>
           <div>
             <dt>Rôle actif</dt>
@@ -134,14 +146,6 @@ export default function ProfileWorkspace() {
             <div>
               <dt>Matricule étudiant</dt>
               <dd><code>{session.matricule}</code></dd>
-            </div>
-          )}
-          {session?.matricule && (
-            <div>
-              <dt>Email institutionnel (M365)</dt>
-              <dd style={{ color: 'var(--primary, #0369a1)', fontWeight: 600 }}>
-                {studentDossier?.institutionalEmail || `${session.matricule.toLowerCase()}@escen.university`}
-              </dd>
             </div>
           )}
           {studentDossier && (
@@ -164,8 +168,18 @@ export default function ProfileWorkspace() {
           confirmLabel="Enregistrer dans mon dossier"
           fields={changedFields.length > 0 ? changedFields : [{ label: 'Profil', value: 'Confirmation des coordonnées actuelles' }]}
           consequence="Ces informations seront enregistrées dans votre dossier officiel ESCEN."
+          validate={() => {
+            if (isStudent && form.personalEmail.trim().toLowerCase().endsWith('@escen.university')) {
+              return 'L’adresse institutionnelle @escen.university est attribuée par ESCEN et sert d’identifiant officiel de connexion. Elle ne peut en aucun cas être modifiée par l’étudiant. Renseignez uniquement votre adresse personnelle externe de contact (ex. Gmail, Yahoo).';
+            }
+            return null;
+          }}
           onConfirm={event => {
             event.preventDefault();
+            if (isStudent && form.personalEmail.trim().toLowerCase().endsWith('@escen.university')) {
+              setError('L’adresse institutionnelle @escen.university est attribuée par ESCEN et sert d’identifiant officiel de connexion. Elle ne peut en aucun cas être modifiée par l’étudiant. Renseignez uniquement votre adresse personnelle externe de contact (ex. Gmail, Yahoo).');
+              return;
+            }
             setSaving(true);
             setError('');
             void saveOwnProfile(form, activeRole)
@@ -181,6 +195,25 @@ export default function ProfileWorkspace() {
           }}
         >
           <div className="form-grid">
+            {isStudent && (
+              <label className="form-group card-full">
+                Email professionnel institutionnel (M365)
+                <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', marginTop: '0.25rem' }}>
+                  <input
+                    className="input"
+                    type="email"
+                    disabled
+                    readOnly
+                    value={studentProEmail}
+                    style={{ backgroundColor: 'var(--surface-subtle, #f8fafc)', cursor: 'not-allowed', color: 'var(--text-muted, #64748b)', flex: 1 }}
+                  />
+                  <span className="badge badge-info" style={{ whiteSpace: 'nowrap' }}>Identifiant de connexion</span>
+                </div>
+                <small style={{ color: 'var(--text-muted, #64748b)', fontSize: '0.85rem', marginTop: '0.35rem', display: 'block' }}>
+                  Attribué par ESCEN et utilisé pour vous connecter à la plateforme. En aucun cas modifiable par l’étudiant.
+                </small>
+              </label>
+            )}
             <PhoneInput
               label="Numéro de téléphone"
               defaultCountry="TG-228"
@@ -188,15 +221,20 @@ export default function ProfileWorkspace() {
               onChange={phone => setForm(prev => ({ ...prev, phone }))}
             />
             <label className="form-group">
-              Email de contact
+              Email personnel de contact (externe / privé)
               <input
                 className="input"
                 type="email"
                 maxLength={255}
-                placeholder="exemple@domaine.com"
+                placeholder="ex. nom.prenom@gmail.com"
                 value={form.personalEmail}
                 onChange={event => setForm(prev => ({ ...prev, personalEmail: event.target.value }))}
               />
+              <small style={{ color: 'var(--text-muted, #64748b)', fontSize: '0.8rem', marginTop: '0.25rem', display: 'block' }}>
+                {isStudent
+                  ? 'Pour la récupération de compte et vos contacts privés. Ne saisissez pas votre adresse @escen.university.'
+                  : 'Adresse externe de contact.'}
+              </small>
             </label>
             <label className="form-group">
               Date de naissance

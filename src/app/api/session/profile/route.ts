@@ -22,13 +22,17 @@ export async function GET(request: Request) {
   try {
     const auth = await requireAccount(request);
     const person = auth.profile.person;
+    const student = auth.profile.student;
+    const studentInstEmail = student ? (student.m365_email || `${student.matricule.toLowerCase()}@escen.university`) : null;
+    const rawEmail = person.email || '';
+    const cleanPersonalEmail = (rawEmail.toLowerCase().endsWith('@escen.university') && student) ? '' : rawEmail;
     return Response.json({
       profile: {
         personId: auth.context.personId,
         firstname: person.firstname,
         lastname: person.lastname,
-        loginEmail: auth.email,
-        personalEmail: person.email || '',
+        loginEmail: studentInstEmail || auth.email,
+        personalEmail: cleanPersonalEmail,
         phone: person.phone || '',
         birthDate: person.birth_date || '',
         gender: person.gender || '',
@@ -36,7 +40,9 @@ export async function GET(request: Request) {
         address: person.address || '',
         city: person.city || '',
         country: person.country || '',
-        matricule: auth.profile.student?.matricule || null,
+        matricule: student?.matricule || null,
+        institutionalEmail: studentInstEmail,
+        isStudent: Boolean(student),
       },
     }, { headers: { 'Cache-Control': 'no-store' } });
   } catch (error) {
@@ -50,6 +56,16 @@ export async function POST(request: Request) {
     const body = profileUpdateSchema.parse(await request.json().catch(() => {
       throw new RequestError(400, 'Données du profil invalides.');
     }));
+
+    if (auth.profile.student && body.personalEmail) {
+      if (body.personalEmail.toLowerCase().endsWith('@escen.university')) {
+        throw new RequestError(
+          400,
+          'L’adresse institutionnelle @escen.university est attribuée par ESCEN et sert d’identifiant officiel de connexion. Elle ne peut en aucun cas être modifiée par l’étudiant. Renseignez uniquement votre adresse personnelle externe de contact (ex. Gmail, Outlook privé).'
+        );
+      }
+    }
+
     const result = await auth.client.rpc('escen_backend_snapshot');
     if (result.error || !result.data) {
       throw new RequestError(503, 'L’enregistrement du profil est temporairement indisponible.');

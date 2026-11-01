@@ -108,6 +108,11 @@ export async function POST(request: Request) {
       }
     } else if (body.decision === 'CONFIRM') {
       const person = auth.profile.person;
+      if (auth.profile.student && body.personalEmail) {
+        if (body.personalEmail.toLowerCase().endsWith('@escen.university')) {
+          throw new RequestError(400, 'L’adresse institutionnelle @escen.university est attribuée par ESCEN et sert d’identifiant de connexion. Renseignez votre adresse personnelle externe de contact (ex. Gmail, Yahoo).');
+        }
+      }
       const nextFirstname = body.firstname ?? person.firstname;
       const nextLastname = body.lastname ?? person.lastname;
       const nextAddress = body.address !== undefined ? body.address.trim() : (person.address || '');
