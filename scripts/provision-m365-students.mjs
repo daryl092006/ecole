@@ -2,6 +2,9 @@
  * Script de provisionnement des comptes Microsoft 365 pour les étudiants 2026-2027
  */
 import { execSync } from 'child_process';
+import nextEnv from '@next/env';
+
+nextEnv.loadEnvConfig(process.cwd());
 
 const tenantId = process.env.AZURE_TENANT_ID;
 const clientId = process.env.AZURE_CLIENT_ID;
@@ -48,8 +51,7 @@ where s.matricule like '%-ESC-2026'
 order by s.matricule;
 `;
 
-const rawResult = execSync(`npx supabase db query --linked "${sqlQuery.replace(/\n/g, ' ')}"`, { encoding: 'utf-8' });
-// Extraire le JSON entre boundary ou direct
+const rawResult = execSync(`npx supabase db query --remote --yes "${sqlQuery.replace(/\n/g, ' ')}"`, { encoding: 'utf-8' });
 const match = rawResult.match(/\{[\s\S]*"rows":\s*(\[[^\]]*\])/);
 let students = [];
 if (match) {
@@ -135,11 +137,10 @@ for (const s of students) {
   // Mettre à jour la base Supabase
   if (userId) {
     const updateSql = `update escen.students set m365_user_id = '${userId}', m365_status = 'ACTIVE', m365_provisioned_at = now() where id = '${s.id}';`;
-    execSync(`npx supabase db query --linked "${updateSql}"`, { stdio: 'ignore' });
+    execSync(`npx supabase db query --remote --yes "${updateSql}"`, { stdio: 'ignore' });
     console.log('  ✓ Statut étudiant mis à jour (ACTIVE) dans ESCEN.');
   }
 }
 
 console.log('\n==========================================');
 console.log('Tous les comptes ont été provisionnés avec succès !');
-
