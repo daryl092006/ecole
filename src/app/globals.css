@@ -3990,7 +3990,7 @@ form > .drawer-form-actions,
 .candidate-public-content h2 { margin: 16px 0; }
 .candidate-steps { list-style: none; padding: 0; margin: 0 0 24px; display: grid; grid-template-columns: repeat(3,minmax(0,1fr)); gap: 12px; }
 .candidate-steps li { display: flex; gap: 10px; align-items: center; padding: 14px 12px; border-bottom: 3px solid var(--border-color, #dfe4ec); color: var(--text-secondary); min-width: 0; overflow-wrap: anywhere; }
-.candidate-steps li[aria-current="step"] { border-color: var(--primary, #4f46e5); color: var(--text-primary); font-weight: 800; }
+.candidate-steps li[aria-current="step"] { border-color: #01b4d5; color: #0f4c81; font-weight: 800; }
 .candidate-steps li > span { border: 1px solid var(--border-color, #dfe4ec); border-radius: 50%; min-width: 28px; height: 28px; display: grid; place-items: center; }
 .candidate-guardian { border: 1px solid var(--border-color, #dfe4ec); padding: 18px; margin: 18px 0; border-radius: 12px; min-width: 0; }
 .candidate-consent { display: flex; align-items: flex-start; gap: 10px; margin: 16px 0; line-height: 1.6; }

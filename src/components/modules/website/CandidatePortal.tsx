@@ -238,12 +238,12 @@ export default function CandidatePortal({ tracking = false }: { tracking?: boole
         {loading ? (
           <LoadingState label="Ouverture de votre espace…" />
         ) : receipt ? (
-          <section className="card" role="status" style={{ textAlign: 'center', padding: '2.5rem 1.5rem' }}>
-            <h1 style={{ fontSize: '1.4rem', color: '#002B49', marginBottom: '0.75rem' }}>Votre candidature est reçue avec succès</h1>
-            <div style={{ background: '#f1f5f9', borderLeft: '4px solid #002B49', padding: '1rem', borderRadius: '4px', maxWidth: '420px', margin: '1rem auto', textAlign: 'left' }}>
-              <div style={{ fontSize: '0.75rem', textTransform: 'uppercase', color: '#64748b', fontWeight: 600 }}>Référence officielle de votre dossier</div>
-              <div style={{ fontSize: '1.2rem', fontWeight: 700, color: '#002B49', marginTop: '0.25rem', fontFamily: 'monospace' }}>{receipt.reference}</div>
-              <div style={{ fontSize: '0.85rem', color: '#475569', marginTop: '0.35rem' }}>Mot de passe initial temporaire : <strong>Escen2026!</strong></div>
+          <section className="card" role="status" style={{ textAlign: 'center', padding: '2.5rem 1.5rem', borderTop: '4px solid #01b4d5' }}>
+            <h1 style={{ fontSize: '1.4rem', color: '#0f4c81', marginBottom: '0.75rem', fontWeight: 700 }}>Votre candidature est reçue avec succès</h1>
+            <div style={{ background: '#f0f9ff', borderLeft: '4px solid #01b4d5', border: '1px solid #bae6fd', padding: '1.25rem', borderRadius: '6px', maxWidth: '440px', margin: '1rem auto', textAlign: 'left' }}>
+              <div style={{ fontSize: '0.75rem', textTransform: 'uppercase', color: '#0369a1', fontWeight: 700, letterSpacing: '0.5px' }}>Référence officielle de votre dossier</div>
+              <div style={{ fontSize: '1.25rem', fontWeight: 800, color: '#0f4c81', marginTop: '0.25rem', fontFamily: 'monospace' }}>{receipt.reference}</div>
+              <div style={{ fontSize: '0.85rem', color: '#075985', marginTop: '0.4rem' }}>Mot de passe initial temporaire : <strong style={{ color: '#0f4c81', background: '#e0f2fe', padding: '2px 6px', borderRadius: '4px' }}>Escen2026!</strong></div>
             </div>
             <p className="cell-sub" style={{ maxWidth: '460px', margin: '0 auto 1.5rem', lineHeight: 1.5 }}>
               Vous pouvez vous connecter à votre Espace Candidat dès maintenant pour suivre votre dossier. À votre première connexion, il vous sera demandé de créer votre mot de passe personnel.
@@ -263,11 +263,11 @@ export default function CandidatePortal({ tracking = false }: { tracking?: boole
 
             {/* Modal obligatoire pour la 1ère connexion si le mot de passe doit être changé */}
             {mustChangePassword && (
-              <div style={{ background: '#fffbeb', border: '1px solid #fde68a', borderRadius: '8px', padding: '1.5rem', marginBottom: '1.5rem' }}>
-                <h2 style={{ fontSize: '1.15rem', color: '#92400e', margin: '0 0 0.5rem 0' }}>
+              <div style={{ background: '#f0f9ff', border: '1px solid #bae6fd', borderLeft: '4px solid #01b4d5', borderRadius: '8px', padding: '1.5rem', marginBottom: '1.5rem' }}>
+                <h2 style={{ fontSize: '1.15rem', color: '#0f4c81', margin: '0 0 0.5rem 0', fontWeight: 700 }}>
                   🔒 Première connexion : Sécurisez votre espace candidat
                 </h2>
-                <p className="cell-sub" style={{ margin: '0 0 1rem 0', color: '#78350f' }}>
+                <p className="cell-sub" style={{ margin: '0 0 1rem 0', color: '#0369a1' }}>
                   Pour protéger vos données personnelles, veuillez définir dès maintenant votre mot de passe personnel définitif (8 caractères minimum).
                 </p>
 
@@ -307,6 +307,7 @@ export default function CandidatePortal({ tracking = false }: { tracking?: boole
                   <button
                     type="submit"
                     className="btn btn-primary"
+                    style={{ background: '#01b4d5', borderColor: '#01b4d5', color: '#ffffff', fontWeight: 600 }}
                     disabled={busy || newPassword.length < 8 || newPassword !== confirmPassword}
                   >
                     {busy ? 'Enregistrement…' : 'Enregistrer mon mot de passe'}
@@ -442,10 +443,11 @@ export default function CandidatePortal({ tracking = false }: { tracking?: boole
           </section>
         ) : (
           /* FORMULAIRE DE CONNEXION CANDIDAT */
-          <section className="card" style={{ maxWidth: '440px', margin: '2rem auto', padding: '2rem' }}>
+          <section className="card" style={{ maxWidth: '440px', margin: '2rem auto', padding: '2.25rem 2rem', borderTop: '4px solid #01b4d5', boxShadow: '0 4px 16px rgba(15, 76, 129, 0.08)' }}>
             <div style={{ textAlign: 'center', marginBottom: '1.5rem' }}>
-              <h1 style={{ fontSize: '1.35rem', color: '#002B49', margin: '0 0 0.5rem 0' }}>Espace Candidat</h1>
-              <p className="cell-sub" style={{ margin: 0 }}>
+              <div style={{ display: 'inline-block', width: '36px', height: '4px', background: '#01b4d5', borderRadius: '2px', marginBottom: '10px' }}></div>
+              <h1 style={{ fontSize: '1.4rem', color: '#0f4c81', margin: '0 0 0.5rem 0', fontWeight: 700 }}>Espace Candidat</h1>
+              <p className="cell-sub" style={{ margin: 0, color: '#64748b' }}>
                 Accédez au suivi de votre candidature et à vos courriers officiels.
               </p>
             </div>
@@ -463,7 +465,7 @@ export default function CandidatePortal({ tracking = false }: { tracking?: boole
                   type="text"
                   className="input"
                   required
-                  placeholder="ex. darylggt23@gmail.com ou ESCEN-..."
+                  placeholder="ex. darylggt23@gmail.com ou WEB-..."
                   value={loginIdentifier}
                   onChange={e => setLoginIdentifier(e.target.value)}
                   disabled={busy}
@@ -503,15 +505,15 @@ export default function CandidatePortal({ tracking = false }: { tracking?: boole
                 </div>
               </label>
 
-              <div style={{ background: '#f8fafc', padding: '10px 14px', borderRadius: '6px', border: '1px solid #e2e8f0', marginBottom: '1.5rem', fontSize: '0.8rem', color: '#475569', lineHeight: 1.5 }}>
-                <strong>💡 Première connexion ?</strong><br />
-                Utilisez le mot de passe initial : <code style={{ fontWeight: 700, color: '#002B49' }}>Escen2026!</code>. Vous créerez votre mot de passe personnel dès votre entrée.
+              <div style={{ background: '#f0f9ff', padding: '12px 14px', borderRadius: '6px', border: '1px solid #bae6fd', marginBottom: '1.5rem', fontSize: '0.82rem', color: '#075985', lineHeight: 1.5 }}>
+                <strong style={{ color: '#0f4c81' }}>💡 Première connexion ?</strong><br />
+                Utilisez le mot de passe initial : <code style={{ fontWeight: 700, color: '#0f4c81', background: '#e0f2fe', padding: '2px 6px', borderRadius: '3px' }}>Escen2026!</code>. Vous créerez votre mot de passe personnel dès votre entrée.
               </div>
 
               <button
                 type="submit"
                 className="btn btn-primary"
-                style={{ width: '100%', padding: '0.75rem', fontWeight: 600 }}
+                style={{ width: '100%', padding: '0.75rem', fontWeight: 700, background: '#01b4d5', borderColor: '#01b4d5', color: '#ffffff', fontSize: '0.95rem' }}
                 disabled={busy || !loginIdentifier.trim() || !loginPassword}
               >
                 {busy ? 'Connexion en cours…' : 'Accéder à mon espace candidat'}
@@ -519,7 +521,7 @@ export default function CandidatePortal({ tracking = false }: { tracking?: boole
             </form>
 
             <div style={{ textAlign: 'center', marginTop: '1.5rem', borderTop: '1px solid #e2e8f0', paddingTop: '1rem', fontSize: '0.85rem' }}>
-              <Link href="/candidature" style={{ color: '#2563eb', textDecoration: 'none', fontWeight: 500 }}>
+              <Link href="/candidature" style={{ color: '#01b4d5', textDecoration: 'none', fontWeight: 600 }}>
                 ← Déposer une nouvelle candidature
               </Link>
             </div>
