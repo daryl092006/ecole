@@ -3,7 +3,6 @@ import fs from 'fs';
 // Known applications matched from escen.online_applications
 const applicationDataMap = {
   'GNELE Evynel Olanique': {
-    appId: '15764d7c-86e5-4204-9ca1-ee92019c0b11', // or lookup by ref
     ref: 'LEGACY-2026-2027-197',
     email: 'Olola3260@gmail.com',
     phone: '+22891861732',
@@ -313,7 +312,7 @@ begin
 `;
 
 for (const s of studentsToInsert) {
-  const normEmail = s.appData?.email || `${s.firstname.toLowerCase().replace(/[^a-z]/g, '')}.${s.lastname.toLowerCase().replace(/[^a-z]/g, '')}.ext@escen.university`;
+  const personalEmail = s.appData?.email || null;
   const phone = s.appData?.phone || null;
   const birthDate = s.appData?.birthDate || null;
   const gender = s.appData?.gender || null;
@@ -337,13 +336,18 @@ for (const s of studentsToInsert) {
 
   sql += `  -- Création personne\n`;
   sql += `  insert into escen.people(firstname, lastname, email, phone, gender, birth_date, nationality)\n`;
-  sql += `  values (${escapeSql(s.firstname)}, ${escapeSql(s.lastname)}, ${escapeSql(normEmail)}, ${escapeSql(phone)}, ${escapeSql(gender)}, ${birthDate ? `'${birthDate}'` : 'NULL'}, ${escapeSql(nationality)})\n`;
+  sql += `  values (${escapeSql(s.firstname)}, ${escapeSql(s.lastname)}, ${personalEmail ? escapeSql(personalEmail) : 'NULL'}, ${escapeSql(phone)}, ${escapeSql(gender)}, ${birthDate ? `'${birthDate}'` : 'NULL'}, ${escapeSql(nationality)})\n`;
   sql += `  returning id into v_person_id;\n\n`;
 
   sql += `  -- Création étudiant\n`;
   sql += `  insert into escen.students(person_id, matricule, reason)\n`;
   sql += `  values (v_person_id, v_matricule, 'Intégration échéancier de recouvrement 2026-2027')\n`;
   sql += `  returning id into v_student_id;\n\n`;
+
+  if (!personalEmail) {
+    sql += `  -- Aligner l'email de la personne sur l'email étudiant officiel généré\n`;
+    sql += `  update escen.people set email = (select m365_email from escen.students where id = v_student_id) where id = v_person_id;\n\n`;
+  }
 
   if (s.appData?.ref) {
     sql += `  -- Lier la candidature en ligne si existante\n`;
@@ -428,4 +432,4 @@ for (const s of studentsToContract) {
 sql += `end $$;\n`;
 
 fs.writeFileSync('supabase/migrations/202611020076_insert_missing_recovery_students_2026_2027.sql', sql);
-console.log('Migration successfully written to supabase/migrations/202611020076_insert_missing_recovery_students_2026_2027.sql');
+console.log('Migration successfully rewritten to supabase/migrations/202611020076_insert_missing_recovery_students_2026_2027.sql');

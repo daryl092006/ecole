@@ -70,13 +70,16 @@ begin
 
   -- Création personne
   insert into escen.people(firstname, lastname, email, phone, gender, birth_date, nationality)
-  values ('Abla Élisée', 'AKOR', 'ablalise.akor.ext@escen.university', NULL, NULL, NULL, NULL)
+  values ('Abla Élisée', 'AKOR', NULL, NULL, NULL, NULL, NULL)
   returning id into v_person_id;
 
   -- Création étudiant
   insert into escen.students(person_id, matricule, reason)
   values (v_person_id, v_matricule, 'Intégration échéancier de recouvrement 2026-2027')
   returning id into v_student_id;
+
+  -- Aligner l'email de la personne sur l'email étudiant officiel généré
+  update escen.people set email = (select m365_email from escen.students where id = v_student_id) where id = v_person_id;
 
   -- Inscription académique 2026-2027
   if v_offering_id is not null then
@@ -123,13 +126,16 @@ begin
 
   -- Création personne
   insert into escen.people(firstname, lastname, email, phone, gender, birth_date, nationality)
-  values ('Achraf', 'BANNA', 'achraf.banna.ext@escen.university', NULL, NULL, NULL, NULL)
+  values ('Achraf', 'BANNA', NULL, NULL, NULL, NULL, NULL)
   returning id into v_person_id;
 
   -- Création étudiant
   insert into escen.students(person_id, matricule, reason)
   values (v_person_id, v_matricule, 'Intégration échéancier de recouvrement 2026-2027')
   returning id into v_student_id;
+
+  -- Aligner l'email de la personne sur l'email étudiant officiel généré
+  update escen.people set email = (select m365_email from escen.students where id = v_student_id) where id = v_person_id;
 
   -- Inscription académique 2026-2027
   if v_offering_id is not null then
@@ -185,13 +191,16 @@ begin
 
   -- Création personne
   insert into escen.people(firstname, lastname, email, phone, gender, birth_date, nationality)
-  values ('Komi Prince Antoine', 'GBADOE', 'komiprinceantoine.gbadoe.ext@escen.university', NULL, NULL, NULL, NULL)
+  values ('Komi Prince Antoine', 'GBADOE', NULL, NULL, NULL, NULL, NULL)
   returning id into v_person_id;
 
   -- Création étudiant
   insert into escen.students(person_id, matricule, reason)
   values (v_person_id, v_matricule, 'Intégration échéancier de recouvrement 2026-2027')
   returning id into v_student_id;
+
+  -- Aligner l'email de la personne sur l'email étudiant officiel généré
+  update escen.people set email = (select m365_email from escen.students where id = v_student_id) where id = v_person_id;
 
   -- Inscription académique 2026-2027
   if v_offering_id is not null then
@@ -247,13 +256,16 @@ begin
 
   -- Création personne
   insert into escen.people(firstname, lastname, email, phone, gender, birth_date, nationality)
-  values ('Abla Dzifa', 'AGUIDI', 'abladzifa.aguidi.ext@escen.university', NULL, NULL, NULL, NULL)
+  values ('Abla Dzifa', 'AGUIDI', NULL, NULL, NULL, NULL, NULL)
   returning id into v_person_id;
 
   -- Création étudiant
   insert into escen.students(person_id, matricule, reason)
   values (v_person_id, v_matricule, 'Intégration échéancier de recouvrement 2026-2027')
   returning id into v_student_id;
+
+  -- Aligner l'email de la personne sur l'email étudiant officiel généré
+  update escen.people set email = (select m365_email from escen.students where id = v_student_id) where id = v_person_id;
 
   -- Inscription académique 2026-2027
   if v_offering_id is not null then
@@ -300,13 +312,16 @@ begin
 
   -- Création personne
   insert into escen.people(firstname, lastname, email, phone, gender, birth_date, nationality)
-  values ('Koboyo Magnim', 'BODJONA', 'koboyomagnim.bodjona.ext@escen.university', NULL, NULL, NULL, NULL)
+  values ('Koboyo Magnim', 'BODJONA', NULL, NULL, NULL, NULL, NULL)
   returning id into v_person_id;
 
   -- Création étudiant
   insert into escen.students(person_id, matricule, reason)
   values (v_person_id, v_matricule, 'Intégration échéancier de recouvrement 2026-2027')
   returning id into v_student_id;
+
+  -- Aligner l'email de la personne sur l'email étudiant officiel généré
+  update escen.people set email = (select m365_email from escen.students where id = v_student_id) where id = v_person_id;
 
   -- Inscription académique 2026-2027
   if v_offering_id is not null then
@@ -362,13 +377,16 @@ begin
 
   -- Création personne
   insert into escen.people(firstname, lastname, email, phone, gender, birth_date, nationality)
-  values ('Rafik', 'BOURAIMA', 'rafik.bouraima.ext@escen.university', NULL, NULL, NULL, NULL)
+  values ('Rafik', 'BOURAIMA', NULL, NULL, NULL, NULL, NULL)
   returning id into v_person_id;
 
   -- Création étudiant
   insert into escen.students(person_id, matricule, reason)
   values (v_person_id, v_matricule, 'Intégration échéancier de recouvrement 2026-2027')
   returning id into v_student_id;
+
+  -- Aligner l'email de la personne sur l'email étudiant officiel généré
+  update escen.people set email = (select m365_email from escen.students where id = v_student_id) where id = v_person_id;
 
   -- Inscription académique 2026-2027
   if v_offering_id is not null then
@@ -424,13 +442,16 @@ begin
 
   -- Création personne
   insert into escen.people(firstname, lastname, email, phone, gender, birth_date, nationality)
-  values ('Akouvi Alice', 'EGAN', 'akouvialice.egan.ext@escen.university', NULL, NULL, NULL, NULL)
+  values ('Akouvi Alice', 'EGAN', NULL, NULL, NULL, NULL, NULL)
   returning id into v_person_id;
 
   -- Création étudiant
   insert into escen.students(person_id, matricule, reason)
   values (v_person_id, v_matricule, 'Intégration échéancier de recouvrement 2026-2027')
   returning id into v_student_id;
+
+  -- Aligner l'email de la personne sur l'email étudiant officiel généré
+  update escen.people set email = (select m365_email from escen.students where id = v_student_id) where id = v_person_id;
 
   -- Inscription académique 2026-2027
   if v_offering_id is not null then
@@ -533,13 +554,16 @@ begin
 
   -- Création personne
   insert into escen.people(firstname, lastname, email, phone, gender, birth_date, nationality)
-  values ('Harmony Daniella Modoukpe', 'AKAKPO', 'harmonydaniellamodoukpe.akakpo.ext@escen.university', NULL, NULL, NULL, NULL)
+  values ('Harmony Daniella Modoukpe', 'AKAKPO', NULL, NULL, NULL, NULL, NULL)
   returning id into v_person_id;
 
   -- Création étudiant
   insert into escen.students(person_id, matricule, reason)
   values (v_person_id, v_matricule, 'Intégration échéancier de recouvrement 2026-2027')
   returning id into v_student_id;
+
+  -- Aligner l'email de la personne sur l'email étudiant officiel généré
+  update escen.people set email = (select m365_email from escen.students where id = v_student_id) where id = v_person_id;
 
   -- Inscription académique 2026-2027
   if v_offering_id is not null then
@@ -586,13 +610,16 @@ begin
 
   -- Création personne
   insert into escen.people(firstname, lastname, email, phone, gender, birth_date, nationality)
-  values ('Mensah Léopold Junior', 'AMONY', 'mensahlopoldjunior.amony.ext@escen.university', NULL, NULL, NULL, NULL)
+  values ('Mensah Léopold Junior', 'AMONY', NULL, NULL, NULL, NULL, NULL)
   returning id into v_person_id;
 
   -- Création étudiant
   insert into escen.students(person_id, matricule, reason)
   values (v_person_id, v_matricule, 'Intégration échéancier de recouvrement 2026-2027')
   returning id into v_student_id;
+
+  -- Aligner l'email de la personne sur l'email étudiant officiel généré
+  update escen.people set email = (select m365_email from escen.students where id = v_student_id) where id = v_person_id;
 
   -- Inscription académique 2026-2027
   if v_offering_id is not null then
@@ -778,13 +805,16 @@ begin
 
   -- Création personne
   insert into escen.people(firstname, lastname, email, phone, gender, birth_date, nationality)
-  values ('Amed Oba Sanjo', 'OLOHUNTO', 'amedobasanjo.olohunto.ext@escen.university', NULL, NULL, NULL, NULL)
+  values ('Amed Oba Sanjo', 'OLOHUNTO', NULL, NULL, NULL, NULL, NULL)
   returning id into v_person_id;
 
   -- Création étudiant
   insert into escen.students(person_id, matricule, reason)
   values (v_person_id, v_matricule, 'Intégration échéancier de recouvrement 2026-2027')
   returning id into v_student_id;
+
+  -- Aligner l'email de la personne sur l'email étudiant officiel généré
+  update escen.people set email = (select m365_email from escen.students where id = v_student_id) where id = v_person_id;
 
   -- Inscription académique 2026-2027
   if v_offering_id is not null then
@@ -970,13 +1000,16 @@ begin
 
   -- Création personne
   insert into escen.people(firstname, lastname, email, phone, gender, birth_date, nationality)
-  values ('Dah Mokpokpo', 'DATEY', 'dahmokpokpo.datey.ext@escen.university', NULL, NULL, NULL, NULL)
+  values ('Dah Mokpokpo', 'DATEY', NULL, NULL, NULL, NULL, NULL)
   returning id into v_person_id;
 
   -- Création étudiant
   insert into escen.students(person_id, matricule, reason)
   values (v_person_id, v_matricule, 'Intégration échéancier de recouvrement 2026-2027')
   returning id into v_student_id;
+
+  -- Aligner l'email de la personne sur l'email étudiant officiel généré
+  update escen.people set email = (select m365_email from escen.students where id = v_student_id) where id = v_person_id;
 
   -- Inscription académique 2026-2027
   if v_offering_id is not null then
@@ -1097,13 +1130,16 @@ begin
 
   -- Création personne
   insert into escen.people(firstname, lastname, email, phone, gender, birth_date, nationality)
-  values ('Bouamey', 'GOUMBANE', 'bouamey.goumbane.ext@escen.university', NULL, NULL, NULL, NULL)
+  values ('Bouamey', 'GOUMBANE', NULL, NULL, NULL, NULL, NULL)
   returning id into v_person_id;
 
   -- Création étudiant
   insert into escen.students(person_id, matricule, reason)
   values (v_person_id, v_matricule, 'Intégration échéancier de recouvrement 2026-2027')
   returning id into v_student_id;
+
+  -- Aligner l'email de la personne sur l'email étudiant officiel généré
+  update escen.people set email = (select m365_email from escen.students where id = v_student_id) where id = v_person_id;
 
   -- Inscription académique 2026-2027
   if v_offering_id is not null then
@@ -1159,13 +1195,16 @@ begin
 
   -- Création personne
   insert into escen.people(firstname, lastname, email, phone, gender, birth_date, nationality)
-  values ('Kouadio Joel', 'KOUADIO', 'kouadiojoel.kouadio.ext@escen.university', NULL, NULL, NULL, NULL)
+  values ('Kouadio Joel', 'KOUADIO', NULL, NULL, NULL, NULL, NULL)
   returning id into v_person_id;
 
   -- Création étudiant
   insert into escen.students(person_id, matricule, reason)
   values (v_person_id, v_matricule, 'Intégration échéancier de recouvrement 2026-2027')
   returning id into v_student_id;
+
+  -- Aligner l'email de la personne sur l'email étudiant officiel généré
+  update escen.people set email = (select m365_email from escen.students where id = v_student_id) where id = v_person_id;
 
   -- Inscription académique 2026-2027
   if v_offering_id is not null then
@@ -1221,13 +1260,16 @@ begin
 
   -- Création personne
   insert into escen.people(firstname, lastname, email, phone, gender, birth_date, nationality)
-  values ('Cristilla Flavia', 'LOKO', 'cristillaflavia.loko.ext@escen.university', NULL, NULL, NULL, NULL)
+  values ('Cristilla Flavia', 'LOKO', NULL, NULL, NULL, NULL, NULL)
   returning id into v_person_id;
 
   -- Création étudiant
   insert into escen.students(person_id, matricule, reason)
   values (v_person_id, v_matricule, 'Intégration échéancier de recouvrement 2026-2027')
   returning id into v_student_id;
+
+  -- Aligner l'email de la personne sur l'email étudiant officiel généré
+  update escen.people set email = (select m365_email from escen.students where id = v_student_id) where id = v_person_id;
 
   -- Inscription académique 2026-2027
   if v_offering_id is not null then
@@ -1478,13 +1520,16 @@ begin
 
   -- Création personne
   insert into escen.people(firstname, lastname, email, phone, gender, birth_date, nationality)
-  values ('Mahamat Saleh Kaya', 'ANNOUR', 'mahamatsalehkaya.annour.ext@escen.university', NULL, NULL, NULL, NULL)
+  values ('Mahamat Saleh Kaya', 'ANNOUR', NULL, NULL, NULL, NULL, NULL)
   returning id into v_person_id;
 
   -- Création étudiant
   insert into escen.students(person_id, matricule, reason)
   values (v_person_id, v_matricule, 'Intégration échéancier de recouvrement 2026-2027')
   returning id into v_student_id;
+
+  -- Aligner l'email de la personne sur l'email étudiant officiel généré
+  update escen.people set email = (select m365_email from escen.students where id = v_student_id) where id = v_person_id;
 
   -- Inscription académique 2026-2027
   if v_offering_id is not null then
@@ -1540,13 +1585,16 @@ begin
 
   -- Création personne
   insert into escen.people(firstname, lastname, email, phone, gender, birth_date, nationality)
-  values ('Vanessa Grâce Emilienne', 'CHIDAS', 'vanessagrceemilienne.chidas.ext@escen.university', NULL, NULL, NULL, NULL)
+  values ('Vanessa Grâce Emilienne', 'CHIDAS', NULL, NULL, NULL, NULL, NULL)
   returning id into v_person_id;
 
   -- Création étudiant
   insert into escen.students(person_id, matricule, reason)
   values (v_person_id, v_matricule, 'Intégration échéancier de recouvrement 2026-2027')
   returning id into v_student_id;
+
+  -- Aligner l'email de la personne sur l'email étudiant officiel généré
+  update escen.people set email = (select m365_email from escen.students where id = v_student_id) where id = v_person_id;
 
   -- Inscription académique 2026-2027
   if v_offering_id is not null then
@@ -1605,13 +1653,16 @@ begin
 
   -- Création personne
   insert into escen.people(firstname, lastname, email, phone, gender, birth_date, nationality)
-  values ('Enyonam', 'SAMKLU', 'enyonam.samklu.ext@escen.university', NULL, NULL, NULL, NULL)
+  values ('Enyonam', 'SAMKLU', NULL, NULL, NULL, NULL, NULL)
   returning id into v_person_id;
 
   -- Création étudiant
   insert into escen.students(person_id, matricule, reason)
   values (v_person_id, v_matricule, 'Intégration échéancier de recouvrement 2026-2027')
   returning id into v_student_id;
+
+  -- Aligner l'email de la personne sur l'email étudiant officiel généré
+  update escen.people set email = (select m365_email from escen.students where id = v_student_id) where id = v_person_id;
 
   -- Inscription académique 2026-2027
   if v_offering_id is not null then
@@ -1717,13 +1768,16 @@ begin
 
   -- Création personne
   insert into escen.people(firstname, lastname, email, phone, gender, birth_date, nationality)
-  values ('Beni', 'KIALA MFUAMBI', 'beni.kialamfuambi.ext@escen.university', NULL, NULL, NULL, NULL)
+  values ('Beni', 'KIALA MFUAMBI', NULL, NULL, NULL, NULL, NULL)
   returning id into v_person_id;
 
   -- Création étudiant
   insert into escen.students(person_id, matricule, reason)
   values (v_person_id, v_matricule, 'Intégration échéancier de recouvrement 2026-2027')
   returning id into v_student_id;
+
+  -- Aligner l'email de la personne sur l'email étudiant officiel généré
+  update escen.people set email = (select m365_email from escen.students where id = v_student_id) where id = v_person_id;
 
   -- Inscription académique 2026-2027
   if v_offering_id is not null then
