@@ -2,7 +2,7 @@
 
 Généré avec `npm run db:describe` en exécutant les migrations dans PostgreSQL local (PGlite). Aucun accès à Supabase ou aux données de la sauvegarde.
 
-118 tables métier, 13 tables privées, 1042 colonnes, 293 clés étrangères, 246 CHECK de tables et 4 exclusions. Les domaines ajoutent les bornes des notes, des montants FCFA et des textes obligatoires.
+118 tables métier, 14 tables privées, 1048 colonnes, 294 clés étrangères, 246 CHECK de tables et 4 exclusions. Les domaines ajoutent les bornes des notes, des montants FCFA et des textes obligatoires.
 
 Toutes les tables ont RLS activée, sans accès applicatif permis à ce stade. Les noms techniques ne sont pas des libellés à afficher dans l’interface.
 
@@ -129,6 +129,7 @@ Toutes les tables ont RLS activée, sans accès applicatif permis à ce stade. L
 | escen_private | application_access | 3 | 1 | Oui |
 | escen_private | archive_objects | 11 | 1 | Oui |
 | escen_private | audit_events | 13 | 1 | Oui |
+| escen_private | candidate_credentials | 6 | 1 | Oui |
 | escen_private | history_catalog | 2 | 0 | Oui |
 | escen_private | import_batches | 6 | 0 | Oui |
 | escen_private | import_issues | 7 | 2 | Oui |
@@ -4967,6 +4968,35 @@ Index :
 ```sql
 CREATE UNIQUE INDEX audit_events_pkey ON escen_private.audit_events USING btree (id)
 CREATE INDEX fk_20239 ON escen_private.audit_events USING btree (actor_id)
+```
+
+## escen_private.candidate_credentials
+
+| Attribut | Type | Nullable | Défaut | Généré |
+|---|---|---|---|---|
+| application_id | uuid | NO | — | NEVER |
+| password_hash | text | NO | — | NEVER |
+| must_change_password | bool | NO | true | NEVER |
+| password_changed_at | timestamptz | YES | — | NEVER |
+| created_at | timestamptz | NO | now() | NEVER |
+| updated_at | timestamptz | NO | now() | NEVER |
+
+Contraintes :
+
+```sql
+candidate_credentials_application_id_fkey: FOREIGN KEY (application_id) REFERENCES escen.online_applications(id) ON DELETE CASCADE
+candidate_credentials_application_id_not_null: NOT NULL application_id
+candidate_credentials_created_at_not_null: NOT NULL created_at
+candidate_credentials_must_change_password_not_null: NOT NULL must_change_password
+candidate_credentials_password_hash_not_null: NOT NULL password_hash
+candidate_credentials_pkey: PRIMARY KEY (application_id)
+candidate_credentials_updated_at_not_null: NOT NULL updated_at
+```
+
+Index :
+
+```sql
+CREATE UNIQUE INDEX candidate_credentials_pkey ON escen_private.candidate_credentials USING btree (application_id)
 ```
 
 ## escen_private.history_catalog

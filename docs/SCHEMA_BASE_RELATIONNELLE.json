@@ -1,9 +1,9 @@
 {
   "stats": {
     "businessTables": 118,
-    "privateTables": 13,
-    "columns": 1042,
-    "foreignKeys": 293,
+    "privateTables": 14,
+    "columns": 1048,
+    "foreignKeys": 294,
     "checks": 246,
     "exclusions": 4
   },
@@ -611,6 +611,11 @@
     {
       "schema": "escen_private",
       "name": "audit_events",
+      "rls": true
+    },
+    {
+      "schema": "escen_private",
+      "name": "candidate_credentials",
       "rls": true
     },
     {
@@ -9519,6 +9524,60 @@
       "type": "int8",
       "nullable": "NO",
       "default": "txid_current()",
+      "generated": "NEVER"
+    },
+    {
+      "schema": "escen_private",
+      "table": "candidate_credentials",
+      "name": "application_id",
+      "type": "uuid",
+      "nullable": "NO",
+      "default": null,
+      "generated": "NEVER"
+    },
+    {
+      "schema": "escen_private",
+      "table": "candidate_credentials",
+      "name": "password_hash",
+      "type": "text",
+      "nullable": "NO",
+      "default": null,
+      "generated": "NEVER"
+    },
+    {
+      "schema": "escen_private",
+      "table": "candidate_credentials",
+      "name": "must_change_password",
+      "type": "bool",
+      "nullable": "NO",
+      "default": "true",
+      "generated": "NEVER"
+    },
+    {
+      "schema": "escen_private",
+      "table": "candidate_credentials",
+      "name": "password_changed_at",
+      "type": "timestamptz",
+      "nullable": "YES",
+      "default": null,
+      "generated": "NEVER"
+    },
+    {
+      "schema": "escen_private",
+      "table": "candidate_credentials",
+      "name": "created_at",
+      "type": "timestamptz",
+      "nullable": "NO",
+      "default": "now()",
+      "generated": "NEVER"
+    },
+    {
+      "schema": "escen_private",
+      "table": "candidate_credentials",
+      "name": "updated_at",
+      "type": "timestamptz",
+      "nullable": "NO",
+      "default": "now()",
       "generated": "NEVER"
     },
     {
@@ -20442,6 +20501,55 @@
     },
     {
       "schema": "escen_private",
+      "table": "candidate_credentials",
+      "name": "candidate_credentials_application_id_fkey",
+      "type": "f",
+      "definition": "FOREIGN KEY (application_id) REFERENCES escen.online_applications(id) ON DELETE CASCADE"
+    },
+    {
+      "schema": "escen_private",
+      "table": "candidate_credentials",
+      "name": "candidate_credentials_application_id_not_null",
+      "type": "n",
+      "definition": "NOT NULL application_id"
+    },
+    {
+      "schema": "escen_private",
+      "table": "candidate_credentials",
+      "name": "candidate_credentials_created_at_not_null",
+      "type": "n",
+      "definition": "NOT NULL created_at"
+    },
+    {
+      "schema": "escen_private",
+      "table": "candidate_credentials",
+      "name": "candidate_credentials_must_change_password_not_null",
+      "type": "n",
+      "definition": "NOT NULL must_change_password"
+    },
+    {
+      "schema": "escen_private",
+      "table": "candidate_credentials",
+      "name": "candidate_credentials_password_hash_not_null",
+      "type": "n",
+      "definition": "NOT NULL password_hash"
+    },
+    {
+      "schema": "escen_private",
+      "table": "candidate_credentials",
+      "name": "candidate_credentials_pkey",
+      "type": "p",
+      "definition": "PRIMARY KEY (application_id)"
+    },
+    {
+      "schema": "escen_private",
+      "table": "candidate_credentials",
+      "name": "candidate_credentials_updated_at_not_null",
+      "type": "n",
+      "definition": "NOT NULL updated_at"
+    },
+    {
+      "schema": "escen_private",
       "table": "history_catalog",
       "name": "history_catalog_definition_not_null",
       "type": "n",
@@ -24321,6 +24429,12 @@
       "table": "audit_events",
       "name": "fk_20239",
       "definition": "CREATE INDEX fk_20239 ON escen_private.audit_events USING btree (actor_id)"
+    },
+    {
+      "schema": "escen_private",
+      "table": "candidate_credentials",
+      "name": "candidate_credentials_pkey",
+      "definition": "CREATE UNIQUE INDEX candidate_credentials_pkey ON escen_private.candidate_credentials USING btree (application_id)"
     },
     {
       "schema": "escen_private",
