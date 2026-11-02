@@ -54,3 +54,4 @@ export async function mutateFinanceSettings(
   });
   return readResponse<{ success: boolean; revision: number }>(res);
 }
+
