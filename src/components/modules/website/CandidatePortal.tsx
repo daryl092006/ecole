@@ -265,7 +265,7 @@ export default function CandidatePortal({ tracking = false }: { tracking?: boole
             {mustChangePassword && (
               <div style={{ background: '#f0f9ff', border: '1px solid #bae6fd', borderLeft: '4px solid #01b4d5', borderRadius: '8px', padding: '1.5rem', marginBottom: '1.5rem' }}>
                 <h2 style={{ fontSize: '1.15rem', color: '#0f4c81', margin: '0 0 0.5rem 0', fontWeight: 700 }}>
-                  🔒 Première connexion : Sécurisez votre espace candidat
+                  Première connexion : Sécurisez votre espace candidat
                 </h2>
                 <p className="cell-sub" style={{ margin: '0 0 1rem 0', color: '#0369a1' }}>
                   Pour protéger vos données personnelles, veuillez définir dès maintenant votre mot de passe personnel définitif (8 caractères minimum).
@@ -506,7 +506,7 @@ export default function CandidatePortal({ tracking = false }: { tracking?: boole
               </label>
 
               <div style={{ background: '#f0f9ff', padding: '12px 14px', borderRadius: '6px', border: '1px solid #bae6fd', marginBottom: '1.5rem', fontSize: '0.82rem', color: '#075985', lineHeight: 1.5 }}>
-                <strong style={{ color: '#0f4c81' }}>💡 Première connexion ?</strong><br />
+                <strong style={{ color: '#0f4c81' }}>Première connexion :</strong><br />
                 Utilisez le mot de passe initial : <code style={{ fontWeight: 700, color: '#0f4c81', background: '#e0f2fe', padding: '2px 6px', borderRadius: '3px' }}>Escen2026!</code>. Vous créerez votre mot de passe personnel dès votre entrée.
               </div>
 
