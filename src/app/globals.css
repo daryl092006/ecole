@@ -3880,25 +3880,25 @@ body.transcript-print-body { page: transcript; display: block; width: 190mm; hei
 .subject-constructor-columns { display: grid; grid-template-columns: minmax(240px, 300px) minmax(0,1fr); gap: 1.25rem; align-items: start; }
 .subject-constructor-parts, .subject-constructor-question, .subject-constructor-question-list { min-width: 0; border: 1px solid var(--border); border-radius: 10px; overflow: hidden; background: var(--surface); }
 .subject-constructor-parts > h2, .subject-constructor-question > header, .subject-constructor-question-list > h2 { margin: 0; padding: 1rem; font-size: 1.1rem; }
-.subject-constructor-parts > h2 { background: #6843bb; color: white; }
+.subject-constructor-parts > h2 { background: #0f172a; color: #ffffff; }
 .subject-constructor-parts > .btn { margin: 1rem; }
-.subject-constructor-question > header { background: #edf8f3; color: #176344; display: flex; gap: .75rem; align-items: center; justify-content: space-between; flex-wrap: wrap; }
-.subject-constructor-question > header h2 { font-size: 1.1rem; margin: 0; }
+.subject-constructor-question > header { background: #f8fafc; color: #0f172a; border-bottom: 1px solid var(--border); display: flex; gap: .75rem; align-items: center; justify-content: space-between; flex-wrap: wrap; }
+.subject-constructor-question > header h2 { font-size: 1.1rem; margin: 0; color: #0f172a; }
 .subject-constructor-outline { padding: 0 .75rem; }
 .subject-constructor-outline button { width: 100%; text-align: left; background: transparent; border: 1px solid var(--border); border-radius: 7px; padding: .8rem; margin-bottom: .5rem; color: inherit; overflow-wrap: anywhere; }
-.subject-constructor-outline button span { display: block; font-size: .8rem; margin-top: .35rem; }
-.subject-constructor-outline button[aria-current="true"] { background: #f0eafa; border-color: #9477cc; color: #492c85; }
+.subject-constructor-outline button span { display: block; font-size: .8rem; margin-top: .35rem; color: var(--text-subtle, #64748b); }
+.subject-constructor-outline button[aria-current="true"] { background: #eff6ff; border-color: #2563eb; color: #1e40af; font-weight: 700; }
 .subject-constructor-outline .subject-constructor-outline-question { padding-left: 1.25rem; }
 .subject-constructor-part-form, .subject-constructor-question-body { padding: 1rem; display: grid; gap: 1rem; }
 .subject-constructor-part-form .form-group, .subject-constructor-question-body .form-group { margin-bottom: 0; }
 .subject-constructor-main { display: grid; gap: 1rem; min-width: 0; }
 .subject-question-types { display: grid; grid-template-columns: repeat(5,minmax(0,1fr)); gap: .4rem; }
-.subject-question-types button { border: 1px solid var(--border); border-radius: 8px; background: var(--surface); color: inherit; min-height: 58px; padding: .5rem; font-size: .8rem; }
-.subject-question-types button[aria-pressed="true"] { background: #e7f5ef; border-color: #28815e; color: #165d40; font-weight: 700; }
+.subject-question-types button { border: 1px solid var(--border); border-radius: 8px; background: var(--surface); color: inherit; min-height: 52px; padding: .5rem; font-size: .8rem; cursor: pointer; transition: all .15s ease; }
+.subject-question-types button[aria-pressed="true"] { background: #eff6ff; border-color: #2563eb; color: #1e40af; font-weight: 700; box-shadow: 0 1px 3px rgba(37,99,235,0.15); }
 .subject-constructor-option { display: flex; align-items: center; gap: .65rem; margin-bottom: .7rem; }
 .subject-constructor-option .form-group { flex: 1; min-width: 0; }
-.subject-question-hint { padding: .7rem; background: #fff6e2; color: #78500b; border-radius: 6px; }
-.subject-constructor-question-list > h2 { background: #fff0d9; color: #865105; }
+.subject-question-hint { padding: .7rem; background: #fffbeb; color: #92400e; border: 1px solid #fde68a; border-radius: 6px; }
+.subject-constructor-question-list > h2 { background: #f1f5f9; color: #334155; border-bottom: 1px solid var(--border); }
 .subject-constructor-question-list article { padding: 1rem; border-top: 1px solid var(--border); overflow-wrap: anywhere; }
 .subject-constructor-question-list article > div { display: flex; justify-content: space-between; gap: 1rem; }
 .subject-field-label { display: block; font-weight: 600; margin-bottom: .5rem; }

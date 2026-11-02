@@ -5,16 +5,19 @@ import { sanitizeSubjectMarkup } from '@/utils/subjectMarkup';
 import IconButton from '@/components/ui/IconButton';
 import LoadingState from '@/components/ui/LoadingState';
 import ErrorState from '@/components/ui/ErrorState';
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useMemo } from 'react';
 import { usePortal } from '@/hooks/usePortal';
 import { loadPreparedSubjects, savePreparedSubject } from '@/services/remoteCampusService';
 import { subjectPoints, subjectSchema } from '@/services/subjectCompositionService';
 import { subjectExamIssue } from '@/services/subjectExamPolicy';
 import type { SubjectDirectory, SubjectInput, SubjectPurpose, PreparedSubject, SubjectExam } from '@/types/subject';
+import type { DatabaseRow } from '@/types/persistence';
 import ResponsiveTable from '@/components/ui/ResponsiveTable';
 import ReviewedForm from '@/components/ui/ReviewedForm';
 import Link from 'next/link';
 import { printDocument, escapeHtml as h } from '@/utils/printDocument';
+import ExamDeliveryScheduleDialog from './ExamDeliveryScheduleDialog';
+import { Calendar, Clock, FileText, AlertCircle, Eye } from 'lucide-react';
 
 const purposes: Record<SubjectPurpose, string> = { CONTROLE_CONTINU: 'Contrôle continu', EXAMEN: 'Examen', RATTRAPAGE: 'Rattrapage' };
 const blank = (purpose: SubjectPurpose = 'EXAMEN'): SubjectInput => ({
@@ -46,6 +49,10 @@ export default function SubjectStudio() {
   const [feedback, setFeedback] = useState('');
   const [saveError, setSaveError] = useState('');
   const [now, setNow] = useState(Date.now);
+  const [schedulingEval, setSchedulingEval] = useState<DatabaseRow | null>(null);
+  const [selectedGroup, setSelectedGroup] = useState<string>('ALL');
+  const [statusFilter, setStatusFilter] = useState<'ALL' | 'READY' | 'TO_SCHEDULE' | 'COMPOSED'>('ALL');
+  const [examQuery, setExamQuery] = useState('');
   useEffect(() => { const timer = setInterval(() => setNow(Date.now()), 15000); return () => clearInterval(timer); }, []);
 
   useEffect(() => {
@@ -135,15 +142,70 @@ export default function SubjectStudio() {
       `<div class="document-heading"><h1>ESCEN</h1><h2>${h(subject.title)}</h2></div><p>${subject.authorize ? 'Épreuve autorisée' : 'Brouillon de'} ${h(purposes[subject.purpose].toLowerCase())} · ${subject.durationMinutes} minutes · ${subjectPoints(subject)} points</p><p>${h(subject.instructions).replace(/\n/g, '<br>')}</p>${subject.parts.map(part => `<h3>${h(part.title)}</h3><p>${h(part.instructions).replace(/\n/g, '<br>')}</p>${part.questions.map((q, index) => `<h4>Question ${index + 1} · ${q.points} point(s)</h4><p>${sanitizeSubjectMarkup(q.prompt)}</p>${q.options.length ? `<ol>${q.options.map(option => `<li>${h(option.label)}</li>`).join('')}</ol>` : '<p>Réponse : __________________________________________________</p>'}`).join('')}`).join('')}`
     );
 
-  if (error) return <ErrorState title="Composition des épreuves indisponible" message={error} onRetry={() => setRetry(value => value + 1)} />;
-  if (!directory) return <LoadingState label="Chargement des sujets…" variant="table" />;
+  const exams = useMemo(() => directory?.exams || [], [directory?.exams]);
+  const directorySubjects = useMemo(() => directory?.subjects || [], [directory?.subjects]);
 
-  const exams = directory.exams || [];
-  const availableExams = exams.filter(exam => !subjectExamIssue(exam, now));
+  const groups = useMemo(() => {
+    const set = new Set<string>();
+    for (const e of exams) {
+      if (e.group && e.group !== 'Groupe non renseigné') {
+        set.add(e.group);
+      }
+    }
+    return Array.from(set).sort((a, b) => a.localeCompare(b, 'fr'));
+  }, [exams]);
+
+  const stats = useMemo(() => {
+    let ready = 0;
+    let toSchedule = 0;
+    let composed = 0;
+    for (const exam of exams) {
+      const hasSubject = directorySubjects.some(s => s.evaluationId === exam.id && !s.archived);
+      if (hasSubject) composed++;
+      const issue = subjectExamIssue(exam, now);
+      if (!issue) ready++;
+      else if (exam.issue?.includes('doivent être programmés')) toSchedule++;
+    }
+    return {
+      total: exams.length,
+      ready,
+      toSchedule,
+      composed,
+    };
+  }, [exams, directorySubjects, now]);
+
+  const filteredExams = useMemo(() => {
+    return exams.filter(exam => {
+      if (selectedGroup !== 'ALL' && exam.group !== selectedGroup) return false;
+
+      const hasSubject = directorySubjects.some(s => s.evaluationId === exam.id && !s.archived);
+      const issue = subjectExamIssue(exam, now);
+      const isToSchedule = exam.issue?.includes('doivent être programmés');
+      const isReady = !issue;
+
+      if (statusFilter === 'READY' && !isReady) return false;
+      if (statusFilter === 'TO_SCHEDULE' && !isToSchedule) return false;
+      if (statusFilter === 'COMPOSED' && !hasSubject) return false;
+
+      if (examQuery.trim()) {
+        const q = examQuery.toLocaleLowerCase('fr');
+        const matchTitle = exam.title.toLocaleLowerCase('fr').includes(q);
+        const matchSubject = exam.subject.toLocaleLowerCase('fr').includes(q);
+        const matchGroup = exam.group.toLocaleLowerCase('fr').includes(q);
+        if (!matchTitle && !matchSubject && !matchGroup) return false;
+      }
+
+      return true;
+    });
+  }, [exams, selectedGroup, statusFilter, examQuery, directorySubjects, now]);
+
   const selectedExam = exams.find(exam => exam.id === connectedEvalId);
   const compositionIssue = previous?.status === 'AUTORISE' ? 'Le sujet est autorisé : consultation uniquement.' : subjectExamIssue(selectedExam, now);
 
   const returnEvalId = connectedEvalId;
+
+  if (error) return <ErrorState title="Composition des épreuves indisponible" message={error} onRetry={() => setRetry(value => value + 1)} />;
+  if (!directory) return <LoadingState label="Chargement des sujets…" variant="table" />;
 
   if (editing)
     return (
@@ -358,36 +420,309 @@ export default function SubjectStudio() {
       </div>
     );
 
-  const rows = directory.subjects.filter(row => !row.archived && row.title.toLocaleLowerCase('fr').includes(query.toLocaleLowerCase('fr')));
+  const rows = directorySubjects.filter(row => !row.archived && row.title.toLocaleLowerCase('fr').includes(query.toLocaleLowerCase('fr')));
 
   return (
     <div>
       <div className="page-intro">
         <div>
-          <span className="page-eyebrow">PRÉPARATION DES ÉPREUVES</span>
-          <h1>Composition des épreuves</h1>
-          <p>Choisissez un examen programmé à venir, puis préparez ses questions, son barème et son corrigé.</p>
+          <span className="page-eyebrow">ACADÉMIQUE · GESTION DES ÉPREUVES</span>
+          <h1>Atelier de préparation et composition des épreuves</h1>
+          <p>
+            Chaque épreuve doit être programmée (créneau, date, horaires et mode) avant que son sujet, son barème et son corrigé officiel ne puissent être rédigés.
+          </p>
         </div>
       </div>
-      <section className="card">
-        <h2>Examen à préparer</h2>
-        {availableExams.length ? <>
-          <label className="form-group">Examen programmé
-            <select className="select-input" value={connectedEvalId} onChange={event => setConnectedEvalId(event.target.value)}>
-              <option value="">Choisir un examen à venir</option>
-              {availableExams.map(exam => <option key={exam.id} value={exam.id}>{exam.title} · {exam.group} · {dateTime(exam.startsAt)}</option>)}
-            </select>
-          </label>
-          {selectedExam && !compositionIssue && <>
-            <p>{selectedExam.group} · {selectedExam.subject} · Du {dateTime(selectedExam.startsAt)} au {dateTime(selectedExam.endsAt)} · {selectedExam.durationMinutes} minutes</p>
-            <button className="btn btn-primary" onClick={() => open(directory.subjects.find(row => row.evaluationId === selectedExam.id && !row.archived), selectedExam)}>Ouvrir la composition du sujet</button>
-          </>}
-        </> : <p>Aucun examen programmé à venir n’est disponible pour la composition dans l’année consultée.</p>}
-        <Link className="btn btn-outline" href="/academique/examens">Consulter les examens et leur programmation</Link>
-        {feedback && <p role="status">{feedback}</p>}
+
+      {/* Guide didactique des 3 étapes */}
+      <section className="card" style={{ marginBottom: '1.5rem', background: '#f8fafc', border: '1px solid #e2e8f0' }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '1.25rem', alignItems: 'center' }}>
+          <div style={{ display: 'flex', gap: '0.875rem', alignItems: 'flex-start' }}>
+            <div style={{ width: 32, height: 32, borderRadius: '50%', background: '#002B49', color: '#ffffff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 'bold', flexShrink: 0, fontSize: '0.9rem' }}>
+              1
+            </div>
+            <div>
+              <strong style={{ display: 'block', fontSize: '0.92rem', color: '#002B49', marginBottom: '0.2rem' }}>
+                1. Programmer la séance
+              </strong>
+              <span style={{ fontSize: '0.8rem', color: '#64748b', lineHeight: 1.4, display: 'block' }}>
+                Fixer date, heure de début/fin, durée et mode (en ligne ou sur table).
+              </span>
+            </div>
+          </div>
+
+          <div style={{ display: 'flex', gap: '0.875rem', alignItems: 'flex-start' }}>
+            <div style={{ width: 32, height: 32, borderRadius: '50%', background: '#002B49', color: '#ffffff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 'bold', flexShrink: 0, fontSize: '0.9rem' }}>
+              2
+            </div>
+            <div>
+              <strong style={{ display: 'block', fontSize: '0.92rem', color: '#002B49', marginBottom: '0.2rem' }}>
+                2. Composer sujet & barème
+              </strong>
+              <span style={{ fontSize: '0.8rem', color: '#64748b', lineHeight: 1.4, display: 'block' }}>
+                Rédiger parties, questions (QCM, cas pratique, développement) et barème.
+              </span>
+            </div>
+          </div>
+
+          <div style={{ display: 'flex', gap: '0.875rem', alignItems: 'flex-start' }}>
+            <div style={{ width: 32, height: 32, borderRadius: '50%', background: '#002B49', color: '#ffffff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 'bold', flexShrink: 0, fontSize: '0.9rem' }}>
+              3
+            </div>
+            <div>
+              <strong style={{ display: 'block', fontSize: '0.92rem', color: '#002B49', marginBottom: '0.2rem' }}>
+                3. Valider & Diffuser
+              </strong>
+              <span style={{ fontSize: '0.8rem', color: '#64748b', lineHeight: 1.4, display: 'block' }}>
+                Établir le corrigé officiel et autoriser l’accès pour le passage de l’épreuve.
+              </span>
+            </div>
+          </div>
+        </div>
       </section>
+
+      {/* KPI Chips */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1rem', marginBottom: '1.5rem' }}>
+        <div className="card" style={{ margin: 0, padding: '1rem' }}>
+          <div className="cell-sub">Total des épreuves</div>
+          <div style={{ fontSize: '1.5rem', fontWeight: 700, color: '#002B49', marginTop: '0.25rem' }}>{stats.total}</div>
+        </div>
+        <div className="card" style={{ margin: 0, padding: '1rem' }}>
+          <div className="cell-sub">Programmées & prêtes</div>
+          <div style={{ fontSize: '1.5rem', fontWeight: 700, color: '#166534', marginTop: '0.25rem' }}>{stats.ready}</div>
+        </div>
+        <div className="card" style={{ margin: 0, padding: '1rem' }}>
+          <div className="cell-sub">Horaires à programmer</div>
+          <div style={{ fontSize: '1.5rem', fontWeight: 700, color: '#b45309', marginTop: '0.25rem' }}>{stats.toSchedule}</div>
+        </div>
+        <div className="card" style={{ margin: 0, padding: '1rem' }}>
+          <div className="cell-sub">Sujets déjà rédigés</div>
+          <div style={{ fontSize: '1.5rem', fontWeight: 700, color: '#0284c7', marginTop: '0.25rem' }}>{stats.composed}</div>
+        </div>
+      </div>
+
+      {/* Tableau des épreuves */}
+      <section className="card card-full" style={{ marginBottom: '2rem' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1rem', marginBottom: '1.25rem' }}>
+          <div>
+            <h2 style={{ margin: 0, fontSize: '1.15rem' }}>Épreuves de l’année et préparation des sujets</h2>
+            <p className="cell-sub" style={{ margin: '0.25rem 0 0 0' }}>
+              Pour toute épreuve non programmée, définissez ses horaires en un clic pour ouvrir immédiatement sa composition.
+            </p>
+          </div>
+          <Link className="btn btn-outline" href="/academique/examens">
+            Consulter le calendrier des examens →
+          </Link>
+        </div>
+
+        {/* Barre de filtres */}
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.75rem', alignItems: 'center', marginBottom: '1.25rem' }}>
+          <div style={{ flex: '1 1 240px', minWidth: '220px' }}>
+            <input
+              type="search"
+              className="input"
+              placeholder="Rechercher par épreuve, matière ou promotion…"
+              value={examQuery}
+              onChange={e => setExamQuery(e.target.value)}
+            />
+          </div>
+
+          <div style={{ flex: '0 1 180px' }}>
+            <select
+              className="select-input"
+              value={selectedGroup}
+              onChange={e => setSelectedGroup(e.target.value)}
+              aria-label="Filtrer par promotion"
+            >
+              <option value="ALL">Toutes les classes</option>
+              {groups.map(g => (
+                <option key={g} value={g}>{g}</option>
+              ))}
+            </select>
+          </div>
+
+          <div style={{ flex: '0 1 210px' }}>
+            <select
+              className="select-input"
+              value={statusFilter}
+              onChange={e => setStatusFilter(e.target.value as 'ALL' | 'READY' | 'TO_SCHEDULE' | 'COMPOSED')}
+              aria-label="Filtrer par état"
+            >
+              <option value="ALL">Tous les statuts</option>
+              <option value="READY">🟢 Prêtes pour composition</option>
+              <option value="TO_SCHEDULE">⚠️ Horaires à programmer</option>
+              <option value="COMPOSED">📝 Sujets déjà rédigés</option>
+            </select>
+          </div>
+        </div>
+
+        {/* Tableau Responsive */}
+        <ResponsiveTable className="data-table">
+          <thead>
+            <tr>
+              <th>Épreuve & Matière</th>
+              <th>Promotion</th>
+              <th>Séance & Horaires</th>
+              <th>Sujet & Barème</th>
+              <th style={{ textAlign: 'right' }}>Actions de composition</th>
+            </tr>
+          </thead>
+          <tbody>
+            {filteredExams.map(exam => {
+              const rawEval = portal.relationalSnapshot.tables.evaluations?.find(e => e.id === exam.id);
+              const existingSubject = directory.subjects.find(s => s.evaluationId === exam.id && !s.archived);
+              const issue = subjectExamIssue(exam, now);
+              const isToSchedule = exam.issue?.includes('doivent être programmés');
+              const isReady = !issue;
+              const isAuthorized = existingSubject?.status === 'AUTORISE';
+
+              return (
+                <tr key={exam.id}>
+                  <td>
+                    <strong>{exam.title}</strong>
+                    <div className="cell-sub">{exam.subject} · {purposes[exam.purpose]}</div>
+                  </td>
+                  <td>
+                    <span className="pill pill-neutral">{exam.group}</span>
+                  </td>
+                  <td>
+                    {exam.startsAt ? (
+                      <div>
+                        <span className="pill pill-success" style={{ display: 'inline-flex', alignItems: 'center', gap: '0.35rem' }}>
+                          <Clock size={12} /> {dateTime(exam.startsAt)}
+                        </span>
+                        <div className="cell-sub">
+                          {exam.durationMinutes} min · {exam.mode === 'EN_LIGNE' ? 'En ligne' : exam.room ? `Salle ${exam.room}` : 'Sur table'}
+                        </div>
+                      </div>
+                    ) : isToSchedule ? (
+                      <div>
+                        <span className="pill pill-warning" style={{ display: 'inline-flex', alignItems: 'center', gap: '0.35rem' }}>
+                          <AlertCircle size={12} /> Horaires non définis
+                        </span>
+                        <div className="cell-sub">Diffusion à programmer</div>
+                      </div>
+                    ) : (
+                      <div>
+                        <span className="pill pill-neutral">{exam.issue || 'Non programmée'}</span>
+                      </div>
+                    )}
+                  </td>
+                  <td>
+                    {existingSubject ? (
+                      <div>
+                        <span className={`pill ${isAuthorized ? 'pill-success' : 'pill-warning'}`}>
+                          {isAuthorized ? `✓ Autorisé (v${existingSubject.version})` : `Brouillon (v${existingSubject.version})`}
+                        </span>
+                        <div className="cell-sub">
+                          {subjectPoints(existingSubject)} pts · {existingSubject.parts.reduce((sum, p) => sum + p.questions.length, 0)} questions
+                        </div>
+                      </div>
+                    ) : (
+                      <span className="pill pill-neutral">Non rédigé</span>
+                    )}
+                  </td>
+                  <td style={{ textAlign: 'right' }}>
+                    <div className="btn-group" style={{ justifyContent: 'flex-end' }}>
+                      {isToSchedule && (
+                        <button
+                          type="button"
+                          className="btn btn-primary"
+                          style={{ padding: '0.4rem 0.75rem', fontSize: '0.82rem' }}
+                          disabled={!rawEval}
+                          onClick={() => rawEval && setSchedulingEval(rawEval)}
+                          title="Définir la date et les horaires pour débloquer la composition du sujet"
+                        >
+                          <Calendar size={13} style={{ marginRight: '0.35rem', verticalAlign: 'middle' }} />
+                          Programmer la diffusion
+                        </button>
+                      )}
+
+                      {isReady && !existingSubject && (
+                        <button
+                          type="button"
+                          className="btn btn-primary"
+                          style={{ padding: '0.4rem 0.75rem', fontSize: '0.82rem' }}
+                          onClick={() => open(undefined, exam)}
+                        >
+                          <FileText size={13} style={{ marginRight: '0.35rem', verticalAlign: 'middle' }} />
+                          Composer le sujet
+                        </button>
+                      )}
+
+                      {existingSubject && (
+                        <>
+                          {!isAuthorized && !issue && (
+                            <button
+                              type="button"
+                              className="btn btn-primary"
+                              style={{ padding: '0.4rem 0.75rem', fontSize: '0.82rem' }}
+                              onClick={() => open(existingSubject, exam)}
+                            >
+                              Modifier le sujet
+                            </button>
+                          )}
+                          <button
+                            type="button"
+                            className="btn btn-outline"
+                            style={{ padding: '0.4rem 0.75rem', fontSize: '0.82rem' }}
+                            onClick={() => {
+                              open(existingSubject, exam);
+                              setTab('preview');
+                            }}
+                          >
+                            <Eye size={13} style={{ marginRight: '0.25rem', verticalAlign: 'middle' }} />
+                            Aperçu
+                          </button>
+                          <button
+                            type="button"
+                            className="btn btn-outline"
+                            style={{ padding: '0.4rem 0.75rem', fontSize: '0.82rem' }}
+                            onClick={() => {
+                              open(existingSubject, exam);
+                              setTab('correction');
+                            }}
+                          >
+                            Corrigé
+                          </button>
+                        </>
+                      )}
+                    </div>
+                  </td>
+                </tr>
+              );
+            })}
+
+            {!filteredExams.length && (
+              <tr>
+                <td colSpan={5} style={{ textAlign: 'center', padding: '2rem 1rem', color: '#64748b' }}>
+                  Aucune épreuve ne correspond aux filtres sélectionnés.
+                </td>
+              </tr>
+            )}
+          </tbody>
+        </ResponsiveTable>
+      </section>
+
+      {/* Dialogue modal de programmation de la diffusion */}
+      {schedulingEval && (
+        <ExamDeliveryScheduleDialog
+          evaluation={schedulingEval}
+          onClose={() => setSchedulingEval(null)}
+          onScheduled={() => {
+            setSchedulingEval(null);
+            void portal.refreshCampus();
+            setRetry(r => r + 1);
+          }}
+        />
+      )}
+
+      {/* Bibliothèque de tous les sujets de l'année */}
       <section className="card card-full">
-        <h2>Sujets enregistrés</h2>
+        <h2>Bibliothèque de tous les sujets enregistrés</h2>
+        <p className="cell-sub" style={{ marginBottom: '1rem' }}>
+          Historique exhaustif de tous les sujets de l’année académique avec leurs versions successives et barèmes.
+        </p>
         <label className="form-group">
           Rechercher un sujet
           <input className="input" type="search" value={query} onChange={event => setQuery(event.target.value)} />
@@ -429,7 +764,9 @@ export default function SubjectStudio() {
                   <td>{subjectPoints(row)} points</td>
                   <td>
                     <div className="btn-group">
-                      {row.status !== 'AUTORISE' && !subjectExamIssue(exams.find(exam => exam.id === row.evaluationId), now) && <IconButton className="btn btn-outline" onClick={() => open(row)} label="Modifier le sujet" />}
+                      {row.status !== 'AUTORISE' && !subjectExamIssue(exams.find(exam => exam.id === row.evaluationId), now) && (
+                        <IconButton className="btn btn-outline" onClick={() => open(row)} label="Modifier le sujet" />
+                      )}
                       <IconButton
                         className="btn btn-outline"
                         onClick={() => {
