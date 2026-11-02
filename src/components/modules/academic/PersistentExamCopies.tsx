@@ -20,6 +20,8 @@ export default function PersistentExamCopies({ evaluationId, candidateId, onClos
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState<'ALL' | 'TO_GRADE' | 'GRADED' | 'IN_PROGRESS'>('ALL');
   const [questionScores, setQuestionScores] = useState<Record<string, Record<string, string>>>({});
+  const [questionFeedback, setQuestionFeedback] = useState<Record<string, Record<string, string>>>({});
+  const [generalFeedback, setGeneralFeedback] = useState<Record<string, string>>({});
   const [manualFinals, setManualFinals] = useState<Record<string, string>>({});
   const [busyAttemptId, setBusyAttemptId] = useState('');
   const [errorByAttempt, setErrorByAttempt] = useState<Record<string, string>>({});
@@ -49,11 +51,36 @@ export default function PersistentExamCopies({ evaluationId, candidateId, onClos
   });
 
   const roundMark = (value: number) => Math.round(Math.min(20, Math.max(0, value)) * 100) / 100;
+  const countWords = (text: string) => {
+    const trimmed = (text || '').trim();
+    return trimmed ? trimmed.split(/\s+/).length : 0;
+  };
 
-  return <WorkPage title="Copies en ligne" onClose={onClose}>
-    <div className="btn-group mb-2">
-      <button className="btn btn-outline" onClick={() => portal.refreshCampus()}>Actualiser les copies</button>
+  // Navigation séquentielle entre les copies
+  const currentSelectedIndex = attempts.findIndex(a => a.id === selected);
+  const goToNextAttempt = () => {
+    if (currentSelectedIndex >= 0 && currentSelectedIndex < attempts.length - 1) {
+      setSelected(String(attempts[currentSelectedIndex + 1].id));
+    }
+  };
+  const goToPrevAttempt = () => {
+    if (currentSelectedIndex > 0) {
+      setSelected(String(attempts[currentSelectedIndex - 1].id));
+    }
+  };
+
+  return <WorkPage title="Copies et corrections en ligne" onClose={onClose}>
+    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '10px', marginBottom: '14px' }}>
+      <div className="btn-group">
+        <button type="button" className="btn btn-outline" onClick={() => portal.refreshCampus()}>
+          Actualiser les copies
+        </button>
+      </div>
+      <div style={{ fontSize: '13px', color: '#64748b' }}>
+        <strong>{allAttempts.length}</strong> copie(s) au total · <strong>{allAttempts.filter(a => evaluationGradeIsComplete(tables.grades?.find(g => g.candidate_id === a.candidate_id))).length}</strong> corrigée(s)
+      </div>
     </div>
+
     {allAttempts.length > 1 && (
       <div className="form-grid mb-2">
         <label className="form-group">
@@ -74,15 +101,17 @@ export default function PersistentExamCopies({ evaluationId, candidateId, onClos
             onChange={event => setStatusFilter(event.target.value as typeof statusFilter)}
           >
             <option value="ALL">Toutes les copies ({allAttempts.length})</option>
-            <option value="TO_GRADE">À corriger</option>
-            <option value="GRADED">Corrigées</option>
-            <option value="IN_PROGRESS">En cours de composition</option>
+            <option value="TO_GRADE">À corriger ({allAttempts.filter(a => a.status !== 'EN_COURS' && !evaluationGradeIsComplete(tables.grades?.find(g => g.candidate_id === a.candidate_id))).length})</option>
+            <option value="GRADED">Corrigées ({allAttempts.filter(a => evaluationGradeIsComplete(tables.grades?.find(g => g.candidate_id === a.candidate_id))).length})</option>
+            <option value="IN_PROGRESS">En cours de composition ({allAttempts.filter(a => a.status === 'EN_COURS').length})</option>
           </select>
         </label>
       </div>
     )}
-    {!attempts.length && <p>Aucune copie commencée.</p>}
-    {attempts.map(attempt => {
+
+    {!attempts.length && <p className="cell-sub" style={{ padding: '20px 0' }}>Aucune copie trouvée pour ces critères.</p>}
+
+    {attempts.map((attempt, attemptIndex) => {
       const candidate = tables.evaluation_candidates?.find(row => row.id === attempt.candidate_id);
       const enrollment = tables.enrollments?.find(row => row.id === candidate?.enrollment_id);
       const studentName = enrollment ? connectedRecordName('enrollments', enrollment, snapshot) : 'Candidat';
@@ -93,17 +122,70 @@ export default function PersistentExamCopies({ evaluationId, candidateId, onClos
       );
       const totalPaperPoints = questions.reduce((sum, q) => sum + (Number(q.points) || 0), 0);
       const attemptScores = questionScores[String(attempt.id)] || {};
+      const feedbackMap = questionFeedback[String(attempt.id)] || {};
 
-      const autoQcmPoints = (questionId: string): number | null => {
+      // Calcul intelligent du barème et auto-score selon le type de question
+      const getQuestionAutoInfo = (questionId: string): { points: number | null; label: string; isAuto: boolean } => {
         const q = questions.find(item => item.id === questionId);
-        if (!q || !['QCM_SIMPLE', 'QCM_MULTIPLE'].includes(String(q.kind))) return null;
+        if (!q) return { points: null, label: '', isAuto: false };
+        const config = (q.configuration || {}) as { presentation?: string; requiresJustification?: boolean; correction?: string };
+        const max = Number(q.points) || 0;
+        const isTrueFalse = config.presentation === 'TRUE_FALSE';
+        const isQcm = ['QCM_SIMPLE', 'QCM_MULTIPLE'].includes(String(q.kind)) || isTrueFalse;
+
+        if (!isQcm) {
+          return { points: null, label: '📝 Rédaction / Développement', isAuto: false };
+        }
+
         const opts = (tables.exam_options || []).filter(row => row.question_id === questionId);
         const correctIds = opts.filter(row => row.is_correct === true).map(row => String(row.id)).sort();
-        if (!correctIds.length) return null;
+        if (!correctIds.length) return { points: null, label: 'Corrigé non paramétré', isAuto: false };
+
         const resp = answers.find(row => row.question_id === questionId)?.response as OnlineExamAnswer | undefined;
         const chosenIds = [...new Set((resp?.option_ids || []).map(String))].sort();
-        const exact = chosenIds.length === correctIds.length && chosenIds.every((id, idx) => id === correctIds[idx]);
-        return exact ? Number(q.points) || 0 : 0;
+
+        if (!chosenIds.length) {
+          return { points: 0, label: 'Sans réponse (0 pt)', isAuto: true };
+        }
+
+        if (isTrueFalse) {
+          const isCorrectChoice = chosenIds.length === 1 && correctIds.includes(chosenIds[0]);
+          if (config.requiresJustification) {
+            return {
+              points: isCorrectChoice ? roundMark(max * 0.5) : 0,
+              label: isCorrectChoice ? '⚖️ Choix exact · Justification à évaluer' : '⚖️ Choix incorrect',
+              isAuto: false,
+            };
+          }
+          return {
+            points: isCorrectChoice ? max : 0,
+            label: isCorrectChoice ? '✓ Vrai/Faux exact' : '✗ Vrai/Faux incorrect',
+            isAuto: true,
+          };
+        }
+
+        if (q.kind === 'QCM_SIMPLE') {
+          const exact = chosenIds.length === 1 && chosenIds[0] === correctIds[0];
+          return {
+            points: exact ? max : 0,
+            label: exact ? '✓ QCM exact' : '✗ QCM incorrect',
+            isAuto: true,
+          };
+        }
+
+        if (q.kind === 'QCM_MULTIPLE') {
+          const correctChosen = chosenIds.filter(id => correctIds.includes(id)).length;
+          const wrongChosen = chosenIds.filter(id => !correctIds.includes(id)).length;
+          const ratio = Math.max(0, (correctChosen - wrongChosen) / correctIds.length);
+          const calculated = roundMark(ratio * max);
+          return {
+            points: calculated,
+            label: ratio === 1 ? '✓ QCM intégralement exact' : ratio > 0 ? `⚖️ QCM partiel (${correctChosen}/${correctIds.length})` : '✗ QCM incorrect',
+            isAuto: true,
+          };
+        }
+
+        return { points: null, label: '', isAuto: false };
       };
 
       const rawTotal = questions.reduce((sum, q) => {
@@ -111,7 +193,7 @@ export default function PersistentExamCopies({ evaluationId, candidateId, onClos
         if (raw !== undefined && raw !== '' && Number.isFinite(Number(raw))) {
           return sum + Number(raw);
         }
-        const auto = autoQcmPoints(String(q.id));
+        const auto = getQuestionAutoInfo(String(q.id)).points;
         return sum + (auto ?? 0);
       }, 0);
 
@@ -134,8 +216,26 @@ export default function PersistentExamCopies({ evaluationId, candidateId, onClos
       const statusPillClass = attempt.status === 'EN_COURS' ? 'pill-warning' : attempt.status === 'REMISE' ? 'pill-success' : 'pill-info';
       const gradeVal = existingNumericGrade !== null ? `${existingNumericGrade} / 20` : null;
 
+      // Fonction d'auto-notation en 1 clic de tous les QCMs pour cette copie
+      const autoGradeAllQuestions = () => {
+        const nextScores: Record<string, string> = { ...attemptScores };
+        questions.forEach(q => {
+          const info = getQuestionAutoInfo(String(q.id));
+          if (info.points !== null) {
+            nextScores[String(q.id)] = String(info.points);
+          }
+        });
+        setQuestionScores(prev => ({ ...prev, [String(attempt.id)]: nextScores }));
+        const nextSum = questions.reduce((sum, q) => {
+          const val = nextScores[String(q.id)];
+          return sum + (val !== undefined && val !== '' && Number.isFinite(Number(val)) ? Number(val) : 0);
+        }, 0);
+        const nextMark = totalPaperPoints > 0 ? roundMark((nextSum / totalPaperPoints) * 20) : roundMark(nextSum);
+        setManualFinals(prev => ({ ...prev, [String(attempt.id)]: String(nextMark) }));
+      };
+
       return (
-        <article className="online-exam-entry" key={attempt.id}>
+        <article className="online-exam-entry" key={attempt.id} style={{ marginBottom: '16px' }}>
           <div className="online-exam-entry-header">
             <div className="online-exam-student">
               <div className="online-exam-avatar">{studentInitials}</div>
@@ -171,7 +271,7 @@ export default function PersistentExamCopies({ evaluationId, candidateId, onClos
             </div>
             <div className="online-exam-score-box">
               {gradeVal ? (
-                <span className="online-exam-grade-badge">Note : {gradeVal}</span>
+                <span className="online-exam-grade-badge">Note retenue : {gradeVal}</span>
               ) : (
                 <span className="pill pill-warning">À corriger</span>
               )}
@@ -187,6 +287,43 @@ export default function PersistentExamCopies({ evaluationId, candidateId, onClos
 
           {selected === attempt.id && (
             <div style={{ marginTop: '1.25rem', paddingTop: '1.25rem', borderTop: '1px solid var(--border)' }}>
+              {/* Barre de navigation rapide entre les copies */}
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '8px', padding: '10px 14px', background: '#f8fafc', borderRadius: '8px', marginBottom: '16px', border: '1px solid #e2e8f0' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <button
+                    type="button"
+                    className="btn btn-sm btn-outline"
+                    disabled={attemptIndex === 0}
+                    onClick={goToPrevAttempt}
+                  >
+                    ← Copie précédente
+                  </button>
+                  <span style={{ fontSize: '13px', fontWeight: 600, color: '#334155' }}>
+                    Copie {attemptIndex + 1} sur {attempts.length}
+                  </span>
+                  <button
+                    type="button"
+                    className="btn btn-sm btn-outline"
+                    disabled={attemptIndex === attempts.length - 1}
+                    onClick={goToNextAttempt}
+                  >
+                    Copie suivante →
+                  </button>
+                </div>
+
+                {canGradeThisAttempt && (
+                  <button
+                    type="button"
+                    className="btn btn-sm btn-outline"
+                    onClick={autoGradeAllQuestions}
+                    title="Attribue les points calculés pour toutes les questions QCM"
+                  >
+                    ⚡ Pré-noter tous les QCM
+                  </button>
+                )}
+              </div>
+
+              {/* Encadré d'audit anti-triche */}
               {(() => {
                 const raw = typeof window !== 'undefined' ? localStorage.getItem(`escen:anticheat:${attempt.id}`) : null;
                 let data = { count: 0, events: [] };
@@ -223,6 +360,8 @@ export default function PersistentExamCopies({ evaluationId, candidateId, onClos
                   </div>
                 );
               })()}
+
+              {/* Questions et réponses de la copie */}
               {questions.map((question, qIndex) => {
                 const response = answers.find(row => row.question_id === question.id)?.response as OnlineExamAnswer | undefined;
                 const choices = response?.option_ids || [];
@@ -230,159 +369,309 @@ export default function PersistentExamCopies({ evaluationId, candidateId, onClos
                 const choiceLabels = optionsForQuestion.filter(row => choices.includes(row.id)).map(row => String(row.label));
                 const correctLabels = optionsForQuestion.filter(row => row.is_correct === true).map(row => String(row.label));
                 const maxPts = Number(question.points) || 0;
-                const config = (question.configuration || {}) as { correction?: string };
-                const autoPts = autoQcmPoints(String(question.id));
+                const config = (question.configuration || {}) as { correction?: string; presentation?: string; requiresJustification?: boolean };
+                const autoInfo = getQuestionAutoInfo(String(question.id));
                 const currentScore =
                   attemptScores[String(question.id)] !== undefined
                     ? attemptScores[String(question.id)]
-                    : autoPts !== null
-                    ? String(autoPts)
+                    : autoInfo.points !== null
+                    ? String(autoInfo.points)
                     : '';
 
+                const isTrueFalse = config.presentation === 'TRUE_FALSE';
+                const isShortText = config.presentation === 'SHORT_TEXT';
+                const isLongText = question.kind === 'TEXTE' || config.presentation === 'LONG_TEXT';
+                const currentFeedback = feedbackMap[String(question.id)] || '';
+
+                const setQuestionScoreVal = (val: string) => {
+                  const nextScores = { ...attemptScores, [String(question.id)]: val };
+                  setQuestionScores(prev => ({ ...prev, [String(attempt.id)]: nextScores }));
+                  const nextSum = questions.reduce((sum, q) => {
+                    const v = nextScores[String(q.id)];
+                    if (v !== undefined && v !== '' && Number.isFinite(Number(v))) return sum + Number(v);
+                    const a = getQuestionAutoInfo(String(q.id)).points;
+                    return sum + (a ?? 0);
+                  }, 0);
+                  const nextMark = totalPaperPoints > 0 ? roundMark((nextSum / totalPaperPoints) * 20) : roundMark(nextSum);
+                  setManualFinals(prev => ({ ...prev, [String(attempt.id)]: String(nextMark) }));
+                };
+
                 return (
-                  <section className="online-exam-question" key={question.id}>
+                  <section className="online-exam-question" key={question.id} style={{ marginBottom: '16px' }}>
                     <div className="online-exam-question-header">
-                      <strong>Question {qIndex + 1}</strong>
-                      <span className="pill pill-subtle">Barème : {maxPts} pt(s)</span>
-                      {autoPts !== null && (
-                        <span className={`pill ${autoPts > 0 ? 'pill-success' : 'pill-warning'}`}>
-                          {autoPts > 0 ? '✓ QCM exact' : '✗ QCM incorrect'}
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+                        <strong>Question {qIndex + 1}</strong>
+                        <span className="pill pill-default">Barème : {maxPts} pt{maxPts > 1 ? 's' : ''}</span>
+                        <span className="pill pill-subtle" style={{ fontSize: '11px', textTransform: 'uppercase' }}>
+                          {isTrueFalse
+                            ? '⚖️ Vrai / Faux'
+                            : question.kind === 'QCM_SIMPLE'
+                            ? '🔘 QCM Unique'
+                            : question.kind === 'QCM_MULTIPLE'
+                            ? '☑️ QCM Multiple'
+                            : isShortText
+                            ? '💬 Réponse courte'
+                            : '📝 Rédaction'}
                         </span>
-                      )}
+                        {autoInfo.label && (
+                          <span
+                            className={`pill ${
+                              autoInfo.points !== null && autoInfo.points > 0
+                                ? 'pill-success'
+                                : autoInfo.points === 0
+                                ? 'pill-warning'
+                                : 'pill-info'
+                            }`}
+                            style={{ fontSize: '11px' }}
+                          >
+                            {autoInfo.label}
+                          </span>
+                        )}
+                      </div>
                     </div>
-                    <div className="subject-text" style={{ fontSize: '1rem', fontWeight: 600, margin: '8px 0' }}>
+
+                    {/* Énoncé */}
+                    <div className="subject-text" style={{ fontSize: '1rem', fontWeight: 600, margin: '8px 0', color: '#1e293b' }}>
                       <SubjectRichText value={String(question.prompt)} />
                     </div>
 
-                    <div className="online-exam-answer-box">
-                      <div className="cell-sub" style={{ marginBottom: '4px', fontWeight: 600 }}>Réponse de l’étudiant :</div>
-                      {choiceLabels.length > 0 && <p style={{ margin: '4px 0' }}>Choix : <strong>{choiceLabels.join(' ; ')}</strong></p>}
-                      {!!response?.text && <p style={{ margin: '4px 0' }}>{question.kind === 'TEXTE' ? response.text : `Justification : ${response.text}`}</p>}
-                      {!choiceLabels.length && !response?.text && <p style={{ color: 'var(--text-subtle)', fontStyle: 'italic', margin: '4px 0' }}>Sans réponse</p>}
+                    {/* Réponse de l'étudiant */}
+                    <div className="online-exam-answer-box" style={{ background: '#f8fafc', padding: '12px 14px', borderRadius: '8px', border: '1px solid #cbd5e1' }}>
+                      <div className="cell-sub" style={{ marginBottom: '6px', fontWeight: 700, color: '#334155' }}>
+                        Réponse de l’étudiant :
+                      </div>
+
+                      {choiceLabels.length > 0 && (
+                        <div style={{ margin: '4px 0', fontSize: '14px' }}>
+                          Choix retenu(s) :{' '}
+                          <strong style={{ color: '#1e40af' }}>{choiceLabels.join(' ; ')}</strong>
+                        </div>
+                      )}
+
+                      {Boolean(response?.text) && (
+                        <div style={{ marginTop: '6px', fontSize: '14px', lineHeight: 1.6, whiteSpace: 'pre-wrap', color: '#0f172a' }}>
+                          {isTrueFalse ? <em>Justification rédigée : </em> : isLongText ? null : <strong>Texte : </strong>}
+                          {response?.text}
+                        </div>
+                      )}
+
+                      {Boolean(response?.text) && (
+                        <div style={{ display: 'flex', justifyContent: 'flex-end', fontSize: '11px', color: '#64748b', marginTop: '6px' }}>
+                          📝 {countWords(response?.text || '')} mot(s) rédigé(s)
+                        </div>
+                      )}
+
+                      {!choiceLabels.length && !response?.text && (
+                        <p style={{ color: 'var(--text-subtle)', fontStyle: 'italic', margin: '4px 0' }}>
+                          Sans réponse
+                        </p>
+                      )}
                     </div>
 
+                    {/* Réponse attendue et corrigé indicatif */}
                     {correctLabels.length > 0 && (
-                      <div className="online-exam-expected-box">
-                        <strong>Réponse attendue :</strong> {correctLabels.join(' ; ')}
+                      <div className="online-exam-expected-box" style={{ background: '#f0fdf4', borderColor: '#bbf7d0', color: '#166534', padding: '8px 12px', borderRadius: '6px', marginTop: '8px' }}>
+                        <strong>Réponse(s) attendue(s) :</strong> {correctLabels.join(' ; ')}
                       </div>
                     )}
-                    {!!config.correction && (
-                      <div className="online-exam-expected-box" style={{ background: '#eff6ff', borderColor: '#bfdbfe', color: '#1e40af' }}>
-                        <strong>Corrigé indicatif :</strong> {config.correction}
+                    {Boolean(config.correction) && (
+                      <div className="online-exam-expected-box" style={{ background: '#eff6ff', borderColor: '#bfdbfe', color: '#1e40af', padding: '10px 14px', borderRadius: '6px', marginTop: '8px' }}>
+                        <div style={{ fontWeight: 700, marginBottom: '4px' }}>Corrigé indicatif & grille d’évaluation :</div>
+                        <div style={{ whiteSpace: 'pre-wrap', fontSize: '13px' }}>{config.correction}</div>
                       </div>
                     )}
 
+                    {/* Notation et feedback sur la question */}
                     {canGradeThisAttempt && maxPts > 0 && (
-                      <label className="form-group mt-2" style={{ maxWidth: '16rem' }}>
-                        Points attribués (sur {maxPts})
-                        <input
-                          className="input"
-                          type="number"
-                          min={0}
-                          max={maxPts}
-                          step="0.25"
-                          value={currentScore}
-                          onChange={event => {
-                            const val = event.target.value;
-                            const nextScores = { ...attemptScores, [String(question.id)]: val };
-                            setQuestionScores(prev => ({ ...prev, [String(attempt.id)]: nextScores }));
-                            const nextSum = questions.reduce((sum, q) => {
-                              const v = nextScores[String(q.id)];
-                              if (v !== undefined && v !== '' && Number.isFinite(Number(v))) return sum + Number(v);
-                              const a = autoQcmPoints(String(q.id));
-                              return sum + (a ?? 0);
-                            }, 0);
-                            const nextMark = totalPaperPoints > 0 ? roundMark((nextSum / totalPaperPoints) * 20) : roundMark(nextSum);
-                            setManualFinals(prev => ({ ...prev, [String(attempt.id)]: String(nextMark) }));
-                          }}
-                        />
-                      </label>
+                      <div style={{ marginTop: '12px', padding: '12px', background: '#ffffff', borderRadius: '8px', border: '1px solid #e2e8f0' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '10px', marginBottom: '8px' }}>
+                          <label style={{ fontSize: '13px', fontWeight: 700, color: '#334155' }}>
+                            Points attribués (sur {maxPts}) :
+                          </label>
+
+                          {/* Raccourcis de barème en un clic */}
+                          <div style={{ display: 'flex', gap: '4px', flexWrap: 'wrap' }}>
+                            <button
+                              type="button"
+                              className="btn btn-sm btn-outline"
+                              onClick={() => setQuestionScoreVal('0')}
+                              style={{ fontSize: '11px', padding: '2px 8px' }}
+                            >
+                              0 pt
+                            </button>
+                            <button
+                              type="button"
+                              className="btn btn-sm btn-outline"
+                              onClick={() => setQuestionScoreVal(String(roundMark(maxPts * 0.25)))}
+                              style={{ fontSize: '11px', padding: '2px 8px' }}
+                            >
+                              25%
+                            </button>
+                            <button
+                              type="button"
+                              className="btn btn-sm btn-outline"
+                              onClick={() => setQuestionScoreVal(String(roundMark(maxPts * 0.5)))}
+                              style={{ fontSize: '11px', padding: '2px 8px' }}
+                            >
+                              50%
+                            </button>
+                            <button
+                              type="button"
+                              className="btn btn-sm btn-outline"
+                              onClick={() => setQuestionScoreVal(String(roundMark(maxPts * 0.75)))}
+                              style={{ fontSize: '11px', padding: '2px 8px' }}
+                            >
+                              75%
+                            </button>
+                            <button
+                              type="button"
+                              className="btn btn-sm btn-outline"
+                              onClick={() => setQuestionScoreVal(String(maxPts))}
+                              style={{ fontSize: '11px', padding: '2px 8px', fontWeight: 700 }}
+                            >
+                              100% ({maxPts} pts)
+                            </button>
+                          </div>
+                        </div>
+
+                        <div style={{ display: 'flex', gap: '12px', alignItems: 'flex-start', flexWrap: 'wrap' }}>
+                          <input
+                            className="input"
+                            type="number"
+                            min={0}
+                            max={maxPts}
+                            step="0.25"
+                            value={currentScore}
+                            onChange={event => setQuestionScoreVal(event.target.value)}
+                            placeholder={`0 à ${maxPts}`}
+                            style={{ maxWidth: '120px', fontWeight: 700 }}
+                          />
+
+                          {/* Annotation du correcteur par question */}
+                          <input
+                            className="input"
+                            type="text"
+                            placeholder="Remarque / appréciation sur cette question (optionnel)…"
+                            value={currentFeedback}
+                            onChange={e => {
+                              const val = e.target.value;
+                              setQuestionFeedback(prev => ({
+                                ...prev,
+                                [String(attempt.id)]: { ...(prev[String(attempt.id)] || {}), [String(question.id)]: val },
+                              }));
+                            }}
+                            style={{ flex: 1, minWidth: '220px', fontSize: '13px' }}
+                          />
+                        </div>
+                      </div>
                     )}
                   </section>
                 );
               })}
 
-            {canGradeThisAttempt && candidate && (
-              <div className="card mt-2" style={{ backgroundColor: 'var(--surface-sunken)' }}>
-                {savedByAttempt[String(attempt.id)] && (
-                  <p role="status" style={{ color: 'var(--success)', fontWeight: 600 }}>
-                    {savedByAttempt[String(attempt.id)]}
-                  </p>
-                )}
-                <ReviewedForm
-                  busy={busyAttemptId === String(attempt.id)}
-                  error={errorByAttempt[String(attempt.id)] || ''}
-                  confirmLabel="Confirmer la note de cette copie"
-                  fields={[
-                    { label: 'Candidat', value: studentName },
-                    { label: 'Note retenue (/20)', value: finalInput ? `${finalInput} / 20` : 'Non renseignée' },
-                  ]}
-                  validate={() => {
-                    if (!finalInput.trim()) return 'Veuillez saisir ou calculer une note sur 20 avant d’enregistrer.';
-                    const val = Number(finalInput);
-                    if (!Number.isFinite(val) || val < 0 || val > 20) return 'La note doit être comprise entre 0 et 20.';
-                    return null;
-                  }}
-                  consequence="La note chiffrée de ce candidat sera enregistrée dans le relevé de l’évaluation."
-                  onConfirm={async event => {
-                    event.preventDefault();
-                    const val = Number(finalInput);
-                    if (!finalInput.trim() || !Number.isFinite(val) || val < 0 || val > 20) return;
-                    setBusyAttemptId(String(attempt.id));
-                    setErrorByAttempt(prev => ({ ...prev, [String(attempt.id)]: '' }));
-                    setSavedByAttempt(prev => ({ ...prev, [String(attempt.id)]: '' }));
-                    try {
-                      await manageEvaluation(portal.activeRole, {
-                        action: 'enter_grades',
-                        evaluationId,
-                        advanceToSaisies: evaluation?.status === 'BROUILLON',
-                        grades: [{ candidateId: String(candidate.id), value: val, absenceStatus: null }],
-                        revision: snapshot.revision,
-                      });
-                      portal.refreshCampus();
-                      setSavedByAttempt(prev => ({
-                        ...prev,
-                        [String(attempt.id)]: `Note de ${val}/20 enregistrée pour ${studentName}.`,
-                      }));
-                    } catch (cause) {
-                      setErrorByAttempt(prev => ({
-                        ...prev,
-                        [String(attempt.id)]: cause instanceof Error ? cause.message : 'Erreur lors de l’enregistrement de la note.',
-                      }));
-                    } finally {
-                      setBusyAttemptId('');
-                    }
-                  }}
-                >
-                  <div className="form-grid">
-                    <label className="form-group">
-                      Note finale sur 20 à enregistrer pour {studentName}
-                      <input
-                        className="input"
-                        type="number"
-                        min={0}
-                        max={20}
-                        step="0.25"
-                        value={finalInput}
-                        onChange={event =>
-                          setManualFinals(prev => ({ ...prev, [String(attempt.id)]: event.target.value }))
-                        }
-                        placeholder="Ex. : 14.5"
-                      />
+              {/* Bilan et Enregistrement officiel de la note */}
+              {canGradeThisAttempt && candidate && (
+                <div className="card mt-2" style={{ backgroundColor: 'var(--surface-sunken)', padding: '18px 20px', borderRadius: '10px' }}>
+                  {savedByAttempt[String(attempt.id)] && (
+                    <p role="status" style={{ color: 'var(--success)', fontWeight: 600, marginBottom: '12px' }}>
+                      ✓ {savedByAttempt[String(attempt.id)]}
+                    </p>
+                  )}
+
+                  <div style={{ marginBottom: '14px' }}>
+                    <label style={{ display: 'block', fontSize: '13px', fontWeight: 700, color: '#334155', marginBottom: '6px' }}>
+                      Appréciation globale du correcteur sur la copie :
                     </label>
+                    <textarea
+                      className="input"
+                      rows={2}
+                      maxLength={2000}
+                      placeholder="Commentaire de synthèse sur l’ensemble de la copie (optionnel)…"
+                      value={generalFeedback[String(attempt.id)] || ''}
+                      onChange={e => {
+                        const val = e.target.value;
+                        setGeneralFeedback(prev => ({ ...prev, [String(attempt.id)]: val }));
+                      }}
+                      style={{ width: '100%', resize: 'vertical', fontSize: '13px' }}
+                    />
                   </div>
-                  <div className="btn-group mt-2">
-                    <button type="submit" className="btn btn-primary" disabled={busyAttemptId === String(attempt.id)}>
-                      Enregistrer la note de la copie
-                    </button>
-                  </div>
-                </ReviewedForm>
-              </div>
-            )}
-          </div>
-        )}
-      </article>
-    );
-  })}
+
+                  <ReviewedForm
+                    busy={busyAttemptId === String(attempt.id)}
+                    error={errorByAttempt[String(attempt.id)] || ''}
+                    confirmLabel="Confirmer et enregistrer la note"
+                    fields={[
+                      { label: 'Candidat', value: studentName },
+                      { label: 'Total brut épreuve', value: `${roundMark(rawTotal)} / ${totalPaperPoints} pts` },
+                      { label: 'Note finale retenue (/20)', value: finalInput ? `${finalInput} / 20` : 'Non renseignée' },
+                    ]}
+                    validate={() => {
+                      if (!finalInput.trim()) return 'Veuillez saisir ou calculer une note sur 20 avant d’enregistrer.';
+                      const val = Number(finalInput);
+                      if (!Number.isFinite(val) || val < 0 || val > 20) return 'La note doit être comprise entre 0 et 20.';
+                      return null;
+                    }}
+                    consequence="La note chiffrée de ce candidat sera enregistrée de manière permanente dans le relevé officiel de l’évaluation."
+                    onConfirm={async event => {
+                      event.preventDefault();
+                      const val = Number(finalInput);
+                      if (!finalInput.trim() || !Number.isFinite(val) || val < 0 || val > 20) return;
+                      setBusyAttemptId(String(attempt.id));
+                      setErrorByAttempt(prev => ({ ...prev, [String(attempt.id)]: '' }));
+                      setSavedByAttempt(prev => ({ ...prev, [String(attempt.id)]: '' }));
+                      try {
+                        await manageEvaluation(portal.activeRole, {
+                          action: 'enter_grades',
+                          evaluationId,
+                          advanceToSaisies: evaluation?.status === 'BROUILLON',
+                          grades: [{ candidateId: String(candidate.id), value: val, absenceStatus: null }],
+                          revision: snapshot.revision,
+                        });
+                        portal.refreshCampus();
+                        setSavedByAttempt(prev => ({
+                          ...prev,
+                          [String(attempt.id)]: `Note de ${val}/20 enregistrée avec succès pour ${studentName}.`,
+                        }));
+                      } catch (cause) {
+                        setErrorByAttempt(prev => ({
+                          ...prev,
+                          [String(attempt.id)]: cause instanceof Error ? cause.message : 'Erreur lors de l’enregistrement de la note.',
+                        }));
+                      } finally {
+                        setBusyAttemptId('');
+                      }
+                    }}
+                  >
+                    <div className="form-grid">
+                      <label className="form-group">
+                        Note finale sur 20 à enregistrer pour {studentName}
+                        <input
+                          className="input"
+                          type="number"
+                          min={0}
+                          max={20}
+                          step="0.25"
+                          value={finalInput}
+                          onChange={event =>
+                            setManualFinals(prev => ({ ...prev, [String(attempt.id)]: event.target.value }))
+                          }
+                          placeholder="Ex. : 14.5"
+                          style={{ fontWeight: 800, fontSize: '15px' }}
+                        />
+                      </label>
+                    </div>
+                    <div className="btn-group mt-2">
+                      <button type="submit" className="btn btn-primary" disabled={busyAttemptId === String(attempt.id)}>
+                        Enregistrer la note officielle
+                      </button>
+                    </div>
+                  </ReviewedForm>
+                </div>
+              )}
+            </div>
+          )}
+        </article>
+      );
+    })}
   </WorkPage>;
 }
