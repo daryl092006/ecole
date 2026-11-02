@@ -1,6 +1,6 @@
 -- Migration 074: Authentification candidat par mot de passe & changement obligatoire a la premiere connexion
 create table if not exists escen_private.candidate_credentials (
-  application_id uuid primary key references escen.online_applications(id) on delete cascade,
+  application_id uuid primary key references escen.online_applications(id) on delete restrict,
   password_hash text not null,
   must_change_password boolean not null default true,
   password_changed_at timestamptz,

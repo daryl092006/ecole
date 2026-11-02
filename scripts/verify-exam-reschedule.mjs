@@ -17,7 +17,8 @@ export async function verifyExamReschedule(db, check, { insert, scalar, post, cl
     const session = await insert('sessions', { assignment_id: assignment.id, offering_id: offering.id, group_id: group.id, teacher_id: teachers[0].id, mode: 'PAPIER', room_id: rooms[0].id, starts_at: startsAt, ends_at: endsAt });
     const delivery = await insert('exam_deliveries', { evaluation_id: evaluation.id, session_id: session.id, access_opens_at: new Date(Date.parse(startsAt) + 15 * 60000).toISOString(), access_closes_at: new Date(Date.parse(startsAt) + 105 * 60000).toISOString(), duration_minutes: 60 });
     const candidate = await insert('evaluation_candidates', { evaluation_id: evaluation.id, enrollment_id: enrollment.id, offering_id: offering.id, eligibility: 'ELIGIBLE' });
-    return { evaluation, session, delivery, candidate, startsAt, endsAt, nextStart: new Date(Date.parse(startsAt) + 86400000).toISOString(), nextEnd: new Date(Date.parse(endsAt) + 86400000).toISOString() };
+    const offset = options.offset || 86400000;
+    return { evaluation, session, delivery, candidate, startsAt, endsAt, nextStart: options.nextStart || new Date(Date.parse(startsAt) + offset).toISOString(), nextEnd: options.nextEnd || new Date(Date.parse(endsAt) + offset).toISOString() };
   };
   const state = async exam => ({
     session: await scalar('select to_jsonb(s) as value from escen.sessions s where id=$1', [exam.session.id]),
@@ -82,7 +83,7 @@ export async function verifyExamReschedule(db, check, { insert, scalar, post, cl
   });
   await check('Épreuve déplacée : ouverture passée ou atteinte, y compris pour une fin seule', async () => {
     const now = new Date(await scalar('select clock_timestamp() as value')).getTime();
-    const exam = await fixture({ startsAt: new Date(now - 3600000).toISOString(), endsAt: new Date(now + 3600000).toISOString() });
+    const exam = await fixture({ startsAt: new Date(now - 3600000).toISOString(), endsAt: new Date(now + 3600000).toISOString(), offset: 7 * 86400000 });
     await refuse(exam, /déjà ouverte/);
     await refuse(exam, /déjà ouverte/, { starts_at: exam.startsAt, ends_at: new Date(now + 2 * 3600000).toISOString() });
     await assert.rejects(db.query("select escen_private.assert_exam_reschedule($1, clock_timestamp(), clock_timestamp()+interval '1 day', 'Ouverture atteinte interdite')", [exam.evaluation.id]), /déjà ouverte/);

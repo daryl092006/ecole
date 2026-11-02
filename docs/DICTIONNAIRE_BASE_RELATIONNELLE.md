@@ -4984,7 +4984,7 @@ CREATE INDEX fk_20239 ON escen_private.audit_events USING btree (actor_id)
 Contraintes :
 
 ```sql
-candidate_credentials_application_id_fkey: FOREIGN KEY (application_id) REFERENCES escen.online_applications(id) ON DELETE CASCADE
+candidate_credentials_application_id_fkey: FOREIGN KEY (application_id) REFERENCES escen.online_applications(id) ON DELETE RESTRICT
 candidate_credentials_application_id_not_null: NOT NULL application_id
 candidate_credentials_created_at_not_null: NOT NULL created_at
 candidate_credentials_must_change_password_not_null: NOT NULL must_change_password

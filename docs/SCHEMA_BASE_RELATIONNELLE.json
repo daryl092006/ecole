@@ -20504,7 +20504,7 @@
       "table": "candidate_credentials",
       "name": "candidate_credentials_application_id_fkey",
       "type": "f",
-      "definition": "FOREIGN KEY (application_id) REFERENCES escen.online_applications(id) ON DELETE CASCADE"
+      "definition": "FOREIGN KEY (application_id) REFERENCES escen.online_applications(id) ON DELETE RESTRICT"
     },
     {
       "schema": "escen_private",
