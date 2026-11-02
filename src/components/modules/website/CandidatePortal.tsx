@@ -445,7 +445,9 @@ export default function CandidatePortal({ tracking = false }: { tracking?: boole
           /* FORMULAIRE DE CONNEXION CANDIDAT */
           <section className="card" style={{ maxWidth: '440px', margin: '2rem auto', padding: '2.25rem 2rem', borderTop: '4px solid #01b4d5', boxShadow: '0 4px 16px rgba(15, 76, 129, 0.08)' }}>
             <div style={{ textAlign: 'center', marginBottom: '1.5rem' }}>
-              <div style={{ display: 'inline-block', width: '36px', height: '4px', background: '#01b4d5', borderRadius: '2px', marginBottom: '10px' }}></div>
+              <div style={{ maxWidth: '200px', margin: '0 auto 12px' }}>
+                <SchoolLogo priority className="candidate-portal-card-logo" />
+              </div>
               <h1 style={{ fontSize: '1.4rem', color: '#0f4c81', margin: '0 0 0.5rem 0', fontWeight: 700 }}>Espace Candidat</h1>
               <p className="cell-sub" style={{ margin: 0, color: '#64748b' }}>
                 Accédez au suivi de votre candidature et à vos courriers officiels.
