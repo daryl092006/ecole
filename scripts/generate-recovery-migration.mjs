@@ -334,20 +334,15 @@ for (const s of studentsToInsert) {
   sql += `    and o.archived_at is null\n`;
   sql += `  limit 1;\n\n`;
 
-  sql += `  -- Création personne\n`;
+  sql += `  -- Création personne (email NULL si pas d'email personnel réel fourni)\n`;
   sql += `  insert into escen.people(firstname, lastname, email, phone, gender, birth_date, nationality)\n`;
   sql += `  values (${escapeSql(s.firstname)}, ${escapeSql(s.lastname)}, ${personalEmail ? escapeSql(personalEmail) : 'NULL'}, ${escapeSql(phone)}, ${escapeSql(gender)}, ${birthDate ? `'${birthDate}'` : 'NULL'}, ${escapeSql(nationality)})\n`;
   sql += `  returning id into v_person_id;\n\n`;
 
-  sql += `  -- Création étudiant\n`;
+  sql += `  -- Création étudiant (m365_email généré automatiquement par le trigger officiel de la base)\n`;
   sql += `  insert into escen.students(person_id, matricule, reason)\n`;
   sql += `  values (v_person_id, v_matricule, 'Intégration échéancier de recouvrement 2026-2027')\n`;
   sql += `  returning id into v_student_id;\n\n`;
-
-  if (!personalEmail) {
-    sql += `  -- Aligner l'email de la personne sur l'email étudiant officiel généré\n`;
-    sql += `  update escen.people set email = (select m365_email from escen.students where id = v_student_id) where id = v_person_id;\n\n`;
-  }
 
   if (s.appData?.ref) {
     sql += `  -- Lier la candidature en ligne si existante\n`;
@@ -407,10 +402,6 @@ for (const s of studentsToContract) {
   sql += `    insert into escen.financial_contracts(enrollment_id, reference, currency)\n`;
   sql += `    values (v_enrollment_id, 'CON-2026-' || split_part('${s.matricule}', '-', 1), 'XOF')\n`;
   sql += `    returning id into v_contract_id;\n\n`;
-
-  sql += `    insert into escen.contract_versions(contract_id, version, status, reason, approved_by, approved_at)\n`;
-  sql += `    values (v_contract_id, 1, 'DRAFT', 'Échéancier de scolarité 2026-2027 (${s.modality})', v_admin_id, null)\n`;
-  sql += `    returning id into v_version_id;\n\n`;
 
   if (s.regFee > 0) {
     sql += `    insert into escen.contract_lines(contract_id, version_id, fee_type_id, amount, description)\n`;
