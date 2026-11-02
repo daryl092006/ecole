@@ -1,0 +1,1521 @@
+{
+  "summary": {
+    "sheetTotal": 102,
+    "matchedCount": 71,
+    "matchedEnrolled2026Count": 67,
+    "matchedNotEnrolledCount": 4,
+    "unmatchedSheetCount": 31,
+    "enrolledNotInSheetCount": 4
+  },
+  "unmatchedSheet": [
+    {
+      "rowNumber": 2,
+      "matricule": null,
+      "name": "AKOR Abla Élisée",
+      "normalized": "akor abla elisee",
+      "grade": "Licence",
+      "niveau": "L1",
+      "filiere": "Finance Digitale",
+      "partenariat": "Nehemiah",
+      "fraisInscription": 50000,
+      "fraisScolarite": 480000,
+      "remiseStr": "50%",
+      "remisePct": 50,
+      "montantRemise": 0,
+      "netScolarite": 240000,
+      "totalGeneral": 290000,
+      "modalite": "Annuel",
+      "nbEcheances": 1,
+      "dateRentree": "mars-27",
+      "inscriptionPayee": 0,
+      "echeancesPayees": [
+        {
+          "m": 7,
+          "amount": 240000
+        },
+        {
+          "m": 15,
+          "amount": 240000
+        }
+      ]
+    },
+    {
+      "rowNumber": 4,
+      "matricule": null,
+      "name": "BANNA Achraf",
+      "normalized": "banna achraf",
+      "grade": "Licence",
+      "niveau": "L1",
+      "filiere": "Intelligence Artificielle & Génie logiciel",
+      "partenariat": "-",
+      "fraisInscription": 50000,
+      "fraisScolarite": 850000,
+      "remiseStr": "50%",
+      "remisePct": 50,
+      "montantRemise": 0,
+      "netScolarite": 425000,
+      "totalGeneral": 475000,
+      "modalite": "Bi-mensuel",
+      "nbEcheances": 4,
+      "dateRentree": "oct-26",
+      "inscriptionPayee": 0,
+      "echeancesPayees": [
+        {
+          "m": 2,
+          "amount": 106250
+        },
+        {
+          "m": 4,
+          "amount": 106250
+        },
+        {
+          "m": 6,
+          "amount": 106250
+        },
+        {
+          "m": 8,
+          "amount": 106250
+        },
+        {
+          "m": 15,
+          "amount": 425000
+        }
+      ]
+    },
+    {
+      "rowNumber": 6,
+      "matricule": null,
+      "name": "GBADOE Komi Prince Antoine",
+      "normalized": "gbadoe komi prince antoine",
+      "grade": "Licence",
+      "niveau": "L1",
+      "filiere": "Intelligence Artificielle & Génie logiciel",
+      "partenariat": "-",
+      "fraisInscription": 50000,
+      "fraisScolarite": 850000,
+      "remiseStr": "50%",
+      "remisePct": 50,
+      "montantRemise": 0,
+      "netScolarite": 425000,
+      "totalGeneral": 475000,
+      "modalite": "Bi-mensuel",
+      "nbEcheances": 4,
+      "dateRentree": "oct-26",
+      "inscriptionPayee": 0,
+      "echeancesPayees": [
+        {
+          "m": 2,
+          "amount": 106250
+        },
+        {
+          "m": 4,
+          "amount": 106250
+        },
+        {
+          "m": 6,
+          "amount": 106250
+        },
+        {
+          "m": 8,
+          "amount": 106250
+        },
+        {
+          "m": 15,
+          "amount": 425000
+        }
+      ]
+    },
+    {
+      "rowNumber": 8,
+      "matricule": null,
+      "name": "AGUIDI Abla Dzifa",
+      "normalized": "aguidi abla dzifa",
+      "grade": "Licence",
+      "niveau": "L1",
+      "filiere": "Marketing Digital & E-commerce",
+      "partenariat": "Compassion",
+      "fraisInscription": 50000,
+      "fraisScolarite": 550000,
+      "remiseStr": "50%",
+      "remisePct": 50,
+      "montantRemise": 0,
+      "netScolarite": 275000,
+      "totalGeneral": 325000,
+      "modalite": "Annuel",
+      "nbEcheances": 1,
+      "dateRentree": "mars-27",
+      "inscriptionPayee": 0,
+      "echeancesPayees": [
+        {
+          "m": 7,
+          "amount": 275000
+        },
+        {
+          "m": 15,
+          "amount": 275000
+        }
+      ]
+    },
+    {
+      "rowNumber": 10,
+      "matricule": null,
+      "name": "BODJONA Koboyo Magnim",
+      "normalized": "bodjona koboyo magnim",
+      "grade": "Licence",
+      "niveau": "L1",
+      "filiere": "Marketing Digital & E-commerce",
+      "partenariat": "-",
+      "fraisInscription": 50000,
+      "fraisScolarite": 480000,
+      "remiseStr": "",
+      "remisePct": 0,
+      "montantRemise": 0,
+      "netScolarite": 480000,
+      "totalGeneral": 530000,
+      "modalite": "Bi-mensuel",
+      "nbEcheances": 4,
+      "dateRentree": "oct-26",
+      "inscriptionPayee": 0,
+      "echeancesPayees": [
+        {
+          "m": 2,
+          "amount": 120000
+        },
+        {
+          "m": 4,
+          "amount": 120000
+        },
+        {
+          "m": 6,
+          "amount": 120000
+        },
+        {
+          "m": 8,
+          "amount": 120000
+        },
+        {
+          "m": 15,
+          "amount": 480000
+        }
+      ]
+    },
+    {
+      "rowNumber": 11,
+      "matricule": null,
+      "name": "BOURAIMA Rafik",
+      "normalized": "bouraima rafik",
+      "grade": "Licence",
+      "niveau": "L1",
+      "filiere": "Marketing Digital & E-commerce",
+      "partenariat": "-",
+      "fraisInscription": 50000,
+      "fraisScolarite": 480000,
+      "remiseStr": "",
+      "remisePct": 0,
+      "montantRemise": 0,
+      "netScolarite": 480000,
+      "totalGeneral": 530000,
+      "modalite": "Bi-mensuel",
+      "nbEcheances": 4,
+      "dateRentree": "oct-26",
+      "inscriptionPayee": 0,
+      "echeancesPayees": [
+        {
+          "m": 2,
+          "amount": 120000
+        },
+        {
+          "m": 4,
+          "amount": 120000
+        },
+        {
+          "m": 6,
+          "amount": 120000
+        },
+        {
+          "m": 8,
+          "amount": 120000
+        },
+        {
+          "m": 15,
+          "amount": 480000
+        }
+      ]
+    },
+    {
+      "rowNumber": 12,
+      "matricule": null,
+      "name": "EGAN Akouvi Alice",
+      "normalized": "egan akouvi alice",
+      "grade": "Licence",
+      "niveau": "L1",
+      "filiere": "Marketing Digital & E-commerce",
+      "partenariat": "Compassion",
+      "fraisInscription": 50000,
+      "fraisScolarite": 550000,
+      "remiseStr": "50%",
+      "remisePct": 50,
+      "montantRemise": 0,
+      "netScolarite": 275000,
+      "totalGeneral": 325000,
+      "modalite": "Annuel",
+      "nbEcheances": 1,
+      "dateRentree": "mars-27",
+      "inscriptionPayee": 0,
+      "echeancesPayees": [
+        {
+          "m": 7,
+          "amount": 275000
+        },
+        {
+          "m": 15,
+          "amount": 275000
+        }
+      ]
+    },
+    {
+      "rowNumber": 13,
+      "matricule": null,
+      "name": "GNELE Evynel Olanique",
+      "normalized": "gnele evynel olanique",
+      "grade": "Licence",
+      "niveau": "L1",
+      "filiere": "Marketing Digital & e-commerce",
+      "partenariat": "-",
+      "fraisInscription": 50000,
+      "fraisScolarite": 480000,
+      "remiseStr": "15%",
+      "remisePct": 15,
+      "montantRemise": 0,
+      "netScolarite": 408000,
+      "totalGeneral": 458000,
+      "modalite": "Annuel",
+      "nbEcheances": 1,
+      "dateRentree": "19/10/2026",
+      "inscriptionPayee": 0,
+      "echeancesPayees": []
+    },
+    {
+      "rowNumber": 14,
+      "matricule": null,
+      "name": "AKAKPO Harmony Daniella Modoukpe",
+      "normalized": "akakpo harmony daniella modoukpe",
+      "grade": "Licence",
+      "niveau": "L1",
+      "filiere": "Management de Projet Numérique",
+      "partenariat": "-",
+      "fraisInscription": 50000,
+      "fraisScolarite": 480000,
+      "remiseStr": "15%",
+      "remisePct": 15,
+      "montantRemise": 0,
+      "netScolarite": 408000,
+      "totalGeneral": 458000,
+      "modalite": "Annuel",
+      "nbEcheances": 1,
+      "dateRentree": "oct-26",
+      "inscriptionPayee": 0,
+      "echeancesPayees": [
+        {
+          "m": 2,
+          "amount": 408000
+        },
+        {
+          "m": 15,
+          "amount": 408000
+        }
+      ]
+    },
+    {
+      "rowNumber": 15,
+      "matricule": null,
+      "name": "AMONY Mensah Léopold Junior",
+      "normalized": "amony mensah leopold junior",
+      "grade": "Licence",
+      "niveau": "L1",
+      "filiere": "Management de Projet Numérique",
+      "partenariat": "-",
+      "fraisInscription": 50000,
+      "fraisScolarite": 480000,
+      "remiseStr": "",
+      "remisePct": 0,
+      "montantRemise": 0,
+      "netScolarite": 480000,
+      "totalGeneral": 530000,
+      "modalite": "Bi-mensuel",
+      "nbEcheances": 4,
+      "dateRentree": "oct-26",
+      "inscriptionPayee": 0,
+      "echeancesPayees": [
+        {
+          "m": 2,
+          "amount": 120000
+        },
+        {
+          "m": 4,
+          "amount": 120000
+        },
+        {
+          "m": 6,
+          "amount": 120000
+        },
+        {
+          "m": 8,
+          "amount": 120000
+        },
+        {
+          "m": 15,
+          "amount": 480000
+        }
+      ]
+    },
+    {
+      "rowNumber": 34,
+      "matricule": null,
+      "name": "DJATO Bougonnou Josué",
+      "normalized": "djato bougonnou josue",
+      "grade": "Licence",
+      "niveau": "L2",
+      "filiere": "Marketing Digital & e-commerce",
+      "partenariat": "-",
+      "fraisInscription": 50000,
+      "fraisScolarite": 550000,
+      "remiseStr": "",
+      "remisePct": 0,
+      "montantRemise": 0,
+      "netScolarite": 550000,
+      "totalGeneral": 600000,
+      "modalite": "Bi-mensuel",
+      "nbEcheances": 4,
+      "dateRentree": "oct-26",
+      "inscriptionPayee": 0,
+      "echeancesPayees": [
+        {
+          "m": 2,
+          "amount": 137500
+        },
+        {
+          "m": 4,
+          "amount": 137500
+        },
+        {
+          "m": 6,
+          "amount": 137500
+        },
+        {
+          "m": 8,
+          "amount": 137500
+        },
+        {
+          "m": 15,
+          "amount": 550000
+        }
+      ]
+    },
+    {
+      "rowNumber": 45,
+      "matricule": null,
+      "name": "AMUZU Koffi Komi Abel",
+      "normalized": "amuzu koffi komi abel",
+      "grade": "Licence",
+      "niveau": "L3",
+      "filiere": "Finance digitale",
+      "partenariat": "-",
+      "fraisInscription": 50000,
+      "fraisScolarite": 550000,
+      "remiseStr": "15%",
+      "remisePct": 15,
+      "montantRemise": 0,
+      "netScolarite": 467500,
+      "totalGeneral": 517500,
+      "modalite": "Bi-mensuel",
+      "nbEcheances": 4,
+      "dateRentree": "oct-26",
+      "inscriptionPayee": 0,
+      "echeancesPayees": [
+        {
+          "m": 2,
+          "amount": 116875
+        },
+        {
+          "m": 4,
+          "amount": 116875
+        },
+        {
+          "m": 6,
+          "amount": 116875
+        },
+        {
+          "m": 8,
+          "amount": 116875
+        },
+        {
+          "m": 15,
+          "amount": 467500
+        }
+      ]
+    },
+    {
+      "rowNumber": 47,
+      "matricule": null,
+      "name": "MAMA Issa",
+      "normalized": "mama issa",
+      "grade": "Licence",
+      "niveau": "L3",
+      "filiere": "Finance digitale",
+      "partenariat": "-",
+      "fraisInscription": 50000,
+      "fraisScolarite": 550000,
+      "remiseStr": "31%",
+      "remisePct": 31,
+      "montantRemise": 0,
+      "netScolarite": 379500,
+      "totalGeneral": 429500,
+      "modalite": "Bi-mensuel",
+      "nbEcheances": 4,
+      "dateRentree": "oct-26",
+      "inscriptionPayee": 0,
+      "echeancesPayees": [
+        {
+          "m": 2,
+          "amount": 94875
+        },
+        {
+          "m": 4,
+          "amount": 94875
+        },
+        {
+          "m": 6,
+          "amount": 94875
+        },
+        {
+          "m": 8,
+          "amount": 94875
+        },
+        {
+          "m": 15,
+          "amount": 379500
+        }
+      ]
+    },
+    {
+      "rowNumber": 48,
+      "matricule": null,
+      "name": "OLOHUNTO Amed Oba Sanjo",
+      "normalized": "olohunto amed oba sanjo",
+      "grade": "Licence",
+      "niveau": "L3",
+      "filiere": "Finance digitale",
+      "partenariat": "-",
+      "fraisInscription": 50000,
+      "fraisScolarite": 550000,
+      "remiseStr": "15%",
+      "remisePct": 15,
+      "montantRemise": 0,
+      "netScolarite": 467500,
+      "totalGeneral": 517500,
+      "modalite": "Bi-mensuel",
+      "nbEcheances": 4,
+      "dateRentree": "oct-26",
+      "inscriptionPayee": 0,
+      "echeancesPayees": [
+        {
+          "m": 2,
+          "amount": 116875
+        },
+        {
+          "m": 4,
+          "amount": 116875
+        },
+        {
+          "m": 6,
+          "amount": 116875
+        },
+        {
+          "m": 8,
+          "amount": 116875
+        },
+        {
+          "m": 15,
+          "amount": 467500
+        }
+      ]
+    },
+    {
+      "rowNumber": 49,
+      "matricule": null,
+      "name": "SAMANI Djibril",
+      "normalized": "samani djibril",
+      "grade": "Licence",
+      "niveau": "L3",
+      "filiere": "Finance digitale",
+      "partenariat": "-",
+      "fraisInscription": 50000,
+      "fraisScolarite": 550000,
+      "remiseStr": "31%",
+      "remisePct": 31,
+      "montantRemise": 0,
+      "netScolarite": 379500,
+      "totalGeneral": 429500,
+      "modalite": "Bi-mensuel",
+      "nbEcheances": 4,
+      "dateRentree": "oct-26",
+      "inscriptionPayee": 0,
+      "echeancesPayees": [
+        {
+          "m": 2,
+          "amount": 94875
+        },
+        {
+          "m": 4,
+          "amount": 94875
+        },
+        {
+          "m": 6,
+          "amount": 94875
+        },
+        {
+          "m": 8,
+          "amount": 94875
+        },
+        {
+          "m": 15,
+          "amount": 379500
+        }
+      ]
+    },
+    {
+      "rowNumber": 51,
+      "matricule": null,
+      "name": "LOKOSSOU Cedric Franzt",
+      "normalized": "lokossou cedric franzt",
+      "grade": "Licence",
+      "niveau": "L3",
+      "filiere": "Intelligence Artificielle & Génie logiciel",
+      "partenariat": "-",
+      "fraisInscription": 50000,
+      "fraisScolarite": 550000,
+      "remiseStr": "",
+      "remisePct": 0,
+      "montantRemise": 0,
+      "netScolarite": 550000,
+      "totalGeneral": 600000,
+      "modalite": "Bi-mensuel",
+      "nbEcheances": 4,
+      "dateRentree": "oct-26",
+      "inscriptionPayee": 0,
+      "echeancesPayees": [
+        {
+          "m": 2,
+          "amount": 137500
+        },
+        {
+          "m": 4,
+          "amount": 137500
+        },
+        {
+          "m": 6,
+          "amount": 137500
+        },
+        {
+          "m": 8,
+          "amount": 137500
+        },
+        {
+          "m": 15,
+          "amount": 550000
+        }
+      ]
+    },
+    {
+      "rowNumber": 60,
+      "matricule": null,
+      "name": "DATEY Dah Mokpokpo",
+      "normalized": "datey dah mokpokpo",
+      "grade": "Licence",
+      "niveau": "L3",
+      "filiere": "Marketing Digital & e-commerce",
+      "partenariat": "-",
+      "fraisInscription": 50000,
+      "fraisScolarite": 550000,
+      "remiseStr": "",
+      "remisePct": 0,
+      "montantRemise": 0,
+      "netScolarite": 550000,
+      "totalGeneral": 600000,
+      "modalite": "Bi-mensuel",
+      "nbEcheances": 4,
+      "dateRentree": "oct-26",
+      "inscriptionPayee": 0,
+      "echeancesPayees": [
+        {
+          "m": 2,
+          "amount": 137500
+        },
+        {
+          "m": 4,
+          "amount": 137500
+        },
+        {
+          "m": 6,
+          "amount": 137500
+        },
+        {
+          "m": 8,
+          "amount": 137500
+        },
+        {
+          "m": 15,
+          "amount": 550000
+        }
+      ]
+    },
+    {
+      "rowNumber": 65,
+      "matricule": null,
+      "name": "SADJI Yao Wisdom",
+      "normalized": "sadji yao wisdom",
+      "grade": "Licence",
+      "niveau": "L3",
+      "filiere": "Marketing Digital & e-commerce",
+      "partenariat": "-",
+      "fraisInscription": 50000,
+      "fraisScolarite": 550000,
+      "remiseStr": "",
+      "remisePct": 0,
+      "montantRemise": 0,
+      "netScolarite": 550000,
+      "totalGeneral": 600000,
+      "modalite": "Bi-mensuel",
+      "nbEcheances": 4,
+      "dateRentree": "oct-26",
+      "inscriptionPayee": 0,
+      "echeancesPayees": [
+        {
+          "m": 2,
+          "amount": 137500
+        },
+        {
+          "m": 4,
+          "amount": 137500
+        },
+        {
+          "m": 6,
+          "amount": 137500
+        },
+        {
+          "m": 8,
+          "amount": 137500
+        },
+        {
+          "m": 15,
+          "amount": 550000
+        }
+      ]
+    },
+    {
+      "rowNumber": 66,
+      "matricule": null,
+      "name": "GOUMBANE Bouamey",
+      "normalized": "goumbane bouamey",
+      "grade": "Licence",
+      "niveau": "L3",
+      "filiere": "Management de projet numérique",
+      "partenariat": "-",
+      "fraisInscription": 50000,
+      "fraisScolarite": 550000,
+      "remiseStr": "",
+      "remisePct": 0,
+      "montantRemise": 0,
+      "netScolarite": 550000,
+      "totalGeneral": 600000,
+      "modalite": "Bi-mensuel",
+      "nbEcheances": 4,
+      "dateRentree": "oct-26",
+      "inscriptionPayee": 0,
+      "echeancesPayees": [
+        {
+          "m": 2,
+          "amount": 137500
+        },
+        {
+          "m": 4,
+          "amount": 137500
+        },
+        {
+          "m": 6,
+          "amount": 137500
+        },
+        {
+          "m": 8,
+          "amount": 137500
+        },
+        {
+          "m": 15,
+          "amount": 550000
+        }
+      ]
+    },
+    {
+      "rowNumber": 70,
+      "matricule": null,
+      "name": "KOUADIO Kouadio Joel",
+      "normalized": "kouadio kouadio joel",
+      "grade": "Master",
+      "niveau": "M1",
+      "filiere": "Finance digitale",
+      "partenariat": "-",
+      "fraisInscription": 50000,
+      "fraisScolarite": 950000,
+      "remiseStr": "",
+      "remisePct": 0,
+      "montantRemise": 0,
+      "netScolarite": 950000,
+      "totalGeneral": 1000000,
+      "modalite": "Bi-mensuel",
+      "nbEcheances": 4,
+      "dateRentree": "nov-26",
+      "inscriptionPayee": 0,
+      "echeancesPayees": [
+        {
+          "m": 3,
+          "amount": 237500
+        },
+        {
+          "m": 5,
+          "amount": 237500
+        },
+        {
+          "m": 7,
+          "amount": 237500
+        },
+        {
+          "m": 9,
+          "amount": 237500
+        },
+        {
+          "m": 15,
+          "amount": 950000
+        }
+      ]
+    },
+    {
+      "rowNumber": 71,
+      "matricule": null,
+      "name": "LOKO Cristilla Flavia",
+      "normalized": "loko cristilla flavia",
+      "grade": "Master",
+      "niveau": "M1",
+      "filiere": "Finance digitale",
+      "partenariat": "Compassion",
+      "fraisInscription": 50000,
+      "fraisScolarite": 950000,
+      "remiseStr": "50%",
+      "remisePct": 50,
+      "montantRemise": 0,
+      "netScolarite": 475000,
+      "totalGeneral": 525000,
+      "modalite": "Bi-mensuel",
+      "nbEcheances": 4,
+      "dateRentree": "nov-26",
+      "inscriptionPayee": 0,
+      "echeancesPayees": [
+        {
+          "m": 3,
+          "amount": 118750
+        },
+        {
+          "m": 5,
+          "amount": 118750
+        },
+        {
+          "m": 7,
+          "amount": 118750
+        },
+        {
+          "m": 9,
+          "amount": 118750
+        },
+        {
+          "m": 15,
+          "amount": 475000
+        }
+      ]
+    },
+    {
+      "rowNumber": 72,
+      "matricule": null,
+      "name": "OUSMAN Ahmat Mahamat",
+      "normalized": "ousman ahmat mahamat",
+      "grade": "Master",
+      "niveau": "M1",
+      "filiere": "Finance digitale",
+      "partenariat": "-",
+      "fraisInscription": 50000,
+      "fraisScolarite": 950000,
+      "remiseStr": "",
+      "remisePct": 0,
+      "montantRemise": 0,
+      "netScolarite": 950000,
+      "totalGeneral": 1000000,
+      "modalite": "Bi-mensuel",
+      "nbEcheances": 4,
+      "dateRentree": "nov-26",
+      "inscriptionPayee": 0,
+      "echeancesPayees": [
+        {
+          "m": 3,
+          "amount": 237500
+        },
+        {
+          "m": 5,
+          "amount": 237500
+        },
+        {
+          "m": 7,
+          "amount": 237500
+        },
+        {
+          "m": 9,
+          "amount": 237500
+        },
+        {
+          "m": 15,
+          "amount": 950000
+        }
+      ]
+    },
+    {
+      "rowNumber": 73,
+      "matricule": null,
+      "name": "ATIKLEME",
+      "normalized": "atikleme",
+      "grade": "Master",
+      "niveau": "M1",
+      "filiere": "Marketing Digital & e-commerce",
+      "partenariat": "-",
+      "fraisInscription": 50000,
+      "fraisScolarite": 950000,
+      "remiseStr": "20%",
+      "remisePct": 20,
+      "montantRemise": 0,
+      "netScolarite": 760000,
+      "totalGeneral": 810000,
+      "modalite": "Bi-mensuel",
+      "nbEcheances": 4,
+      "dateRentree": "nov-26",
+      "inscriptionPayee": 0,
+      "echeancesPayees": [
+        {
+          "m": 3,
+          "amount": 190000
+        },
+        {
+          "m": 5,
+          "amount": 190000
+        },
+        {
+          "m": 7,
+          "amount": 190000
+        },
+        {
+          "m": 9,
+          "amount": 190000
+        },
+        {
+          "m": 15,
+          "amount": 760000
+        }
+      ]
+    },
+    {
+      "rowNumber": 74,
+      "matricule": null,
+      "name": "AKODA Pascal",
+      "normalized": "akoda pascal",
+      "grade": "Master",
+      "niveau": "M1",
+      "filiere": "Management de projet numérique",
+      "partenariat": "Compassion",
+      "fraisInscription": 50000,
+      "fraisScolarite": 950000,
+      "remiseStr": "50%",
+      "remisePct": 50,
+      "montantRemise": 0,
+      "netScolarite": 475000,
+      "totalGeneral": 525000,
+      "modalite": "Bi-mensuel",
+      "nbEcheances": 4,
+      "dateRentree": "nov-26",
+      "inscriptionPayee": 0,
+      "echeancesPayees": [
+        {
+          "m": 3,
+          "amount": 118750
+        },
+        {
+          "m": 5,
+          "amount": 118750
+        },
+        {
+          "m": 7,
+          "amount": 118750
+        },
+        {
+          "m": 9,
+          "amount": 118750
+        },
+        {
+          "m": 15,
+          "amount": 475000
+        }
+      ]
+    },
+    {
+      "rowNumber": 75,
+      "matricule": null,
+      "name": "TCHABANA Malia",
+      "normalized": "tchabana malia",
+      "grade": "Master",
+      "niveau": "M1",
+      "filiere": "Management de projet numérique",
+      "partenariat": "-",
+      "fraisInscription": 50000,
+      "fraisScolarite": 950000,
+      "remiseStr": "",
+      "remisePct": 0,
+      "montantRemise": 0,
+      "netScolarite": 950000,
+      "totalGeneral": 1000000,
+      "modalite": "Bi-mensuel",
+      "nbEcheances": 4,
+      "dateRentree": "nov-26",
+      "inscriptionPayee": 0,
+      "echeancesPayees": [
+        {
+          "m": 3,
+          "amount": 237500
+        },
+        {
+          "m": 5,
+          "amount": 237500
+        },
+        {
+          "m": 7,
+          "amount": 237500
+        },
+        {
+          "m": 9,
+          "amount": 237500
+        },
+        {
+          "m": 15,
+          "amount": 950000
+        }
+      ]
+    },
+    {
+      "rowNumber": 76,
+      "matricule": null,
+      "name": "ANNOUR Mahamat Saleh Kaya",
+      "normalized": "annour mahamat saleh kaya",
+      "grade": "Master",
+      "niveau": "M2",
+      "filiere": "Finance Digitale",
+      "partenariat": "-",
+      "fraisInscription": 50000,
+      "fraisScolarite": 950000,
+      "remiseStr": "",
+      "remisePct": 0,
+      "montantRemise": 0,
+      "netScolarite": 950000,
+      "totalGeneral": 1000000,
+      "modalite": "Bi-mensuel",
+      "nbEcheances": 4,
+      "dateRentree": "nov-26",
+      "inscriptionPayee": 0,
+      "echeancesPayees": [
+        {
+          "m": 3,
+          "amount": 237500
+        },
+        {
+          "m": 5,
+          "amount": 237500
+        },
+        {
+          "m": 7,
+          "amount": 237500
+        },
+        {
+          "m": 9,
+          "amount": 237500
+        },
+        {
+          "m": 15,
+          "amount": 950000
+        }
+      ]
+    },
+    {
+      "rowNumber": 96,
+      "matricule": null,
+      "name": "CHIDAS Vanessa Grâce Emilienne",
+      "normalized": "chidas vanessa grace emilienne",
+      "grade": "Master Pro",
+      "niveau": "Master Pro",
+      "filiere": "Finance digitale",
+      "partenariat": "-",
+      "fraisInscription": 50000,
+      "fraisScolarite": 1650000,
+      "remiseStr": "",
+      "remisePct": 0,
+      "montantRemise": 0,
+      "netScolarite": 1650000,
+      "totalGeneral": 1700000,
+      "modalite": "Bi-mensuel",
+      "nbEcheances": 5,
+      "dateRentree": "janv-27",
+      "inscriptionPayee": 0,
+      "echeancesPayees": [
+        {
+          "m": 5,
+          "amount": 330000
+        },
+        {
+          "m": 7,
+          "amount": 330000
+        },
+        {
+          "m": 9,
+          "amount": 330000
+        },
+        {
+          "m": 11,
+          "amount": 330000
+        },
+        {
+          "m": 13,
+          "amount": 330000
+        },
+        {
+          "m": 15,
+          "amount": 1650000
+        }
+      ]
+    },
+    {
+      "rowNumber": 97,
+      "matricule": null,
+      "name": "Franck Carmel Togbe",
+      "normalized": "franck carmel togbe",
+      "grade": "Master Pro",
+      "niveau": "Master Pro",
+      "filiere": "Finance digitale",
+      "partenariat": "-",
+      "fraisInscription": 50000,
+      "fraisScolarite": 1650000,
+      "remiseStr": "",
+      "remisePct": 0,
+      "montantRemise": 0,
+      "netScolarite": 1650000,
+      "totalGeneral": 1700000,
+      "modalite": "Bi-mensuel",
+      "nbEcheances": 5,
+      "dateRentree": "janv-27",
+      "inscriptionPayee": 0,
+      "echeancesPayees": [
+        {
+          "m": 5,
+          "amount": 330000
+        },
+        {
+          "m": 7,
+          "amount": 330000
+        },
+        {
+          "m": 9,
+          "amount": 330000
+        },
+        {
+          "m": 11,
+          "amount": 330000
+        },
+        {
+          "m": 13,
+          "amount": 330000
+        },
+        {
+          "m": 15,
+          "amount": 1650000
+        }
+      ]
+    },
+    {
+      "rowNumber": 99,
+      "matricule": null,
+      "name": "SAMKLU Enyonam",
+      "normalized": "samklu enyonam",
+      "grade": "Master Pro",
+      "niveau": "Master Pro",
+      "filiere": "Finance digitale",
+      "partenariat": "-",
+      "fraisInscription": 50000,
+      "fraisScolarite": 1650000,
+      "remiseStr": "",
+      "remisePct": 0,
+      "montantRemise": 0,
+      "netScolarite": 1650000,
+      "totalGeneral": 1700000,
+      "modalite": "Bi-mensuel",
+      "nbEcheances": 5,
+      "dateRentree": "janv-27",
+      "inscriptionPayee": 0,
+      "echeancesPayees": [
+        {
+          "m": 5,
+          "amount": 330000
+        },
+        {
+          "m": 7,
+          "amount": 330000
+        },
+        {
+          "m": 9,
+          "amount": 330000
+        },
+        {
+          "m": 11,
+          "amount": 330000
+        },
+        {
+          "m": 13,
+          "amount": 330000
+        },
+        {
+          "m": 15,
+          "amount": 1650000
+        }
+      ]
+    },
+    {
+      "rowNumber": 101,
+      "matricule": null,
+      "name": "MARCOS Nafissath",
+      "normalized": "marcos nafissath",
+      "grade": "Master",
+      "niveau": "M1",
+      "filiere": "Finance digitale",
+      "partenariat": "-",
+      "fraisInscription": 0,
+      "fraisScolarite": 0,
+      "remiseStr": "",
+      "remisePct": 0,
+      "montantRemise": 0,
+      "netScolarite": 0,
+      "totalGeneral": 0,
+      "modalite": "Annuel",
+      "nbEcheances": 1,
+      "dateRentree": "nov-26",
+      "inscriptionPayee": 0,
+      "echeancesPayees": []
+    },
+    {
+      "rowNumber": 102,
+      "matricule": null,
+      "name": "KIALA MFUAMBI Beni",
+      "normalized": "kiala mfuambi beni",
+      "grade": "Master",
+      "niveau": "M1",
+      "filiere": "Management de projet numérique",
+      "partenariat": "-",
+      "fraisInscription": 0,
+      "fraisScolarite": 0,
+      "remiseStr": "",
+      "remisePct": 0,
+      "montantRemise": 0,
+      "netScolarite": 0,
+      "totalGeneral": 0,
+      "modalite": "Annuel",
+      "nbEcheances": 1,
+      "dateRentree": "nov-26",
+      "inscriptionPayee": 0,
+      "echeancesPayees": []
+    }
+  ],
+  "matchedNotEnrolled": [
+    {
+      "sheet": {
+        "rowNumber": 7,
+        "matricule": null,
+        "name": "TELOU Abidé",
+        "normalized": "telou abide",
+        "grade": "Licence",
+        "niveau": "L1",
+        "filiere": "Intelligence Artificielle & Génie logiciel",
+        "partenariat": "-",
+        "fraisInscription": 50000,
+        "fraisScolarite": 850000,
+        "remiseStr": "",
+        "remisePct": 0,
+        "montantRemise": 0,
+        "netScolarite": 850000,
+        "totalGeneral": 900000,
+        "modalite": "Bi-mensuel",
+        "nbEcheances": 4,
+        "dateRentree": "oct-26",
+        "inscriptionPayee": 0,
+        "echeancesPayees": [
+          {
+            "m": 2,
+            "amount": 212500
+          },
+          {
+            "m": 4,
+            "amount": 212500
+          },
+          {
+            "m": 6,
+            "amount": 212500
+          },
+          {
+            "m": 8,
+            "amount": 212500
+          },
+          {
+            "m": 15,
+            "amount": 850000
+          }
+        ]
+      },
+      "dbStudent": {
+        "studentId": "7563f6c0-8840-4c04-bd9a-c4cc19de2fdc",
+        "personId": "aacf54e7-ac9b-4ddd-b67d-191bba4c6910",
+        "matricule": "163-ESC-2026",
+        "firstname": "Abide",
+        "lastname": "TELOU",
+        "fullName": "TELOU Abide",
+        "normalized": "telou abide",
+        "normalizedRev": "abide telou",
+        "m365_email": "t.abide.etudiant@escen.university",
+        "created_at": "2026-10-30T11:36:08.917458+00:00"
+      },
+      "offering": null,
+      "contract": null
+    },
+    {
+      "sheet": {
+        "rowNumber": 16,
+        "matricule": null,
+        "name": "BOLOUVI Emmanuel Yanis Alvin",
+        "normalized": "bolouvi emmanuel yanis alvin",
+        "grade": "Licence",
+        "niveau": "L1",
+        "filiere": "Management de Projet Numérique",
+        "partenariat": "-",
+        "fraisInscription": 50000,
+        "fraisScolarite": 480000,
+        "remiseStr": "",
+        "remisePct": 0,
+        "montantRemise": 0,
+        "netScolarite": 480000,
+        "totalGeneral": 530000,
+        "modalite": "Bi-mensuel",
+        "nbEcheances": 4,
+        "dateRentree": "oct-26",
+        "inscriptionPayee": 0,
+        "echeancesPayees": [
+          {
+            "m": 2,
+            "amount": 120000
+          },
+          {
+            "m": 4,
+            "amount": 120000
+          },
+          {
+            "m": 6,
+            "amount": 120000
+          },
+          {
+            "m": 8,
+            "amount": 120000
+          },
+          {
+            "m": 15,
+            "amount": 480000
+          }
+        ]
+      },
+      "dbStudent": {
+        "studentId": "9a14e042-487c-47d5-98af-09270db5e3de",
+        "personId": "3d17e703-eca5-475a-be01-ee550c164619",
+        "matricule": "152-ESC-2026",
+        "firstname": "EMMANUEL YANIS ALVIN",
+        "lastname": "BOLOUVI",
+        "fullName": "BOLOUVI EMMANUEL YANIS ALVIN",
+        "normalized": "bolouvi emmanuel yanis alvin",
+        "normalizedRev": "emmanuel yanis alvin bolouvi",
+        "m365_email": "b.emmanuel.etudiant@escen.university",
+        "created_at": "2026-10-30T11:36:08.917458+00:00"
+      },
+      "offering": null,
+      "contract": null
+    },
+    {
+      "sheet": {
+        "rowNumber": 68,
+        "matricule": null,
+        "name": "TESSI Messan Segninou",
+        "normalized": "tessi messan segninou",
+        "grade": "Licence",
+        "niveau": "L3",
+        "filiere": "Management de projet numérique",
+        "partenariat": "-",
+        "fraisInscription": 50000,
+        "fraisScolarite": 550000,
+        "remiseStr": "",
+        "remisePct": 0,
+        "montantRemise": 0,
+        "netScolarite": 550000,
+        "totalGeneral": 600000,
+        "modalite": "Bi-mensuel",
+        "nbEcheances": 4,
+        "dateRentree": "oct-26",
+        "inscriptionPayee": 0,
+        "echeancesPayees": [
+          {
+            "m": 2,
+            "amount": 137500
+          },
+          {
+            "m": 4,
+            "amount": 137500
+          },
+          {
+            "m": 6,
+            "amount": 137500
+          },
+          {
+            "m": 8,
+            "amount": 137500
+          },
+          {
+            "m": 15,
+            "amount": 550000
+          }
+        ]
+      },
+      "dbStudent": {
+        "studentId": "1d6b54e4-dda0-45f6-a48c-d05a96d7dce8",
+        "personId": "0244544e-268e-48b2-bf86-8744eb0d015a",
+        "matricule": "161-ESC-2026",
+        "firstname": "MESSAN SEGNINOU",
+        "lastname": "TESSI",
+        "fullName": "TESSI MESSAN SEGNINOU",
+        "normalized": "tessi messan segninou",
+        "normalizedRev": "messan segninou tessi",
+        "m365_email": "t.messan.etudiant@escen.university",
+        "created_at": "2026-10-30T11:36:08.917458+00:00"
+      },
+      "offering": null,
+      "contract": null
+    },
+    {
+      "sheet": {
+        "rowNumber": 103,
+        "matricule": null,
+        "name": "ACAKPO Fabienne Peroline",
+        "normalized": "acakpo fabienne peroline",
+        "grade": "Master Pro",
+        "niveau": "Master Pro",
+        "filiere": "Finance digitale",
+        "partenariat": "-",
+        "fraisInscription": 0,
+        "fraisScolarite": 0,
+        "remiseStr": "",
+        "remisePct": 0,
+        "montantRemise": 0,
+        "netScolarite": 0,
+        "totalGeneral": 0,
+        "modalite": "Annuel",
+        "nbEcheances": 1,
+        "dateRentree": "janv-27",
+        "inscriptionPayee": 0,
+        "echeancesPayees": []
+      },
+      "dbStudent": {
+        "studentId": "1b7c2ed6-1d0d-4229-8620-12c6d019fce5",
+        "personId": "1bda40f5-51e2-4278-ac5f-d3dace283943",
+        "matricule": "159-ESC-2026",
+        "firstname": "Fabienne Péroline",
+        "lastname": "ACAKPO",
+        "fullName": "ACAKPO Fabienne Péroline",
+        "normalized": "acakpo fabienne peroline",
+        "normalizedRev": "fabienne peroline acakpo",
+        "m365_email": "a.fabienne.etudiant@escen.university",
+        "created_at": "2026-10-30T11:36:08.917458+00:00"
+      },
+      "offering": null,
+      "contract": null
+    }
+  ],
+  "enrolledNotInSheet": [
+    {
+      "studentId": "1614dabc-086e-5136-b04a-b2d38bf73b62",
+      "matricule": "019-ESC-2025",
+      "fullName": "DJATO Bougonou",
+      "offering": {
+        "id": "76ee20bd-70b3-41e8-9dee-2caa965a7719",
+        "programCode": "MDE",
+        "programName": "Marketing Digital & E-commerce",
+        "levelCode": "L2",
+        "levelName": "Licence 2"
+      },
+      "status": "REINSCRIT",
+      "hasContract": true
+    },
+    {
+      "studentId": "b3d62942-af01-5248-a78c-59a7740a61fb",
+      "matricule": "050-ESC-2025",
+      "fullName": "TOGBE Frank",
+      "offering": {
+        "id": "90b1fd6c-21a3-4ef2-b8cb-b887338a7637",
+        "programCode": "FD",
+        "programName": "Finance Digitale",
+        "levelCode": "EM",
+        "levelName": "Executive Master"
+      },
+      "status": "REINSCRIT",
+      "hasContract": true
+    },
+    {
+      "studentId": "f0ae30e7-37bd-4029-a975-659a342fc2b5",
+      "matricule": "156-ESC-2026",
+      "fullName": "Fofana Alassane",
+      "offering": {
+        "id": "76ee20bd-70b3-41e8-9dee-2caa965a7719",
+        "programCode": "MDE",
+        "programName": "Marketing Digital & E-commerce",
+        "levelCode": "L2",
+        "levelName": "Licence 2"
+      },
+      "status": "INSCRIT",
+      "hasContract": false
+    },
+    {
+      "studentId": "976f00c7-a1bb-469c-87d6-e409a6bc6211",
+      "matricule": "157-ESC-2026",
+      "fullName": "BAMOGO Ilyassa",
+      "offering": {
+        "id": "061c059b-0b18-42c4-bbe8-dd2094e16d09",
+        "programCode": "IA-GL",
+        "programName": "Intelligence Artificielle & Génie Logiciel",
+        "levelCode": "L1",
+        "levelName": "Licence 1"
+      },
+      "status": "INSCRIT",
+      "hasContract": false
+    }
+  ]
+}
