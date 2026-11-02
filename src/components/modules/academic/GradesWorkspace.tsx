@@ -13,7 +13,6 @@ import {
   evaluationGradeNoteLabel,
 } from '@/services/evaluationGradePolicy';
 import EvaluationGradeDialog from './EvaluationGradeDialog';
-import EvaluationCreateDialog from './EvaluationCreateDialog';
 import PersistentExamCopies from './PersistentExamCopies';
 import PageHeader from '@/components/ui/PageHeader';
 import { downloadCsv } from '@/utils/csv';
@@ -51,7 +50,6 @@ export default function GradesWorkspace() {
   const [studentSearch, setStudentSearch] = useState('');
   const [managingEvalId, setManagingEvalId] = useState('');
   const [onlineCopiesId, setOnlineCopiesId] = useState('');
-  const [creatingEval, setCreatingEval] = useState(false);
 
   const gradeByCandidate = useMemo(() => {
     const map = new Map<string, DatabaseRow>();
@@ -321,13 +319,7 @@ export default function GradesWorkspace() {
             eyebrow="PÉDAGOGIE & RÉSULTATS"
             title="Notes et résultats académiques"
             description="Suivi des carnets de notes, saisie des évaluations, moyennes de classe et procès-verbaux par promotion."
-          >
-            {portal.perms.permissions.includes('evaluation.create') && (
-              <button className="btn btn-primary" onClick={() => setCreatingEval(true)}>
-                + Nouvelle évaluation
-              </button>
-            )}
-          </PageHeader>
+          />
 
           <section className="card card-full" style={{ padding: '24px 28px', borderRadius: '12px', border: '1px solid var(--border)' }}>
 
@@ -812,16 +804,6 @@ export default function GradesWorkspace() {
         <PersistentExamCopies
           evaluationId={onlineCopiesId}
           onClose={() => setOnlineCopiesId('')}
-        />
-      )}
-      {creatingEval && (
-        <EvaluationCreateDialog
-          category="exam"
-          onClose={() => setCreatingEval(false)}
-          onCreated={id => {
-            setCreatingEval(false);
-            setManagingEvalId(id);
-          }}
         />
       )}
     </div>

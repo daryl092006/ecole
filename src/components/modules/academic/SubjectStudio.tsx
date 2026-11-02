@@ -459,7 +459,7 @@ export default function SubjectStudio() {
             className="btn btn-primary"
             onClick={() => setCreatingEval(true)}
           >
-            + Nouvelle évaluation
+            + Nouvelle épreuve
           </button>
         )}
       </PageHeader>
