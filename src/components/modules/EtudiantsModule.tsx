@@ -237,7 +237,7 @@ export default function EtudiantsModule({
                         <div className="cell-main">
                           {s.firstname} {s.lastname}
                         </div>
-                        <div className="cell-sub">{s.email}</div>
+                        <div className="cell-sub">{s.institutionalEmail || s.email || 'Email non renseigné'}</div>
                       </td>
                       <td>{s.nationality.trim() || 'Non renseignée'}</td>
                       <td>
