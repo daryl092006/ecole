@@ -10,6 +10,7 @@ import { usePortal } from '@/hooks/usePortal';
 import { loadReenrollmentCandidates } from '@/services/remoteCampusService';
 import type { ReenrollmentDirectory } from '@/services/reenrollmentService';
 import ResponsiveTable from '@/components/ui/ResponsiveTable';
+import PageHeader from '@/components/ui/PageHeader';
 
 export default function ReenrollmentWorkspace() {
   const [enrolling, setEnrolling] = useState(false);
@@ -38,12 +39,15 @@ export default function ReenrollmentWorkspace() {
     <div>
       {enrolling && <EnrollmentDialog kind="reenroll" initialMatricule={enrollingMatricule} onClose={() => { setEnrolling(false); setEnrollingMatricule(undefined); setRetry(value => value + 1); }} />}
       {selected && <StudentRecordDialog initialSection="parcours" matricule={selected} onClose={() => setSelected(null)} />}
-      <div className="page-intro">
-        <h1>Réinscriptions</h1>
+      <PageHeader
+        eyebrow="SCOLARITÉ & INSCRIPTIONS"
+        title="Réinscriptions & Statuts"
+        description="Gestion des réinscriptions annuelles et suivi des statuts des étudiants."
+      >
         {canReenroll && (
           <button className="btn btn-primary" onClick={() => { setEnrollingMatricule(undefined); setEnrolling(true); }}>Réinscrire un ancien étudiant</button>
         )}
-      </div>
+      </PageHeader>
       <nav className="record-sections mb-2" aria-label="Parcours et statuts">
         <button type="button" aria-pressed={view === 'reenroll'} className={view === 'reenroll' ? 'selected' : ''} onClick={() => setView('reenroll')}>
           À réinscrire{data ? ` (${data.students.length})` : ''}

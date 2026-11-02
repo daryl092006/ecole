@@ -15,6 +15,7 @@ import type { HistoryPage, HistoryRecord } from '@/types/history';
 import ExamCopies from './ExamCopies';
 import DetailDrawer from '@/components/ui/DetailDrawer';
 import ResponsiveTable from '@/components/ui/ResponsiveTable';
+import PageHeader from '@/components/ui/PageHeader';
 import { downloadCsv } from '@/utils/csv';
 import { studentPath, PORTAL_ROUTES } from '@/constants/portalRoutes';
 
@@ -70,7 +71,16 @@ export default function HistoricalWorkspace({ section, studentId: suppliedStuden
   if (!catalog) return <LoadingState label="Chargement des données enregistrées…" />;
   const year = portal.academicYearContext?.years.find(item => item.id === portal.academicYearContext?.selectedYearId);
   const contextPicker = needsDossier ? <section className="card card-full"><h2>{contextStudent ? 'Dossier consulté' : 'Choisir un dossier étudiant'}</h2>{contextStudent ? <><p><strong>{contextStudent.firstname} {contextStudent.lastname}</strong> · {contextStudent.matricule}</p><p className="cell-sub">{year?.name || 'Toutes les années'} · {contextStudent.filiere} · {contextStudent.niveau}</p><div className="btn-group"><button className="btn btn-outline" onClick={() => { setDossier(''); setPage(null); setSelected(null); setQuery(''); setSearch(''); setOffset(0); }}>Changer de dossier</button><Link className="btn btn-outline" href={studentPath(contextStudent.matricule)}>Ouvrir le dossier complet</Link></div>{!studentId && <p role="status">Aucune donnée reliée à ce dossier pour cette rubrique.</p>}</> : <><p>Consultez les {section === 'acad_grades' ? 'notes et leurs évaluations' : section === 'acad_jury' ? 'relevés et décisions' : 'pièces et documents'} d’un étudiant dans l’année consultée.</p><label className="form-group">Rechercher un dossier<input className="input" type="search" placeholder="Nom ou matricule" value={studentQuery} onChange={event => setStudentQuery(event.target.value)} /></label><div className="table-wrap"><ResponsiveTable className="data-table"><thead><tr><th>Étudiant</th><th>Formation</th><th>Dossier</th></tr></thead><tbody>{portal.students.filter(student => `${student.firstname} ${student.lastname} ${student.matricule}`.toLocaleLowerCase('fr').includes(studentQuery.toLocaleLowerCase('fr'))).map(student => <tr key={student.matricule}><td>{student.firstname} {student.lastname}<div className="cell-sub">{student.matricule}</div></td><td>{student.filiere}<div className="cell-sub">{student.niveau}</div></td><td><IconButton className="btn btn-outline" onClick={() => { setDossier(student.matricule); setPage(null); setOffset(0); setQuery(''); setSearch(''); setFlagged(false); }} label="Consulter le dossier" /></td></tr>)}</tbody></ResponsiveTable></div>{!portal.students.length && <p>Aucun dossier étudiant dans le contexte consulté.</p>}</>}</section> : null;
-  if (needsDossier && !canLoad) return <div className="historical-workspace"><div className="page-intro"><h1>{PORTAL_ROUTES.find(route => route.section === section)?.title || config.title}</h1></div>{contextPicker}</div>;
+  if (needsDossier && !canLoad) return (
+    <div className="historical-workspace">
+      <PageHeader
+        eyebrow="ARCHIVES NUMÉRIQUES"
+        title={PORTAL_ROUTES.find(route => route.section === section)?.title || config.title}
+        description="Fonds d'archives et traçabilité des opérations de l'ancien système."
+      />
+      {contextPicker}
+    </div>
+  );
   const metadata = catalog.datasets.find(item => item.table === table);
   const columns = config.columns;
   const selectedStudent = selected && portal.students.find(student => student.historical?.sourceId === String(selected.values.etudiant_id) && student.historical?.batchId === selected.batchId);
@@ -85,7 +95,15 @@ export default function HistoricalWorkspace({ section, studentId: suppliedStuden
   };
   return <div className="historical-workspace">
     {contextPicker}
-    {!embedded && <div className="page-intro"><div>{studentId ? <h2>{pageTitle}</h2> : <h1>{pageTitle}</h1>}</div><span className="source-badge"><Database size={15} /> Archives</span></div>}
+    {!embedded && (
+      <PageHeader
+        eyebrow="ARCHIVES NUMÉRIQUES"
+        title={pageTitle}
+        description="Fonds d'archives et traçabilité des opérations de l'ancien système."
+      >
+        <span className="source-badge"><Database size={15} /> Archives</span>
+      </PageHeader>
+    )}
     {section === 'history_all' ? <div className="history-collections"><label>Rubrique<select className="select-input" value={domain} onChange={event => { const next = event.target.value; setDomain(next); setTable(HISTORY_TABLES.find(spec => next === 'all' || spec.domain === next)!.table); setOffset(0); setQuery(''); }}><option value="all">Toutes les rubriques</option>{Object.entries(HISTORY_DOMAINS).map(([key, label]) => <option key={key} value={key}>{label}</option>)}</select></label><label>Données à consulter<select className="select-input" value={table} onChange={event => { setTable(event.target.value); setOffset(0); setQuery(''); setFlagged(false); }}>{HISTORY_TABLES.filter(spec => domain === 'all' || spec.domain === domain).map(spec => <option key={spec.table} value={spec.table}>{spec.title} ({catalog.datasets.find(item => item.table === spec.table)?.count || 0})</option>)}</select></label></div> : studentId && choices.length > 1 ? <label className="workspace-picker">Consulter<select className="select-input" value={table} onChange={event => { setTable(event.target.value); setQuery(''); setSearch(''); setOffset(0); setFlagged(false); }}>{choices.map(value => <option key={value} value={value}>{HISTORY_TABLES.find(item => item.table === value)!.title}</option>)}</select></label> : choices.length>1 ? <div className="dataset-selector" aria-label="Collections disponibles">{choices.map(value => { const spec = HISTORY_TABLES.find(item => item.table === value)!; const count = catalog.datasets.find(item => item.table === value)?.count || 0; return <button key={value} className={value === table ? 'selected' : ''} aria-pressed={value === table} onClick={() => { setTable(value); setQuery(''); setSearch(''); setOffset(0); setFlagged(false); }}><span>{spec.title}</span>{!studentId && <strong>{count.toLocaleString('fr-FR')}</strong>}</button>; })}</div> : null}
     <div className="card card-full data-browser"><div className="browser-toolbar"><ListFilters count={page?.total || 0} active={Boolean(query)}><label className="browser-search"><Search size={17} /><input aria-label="Rechercher dans les données" placeholder="Rechercher un nom, une référence, un montant…" value={query} maxLength={160} onChange={event => setQuery(event.target.value)} /></label></ListFilters>{Boolean(metadata?.flagged || flagged) && <label className="flagged-filter"><input type="checkbox" checked={flagged} onChange={event => { setFlagged(event.target.checked); setOffset(0); }} /> À vérifier{!studentId && ` (${metadata?.flagged || 0})`}</label>}{Boolean(page?.total) && <SecondaryDetails className="export-options" title="Exporter"><label>Périmètre du fichier<select className="select-input" value={exportScope} onChange={event=>setExportScope(event.target.value)}><option value="all">Tous les résultats filtrés ({page?.total || 0})</option><option value="page">Cette page ({page?.records.length || 0})</option></select></label><p>Les colonnes correspondent à la liste affichée. Les filtres et le dossier sélectionné sont conservés.</p><button className="btn btn-outline" disabled={!page?.records.length || exporting} onClick={exportRecords}><Download size={15} /> {exporting ? 'Préparation…' : 'Télécharger le CSV'}</button></SecondaryDetails>}</div>
       {exportMessage && <p className="info-box" role="status">{exportMessage}</p>}{exportError && <p className="restricted-box" role="alert">{exportError}</p>}{error ? <div role="alert" className="empty-state"><strong>Chargement impossible</strong><span>{error}</span><IconButton className="btn btn-primary" onClick={() => setReload(value => value + 1)} label="Réessayer" /></div> : !page ? <LoadingState label="Chargement des enregistrements…" variant="table" /> : <>

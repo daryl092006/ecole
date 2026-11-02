@@ -5,6 +5,7 @@ import DrawerActions from '@/components/ui/DrawerActions';
 import IconButton from '@/components/ui/IconButton';
 import CatalogTaskDialog from '@/components/modules/academic/CatalogTaskDialog';
 import LoadingState from '@/components/ui/LoadingState';
+import PageHeader from '@/components/ui/PageHeader';
 import { useEffect, useState, type ReactNode } from 'react';
 import { usePortal } from '@/hooks/usePortal';
 import { downloadApplicationDocument, loadWebsiteData, saveWebsiteData, createStudentRecord } from '@/services/remoteCampusService';
@@ -28,12 +29,11 @@ function AdmissionsFrame({ title, onClose, children }: { title: string; onClose?
     </WorkPage>
   ) : (
     <div className="domain-workspace admissions-workspace workspace-stack">
-      <div className="page-intro">
-        <div>
-
-          <h1>{title}</h1>
-        </div>
-      </div>
+      <PageHeader
+        eyebrow="SITE WEB & ADMISSIONS"
+        title={title}
+        description="Configuration et gestion des dossiers d'admission en ligne."
+      />
       {children}
     </div>
   );

@@ -12,6 +12,7 @@ import WorkPage from '@/components/ui/WorkPage';
 import ReviewedForm from '@/components/ui/ReviewedForm';
 import DrawerActions from '@/components/ui/DrawerActions';
 import ResponsiveTable from '@/components/ui/ResponsiveTable';
+import PageHeader from '@/components/ui/PageHeader';
 
 type Action = { kind: 'create' } | { kind: 'approve' | 'refuse' | 'receive'; row: DatabaseRow };
 interface DraftLine { key: string; description: string; quantity: string; unitAmount: string; }
@@ -70,17 +71,14 @@ export default function PurchasesWorkspace() {
     finally { setBusy(false); }
   }
   return <div className="domain-workspace workspace-stack purchases-workspace">
-    <div className="page-intro">
-      <div>
-        <span className="page-eyebrow">LOGISTIQUE & ACHATS</span>
-        <h1>Demandes d’achat</h1>
-        <p>Gérez le circuit des achats, de l’expression du besoin à la décision et aux réceptions matérielles.</p>
-      </div>
-      <div className="btn-group">
-        <button className="btn btn-outline" onClick={() => setReload(value => value + 1)}>Actualiser</button>
-        {directory.canCreate && <button className="btn btn-primary" disabled={!directory.yearId} onClick={() => open({ kind: 'create' })}>Nouvelle demande d’achat</button>}
-      </div>
-    </div>
+    <PageHeader
+      eyebrow="LOGISTIQUE & ACHATS"
+      title="Demandes d’achat"
+      description="Gérez le circuit des achats, de l’expression du besoin à la décision et aux réceptions matérielles."
+    >
+      <button className="btn btn-outline" onClick={() => setReload(value => value + 1)}>Actualiser</button>
+      {directory.canCreate && <button className="btn btn-primary" disabled={!directory.yearId} onClick={() => open({ kind: 'create' })}>Nouvelle demande d’achat</button>}
+    </PageHeader>
     {success && <p role="status" className="info-box">{success}</p>}{loadError && <p role="alert" className="restricted-box">{loadError}<button className="btn btn-outline" onClick={() => setReload(value => value + 1)}>Réessayer</button></p>}{!directory.yearId && <p className="info-box">Toutes les années : consultation uniquement.</p>}
     <section className="card"><ListFilters count={directory.purchases.length} active={Boolean(query || status)}><div className="form-row"><label className="form-group">Rechercher un achat<input className="input" type="search" value={query} onChange={event => setQuery(event.target.value)} /></label><label className="form-group">État<select className="select-input" value={status} onChange={event => setStatus(event.target.value)}><option value="">Tous les états</option>{Object.entries(PURCHASE_STATUS_LABELS).map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select></label></div>
       </ListFilters><ResponsiveTable className="data-table"><thead><tr><th>Demande</th><th>Fournisseur</th><th>État</th><th>Actions</th></tr></thead><tbody>{filtered.map(row => <tr key={row.id}><td><strong>{String(row.reason)}</strong><div className="cell-sub">{String(row.reference)}</div></td><td>{supplierName(row)}</td><td>{PURCHASE_STATUS_LABELS[String(row.status)]}</td><td><div className="btn-group"><button className="btn btn-outline" onClick={() => setViewingId(row.id)}>Ouvrir le détail</button>{directory.yearId && directory.canApprove && row.status === 'DEMANDE' && <><button className="btn btn-primary" onClick={() => open({ kind: 'approve', row })}>Approuver</button><button className="btn btn-outline" onClick={() => open({ kind: 'refuse', row })}>Refuser</button></>}{directory.yearId && directory.canReceive && ['APPROUVE', 'RECEPTION_PARTIELLE'].includes(String(row.status)) && <button className="btn btn-primary" onClick={() => open({ kind: 'receive', row })}>Réceptionner</button>}</div></td></tr>)}{!filtered.length && <tr><td colSpan={4}>Aucun achat pour ces critères.</td></tr>}</tbody></ResponsiveTable>

@@ -3,6 +3,7 @@ import SubjectRichText from '@/components/ui/SubjectRichText';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { usePortal } from '@/hooks/usePortal';
 import LoadingState from '@/components/ui/LoadingState';
+import PageHeader from '@/components/ui/PageHeader';
 import ReviewedForm from '@/components/ui/ReviewedForm';
 import { listOnlineExams, readOnlineExam, writeOnlineExam, OnlineExamError } from '@/services/onlineExamService';
 import { canRestoreExamDraft, emptyExamAnswer, examAnsweredCount, examAnswersEqual, type ExamLocalDraft } from '@/services/onlineExamDraftService';
@@ -22,24 +23,32 @@ export default function StudentExamsWorkspace() {
   useEffect(() => { void load(); }, [load, portal.academicYearContext?.selectedYearId]);
   if (!portal.perms.permissions.includes('exam.take')) return <p>Le passage des épreuves n’est pas autorisé pour ce rôle.</p>;
   if (selected) return <OnlineExamEditor key={selected.attempt.id} initial={selected} onBack={() => { setSelected(null); void load(); }} />;
-  return <section className="card">
-    <div className="page-intro"><div><h1>Mes épreuves en ligne</h1><p>Les réponses enregistrées sont remises automatiquement à la fin du temps imparti, même si cette page est fermée.</p></div><button className="btn btn-outline" disabled={busy} onClick={() => void load()}>Actualiser</button></div>
-    {error && <p role="alert" className="restricted-box">{error}</p>}
-    {!directory && !error && <LoadingState label="Chargement des épreuves…" />}
-    {directory?.exams.map(exam => <article className="online-exam-entry" key={exam.evaluationId}>
-      <h2>{exam.name}</h2><p>{dateLabel(exam.opensAt)} — {dateLabel(exam.closesAt)} · {exam.durationMinutes} minutes</p>
-      <p>{exam.status ? exam.status === 'EN_COURS' ? 'Copie en cours' : 'Copie fermée' : 'Épreuve à passer'}</p>
-      <button className="btn btn-primary" disabled={busy || (!exam.attemptId && (Date.parse(directory.serverNow) < Date.parse(exam.opensAt) || Date.parse(directory.serverNow) >= Date.parse(exam.closesAt)))} onClick={async () => {
-        setBusy(true); setError('');
-        try {
-          setSelected(exam.attemptId ? await readOnlineExam(portal.activeRole, exam.attemptId) : await writeOnlineExam(portal.activeRole, { action: 'start', evaluationId: exam.evaluationId }));
-          void portal.refreshCampus();
-        } catch (cause) { setError(cause instanceof Error ? cause.message : 'Ouverture impossible.'); }
-        finally { setBusy(false); }
-      }}>{exam.status === 'EN_COURS' ? 'Reprendre ma copie' : exam.attemptId ? 'Consulter ma copie remise' : 'Commencer l’épreuve'}</button>
-    </article>)}
-    {directory && !directory.exams.length && <p>Aucune épreuve en ligne disponible pour votre inscription.</p>}
-  </section>;
+  return <div className="domain-workspace workspace-stack">
+    <PageHeader
+      eyebrow="ESPACE ÉTUDIANT"
+      title="Mes épreuves en ligne"
+      description="Les réponses enregistrées sont remises automatiquement à la fin du temps imparti, même si cette page est fermée."
+    >
+      <button className="btn btn-outline" disabled={busy} onClick={() => void load()}>Actualiser</button>
+    </PageHeader>
+    <section className="card card-full">
+      {error && <p role="alert" className="restricted-box">{error}</p>}
+      {!directory && !error && <LoadingState label="Chargement des épreuves…" />}
+      {directory?.exams.map(exam => <article className="online-exam-entry" key={exam.evaluationId}>
+        <h2>{exam.name}</h2><p>{dateLabel(exam.opensAt)} — {dateLabel(exam.closesAt)} · {exam.durationMinutes} minutes</p>
+        <p>{exam.status ? exam.status === 'EN_COURS' ? 'Copie en cours' : 'Copie fermée' : 'Épreuve à passer'}</p>
+        <button className="btn btn-primary" disabled={busy || (!exam.attemptId && (Date.parse(directory.serverNow) < Date.parse(exam.opensAt) || Date.parse(directory.serverNow) >= Date.parse(exam.closesAt)))} onClick={async () => {
+          setBusy(true); setError('');
+          try {
+            setSelected(exam.attemptId ? await readOnlineExam(portal.activeRole, exam.attemptId) : await writeOnlineExam(portal.activeRole, { action: 'start', evaluationId: exam.evaluationId }));
+            void portal.refreshCampus();
+          } catch (cause) { setError(cause instanceof Error ? cause.message : 'Ouverture impossible.'); }
+          finally { setBusy(false); }
+        }}>{exam.status === 'EN_COURS' ? 'Reprendre ma copie' : exam.attemptId ? 'Consulter ma copie remise' : 'Commencer l’épreuve'}</button>
+      </article>)}
+      {directory && !directory.exams.length && <p>Aucune épreuve en ligne disponible pour votre inscription.</p>}
+    </section>
+  </div>;
 }
 
 function OnlineExamEditor({ initial, onBack }: { initial: OnlineExamView; onBack: () => void }) {

@@ -9,6 +9,7 @@ import type { TeacherCommand, TeacherDirectory, TeacherProfile, TeachingAssignme
 import LoadingState from '@/components/ui/LoadingState';
 import ErrorState from '@/components/ui/ErrorState';
 import ResponsiveTable from '@/components/ui/ResponsiveTable';
+import PageHeader from '@/components/ui/PageHeader';
 import WorkPage from '@/components/ui/WorkPage';
 import ReviewedForm, { type ReviewField } from '@/components/ui/ReviewedForm';
 import DrawerActions from '@/components/ui/DrawerActions';
@@ -82,11 +83,15 @@ export default function TeachersWorkspace() {
     { label: 'Début', value: form.validFrom }, { label: 'Fin', value: form.validUntil || 'Sans date de fin' },
   ];
   const filtered = directory.teachers.filter(teacher => `${teacher.name} ${teacher.employeeNumber} ${teacher.specialty}`.toLocaleLowerCase('fr').includes(query.toLocaleLowerCase('fr')));
-  return <div>
-    <div className="page-intro"><div><h1>Enseignants et affectations</h1></div><div className="btn-group">
+  return <div className="domain-workspace workspace-stack">
+    <PageHeader
+      eyebrow="RESSOURCES HUMAINES"
+      title="Enseignants et affectations"
+      description="Gestion des profils enseignants, compétences et attributions de cours par filière et groupe."
+    >
       {directory.canManageProfiles && <button className="btn btn-primary" onClick={() => open({ kind: 'create_profile' })}>Créer un profil enseignant</button>}
       {directory.canManageAssignments && <button className="btn btn-primary" onClick={() => open({ kind: 'create_assignment' })}>Nouvelle affectation</button>}
-    </div></div>
+    </PageHeader>
     {success && <p className="card" role="status">{success}</p>}
     {!directory.selectedYearId && <p className="restricted-box">Choisissez une année scolaire précise pour consulter et gérer ses affectations.</p>}
     <nav className="record-sections" aria-label="Données enseignants"><button className={section === 'teachers' ? 'selected' : ''} aria-pressed={section === 'teachers'} onClick={() => setSection('teachers')}>Enseignants ({directory.teachers.length})</button><button className={section === 'assignments' ? 'selected' : ''} aria-pressed={section === 'assignments'} onClick={() => setSection('assignments')}>Affectations ({directory.assignments.length})</button></nav>

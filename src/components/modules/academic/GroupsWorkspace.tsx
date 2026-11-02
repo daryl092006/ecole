@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { usePortal } from '@/hooks/usePortal';
 import { useAcademicReferences } from '@/hooks/useAcademicReferences';
 import ResponsiveTable from '@/components/ui/ResponsiveTable';
+import PageHeader from '@/components/ui/PageHeader';
 import type { TeachingAssignment, Subject, Teacher } from '@/types/academic';
 import { Users, Search, ArrowRight, ShieldAlert, ArrowLeft } from 'lucide-react';
 
@@ -120,15 +121,11 @@ export default function GroupsWorkspace() {
   return (
     <div className="domain-workspace workspace-stack">
       {/* En-tête officiel */}
-      <div className="page-intro">
-        <div>
-          <span className="page-eyebrow">PÉDAGOGIE & SCOLARITÉ</span>
-          <h1>Classes et groupes d'étudiants</h1>
-          <p>
-            Consultez la composition exacte de chaque classe, l'effectif des inscrits et les étudiants rattachés pour l'année <strong>{currentYearName}</strong>.
-          </p>
-        </div>
-      </div>
+      <PageHeader
+        eyebrow="PÉDAGOGIE & SCOLARITÉ"
+        title="Classes et groupes d'étudiants"
+        description={`Consultez la composition exacte de chaque classe, l'effectif des inscrits et les étudiants rattachés pour l'année ${currentYearName}.`}
+      />
 
       {/* Indicateurs clés synthétiques */}
       <div className="kpi-grid">

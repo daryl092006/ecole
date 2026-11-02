@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import { usePortal } from '@/hooks/usePortal';
 import WorkPage from '@/components/ui/WorkPage';
+import PageHeader from '@/components/ui/PageHeader';
 import ResponsiveTable from '@/components/ui/ResponsiveTable';
 import ReferenceCrudWorkspace from './ReferenceCrudWorkspace';
 
@@ -146,7 +147,11 @@ export default function ProgramsCoursesWorkspace() {
   };
 
   return <div className="domain-workspace workspace-stack">
-    <div className="page-intro"><div><h1>Programmes de cours et matières</h1></div></div>
+    <PageHeader
+      eyebrow="PÉDAGOGIE & PROGRAMMES"
+      title="Programmes de cours et matières"
+      description="Maquettes pédagogiques, unités d'enseignement et volumes horaires par formation."
+    />
     <section className="card" aria-label="Choisir le programme">
       <div className="form-grid">
         <label className="form-group">

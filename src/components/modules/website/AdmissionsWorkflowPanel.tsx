@@ -19,6 +19,7 @@ import IconButton from '@/components/ui/IconButton';
 import LoadingState from '@/components/ui/LoadingState';
 import ResponsiveTable from '@/components/ui/ResponsiveTable';
 import DocumentPreview from '@/components/ui/DocumentPreview';
+import PageHeader from '@/components/ui/PageHeader';
 
 const ACTION_RESULTS: Record<AdmissionAction, string> = {
   acknowledge: 'Candidature reçue', review: 'En vérification admission', incomplete: 'Dossier incomplet',
@@ -170,27 +171,24 @@ export default function AdmissionsWorkflowPanel() {
   }
 
   return <div className="domain-workspace workspace-stack">
-    <div className="page-intro">
-      <div>
-        <span className="page-eyebrow">SITE WEB & ADMISSIONS</span>
-        <h1>| Étude des Dossiers</h1>
-        <p>Gestion centralisée et validation des candidatures entrantes</p>
-      </div>
-      <div className="btn-group">
-        <button
-          type="button"
-          className="btn btn-primary"
-          style={{ display: 'inline-flex', alignItems: 'center', gap: '8px' }}
-          disabled={!listed.length}
-          onClick={exportExcel}
-        >
-          <Download size={16} aria-hidden="true" />
-          EXPORTER EN EXCEL
-        </button>
-        <button className="btn btn-outline" disabled={busy} onClick={() => { void refresh().catch(error => setError(error.message)); }}>Actualiser les dossiers</button>
-        {data.capabilities.review && year && <button className="btn btn-outline" onClick={() => { setError(''); setCreateToken(newToken()); }}>Saisir une candidature</button>}
-      </div>
-    </div>
+    <PageHeader
+      eyebrow="SITE WEB & ADMISSIONS"
+      title="Étude des dossiers de candidature"
+      description="Gestion centralisée, examen des pièces et validation des candidatures entrantes."
+    >
+      <button
+        type="button"
+        className="btn btn-primary"
+        style={{ display: 'inline-flex', alignItems: 'center', gap: '8px' }}
+        disabled={!listed.length}
+        onClick={exportExcel}
+      >
+        <Download size={16} aria-hidden="true" />
+        EXPORTER EN EXCEL
+      </button>
+      <button className="btn btn-outline" disabled={busy} onClick={() => { void refresh().catch(error => setError(error.message)); }}>Actualiser les dossiers</button>
+      {data.capabilities.review && year && <button className="btn btn-outline" onClick={() => { setError(''); setCreateToken(newToken()); }}>Saisir une candidature</button>}
+    </PageHeader>
     {error && !selected && !createToken && <p role="alert" className="restricted-box">{error}</p>}{success && <p role="status" className="success-message">{success}</p>}
     {!data.mail_configured && <p className="restricted-box" role="status">Les mails sont conservés dans la file d’envoi. Le service d’envoi doit être configuré pour les transmettre.</p>}
     <div className="admissions-pills-bar" role="toolbar" aria-label="Filtrer par statut">

@@ -11,6 +11,7 @@ import StudentAttendancePanel from './StudentAttendancePanel';
 import StudentProfilePanel from '@/components/modules/StudentProfilePanel';
 import LoadingState from '@/components/ui/LoadingState';
 import ResponsiveTable from '@/components/ui/ResponsiveTable';
+import PageHeader from '@/components/ui/PageHeader';
 import PersistentExamCopies from './academic/PersistentExamCopies';
 import EvaluationGradeDialog from './academic/EvaluationGradeDialog';
 import { loadStudentRecord } from '@/services/remoteCampusService';
@@ -118,24 +119,19 @@ export default function StudentRecordPanel({ studentId, embedded = false, initia
 
   return (
     <div>
-      {!embedded && (
-        <Link href="/etudiants" className="btn btn-outline">
-          ← Revenir aux étudiants
-        </Link>
-      )}
-      <div className="page-intro">
-        <div>
-          {!embedded && <span className="page-eyebrow">DOSSIER ÉTUDIANT · {student.matricule}</span>}
-          <h1 style={embedded ? { fontSize: '1.5rem', marginBottom: '0.25rem' } : undefined}>
-            {student.firstname} {student.lastname}
-          </h1>
-          <p>
-            {[student.filiere, student.niveau, student.groupe]
-              .filter(value => value && !['À reprendre', 'Non affecté'].includes(value))
-              .join(' · ') || 'Formation et groupe non confirmés pour l’année consultée'}
-          </p>
-        </div>
-      </div>
+      <PageHeader
+        eyebrow={!embedded ? `DOSSIER ÉTUDIANT · ${student.matricule}` : undefined}
+        title={`${student.firstname} ${student.lastname}`}
+        description={[student.filiere, student.niveau, student.groupe]
+          .filter(value => value && !['À reprendre', 'Non affecté'].includes(value))
+          .join(' · ') || 'Formation et groupe non confirmés pour l’année consultée'}
+      >
+        {!embedded && (
+          <Link href="/etudiants" className="btn btn-outline">
+            ← Revenir aux étudiants
+          </Link>
+        )}
+      </PageHeader>
 
       {state.history.error && <p role="alert">{state.history.error}<IconButton className="btn btn-outline" onClick={state.history.retry} label="Réessayer l’historique" /></p>}
       {error && <p role="alert">{error}<IconButton className="btn btn-outline" onClick={() => setRetry(value => value + 1)} label="Réessayer le dossier" /></p>}

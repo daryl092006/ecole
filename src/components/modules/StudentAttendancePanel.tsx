@@ -2,6 +2,7 @@
 
 import { usePortal } from '@/hooks/usePortal';
 import ResponsiveTable from '@/components/ui/ResponsiveTable';
+import PageHeader from '@/components/ui/PageHeader';
 import { ATTENDANCE_LABELS, type AttendanceStatus } from '@/types/attendanceManagement';
 import { connectedRecordValue } from '@/services/connectedRecordDisplayService';
 import { ROLES } from '@/types/permissions';
@@ -43,13 +44,11 @@ export default function StudentAttendancePanel({ matricule, embedded = false }: 
   return (
     <section className="card card-full">
       {!embedded && (
-        <div className="page-intro">
-          <div>
-            <span className="page-eyebrow">SCOLARITÉ & PÉDAGOGIE</span>
-            <h1>{isSelfStudent ? 'Mon assiduité' : 'Assiduité et présences'}</h1>
-            <p>{isSelfStudent ? 'Consultez l’historique complet de vos pointages de présence et le suivi de vos absences pour l’année universitaire.' : 'Historique des pointages de présence et suivi de l’assiduité de l’étudiant pour l’année universitaire.'}</p>
-          </div>
-        </div>
+        <PageHeader
+          eyebrow="SCOLARITÉ & PÉDAGOGIE"
+          title={isSelfStudent ? 'Mon assiduité' : 'Assiduité et présences'}
+          description={isSelfStudent ? 'Consultez l’historique complet de vos pointages de présence et le suivi de vos absences pour l’année universitaire.' : 'Historique des pointages de présence et suivi de l’assiduité de l’étudiant pour l’année universitaire.'}
+        />
       )}
 
       <div className="kpi-grid" style={{ marginBottom: '1.25rem' }}>

@@ -10,6 +10,7 @@ import LoadingState from '@/components/ui/LoadingState';
 import ErrorState from '@/components/ui/ErrorState';
 import ResponsiveTable from '@/components/ui/ResponsiveTable';
 import IconButton from '@/components/ui/IconButton';
+import PageHeader from '@/components/ui/PageHeader';
 import WorkPage from '@/components/ui/WorkPage';
 import ReviewedForm from '@/components/ui/ReviewedForm';
 
@@ -65,9 +66,16 @@ export default function EmailOutboxPanel() {
     finally { setBusy(false); }
   };
 
-  if (!allowed) return <section className="card"><h1>Suivi des mails</h1><p role="alert">Accès réservé à la direction et à l’Informaticien avec attribution globale.</p></section>;
-  return <section className="card card-full email-workspace">
-    <div className="setup-actions"><div><h1>Suivi des mails</h1><p>Notifications liées aux actions de l’année consultée.</p></div><button className="btn btn-outline" onClick={() => setRevision(value => value + 1)}>Actualiser</button></div>
+  if (!allowed) return <section className="card"><h1>Suivi des emails</h1><p role="alert">Accès réservé à la direction et à l’Informaticien avec attribution globale.</p></section>;
+  return <div className="domain-workspace workspace-stack email-workspace">
+    <PageHeader
+      eyebrow="SYSTÈME & CONTRÔLE"
+      title="Suivi des emails"
+      description="Journal de transmission et état des notifications sortantes pour l'année consultée."
+    >
+      <button className="btn btn-outline" onClick={() => setRevision(value => value + 1)}>Actualiser</button>
+    </PageHeader>
+    <section className="card card-full">
     {message && <p role="status">{message}</p>}
     {error ? <ErrorState title="Mails indisponibles" message={error} onRetry={() => setRevision(value => value + 1)} /> : !page ? <LoadingState label="Chargement des mails…" variant="table" /> : <>
       {!page.configuration.ready && <p className="info-box" role="status">Envoi non configuré. Les messages restent en attente.</p>}
@@ -94,5 +102,6 @@ export default function EmailOutboxPanel() {
         {selected.status === 'UNKNOWN' && <p className="info-box">Vérifiez auprès du service si ce mail a été accepté. Aucun renvoi automatique n’est effectué.</p>}
       </>}
     </WorkPage>}
-  </section>;
+  </section>
+  </div>;
 }
