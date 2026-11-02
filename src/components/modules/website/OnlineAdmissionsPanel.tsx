@@ -108,7 +108,7 @@ export default function OnlineAdmissionsPanel({
     setBusy(true);
     setMessage('');
     try {
-      await saveWebsiteData({ ...values, reason }, role);
+      await saveWebsiteData({ ...values, reason: reason?.trim() || 'Mise à jour de la configuration' }, role);
       setSelected(null);
       setIntake(null);
       setLevelGroup(null);
@@ -695,7 +695,6 @@ export default function OnlineAdmissionsPanel({
         { label: 'Formation', value: intake.label, previous: data.intakes.find(item => item.id === intake.id)?.label },
         { label: 'Ouverture sur le site', value: intake.active ? 'Ouverte' : 'Fermée', previous: data.intakes.find(item => item.id === intake.id)?.active ? 'Ouverte' : 'Fermée' },
         { label: 'Pièces obligatoires', value: intake.required_documents.map(key => DOCUMENT_LABELS[key] || key).join(', ') || 'Aucune', previous: data.intakes.find(item => item.id === intake.id)?.required_documents.map(key => DOCUMENT_LABELS[key] || key).join(', ') || 'Aucune' },
-        { label: 'Motif', value: reason },
       ]} consequence="La configuration sera utilisée par le formulaire de candidature du site. Fermer la formation empêchera les nouvelles candidatures ; les dossiers reçus restent conservés." onConfirm={() => { const { id, version, academic_year_id, level_id, program_id, label, active, required_documents } = intake; void save({ action: 'intake-save', ...(id ? { id, version } : {}), academic_year_id, level_id, program_id, label, active, required_documents }); }}>{message && <p role="alert" className="auth-error">{message}</p>}
       <p><strong>{intake.program_name || intake.label}</strong> · {intake.level_name} · {data.years?.find(year => year.id === intake.academic_year_id)?.name}</p>
       <label className="form-group">Année universitaire<select aria-label="Année universitaire" className="select-input" required disabled={!!intake.id && !!intake.academic_year_id} value={intake.academic_year_id || ''} onChange={event => { setConfirm(false); setIntake({ ...intake, academic_year_id: event.target.value }); }}><option value="">Choisir une année</option>{(data.years || []).map(year => <option key={year.id} value={year.id}>{year.name} · {year.status}</option>)}</select></label>
@@ -705,7 +704,7 @@ export default function OnlineAdmissionsPanel({
       {canManage && state.perms.permissions.includes('academic.structure.manage') && <div className="btn-group">{!data.programs.length && <button type="button" className="btn btn-outline" onClick={() => setBaseTask('programs')}>Renseigner la filière ici</button>}{!data.levels.length && <button type="button" className="btn btn-outline" onClick={() => setBaseTask('levels')}>Renseigner le niveau ici</button>}</div>}
       <p>Les pièces sont communes à toutes les filières de ce niveau. Modifiez-les dans « Pièces par niveau ».</p>
       <label className="form-group"><span><input type="checkbox" checked={intake.active} onChange={event => { setConfirm(false); setIntake({ ...intake, active: event.target.checked }); }} /> Ouvrir aux inscriptions sur le site</span></label>
-      <label className="form-group">Motif de la configuration<textarea aria-label="Motif de la configuration" className="input" required minLength={3} maxLength={1000} value={reason} onChange={event => { setReason(event.target.value); setConfirm(false); }} /></label><DrawerActions><button className="btn btn-primary" disabled={busy}>Relire la configuration</button></DrawerActions>
+      <DrawerActions><button className="btn btn-primary" disabled={busy}>Relire la configuration</button></DrawerActions>
     </ReviewedForm></WorkPage>}
 
     </>
