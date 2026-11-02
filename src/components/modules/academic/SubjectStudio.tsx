@@ -468,10 +468,21 @@ export default function SubjectStudio() {
         <EvaluationCreateDialog
           category="exam"
           onClose={() => setCreatingEval(false)}
-          onCreated={async () => {
+          onCreated={async (newEvalId) => {
             setCreatingEval(false);
             await portal.refreshCampus();
-            setRetry(r => r + 1);
+            try {
+              const fresh = await loadPreparedSubjects(activeRole);
+              setDirectory(fresh);
+              const createdExam = fresh.exams?.find(e => e.id === newEvalId);
+              if (createdExam && !subjectExamIssue(createdExam)) {
+                open(undefined, createdExam);
+              } else {
+                setRetry(r => r + 1);
+              }
+            } catch {
+              setRetry(r => r + 1);
+            }
           }}
         />
       )}

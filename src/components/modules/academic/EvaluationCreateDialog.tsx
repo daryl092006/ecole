@@ -30,6 +30,8 @@ export default function EvaluationCreateDialog({
   const enrollmentGroups = snapshot.tables.enrollment_groups || [];
   const enrollments = snapshot.tables.enrollments || [];
   const evaluations = snapshot.tables.evaluations || [];
+  const rooms = snapshot.tables.rooms || [];
+  const availableRooms = rooms.filter(r => !r.archived_at && r.available !== false);
 
   // Filtrer les affectations accessibles pour l'utilisateur
   const filteredAssignments = assignments.filter(a => {
@@ -44,6 +46,12 @@ export default function EvaluationCreateDialog({
   const [name, setName] = useState('');
   const [kind, setKind] = useState<'DEVOIR' | 'EXAMEN' | 'INTERROGATION' | 'TP' | 'EXPOSE' | 'PROJET' | 'RATTRAPAGE'>(category === 'exam' ? 'EXAMEN' : category === 'resit' ? 'RATTRAPAGE' : 'DEVOIR');
   const [parentEvaluationId, setParentEvaluationId] = useState('');
+  const [scheduleNow, setScheduleNow] = useState(true);
+  const [startsAt, setStartsAt] = useState('');
+  const [endsAt, setEndsAt] = useState('');
+  const [durationMinutes, setDurationMinutes] = useState(120);
+  const [deliveryMode, setDeliveryMode] = useState<'EN_LIGNE' | 'PAPIER'>('EN_LIGNE');
+  const [roomId, setRoomId] = useState(availableRooms[0]?.id ? String(availableRooms[0].id) : '');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
 
@@ -62,18 +70,28 @@ export default function EvaluationCreateDialog({
 
   const parentOptions = evaluations.filter(e => e.assignment_id === assignmentId && e.kind !== 'RATTRAPAGE' && e.session_type !== 'RATTRAPAGE' && !e.cancelled_at && !e.archived_at);
 
+  const validate = () => {
+    if (!assignmentId) return 'Choisissez un enseignement.';
+    if (name.trim().length < 2) return 'Le libellé doit contenir au moins deux caractères.';
+    if (!candidateCount) return 'Aucun candidat éligible dans ce groupe.';
+    if (kind === 'RATTRAPAGE' && !parentEvaluationId) return 'Choisissez l’évaluation d’origine.';
+    if (scheduleNow) {
+      if (!startsAt || !endsAt) return 'Renseignez la date et les heures de début et de fin.';
+      const s = new Date(startsAt).getTime();
+      const e = new Date(endsAt).getTime();
+      if (isNaN(s) || isNaN(e) || s >= e) return 'L’heure de début doit précéder l’heure de fin.';
+      if (durationMinutes < 1) return 'La durée de composition doit être d’au moins 1 minute.';
+      if ((e - s) < durationMinutes * 60000) return 'La fenêtre horaire doit couvrir au moins la durée de l’épreuve.';
+      if (deliveryMode === 'PAPIER' && !roomId) return 'Choisissez une salle pour l’épreuve sur papier.';
+    }
+    return null;
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!assignmentId) {
-      setError('Veuillez sélectionner un enseignement.');
-      return;
-    }
-    if (!name.trim()) {
-      setError('Veuillez renseigner un libellé pour l’évaluation.');
-      return;
-    }
-    if (kind === 'RATTRAPAGE' && !parentEvaluationId) {
-      setError('Une session de rattrapage doit être rattachée à une évaluation normale.');
+    const issue = validate();
+    if (issue) {
+      setError(issue);
       return;
     }
 
@@ -89,7 +107,27 @@ export default function EvaluationCreateDialog({
         revision: snapshot.revision,
       });
 
-      portal.refreshCampus();
+      if (res.id && scheduleNow && startsAt && endsAt) {
+        const iso = (v: string) => new Date(`${v}:00Z`).toISOString();
+        await manageEvaluation(portal.activeRole, {
+          action: 'schedule_delivery',
+          evaluationId: res.id,
+          sessionId: null,
+          newSession: {
+            mode: deliveryMode,
+            roomId: deliveryMode === 'PAPIER' ? roomId : null,
+            startsAt: iso(startsAt),
+            endsAt: iso(endsAt),
+          },
+          accessOpensAt: iso(startsAt),
+          accessClosesAt: iso(endsAt),
+          durationMinutes: Number(durationMinutes),
+          reason: 'Programmation lors de la création de l’épreuve',
+          revision: Number(res.revision) || snapshot.revision,
+        });
+      }
+
+      await portal.refreshCampus();
       if (res.id) {
         onCreated(res.id);
       } else {
@@ -103,19 +141,25 @@ export default function EvaluationCreateDialog({
   };
 
   return (
-    <WorkPage title="Créer une nouvelle évaluation" onClose={onClose} busy={busy}>
+    <WorkPage title={scheduleNow ? 'Créer et programmer une épreuve' : 'Créer une nouvelle évaluation'} onClose={onClose} busy={busy}>
       <ReviewedForm onConfirm={handleSubmit} className="form-column" busy={busy} error={error}
-        confirmLabel="Confirmer la création de l’évaluation"
+        confirmLabel={scheduleNow ? 'Confirmer la création et la programmation' : 'Confirmer la création de l’évaluation'}
         fields={[
           { label: 'Évaluation', value: name.trim() },
           { label: 'Nature', value: kind },
           { label: 'Matière', value: String(selectedSubject?.name || selectedSubject?.code || '') },
           { label: 'Groupe', value: String(selectedGroup?.name || '') },
           { label: 'Candidats', value: `${candidateCount} étudiant(s)` },
+          ...(scheduleNow && startsAt && endsAt ? [
+            { label: 'Séance début', value: startsAt.replace('T', ' à ') },
+            { label: 'Séance fin', value: endsAt.replace('T', ' à ') },
+            { label: 'Durée', value: `${durationMinutes} minutes` },
+            { label: 'Mode', value: deliveryMode === 'EN_LIGNE' ? 'En ligne' : `Sur table (${availableRooms.find(r => r.id === roomId)?.name || 'Salle'})` },
+          ] : []),
           ...(kind === 'RATTRAPAGE' ? [{ label: 'Évaluation d’origine', value: String(parentOptions.find(row => row.id === parentEvaluationId)?.name || '') }] : []),
         ]}
-        validate={() => !assignmentId ? 'Choisissez un enseignement.' : name.trim().length < 2 ? 'Le libellé doit contenir au moins deux caractères.' : !candidateCount ? 'Aucun candidat éligible dans ce groupe.' : kind === 'RATTRAPAGE' && !parentEvaluationId ? 'Choisissez l’évaluation d’origine.' : null}
-        consequence="L’évaluation et ses candidats seront enregistrés ensemble en brouillon. Vous pourrez ensuite programmer la séance et préparer le sujet. Aucune note ni ouverture aux étudiants n’est créée par cette étape.">
+        validate={validate}
+        consequence={scheduleNow ? 'L’évaluation, ses candidats et sa séance d’examen seront enregistrés ensemble. Le sujet sera immédiatement débloqué pour la rédaction.' : 'L’évaluation et ses candidats seront enregistrés en brouillon sans horaire fixé.'}>
         {error && <div className="restricted-box mb-2" role="alert">{error}</div>}
 
         <label className="form-group mb-2">Groupe concerné
@@ -207,6 +251,103 @@ export default function EvaluationCreateDialog({
           </label>
         )}
 
+        {/* Programmation de la séance */}
+        <div className="card mb-2" style={{ border: '1px solid var(--border)', background: scheduleNow ? '#f0f9ff' : 'var(--surface-variant, #f8fafc)' }}>
+          <label className="checkbox-field" style={{ marginBottom: scheduleNow ? '12px' : 0 }}>
+            <input
+              type="checkbox"
+              checked={scheduleNow}
+              onChange={e => setScheduleNow(e.target.checked)}
+            />
+            <strong>Programmer immédiatement la séance d’examen</strong>
+          </label>
+          <p className="cell-sub" style={{ margin: '4px 0 0 0' }}>
+            {scheduleNow
+              ? 'Fixez la date, l’heure et le mode pour débloquer immédiatement la composition du sujet.'
+              : 'Si décoché, l’évaluation sera créée sans horaire et devra être programmée ultérieurement.'}
+          </p>
+
+          {scheduleNow && (
+            <div style={{ marginTop: '14px', display: 'flex', flexDirection: 'column', gap: '12px' }}>
+              <div className="form-grid">
+                <label className="form-group">
+                  Début de l’épreuve (Date et heure)
+                  <input
+                    type="datetime-local"
+                    className="input"
+                    required={scheduleNow}
+                    value={startsAt}
+                    onChange={e => {
+                      setStartsAt(e.target.value);
+                      if (e.target.value && !endsAt) {
+                        const d = new Date(e.target.value);
+                        d.setHours(d.getHours() + 2);
+                        setEndsAt(d.toISOString().slice(0, 16));
+                      }
+                    }}
+                  />
+                </label>
+                <label className="form-group">
+                  Fin de l’épreuve (Date et heure)
+                  <input
+                    type="datetime-local"
+                    className="input"
+                    required={scheduleNow}
+                    value={endsAt}
+                    onChange={e => setEndsAt(e.target.value)}
+                  />
+                </label>
+              </div>
+
+              <div className="form-grid">
+                <label className="form-group">
+                  Durée de composition (minutes)
+                  <input
+                    type="number"
+                    min={1}
+                    max={600}
+                    className="input"
+                    required={scheduleNow}
+                    value={durationMinutes}
+                    onChange={e => setDurationMinutes(Number(e.target.value))}
+                  />
+                </label>
+
+                <label className="form-group">
+                  Mode de passage
+                  <select
+                    className="select-input"
+                    value={deliveryMode}
+                    onChange={e => setDeliveryMode(e.target.value as 'EN_LIGNE' | 'PAPIER')}
+                  >
+                    <option value="EN_LIGNE">Épreuve en ligne (sur le portail)</option>
+                    <option value="PAPIER">Épreuve sur papier (en salle)</option>
+                  </select>
+                </label>
+              </div>
+
+              {deliveryMode === 'PAPIER' && (
+                <label className="form-group">
+                  Salle d’examen
+                  <select
+                    className="select-input"
+                    required={deliveryMode === 'PAPIER'}
+                    value={roomId}
+                    onChange={e => setRoomId(e.target.value)}
+                  >
+                    <option value="">-- Choisir une salle --</option>
+                    {availableRooms.map(r => (
+                      <option key={r.id} value={r.id}>
+                        {String(r.name)} (Capacité : {String(r.capacity || 'N/C')})
+                      </option>
+                    ))}
+                  </select>
+                </label>
+              )}
+            </div>
+          )}
+        </div>
+
         <div className="card mb-2" style={{ background: 'var(--surface-variant, #f8fafc)' }}>
           <p className="cell-sub" style={{ margin: 0 }}>
             {selectedAssignment ? (
@@ -230,7 +371,7 @@ export default function EvaluationCreateDialog({
             className="btn btn-primary"
             disabled={busy || !assignmentId || !candidateCount}
           >
-            Créer l’évaluation en brouillon
+            {scheduleNow ? 'Créer et programmer l’épreuve' : 'Créer l’évaluation en brouillon'}
           </button>
         </DrawerActions>
       </ReviewedForm>
