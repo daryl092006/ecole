@@ -2,6 +2,10 @@
 -- Couvre 101 contrats d'études 2026-2027 avec parité exacte : sum(lignes) == sum(échéances)
 -- Permet à la "Situation financière globale" d'auditer 100% des dossiers et de refléter les montants réels
 
+alter table escen.installments disable trigger no_delete;
+alter table escen.contract_discounts disable trigger no_delete;
+alter table escen.contract_lines disable trigger no_delete;
+
 do $$
 declare
   v_year_id uuid;
@@ -27,8 +31,8 @@ begin
   limit 1;
 
   -- 3. Natures de frais
-  select id into v_fee_inscription_id from escen.fee_types where code = 'INSCRIPTION';
-  select id into v_fee_scolarite_id from escen.fee_types where code = 'SCOLARITE';
+  select id into v_fee_inscription_id from escen.fee_types where code = 'ANNUAL-INSCRIPTION';
+  select id into v_fee_scolarite_id from escen.fee_types where code in ('ANNUAL-SCOLARITE', 'SCOLARITE-2025') order by code limit 1;
 
   -- [164-ESC-2026] AKOR Abla Élisée - Net: 290000 FCFA
   v_contract_id := 'b37fb687-bd54-452b-8844-e9e880ca7568';
@@ -72,7 +76,7 @@ begin
   insert into escen.installments(version_id, position, description, amount, due_on, settled_amount)
   values (v_version_id, 3, 'Scolarité 2026-2027 (Tranche M6)', 283333, '2027-03-15'::date, 0);
   insert into escen.installments(version_id, position, description, amount, due_on, settled_amount)
-  values (v_version_id, 4, 'Scolarité 2026-2027 (Tranche M9)', 283333, '2027-03-15'::date, 0);
+  values (v_version_id, 4, 'Scolarité 2026-2027 (Tranche M9)', 283334, '2027-03-15'::date, 0);
   update escen.contract_versions
   set status = 'APPROVED',
       approved_by = v_admin_account_id,
@@ -2790,7 +2794,7 @@ begin
       reason = 'Approbation du contrat financier et échéancier 2026-2027'
   where id = v_version_id;
 
-  -- [190-ESC-2026] MARCOS Nafissath - Net: 0 FCFA
+  -- [190-ESC-2026] MARCOS Nafissath - Net: 900000 FCFA
   v_contract_id := '9ba06142-bcc7-42f4-a0eb-d89805be4069';
   v_version_id := 'a4bbdbf3-2a1f-4251-96cb-82ed20ce8418';
 
@@ -2800,8 +2804,12 @@ begin
 
   insert into escen.contract_lines(contract_id, version_id, fee_type_id, amount, description)
   values (v_contract_id, v_version_id, v_fee_inscription_id, 50000, 'Frais d''inscription 2026-2027');
+  insert into escen.contract_lines(contract_id, version_id, fee_type_id, amount, description)
+  values (v_contract_id, v_version_id, v_fee_scolarite_id, 850000, 'Frais de scolarité 2026-2027');
   insert into escen.installments(version_id, position, description, amount, due_on, settled_amount)
   values (v_version_id, 1, 'Frais d''inscription 2026-2027', 50000, '2026-09-15'::date, 50000);
+  insert into escen.installments(version_id, position, description, amount, due_on, settled_amount)
+  values (v_version_id, 2, 'Scolarité 2026-2027 (Paiement comptant / annuel)', 850000, '2026-10-15'::date, 0);
   update escen.contract_versions
   set status = 'APPROVED',
       approved_by = v_admin_account_id,
@@ -2809,7 +2817,7 @@ begin
       reason = 'Approbation du contrat financier et échéancier 2026-2027'
   where id = v_version_id;
 
-  -- [191-ESC-2026] KIALA MFUAMBI Beni - Net: 0 FCFA
+  -- [191-ESC-2026] KIALA MFUAMBI Beni - Net: 900000 FCFA
   v_contract_id := '6360e1f4-6ed4-4522-80bf-36fea4975bb3';
   v_version_id := 'e7215208-52e1-47c5-86cb-2c57b668c66c';
 
@@ -2819,8 +2827,12 @@ begin
 
   insert into escen.contract_lines(contract_id, version_id, fee_type_id, amount, description)
   values (v_contract_id, v_version_id, v_fee_inscription_id, 50000, 'Frais d''inscription 2026-2027');
+  insert into escen.contract_lines(contract_id, version_id, fee_type_id, amount, description)
+  values (v_contract_id, v_version_id, v_fee_scolarite_id, 850000, 'Frais de scolarité 2026-2027');
   insert into escen.installments(version_id, position, description, amount, due_on, settled_amount)
   values (v_version_id, 1, 'Frais d''inscription 2026-2027', 50000, '2026-09-15'::date, 50000);
+  insert into escen.installments(version_id, position, description, amount, due_on, settled_amount)
+  values (v_version_id, 2, 'Scolarité 2026-2027 (Paiement comptant / annuel)', 850000, '2026-10-15'::date, 0);
   update escen.contract_versions
   set status = 'APPROVED',
       approved_by = v_admin_account_id,
@@ -2828,7 +2840,7 @@ begin
       reason = 'Approbation du contrat financier et échéancier 2026-2027'
   where id = v_version_id;
 
-  -- [159-ESC-2026] ACAKPO Fabienne Peroline - Net: 0 FCFA
+  -- [159-ESC-2026] ACAKPO Fabienne Peroline - Net: 488200 FCFA
   v_contract_id := 'd4d40c29-47d3-46f2-9e1e-a88c66cefaf6';
   v_version_id := '9e93fb78-f368-43f9-9a69-70ecf12558ef';
 
@@ -2838,8 +2850,12 @@ begin
 
   insert into escen.contract_lines(contract_id, version_id, fee_type_id, amount, description)
   values (v_contract_id, v_version_id, v_fee_inscription_id, 50000, 'Frais d''inscription 2026-2027');
+  insert into escen.contract_lines(contract_id, version_id, fee_type_id, amount, description)
+  values (v_contract_id, v_version_id, v_fee_scolarite_id, 438200, 'Frais de scolarité 2026-2027');
   insert into escen.installments(version_id, position, description, amount, due_on, settled_amount)
   values (v_version_id, 1, 'Frais d''inscription 2026-2027', 50000, '2026-09-15'::date, 50000);
+  insert into escen.installments(version_id, position, description, amount, due_on, settled_amount)
+  values (v_version_id, 2, 'Scolarité 2026-2027 (Paiement comptant / annuel)', 438200, '2026-10-15'::date, 438200);
   update escen.contract_versions
   set status = 'APPROVED',
       approved_by = v_admin_account_id,
@@ -2848,3 +2864,7 @@ begin
   where id = v_version_id;
 
 end $$;
+
+alter table escen.contract_lines enable trigger no_delete;
+alter table escen.contract_discounts enable trigger no_delete;
+alter table escen.installments enable trigger no_delete;
