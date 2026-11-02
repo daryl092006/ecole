@@ -39,7 +39,46 @@ export default function SubjectConstructor({ subject, onChange, disabled, allowJ
         </section>}
       </aside>
       <div className="subject-constructor-main">
-        {!part ? <section className="card"><h2>Commencez par une partie</h2><p>Ajoutez une première partie, puis rédigez ses questions.</p></section> : <>
+        {!part ? (
+          <section className="card" style={{ textAlign: 'center', padding: '2.5rem 1.5rem', background: '#f8fafc', border: '1px dashed var(--border)' }}>
+            <h2 style={{ fontSize: '1.15rem', color: '#0f172a', marginBottom: '0.5rem' }}>Démarrez la composition de l’épreuve</h2>
+            <p className="cell-sub" style={{ maxWidth: '480px', margin: '0 auto 1.25rem', lineHeight: 1.5 }}>
+              Une épreuve est structurée en une ou plusieurs parties (ex. : QCM, cas pratique, développement ou questions de cours).
+            </p>
+            <button
+              className="btn btn-primary"
+              type="button"
+              disabled={disabled}
+              onClick={() => {
+                onChange({
+                  ...subject,
+                  parts: [
+                    ...subject.parts,
+                    {
+                      title: `Partie ${subject.parts.length + 1}`,
+                      instructions: '',
+                      questions: [
+                        {
+                          prompt: '',
+                          kind: 'TEXTE',
+                          presentation: 'LONG_TEXT',
+                          points: 5,
+                          options: [],
+                          correction: '',
+                        },
+                      ],
+                    },
+                  ],
+                });
+                setPartIndex(subject.parts.length);
+                setQuestionIndex(0);
+              }}
+            >
+              + Créer la première partie et une question
+            </button>
+          </section>
+        ) : (
+          <>
           <section className="subject-constructor-question">
             <header><h2>{question ? `Question ${questionIndex + 1}` : 'Questions de la partie'}</h2><button type="button" className="btn btn-outline" disabled={disabled || part.questions.length >= 100} onClick={() => { updatePart({ questions: [...part.questions, { prompt: '', kind: 'TEXTE', presentation: 'LONG_TEXT', points: 1, options: [], correction: '' }] }); setQuestionIndex(part.questions.length); }}>Ajouter une question</button></header>
             {question ? <div className="subject-constructor-question-body">
@@ -58,10 +97,31 @@ export default function SubjectConstructor({ subject, onChange, disabled, allowJ
               <label className="form-group">Corrigé et indications de correction<textarea className="input" maxLength={8000} value={question.correction} onChange={event => updateQuestion({ correction: event.target.value })} /></label>
               {questionCompletionIssue(question) && <p className="subject-question-hint">{questionCompletionIssue(question)}</p>}
               <button type="button" className="btn btn-outline" onClick={() => setRemoval('question')}>Retirer la question</button>
-            </div> : <p>Ajoutez une question pour choisir son type et rédiger son énoncé.</p>}
+            </div> : (
+              <div style={{ textAlign: 'center', padding: '2rem 1rem' }}>
+                <p className="cell-sub" style={{ marginBottom: '1rem' }}>Cette partie ne contient pas encore de question.</p>
+                <button
+                  type="button"
+                  className="btn btn-primary"
+                  disabled={disabled || part.questions.length >= 100}
+                  onClick={() => {
+                    updatePart({
+                      questions: [
+                        ...part.questions,
+                        { prompt: '', kind: 'TEXTE', presentation: 'LONG_TEXT', points: 1, options: [], correction: '' },
+                      ],
+                    });
+                    setQuestionIndex(part.questions.length);
+                  }}
+                >
+                  + Ajouter une question à cette partie
+                </button>
+              </div>
+            )}
           </section>
           <section className="subject-constructor-question-list"><h2>Questions de cette partie</h2>{part.questions.map((q, index) => <article key={index}><div><strong>{index + 1}. {questionTypes.find(type => type.id === questionType(q))?.label}</strong><span>{q.points} pts</span></div><p>{subjectPlainText(q.prompt).slice(0, 220) || 'Énoncé à rédiger'}</p><button type="button" className="btn btn-outline" onClick={() => setQuestionIndex(index)}>Ouvrir la question {index + 1}</button></article>)}</section>
-        </>}
+        </>
+      )}
       </div>
     </div>
   </div>;

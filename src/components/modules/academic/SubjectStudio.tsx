@@ -30,7 +30,28 @@ const blank = (purpose: SubjectPurpose = 'EXAMEN'): SubjectInput => ({
   authorize: false,
   parts: [],
 });
-const forExam = (exam: SubjectExam): SubjectInput => ({ ...blank(exam.purpose), title: exam.title, durationMinutes: exam.durationMinutes, evaluationId: exam.id });
+const forExam = (exam: SubjectExam): SubjectInput => ({
+  ...blank(exam.purpose),
+  title: exam.title,
+  durationMinutes: exam.durationMinutes || 60,
+  evaluationId: exam.id,
+  parts: [
+    {
+      title: 'Partie 1',
+      instructions: '',
+      questions: [
+        {
+          prompt: '',
+          kind: 'TEXTE',
+          presentation: 'LONG_TEXT',
+          points: 5,
+          options: [],
+          correction: '',
+        },
+      ],
+    },
+  ],
+});
 const dateTime = (value: string | null) => value ? new Intl.DateTimeFormat('fr-FR', { dateStyle: 'short', timeStyle: 'short', timeZone: 'Africa/Lome' }).format(new Date(value)) : 'Non renseigné';
 
 export default function SubjectStudio() {
