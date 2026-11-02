@@ -15,6 +15,8 @@ import type { DatabaseRow } from '@/types/persistence';
 import ResponsiveTable from '@/components/ui/ResponsiveTable';
 import ReviewedForm from '@/components/ui/ReviewedForm';
 import Link from 'next/link';
+import PageHeader from '@/components/ui/PageHeader';
+import EvaluationCreateDialog from './EvaluationCreateDialog';
 import { printDocument, escapeHtml as h } from '@/utils/printDocument';
 import ExamDeliveryScheduleDialog from './ExamDeliveryScheduleDialog';
 import { Calendar, Clock, FileText, AlertCircle, Eye } from 'lucide-react';
@@ -71,6 +73,7 @@ export default function SubjectStudio() {
   const [saveError, setSaveError] = useState('');
   const [now, setNow] = useState(Date.now);
   const [schedulingEval, setSchedulingEval] = useState<DatabaseRow | null>(null);
+  const [creatingEval, setCreatingEval] = useState(false);
   const [selectedGroup, setSelectedGroup] = useState<string>('ALL');
   const [statusFilter, setStatusFilter] = useState<'ALL' | 'READY' | 'TO_SCHEDULE' | 'COMPOSED'>('ALL');
   const [examQuery, setExamQuery] = useState('');
@@ -445,62 +448,33 @@ export default function SubjectStudio() {
 
   return (
     <div>
-      <div className="page-intro">
-        <div>
-          <span className="page-eyebrow">ACADÉMIQUE · GESTION DES ÉPREUVES</span>
-          <h1>Atelier de préparation et composition des épreuves</h1>
-          <p>
-            Chaque épreuve doit être programmée (créneau, date, horaires et mode) avant que son sujet, son barème et son corrigé officiel ne puissent être rédigés.
-          </p>
-        </div>
-      </div>
+      <PageHeader
+        eyebrow="ACADÉMIQUE · GESTION DES ÉPREUVES"
+        title="Composition des épreuves"
+        description="Préparation des sujets, rédaction des questions, barèmes et diffusion des examens."
+      >
+        {portal.perms.permissions.includes('evaluation.create') && (
+          <button
+            type="button"
+            className="btn btn-primary"
+            onClick={() => setCreatingEval(true)}
+          >
+            + Nouvelle évaluation
+          </button>
+        )}
+      </PageHeader>
 
-      {/* Guide didactique des 3 étapes */}
-      <section className="card" style={{ marginBottom: '1.5rem', background: '#f8fafc', border: '1px solid #e2e8f0' }}>
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '1.25rem', alignItems: 'center' }}>
-          <div style={{ display: 'flex', gap: '0.875rem', alignItems: 'flex-start' }}>
-            <div style={{ width: 32, height: 32, borderRadius: '50%', background: '#002B49', color: '#ffffff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 'bold', flexShrink: 0, fontSize: '0.9rem' }}>
-              1
-            </div>
-            <div>
-              <strong style={{ display: 'block', fontSize: '0.92rem', color: '#002B49', marginBottom: '0.2rem' }}>
-                1. Programmer la séance
-              </strong>
-              <span style={{ fontSize: '0.8rem', color: '#64748b', lineHeight: 1.4, display: 'block' }}>
-                Fixer date, heure de début/fin, durée et mode (en ligne ou sur table).
-              </span>
-            </div>
-          </div>
-
-          <div style={{ display: 'flex', gap: '0.875rem', alignItems: 'flex-start' }}>
-            <div style={{ width: 32, height: 32, borderRadius: '50%', background: '#002B49', color: '#ffffff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 'bold', flexShrink: 0, fontSize: '0.9rem' }}>
-              2
-            </div>
-            <div>
-              <strong style={{ display: 'block', fontSize: '0.92rem', color: '#002B49', marginBottom: '0.2rem' }}>
-                2. Composer sujet & barème
-              </strong>
-              <span style={{ fontSize: '0.8rem', color: '#64748b', lineHeight: 1.4, display: 'block' }}>
-                Rédiger parties, questions (QCM, cas pratique, développement) et barème.
-              </span>
-            </div>
-          </div>
-
-          <div style={{ display: 'flex', gap: '0.875rem', alignItems: 'flex-start' }}>
-            <div style={{ width: 32, height: 32, borderRadius: '50%', background: '#002B49', color: '#ffffff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 'bold', flexShrink: 0, fontSize: '0.9rem' }}>
-              3
-            </div>
-            <div>
-              <strong style={{ display: 'block', fontSize: '0.92rem', color: '#002B49', marginBottom: '0.2rem' }}>
-                3. Valider & Diffuser
-              </strong>
-              <span style={{ fontSize: '0.8rem', color: '#64748b', lineHeight: 1.4, display: 'block' }}>
-                Établir le corrigé officiel et autoriser l’accès pour le passage de l’épreuve.
-              </span>
-            </div>
-          </div>
-        </div>
-      </section>
+      {creatingEval && (
+        <EvaluationCreateDialog
+          category="exam"
+          onClose={() => setCreatingEval(false)}
+          onCreated={async () => {
+            setCreatingEval(false);
+            await portal.refreshCampus();
+            setRetry(r => r + 1);
+          }}
+        />
+      )}
 
       {/* KPI Chips */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1rem', marginBottom: '1.5rem' }}>

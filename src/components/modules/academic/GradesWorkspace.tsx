@@ -15,6 +15,7 @@ import {
 import EvaluationGradeDialog from './EvaluationGradeDialog';
 import EvaluationCreateDialog from './EvaluationCreateDialog';
 import PersistentExamCopies from './PersistentExamCopies';
+import PageHeader from '@/components/ui/PageHeader';
 import { downloadCsv } from '@/utils/csv';
 import {
   GraduationCap,
@@ -315,24 +316,20 @@ export default function GradesWorkspace() {
     <div className="domain-workspace" style={{ padding: '0 0 32px' }}>
       {/* VUE 1 : VUE D'ENSEMBLE PAR CLASSE */}
       {!selectedGroupId && (
-        <section className="card card-full" style={{ padding: '24px 28px', borderRadius: '12px', border: '1px solid var(--border)' }}>
-          {/* En-tête */}
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '16px', marginBottom: '24px' }}>
-            <div>
-              <span className="page-eyebrow">PÉDAGOGIE & RÉSULTATS</span>
-              <h1 style={{ margin: '4px 0 6px', fontSize: '1.6rem', color: '#0f172a', fontWeight: 800 }}>
-                Notes et résultats académiques
-              </h1>
-              <p style={{ margin: 0, color: 'var(--text-subtle)', fontSize: '14px' }}>
-                Suivi des carnets de notes, saisie des évaluations, moyennes de classe et procès-verbaux par promotion.
-              </p>
-            </div>
+        <>
+          <PageHeader
+            eyebrow="PÉDAGOGIE & RÉSULTATS"
+            title="Notes et résultats académiques"
+            description="Suivi des carnets de notes, saisie des évaluations, moyennes de classe et procès-verbaux par promotion."
+          >
             {portal.perms.permissions.includes('evaluation.create') && (
               <button className="btn btn-primary" onClick={() => setCreatingEval(true)}>
                 + Nouvelle évaluation
               </button>
             )}
-          </div>
+          </PageHeader>
+
+          <section className="card card-full" style={{ padding: '24px 28px', borderRadius: '12px', border: '1px solid var(--border)' }}>
 
           {/* KPI Tiles */}
           <div className="kpi-stat-grid" style={{ marginBottom: '24px' }}>
@@ -469,6 +466,7 @@ export default function GradesWorkspace() {
             </ResponsiveTable>
           </div>
         </section>
+      </>
       )}
 
       {/* VUE 2 : CARNET DE NOTES DÉTAILLÉ DE LA CLASSE SÉLECTIONNÉE */}
