@@ -115,9 +115,13 @@ try {
   });
   await check('Conflits de planning, dates bloquées et annulations sans motif refusés', async () => {
     await assert.rejects(insert('sessions', { ...sessionData, starts_at: '2026-11-01T08:30:00Z', ends_at: '2026-11-01T09:30:00Z' }), /exclusion/i);
+    await db.exec('begin');
     await insert('blocked_periods', { site_id: site.id, name: 'Fermeture', kind: 'FERMETURE', starts_at: '2026-11-03T00:00:00Z', ends_at: '2026-11-04T00:00:00Z' });
+    await db.exec('savepoint blocked_session');
     await assert.rejects(insert('sessions', { ...sessionData, starts_at: '2026-11-03T08:00:00Z', ends_at: '2026-11-03T09:00:00Z' }), /bloquée/i);
+    await db.exec('rollback to savepoint blocked_session');
     await assert.rejects(insert('sessions', { ...sessionData, starts_at: '2026-11-04T08:00:00Z', ends_at: '2026-11-04T09:00:00Z', status: 'ANNULE' }), /check/i);
+    await db.exec('rollback');
     await reject("update escen.sessions set status = 'ANNULE', reason = 'Motif' where id = $1", [session.id], /émargée/i);
   });
 
