@@ -2,7 +2,7 @@
   "stats": {
     "businessTables": 118,
     "privateTables": 14,
-    "columns": 1050,
+    "columns": 1051,
     "foreignKeys": 294,
     "checks": 246,
     "exclusions": 4
@@ -1289,6 +1289,15 @@
       "type": "text",
       "nullable": "YES",
       "default": null,
+      "generated": "NEVER"
+    },
+    {
+      "schema": "escen",
+      "table": "annual_fee_schedules",
+      "name": "double_degree",
+      "type": "bool",
+      "nullable": "NO",
+      "default": "false",
       "generated": "NEVER"
     },
     {
@@ -10685,6 +10694,13 @@
     {
       "schema": "escen",
       "table": "annual_fee_schedules",
+      "name": "annual_fee_schedules_double_degree_not_null",
+      "type": "n",
+      "definition": "NOT NULL double_degree"
+    },
+    {
+      "schema": "escen",
+      "table": "annual_fee_schedules",
       "name": "annual_fee_schedules_id_not_null",
       "type": "n",
       "definition": "NOT NULL id"
@@ -10722,7 +10738,7 @@
       "table": "annual_fee_schedules",
       "name": "annual_fee_variant",
       "type": "u",
-      "definition": "UNIQUE NULLS NOT DISTINCT (academic_year_id, category, program_id, level_id, delivery_mode, archived_at)"
+      "definition": "UNIQUE NULLS NOT DISTINCT (academic_year_id, category, program_id, level_id, delivery_mode, double_degree, archived_at)"
     },
     {
       "schema": "escen",
@@ -21406,7 +21422,7 @@
       "schema": "escen",
       "table": "annual_fee_schedules",
       "name": "annual_fee_variant",
-      "definition": "CREATE UNIQUE INDEX annual_fee_variant ON escen.annual_fee_schedules USING btree (academic_year_id, category, program_id, level_id, delivery_mode, archived_at) NULLS NOT DISTINCT"
+      "definition": "CREATE UNIQUE INDEX annual_fee_variant ON escen.annual_fee_schedules USING btree (academic_year_id, category, program_id, level_id, delivery_mode, double_degree, archived_at) NULLS NOT DISTINCT"
     },
     {
       "schema": "escen",

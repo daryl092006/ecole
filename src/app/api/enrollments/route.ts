@@ -64,7 +64,7 @@ export async function POST(request:Request){try{
  const programId=tables.curricula.find(row=>row.id===offering.curriculum_id)?.program_id;
  if(body.doubleDegree && !tables.programs?.some(row=>row.id===programId && row.double_degree_eligible===true))throw new RequestError(400,'Cette filière ne permet pas la double diplomation.');
  const chosen=[['SCOLARITE',body.tuitionId],['INSCRIPTION',body.registrationId]].map(([category,id])=>{
-  const fee=tables.annual_fee_schedules?.find(row=>row.id===id && row.category===category && row.academic_year_id===target.id && !row.archived_at && (!row.program_id || row.program_id===programId) && (!row.level_id || row.level_id===offering.level_id) && (!row.delivery_mode || row.delivery_mode===offering.delivery_mode));
+  const fee=tables.annual_fee_schedules?.find(row=>row.id===id && row.category===category && (row.double_degree===true)===body.doubleDegree && row.academic_year_id===target.id && !row.archived_at && (!row.program_id || row.program_id===programId) && (!row.level_id || row.level_id===offering.level_id) && (!row.delivery_mode || row.delivery_mode===offering.delivery_mode));
   if(!fee)throw new RequestError(409,'Tarif absent ou incompatible avec cette formation et cette année.');return fee;
  });
  const enrollmentId=crypto.randomUUID(),contractId=crypto.randomUUID(),versionId=crypto.randomUUID();

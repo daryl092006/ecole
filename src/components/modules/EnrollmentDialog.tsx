@@ -15,11 +15,11 @@ interface Directory {
  candidates:{id:string;name:string;matricule:string;kind:string;eligible:boolean}[];
  offerings:{id:string;name:string;programId:string;doubleDegreeEligible?:boolean;levelId:string;deliveryMode?:string|null}[];
  groups:{id:string;offeringId:string;levelId?:string;name:string}[];
- fees:{id:string;category:string;amount:number;program_id:string|null;level_id:string|null;delivery_mode?:string|null}[];
+ fees:{id:string;double_degree?:boolean;category:string;amount:number;program_id:string|null;level_id:string|null;delivery_mode?:string|null}[];
 }
-function compatibleFees(directory:Directory|null,targetOffering:Directory['offerings'][number]|undefined,category:string){
+function compatibleFees(directory:Directory|null,targetOffering:Directory['offerings'][number]|undefined,category:string,doubleDegree=false){
  if(!directory || !targetOffering)return [];
- const list=directory.fees.filter(row=>row.category===category && (!row.program_id || row.program_id===targetOffering.programId) && (!row.level_id || row.level_id===targetOffering.levelId) && (!row.delivery_mode || row.delivery_mode===targetOffering.deliveryMode));
+ const list=directory.fees.filter(row=>row.category===category && (row.double_degree===true)===doubleDegree && (!row.program_id || row.program_id===targetOffering.programId) && (!row.level_id || row.level_id===targetOffering.levelId) && (!row.delivery_mode || row.delivery_mode===targetOffering.deliveryMode));
  const score=(fee:Directory['fees'][number])=>(fee.program_id===targetOffering.programId?4:0)+(fee.level_id===targetOffering.levelId?2:0)+(fee.delivery_mode && fee.delivery_mode===targetOffering.deliveryMode?1:0);
  return [...list].sort((a,b)=>score(b)-score(a));
 }
@@ -59,7 +59,7 @@ export default function EnrollmentDialog({kind,onClose,initialMatricule}:{kind:'
  const operationKind=kind==='auto'?(matchedKind==='new'||matchedKind==='reenroll'?matchedKind:undefined):kind;
  const offering=data?.offerings.find(row=>row.id===offeringId);const student=data?.candidates.find(row=>row.id===studentId);
  const availableGroups=matchingGroupsForOffering(data,offeringId);
- const fees=(category:string)=>compatibleFees(data,offering,category);
+ const fees=(category:string)=>compatibleFees(data,offering,category,doubleDegree);
  const ready=!!(operationKind && student?.eligible && offering && groupId && tuitionId && registrationId);
  const candidates=data?.candidates.filter(row=>row.kind===operationKind && (!initialMatricule || row.matricule===initialMatricule)) || [];
  const feeName=(id:string)=>{const fee=data?.fees.find(row=>row.id===id);return fee?`${fee.amount.toLocaleString('fr-FR')} FCFA`:'';};
@@ -70,7 +70,7 @@ export default function EnrollmentDialog({kind,onClose,initialMatricule}:{kind:'
  <label className="form-group">Étudiant<select className="select-input" required value={studentId} onChange={event=>{setStudentId(event.target.value);setDoubleDegree(false);setOfferingId('');setGroupId('');setTuitionId('');setRegistrationId('');}}><option value="">Choisir le dossier</option>{candidates.map(row=><option key={row.id} value={row.id} disabled={!row.eligible}>{row.name} · {row.matricule}{!row.eligible?' · ancienne inscription à reprendre':''}</option>)}</select></label>
  {student?.eligible && <>{!data.offerings.length && portal.perms.permissions.includes('academic.structure.manage') && <button type="button" className="btn btn-outline" onClick={()=>configure('academic_offerings')}>Configurer l’année</button>}<label className="form-group">Formation de l’année<select className="select-input" required value={offeringId} onChange={event=>applyOfferingSelection(event.target.value,data)}><option value="">Choisir la formation</option>{data.offerings.map(row=><option key={row.id} value={row.id}>{row.name}</option>)}</select></label>
  {offering && <>
-  {offering.doubleDegreeEligible && <label className="form-group">Double diplomation (facultative)<select className="select-input" value={doubleDegree?'yes':'no'} onChange={event=>setDoubleDegree(event.target.value==='yes')}><option value="no">Non</option><option value="yes">Oui, l’étudiant choisit la double diplomation</option></select><small>Ce choix est enregistré pour cette année. Il ne modifie pas automatiquement les tarifs sélectionnés.</small></label>}
+  {offering.doubleDegreeEligible && <label className="form-group">Double diplomation (facultative)<select className="select-input" value={doubleDegree?'yes':'no'} onChange={event=>{const selected=event.target.value==='yes';setDoubleDegree(selected);setTuitionId(compatibleFees(data,offering,'SCOLARITE',selected)[0]?.id || '');setRegistrationId(compatibleFees(data,offering,'INSCRIPTION',selected)[0]?.id || '');}}><option value="no">Non</option><option value="yes">Oui, l’étudiant choisit la double diplomation</option></select><small>Ce choix est enregistré pour cette année. Les tarifs du parcours choisi sont sélectionnés automatiquement, avant toute remise individuelle.</small></label>}
   {ready && <div className="info-box" style={{marginBottom:'0.85rem',borderLeft:'4px solid var(--success, #15803d)'}}>
    <strong>Affectation automatique prête :</strong>
    <div style={{marginTop:'0.35rem',fontSize:'0.9rem'}}>

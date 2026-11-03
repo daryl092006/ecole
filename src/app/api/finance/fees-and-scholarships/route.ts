@@ -47,6 +47,7 @@ export async function GET(request: Request) {
       .map(row => ({
         id: row.id,
         academicYearId: String(row.academic_year_id),
+        doubleDegree: row.double_degree===true,
         category: row.category as 'SCOLARITE' | 'INSCRIPTION',
         programId: row.program_id ? String(row.program_id) : null,
         programName: row.program_id ? programsMap.get(String(row.program_id)) || 'Filière' : 'Toutes les filières',
@@ -138,7 +139,7 @@ export async function GET(request: Request) {
       scholarships,
       feeSchedules,
       scholarshipAwards,
-      programs: (snapshot.tables.programs || []).filter(p => !p.archived_at).map(p => ({ id: p.id, name: String(p.name), code: String(p.code) })),
+      programs: (snapshot.tables.programs || []).filter(p => !p.archived_at).map(p => ({ id: p.id, name: String(p.name), code: String(p.code), doubleDegreeEligible: p.double_degree_eligible===true })),
       levels: (snapshot.tables.levels || []).filter(l => !l.archived_at).map(l => ({ id: l.id, name: String(l.name), code: String(l.code) })),
       enrolledStudents,
     };
@@ -183,6 +184,7 @@ const toggleScholarshipSchema = z.object({
 
 const feeScheduleSchema = z.object({
   action: z.literal('create_fee_schedule'),
+  doubleDegree: z.boolean().default(false),
   revision: z.number().int().nonnegative(),
   academicYearId: z.uuid(),
   category: z.enum(['SCOLARITE', 'INSCRIPTION']),
@@ -299,11 +301,13 @@ export async function POST(request: Request) {
         },
       });
     } else if (body.action === 'create_fee_schedule') {
+      if(body.doubleDegree && !snapshot.tables.programs?.some(row=>row.id===body.programId && row.double_degree_eligible===true))throw new RequestError(400,'Choisissez une filière éligible à la double diplomation.');
       const duplicate = (snapshot.tables.annual_fee_schedules || []).find(
         f =>
           !f.archived_at &&
           f.academic_year_id === body.academicYearId &&
           f.category === body.category &&
+          (f.double_degree===true) === body.doubleDegree &&
           (f.program_id || null) === (body.programId || null) &&
           (f.level_id || null) === (body.levelId || null) &&
           (f.delivery_mode || null) === (body.deliveryMode || null)
@@ -319,6 +323,7 @@ export async function POST(request: Request) {
           id: crypto.randomUUID(),
           academic_year_id: body.academicYearId,
           category: body.category,
+          double_degree: body.doubleDegree,
           program_id: body.programId || null,
           level_id: body.levelId || null,
           delivery_mode: body.deliveryMode || null,

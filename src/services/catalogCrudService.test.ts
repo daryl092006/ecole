@@ -77,6 +77,13 @@ assert.throws(() => annualFeeScheduleChanges(feeSnapshot, { ...feeInput, program
 const savedFee = { ...feeBatch[0].record, id: uuid } as DatabaseRow;
 const existingFees = { ...feeSnapshot, tables: { ...feeSnapshot.tables, annual_fee_schedules: [savedFee] } };
 assert.throws(() => annualFeeScheduleChanges(existingFees, feeInput, 'Doublon'), /existe déjà/);
+const eligibleFees = { ...existingFees, tables: { ...existingFees.tables,
+  programs: feeSnapshot.tables.programs.map(row=>({...row,double_degree_eligible:true})),
+} };
+const diplomaFees = annualFeeScheduleChanges(eligibleFees, {...feeInput,double_degree:'true'}, 'Tarif double diplomation');
+assert.ok(diplomaFees.every(change=>change.record.double_degree===true));
+assert.throws(()=>annualFeeScheduleChanges(existingFees, {...feeInput,double_degree:'true'}, 'Filière non éligible'), /éligible/);
+assert.throws(()=>annualFeeScheduleChanges(eligibleFees, {...feeInput,double_degree:'incorrect'}, 'Choix invalide'));
 assert.throws(() => annualFeeScheduleChanges(existingFees, feeInput, 'Modification sans création', uuid), /un seul tarif/);
 const editedFees = annualFeeScheduleChanges(existingFees, { ...feeInput, program_ids: [feeIds[1]], amount: 500000 }, 'Montant corrigé', uuid);
 assert.deepEqual(editedFees.map(change => change.operation), ['update']);

@@ -197,7 +197,7 @@ function feeAmount(value: unknown): string {
 }
 
 function feeScopeKey(row: DatabaseRow): string {
-  return JSON.stringify([row.academic_year_id, row.category, row.program_id || null, row.level_id || null, row.delivery_mode || null]);
+  return JSON.stringify([row.academic_year_id, row.category, row.program_id || null, row.level_id || null, row.delivery_mode || null, row.double_degree===true]);
 }
 
 function paymentChannelKey(row: DatabaseRow): string {
@@ -217,7 +217,7 @@ function initialValues(fields: CrudField[], data: CatalogSnapshot | null, yearId
       if (field.key === 'starts_on') return [field.key, suggested.starts_on];
       if (field.key === 'ends_on') return [field.key, suggested.ends_on];
     }
-    return [field.key, String(row?.[field.key] ?? (field.key === 'academic_year_id' ? yearId : field.key === 'category' ? category || '' : field.key === 'version' ? '1' : field.required !== false && references.length === 1 ? references[0].id : ''))];
+    return [field.key, String(row?.[field.key] ?? (field.key === 'double_degree' ? 'false' : field.key === 'academic_year_id' ? yearId : field.key === 'category' ? category || '' : field.key === 'version' ? '1' : field.required !== false && references.length === 1 ? references[0].id : ''))];
   }));
 }
 
@@ -437,7 +437,7 @@ function ReferenceCrudContent({
       const key = ({ academic_year_id: 'annee_scolaire_id', level_id: 'niveau_id' } as Record<string, string>)[field.key];
       return key && source.values[key] != null && portal.history.catalog ? historyValue(key, source.values[key], source, portal.history.catalog) : 'À compléter';
     }
-    return field.key === 'delivery_mode' && !row[field.key] ? 'Tous modes' : field.type === 'select' ? field.options?.find(option => option.value === row[field.key])?.label || 'À compléter' : field.reference && field.required === false && !row[field.key] ? emptyReferenceLabel(field) : field.reference ? String(data?.tables[field.reference]?.find(ref => ref.id === row[field.key])?.name || 'Non renseigné') : row[field.key] == null || row[field.key] === '' ? 'À compléter' : String(row[field.key]);
+    return field.key === 'delivery_mode' && !row[field.key] ? 'Tous modes' : field.type === 'select' ? field.options?.find(option => option.value === (field.key==='double_degree'?String(row[field.key]===true):row[field.key]))?.label || 'À compléter' : field.reference && field.required === false && !row[field.key] ? emptyReferenceLabel(field) : field.reference ? String(data?.tables[field.reference]?.find(ref => ref.id === row[field.key])?.name || 'Non renseigné') : row[field.key] == null || row[field.key] === '' ? 'À compléter' : String(row[field.key]);
   };
   const groupFormations = (row: DatabaseRow) => {
     if (row.isPrefilled) {

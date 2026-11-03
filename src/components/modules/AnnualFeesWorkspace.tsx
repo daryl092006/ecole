@@ -53,6 +53,7 @@ export default function AnnualFeesWorkspace() {
   const [feeProgramId, setFeeProgramId] = useState('');
   const [feeLevelId, setFeeLevelId] = useState('');
   const [feeMode, setFeeMode] = useState('Présentiel');
+  const [feeDoubleDegree, setFeeDoubleDegree] = useState(false);
   const [feeAmount, setFeeAmount] = useState('550000');
   const [feeReason, setFeeReason] = useState('');
 
@@ -130,6 +131,7 @@ export default function AnnualFeesWorkspace() {
     setFeeProgramId('');
     setFeeLevelId('');
     setFeeMode('Présentiel');
+    setFeeDoubleDegree(false);
     setFeeAmount('550000');
     setFeeReason('');
     setFormError('');
@@ -449,13 +451,14 @@ export default function AnnualFeesWorkspace() {
                   <th>Filière concernée</th>
                   <th>Niveau</th>
                   <th>Mode</th>
+                    <th>Double diplomation</th>
                   {canEdit && <th>Action</th>}
                 </tr>
               </thead>
               <tbody>
                 {!feeList.length ? (
                   <tr>
-                    <td colSpan={canEdit ? 6 : 5}>
+                    <td colSpan={canEdit ? 7 : 6}>
                       Aucun tarif configuré pour cette année. Utilisez le bouton ci-dessus pour ajouter les frais d’inscription ou de scolarité.
                     </td>
                   </tr>
@@ -473,6 +476,7 @@ export default function AnnualFeesWorkspace() {
                       <td>{item.programName || 'Toutes les filières'}</td>
                       <td>{item.levelName || 'Tous les niveaux'}</td>
                       <td>{item.deliveryMode || 'Présentiel'}</td>
+                      <td>{item.doubleDegree ? 'Oui' : 'Non'}</td>
                       {canEdit && (
                         <td>
                           <button
@@ -885,6 +889,7 @@ export default function AnnualFeesWorkspace() {
             fields={[
               { label: 'Année universitaire', value: directory.selectedYearCode },
               { label: 'Type de frais', value: feeCategory === 'SCOLARITE' ? 'Scolarité' : 'Frais d’inscription' },
+                { label: 'Double diplomation', value: feeDoubleDegree ? 'Oui' : 'Non' },
               {
                 label: 'Filière',
                 value: directory.programs.find(p => p.id === feeProgramId)?.name || 'Toutes les filières',
@@ -893,10 +898,11 @@ export default function AnnualFeesWorkspace() {
                 label: 'Niveau',
                 value: directory.levels.find(l => l.id === feeLevelId)?.name || 'Tous les niveaux',
               },
-              { label: 'Montant net', value: money(Number(feeAmount || 0)) },
+              { label: 'Montant avant remise individuelle', value: money(Number(feeAmount || 0)) },
               { label: 'Motif', value: feeReason },
             ]}
             validate={() => {
+                if (feeDoubleDegree && !directory.programs.some(p => p.id === feeProgramId && p.doubleDegreeEligible)) return 'Choisissez une filière éligible à la double diplomation.';
               if (!feeAmount || Number(feeAmount) <= 0) return 'Le montant doit être un entier positif.';
               if (feeReason.trim().length < 3) return 'Le motif doit comporter au moins 3 caractères.';
               return null;
@@ -914,6 +920,7 @@ export default function AnnualFeesWorkspace() {
                   programId: feeProgramId || null,
                   levelId: feeLevelId || null,
                   deliveryMode: feeMode || null,
+                  doubleDegree: feeDoubleDegree,
                   amount: Number(feeAmount),
                   reason: feeReason.trim(),
                 });
@@ -951,7 +958,7 @@ export default function AnnualFeesWorkspace() {
                 id="fee-prog"
                 className="field-input"
                 value={feeProgramId}
-                onChange={e => setFeeProgramId(e.target.value)}
+                  onChange={e => { setFeeProgramId(e.target.value); setFeeDoubleDegree(false); }}
               >
                 <option value="">Toutes les filières (Tarif commun)</option>
                 {directory.programs.map(p => (
@@ -998,7 +1005,14 @@ export default function AnnualFeesWorkspace() {
             </div>
 
             <div className="form-group" style={{ marginBottom: '1rem' }}>
-              <label htmlFor="fee-amount" className="field-label">
+                <label htmlFor="fee-double-degree" className="field-label">Double diplomation (facultative)</label>
+                <select id="fee-double-degree" className="field-input" value={feeDoubleDegree ? 'true' : 'false'} onChange={e => setFeeDoubleDegree(e.target.value === 'true')}>
+                  <option value="false">Non</option>
+                  {directory.programs.some(p => p.id === feeProgramId && p.doubleDegreeEligible) && <option value="true">Oui</option>}
+                </select>
+              </div>
+              <div className="form-group" style={{ marginBottom: '1rem' }}>
+                <label htmlFor="fee-amount" className="field-label">
                 Montant en FCFA *
               </label>
               <input

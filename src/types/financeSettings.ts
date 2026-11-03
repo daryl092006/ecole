@@ -10,6 +10,7 @@ export interface ScholarshipItem {
 }
 
 export interface FeeScheduleItem {
+  doubleDegree?: boolean;
   id: string;
   academicYearId: string;
   category: 'SCOLARITE' | 'INSCRIPTION';
@@ -47,7 +48,7 @@ export interface FinanceSettingsDirectory {
   scholarships: ScholarshipItem[];
   feeSchedules: FeeScheduleItem[];
   scholarshipAwards: ScholarshipAwardItem[];
-  programs: { id: string; name: string; code: string }[];
+  programs: { id: string; name: string; code: string; doubleDegreeEligible?: boolean }[];
   levels: { id: string; name: string; code: string }[];
   enrolledStudents: {
     enrollmentId: string;
@@ -91,6 +92,7 @@ export type FinanceSettingsAction =
     }
   | {
       action: 'create_fee_schedule';
+      doubleDegree?: boolean;
       revision: number;
       academicYearId: string;
       category: 'SCOLARITE' | 'INSCRIPTION';
