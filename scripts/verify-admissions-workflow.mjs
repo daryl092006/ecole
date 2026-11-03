@@ -90,9 +90,21 @@ try {
  await run("insert into escen.annual_fee_schedules(academic_year_id,category,level_id,amount,reason) values($1,'INSCRIPTION',$2,50000,'Tarif niveau de recette')",[year,level]);
  await assert.rejects(command('DA','admissible'),/absent ou ambigu/);checks++;
  await run("update escen.annual_fee_schedules set archived_at=now() where program_id=$1 or level_id=$2",[program,level]);
+ const diplomaFee=randomUUID();
+ await run("update escen.programs set double_degree_eligible=true where id=$1",[program]);
+ await run("insert into escen.annual_fee_schedules(id,academic_year_id,category,program_id,level_id,double_degree,amount,reason) values($1,$2,'INSCRIPTION',$3,$4,true,75000,'Tarif double diplomation exclu des admissions classiques')",[diplomaFee,year,program,level]);
+ // Sans tarif classique, un tarif de double diplomation ne doit jamais servir de secours.
+ await db.exec('begin');
+ try {
+  await run("update escen.annual_fee_schedules set archived_at=now() where academic_year_id=$1 and not double_degree and archived_at is null",[year]);
+  await db.exec('savepoint no_classic_fee');
+  await assert.rejects(command('DA','admissible'),/absent ou ambigu/);checks++;
+  await db.exec('rollback to savepoint no_classic_fee');
+ } finally {await db.exec('rollback');}
  await command('DA','admissible');
  assert.deepEqual(await noticeRoles('admissible'),['CC']);checks++;
  assert.equal(Number((await app()).registration_fee_due),50000);checks++;
+ assert.notEqual((await app()).registration_fee_schedule_id,diplomaFee);checks++;
  await assert.rejects(command('RAF','confirm_payment',{amount:50000,channel_id:channel,reference:'LOCAL-001'}),/refusée/);checks++;
  await command('CC','confirm_payment',{amount:20000,channel_id:channel,reference:'LOCAL-001'});
  assert.equal((await app()).workflow_stage,'ATTENTE_PAIEMENT');checks++;
