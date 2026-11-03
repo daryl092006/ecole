@@ -12,6 +12,8 @@ import LoadingState from '@/components/ui/LoadingState';
 import EnrollmentDialog from './EnrollmentDialog';
 import StudentPaymentList from './StudentPaymentList';
 import StudentProfilePanel from './StudentProfilePanel';
+import ContractAmendmentPanel from './ContractAmendmentPanel';
+import type {ContractAmendmentOption} from '@/types/contractAmendment';
 import type { Student } from '@/types';
 import type { PaymentAdjustmentDirectory } from '@/types/paymentAdjustments';
 import type { PaymentAllocationDirectory } from '@/types/paymentAllocations';
@@ -27,6 +29,7 @@ interface EnrollmentItem {
 }
 
 interface Directory {
+  amendmentOptions?: ContractAmendmentOption[];
   adjustmentDirectory?: PaymentAdjustmentDirectory;
   allocationDirectory?: PaymentAllocationDirectory;
   channels?: { name: string; method: string }[];
@@ -226,6 +229,7 @@ export default function StudentOperationsPanel({
         )}
       </div>
 
+      {financial && data && <ContractAmendmentPanel matricule={matricule} options={data.amendmentOptions || []} revision={data.revision} onSaved={()=>{setMessage('Avenant enregistré, double diplomation et paiements synchronisés.');setRetry(value=>value+1);onChanged?.();}}/>}
       {message && <p role="status">{message}</p>}
       {error && (
         <p role="alert">

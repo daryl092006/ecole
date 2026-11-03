@@ -15,6 +15,7 @@ import { verifyBlockedPeriodReasons } from './verify-blocked-period-reasons.mjs'
 import { verifyEmailOutbox } from './verify-email-outbox.mjs';
 import { verifyFinanceRegularization } from './verify-finance-regularization.mjs';
 import { verifyDoubleDegreeFees } from './verify-double-degree-fees.mjs';
+import { verifyContractAmendment } from './verify-contract-amendment.mjs';
 import { readFile } from 'node:fs/promises';
 import { fileURLToPath } from 'node:url';
 import { randomUUID } from 'node:crypto';
@@ -81,6 +82,7 @@ try {
   await db.query("update escen.curricula set status = 'APPROVED', approved_by = $1, approved_at = now() where id = $2", [account.id, curriculum.id]);
   const offering = await insert('academic_offerings', { curriculum_id: curriculum.id, academic_year_id: year.id, level_id: level.id, site_id: site.id });
   await verifyDoubleDegreeFees(db, check, {program,cycle,level,year});
+  await verifyContractAmendment(db, check, {offering,account});
   await verifyFinanceRegularization(db, check, { offering, account });
   await insert('offering_semesters', { offering_id: offering.id, curriculum_id: curriculum.id, curriculum_semester_id: semester.id, starts_on: '2026-01-01', ends_on: '2027-12-31' });
   const group = await insert('groups', { academic_year_id: year.id, level_id: level.id, site_id: site.id, name: 'L1-A' });

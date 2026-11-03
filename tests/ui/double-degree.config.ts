@@ -1,7 +1,7 @@
 import { defineConfig } from '@playwright/test';
 
 export default defineConfig({
-  testDir: '.', testMatch: ['double-degree.spec.ts'],
+  testDir: '.', testMatch: ['double-degree.spec.ts','contract-amendment-api.spec.ts'],
   timeout: 60000, expect: { timeout: 12000 }, workers: 1, reporter: 'list',
   outputDir: '../../test-results/double-degree',
   use: { baseURL: 'http://127.0.0.1:3128', channel: 'chrome', headless: true, trace: 'off' },
