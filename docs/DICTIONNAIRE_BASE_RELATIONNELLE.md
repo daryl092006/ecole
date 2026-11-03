@@ -2,7 +2,7 @@
 
 Généré avec `npm run db:describe` en exécutant les migrations dans PostgreSQL local (PGlite). Aucun accès à Supabase ou aux données de la sauvegarde.
 
-118 tables métier, 14 tables privées, 1048 colonnes, 294 clés étrangères, 246 CHECK de tables et 4 exclusions. Les domaines ajoutent les bornes des notes, des montants FCFA et des textes obligatoires.
+118 tables métier, 14 tables privées, 1050 colonnes, 294 clés étrangères, 246 CHECK de tables et 4 exclusions. Les domaines ajoutent les bornes des notes, des montants FCFA et des textes obligatoires.
 
 Toutes les tables ont RLS activée, sans accès applicatif permis à ce stade. Les noms techniques ne sont pas des libellés à afficher dans l’interface.
 
@@ -51,7 +51,7 @@ Toutes les tables ont RLS activée, sans accès applicatif permis à ce stade. L
 | escen | email_outbox | 24 | 3 | Oui |
 | escen | enrollment_events | 7 | 2 | Oui |
 | escen | enrollment_groups | 9 | 4 | Oui |
-| escen | enrollments | 7 | 3 | Oui |
+| escen | enrollments | 8 | 3 | Oui |
 | escen | evaluation_candidates | 7 | 2 | Oui |
 | escen | evaluation_transitions | 7 | 2 | Oui |
 | escen | evaluations | 17 | 6 | Oui |
@@ -89,7 +89,7 @@ Toutes les tables ont RLS activée, sans accès applicatif permis à ce stade. L
 | escen | payments | 15 | 4 | Oui |
 | escen | people | 15 | 0 | Oui |
 | escen | permissions | 3 | 0 | Oui |
-| escen | programs | 7 | 0 | Oui |
+| escen | programs | 8 | 0 | Oui |
 | escen | purchase_lines | 5 | 1 | Oui |
 | escen | purchase_receipts | 7 | 2 | Oui |
 | escen | purchases | 9 | 4 | Oui |
@@ -1864,12 +1864,14 @@ CREATE INDEX fk_17148 ON escen.enrollment_groups USING btree (group_id, offering
 | enrolled_on | date | YES | — | NEVER |
 | created_by | uuid | YES | — | NEVER |
 | created_at | timestamptz | NO | now() | NEVER |
+| double_degree | bool | NO | false | NEVER |
 
 Contraintes :
 
 ```sql
 enrollments_created_at_not_null: NOT NULL created_at
 enrollments_created_by_fkey: FOREIGN KEY (created_by) REFERENCES escen.accounts(id) ON DELETE RESTRICT
+enrollments_double_degree_not_null: NOT NULL double_degree
 enrollments_id_not_null: NOT NULL id
 enrollments_id_offering_id_key: UNIQUE (id, offering_id)
 enrollments_id_student_id_key: UNIQUE (id, student_id)
@@ -3431,6 +3433,7 @@ CREATE UNIQUE INDEX permissions_pkey ON escen.permissions USING btree (id)
 | active | bool | NO | true | NEVER |
 | archived_at | timestamptz | YES | — | NEVER |
 | reason | text | YES | — | NEVER |
+| double_degree_eligible | bool | NO | false | NEVER |
 
 Contraintes :
 
@@ -3439,6 +3442,7 @@ programs_active_not_null: NOT NULL active
 programs_archive_reason: CHECK (((archived_at IS NULL) OR ((reason IS NOT NULL) AND (length(btrim(reason)) >= 3))))
 programs_code_key: UNIQUE (code)
 programs_code_not_null: NOT NULL code
+programs_double_degree_eligible_not_null: NOT NULL double_degree_eligible
 programs_id_not_null: NOT NULL id
 programs_name_not_null: NOT NULL name
 programs_pkey: PRIMARY KEY (id)

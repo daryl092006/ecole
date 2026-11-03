@@ -2,7 +2,7 @@
   "stats": {
     "businessTables": 118,
     "privateTables": 14,
-    "columns": 1048,
+    "columns": 1050,
     "foreignKeys": 294,
     "checks": 246,
     "exclusions": 4
@@ -3903,6 +3903,15 @@
     },
     {
       "schema": "escen",
+      "table": "enrollments",
+      "name": "double_degree",
+      "type": "bool",
+      "nullable": "NO",
+      "default": "false",
+      "generated": "NEVER"
+    },
+    {
+      "schema": "escen",
       "table": "evaluation_candidates",
       "name": "id",
       "type": "uuid",
@@ -6734,6 +6743,15 @@
       "type": "text",
       "nullable": "YES",
       "default": null,
+      "generated": "NEVER"
+    },
+    {
+      "schema": "escen",
+      "table": "programs",
+      "name": "double_degree_eligible",
+      "type": "bool",
+      "nullable": "NO",
+      "default": "false",
       "generated": "NEVER"
     },
     {
@@ -13817,6 +13835,13 @@
     {
       "schema": "escen",
       "table": "enrollments",
+      "name": "enrollments_double_degree_not_null",
+      "type": "n",
+      "definition": "NOT NULL double_degree"
+    },
+    {
+      "schema": "escen",
+      "table": "enrollments",
       "name": "enrollments_id_not_null",
       "type": "n",
       "definition": "NOT NULL id"
@@ -17278,6 +17303,13 @@
       "name": "programs_code_not_null",
       "type": "n",
       "definition": "NOT NULL code"
+    },
+    {
+      "schema": "escen",
+      "table": "programs",
+      "name": "programs_double_degree_eligible_not_null",
+      "type": "n",
+      "definition": "NOT NULL double_degree_eligible"
     },
     {
       "schema": "escen",
