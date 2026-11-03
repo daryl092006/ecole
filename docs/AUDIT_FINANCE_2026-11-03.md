@@ -36,3 +36,23 @@ Le test PostgreSQL utilisait une fermeture fictive le 3 novembre 2026, en confli
 - Conflits RPC, récupération enseignants, reprise opérationnelle et admissions : succès.
 - Les commandes ont été exécutées avec Node portable directement, npm étant absent du PATH.
 - Aucun test navigateur réalisé : aucun écran modifié.
+
+## Cas peuplés et source tarifaire
+
+Deux cas de régression sont désormais intégrés dans `verify-database.mjs` via `verify-finance-regularization.mjs`. Ils créent des données fictives dans des transactions annulées :
+
+- Marianne : contrat approuvé à 550 000 FCFA de scolarité et 50 000 FCFA d'inscription. La réexécution locale de 080 est effectivement refusée avec « Contrat approuvé immuable ».
+- Gnele : contrat approuvé à 408 000 FCFA de scolarité et 50 000 FCFA d'inscription. La réexécution locale de 081 crée l'attribution 15 %, mais aucune remise contractuelle ; le total reste 458 000 FCFA. Ce net ne doit pas subir une deuxième réduction.
+
+La suite PostgreSQL passe avec 196 groupes de contrôles.
+
+Le CSV `ECHEANCIER_RECOUVREMENT_2026_2027.csv` fournit :
+
+| Étudiant | Scolarité brute | Remise | Scolarité nette | Avec inscription | Total payé indiqué |
+|---|---:|---:|---:|---:|---:|
+| Gnele | 480 000 | 15 % | 408 000 | 458 000 | 458 000 |
+| Mama Issa | 550 000 | 31 % | 379 500 | 429 500 | 50 000 |
+| Samani Djibril | 550 000 | 31 % | 379 500 | 429 500 | 50 000 |
+| Marianne | 550 000 | aucune | 550 000 | 600 000 | 878 750 |
+
+Pour Marianne, ce fichier contredit le brut de 975 000 FCFA et la remise de 15 % de 080 et du journal communiqué. Aucun autre justificatif de ce tarif n'a été retrouvé dans les documents et scripts recherchés. Une confirmation de la source tarifaire applicable est nécessaire avant de proposer une correction financière définitive.

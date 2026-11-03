@@ -13,6 +13,7 @@ import { verifyNetFinances } from './verify-net-finances.mjs';
 import { verifyScheduleManagement } from './verify-schedule-management.mjs';
 import { verifyBlockedPeriodReasons } from './verify-blocked-period-reasons.mjs';
 import { verifyEmailOutbox } from './verify-email-outbox.mjs';
+import { verifyFinanceRegularization } from './verify-finance-regularization.mjs';
 import { readFile } from 'node:fs/promises';
 import { fileURLToPath } from 'node:url';
 import { randomUUID } from 'node:crypto';
@@ -78,6 +79,7 @@ try {
   await insert('assessment_weights', { curriculum_id: curriculum.id, component_id: component.id, evaluation_kind: 'EXAMEN', percent: 60 });
   await db.query("update escen.curricula set status = 'APPROVED', approved_by = $1, approved_at = now() where id = $2", [account.id, curriculum.id]);
   const offering = await insert('academic_offerings', { curriculum_id: curriculum.id, academic_year_id: year.id, level_id: level.id, site_id: site.id });
+  await verifyFinanceRegularization(db, check, { offering, account });
   await insert('offering_semesters', { offering_id: offering.id, curriculum_id: curriculum.id, curriculum_semester_id: semester.id, starts_on: '2026-01-01', ends_on: '2027-12-31' });
   const group = await insert('groups', { academic_year_id: year.id, level_id: level.id, site_id: site.id, name: 'L1-A' });
   const group2 = await insert('groups', { academic_year_id: year.id, level_id: level.id, site_id: site.id, name: 'L1-B' });
