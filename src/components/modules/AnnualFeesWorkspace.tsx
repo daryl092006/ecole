@@ -1,8 +1,10 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import Link from 'next/link';
 import { usePortal } from '@/hooks/usePortal';
 import { ROLES } from '@/types/permissions';
+import { studentPath } from '@/constants/portalRoutes';
 import PageHeader from '@/components/ui/PageHeader';
 import ResponsiveTable from '@/components/ui/ResponsiveTable';
 import WorkPage from '@/components/ui/WorkPage';
@@ -25,7 +27,9 @@ export default function AnnualFeesWorkspace() {
   const portal = usePortal();
   const { activeRole } = portal;
 
-  const [activeTab, setActiveTab] = useState<'scholarships' | 'fees' | 'awards'>('scholarships');
+  const [activeTab, setActiveTab] = useState<'contracts' | 'fees' | 'scholarships'>('contracts');
+  const [contractsFilter, setContractsFilter] = useState<'all' | 'awarded' | 'standard'>('all');
+  const [contractsQuery, setContractsQuery] = useState('');
   const [directory, setDirectory] = useState<FinanceSettingsDirectory | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -65,7 +69,6 @@ export default function AnnualFeesWorkspace() {
   // Search queries
   const [schQuery, setSchQuery] = useState('');
   const [feeQuery, setFeeQuery] = useState('');
-  const [awardQuery, setAwardQuery] = useState('');
 
   useEffect(() => {
     let active = true;
@@ -136,8 +139,8 @@ export default function AnnualFeesWorkspace() {
     setModalMode('create_fee');
   };
 
-  const openAwardScholarship = () => {
-    setAwardEnrollmentId(directory?.enrolledStudents[0]?.enrollmentId || '');
+  const openAwardScholarship = (enrollmentId?: string) => {
+    setAwardEnrollmentId(enrollmentId || directory?.enrolledStudents[0]?.enrollmentId || '');
     setAwardScholarshipId(directory?.scholarships.find(s => s.active)?.id || '');
     setAwardValidFrom(new Date().toISOString().slice(0, 10));
     setAwardReason('');
@@ -204,35 +207,48 @@ export default function AnnualFeesWorkspace() {
       (f.levelName && f.levelName.toLowerCase().includes(feeQuery.toLowerCase()))
   );
 
-  const awardList = (directory?.scholarshipAwards || []).filter(
-    a =>
-      a.studentMatricule.toLowerCase().includes(awardQuery.toLowerCase()) ||
-      a.studentName.toLowerCase().includes(awardQuery.toLowerCase()) ||
-      a.scholarshipName.toLowerCase().includes(awardQuery.toLowerCase()) ||
-      a.scholarshipCode.toLowerCase().includes(awardQuery.toLowerCase())
-  );
+  const allStudents = directory?.enrolledStudents || [];
+  const awardedCount = allStudents.filter(s => s.hasScholarship).length;
+  const standardCount = allStudents.length - awardedCount;
+
+  const filteredContracts = allStudents.filter(s => {
+    if (contractsFilter === 'awarded' && !s.hasScholarship) return false;
+    if (contractsFilter === 'standard' && s.hasScholarship) return false;
+    if (contractsQuery.trim()) {
+      const q = contractsQuery.toLowerCase();
+      const match =
+        s.name.toLowerCase().includes(q) ||
+        s.matricule.toLowerCase().includes(q) ||
+        s.programName.toLowerCase().includes(q) ||
+        s.levelName.toLowerCase().includes(q) ||
+        (s.scholarshipName && s.scholarshipName.toLowerCase().includes(q)) ||
+        (s.scholarshipCode && s.scholarshipCode.toLowerCase().includes(q));
+      if (!match) return false;
+    }
+    return true;
+  });
 
   return (
     <div className="workspace-stack">
       <PageHeader
         eyebrow="FINANCES & COMPTABILITÉ"
-        title="Tarifs, Tranches & Bourses"
-        description="Configuration centrale des grilles tarifaires annuelles, des modalités d'échéanciers (1, 3, 4 ou 10 tranches) et du catalogue des bourses et partenariats."
+        title="Contrats étudiants & Bourses"
+        description="Suivi nominatif des contrats d’études, identification précise des étudiants boursiers et plein tarif, et configuration des grilles tarifaires annuelles."
       >
         <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
-          {activeTab === 'scholarships' && canEdit && (
-            <button type="button" className="btn btn-primary" onClick={openCreateScholarship}>
-              + Nouvelle bourse / partenariat
+          {canEdit && (
+            <button type="button" className="btn btn-primary" onClick={() => openAwardScholarship()}>
+              + Attribuer une bourse
             </button>
           )}
-          {activeTab === 'fees' && canEdit && (
-            <button type="button" className="btn btn-primary" onClick={openCreateFee}>
+          {canEdit && (
+            <button type="button" className="btn btn-outline" onClick={openCreateFee}>
               + Configurer un tarif annuel
             </button>
           )}
-          {activeTab === 'awards' && canEdit && (
-            <button type="button" className="btn btn-primary" onClick={openAwardScholarship}>
-              + Attribuer une bourse
+          {canEdit && (
+            <button type="button" className="btn btn-outline" onClick={openCreateScholarship}>
+              + Nouvelle bourse catalogue
             </button>
           )}
         </div>
@@ -253,21 +269,26 @@ export default function AnnualFeesWorkspace() {
       {/* KPI Cards */}
       <div className="kpi-grid" style={{ marginBottom: '1.5rem' }}>
         <div className="kpi-card">
-          <span className="kpi-label">Bourses & Partenariats</span>
-          <strong className="kpi-value">{directory?.scholarships.length || 0}</strong>
-          <span className="cell-sub">
-            {(directory?.scholarships.filter(s => s.active) || []).length} actives
-          </span>
+          <span className="kpi-label">Contrats étudiants</span>
+          <strong className="kpi-value">{allStudents.length}</strong>
+          <span className="cell-sub">Pour {directory?.selectedYearCode || '2026-2027'}</span>
         </div>
         <div className="kpi-card">
-          <span className="kpi-label">Tarifs configurés</span>
+          <span className="kpi-label">Étudiants boursiers</span>
+          <strong className="kpi-value" style={{ color: 'var(--success, #16a34a)' }}>
+            {awardedCount}
+          </strong>
+          <span className="cell-sub">Bénéficiaires audités</span>
+        </div>
+        <div className="kpi-card">
+          <span className="kpi-label">Plein tarif</span>
+          <strong className="kpi-value">{standardCount}</strong>
+          <span className="cell-sub">Sans bourse appliquée</span>
+        </div>
+        <div className="kpi-card">
+          <span className="kpi-label">Grilles tarifaires</span>
           <strong className="kpi-value">{directory?.feeSchedules.length || 0}</strong>
-          <span className="cell-sub">Pour {directory?.selectedYearCode || 'l’année en cours'}</span>
-        </div>
-        <div className="kpi-card">
-          <span className="kpi-label">Bourses attribuées</span>
-          <strong className="kpi-value">{directory?.scholarshipAwards.length || 0}</strong>
-          <span className="cell-sub">Étudiants bénéficiaires audités</span>
+          <span className="cell-sub">Tarifs configurés</span>
         </div>
       </div>
 
@@ -276,11 +297,11 @@ export default function AnnualFeesWorkspace() {
         <button
           type="button"
           role="tab"
-          aria-selected={activeTab === 'scholarships'}
-          className={`btn ${activeTab === 'scholarships' ? 'btn-primary' : ''}`}
-          onClick={() => setActiveTab('scholarships')}
+          aria-selected={activeTab === 'contracts'}
+          className={`btn ${activeTab === 'contracts' ? 'btn-primary' : ''}`}
+          onClick={() => setActiveTab('contracts')}
         >
-          Bourses & Partenariats ({directory?.scholarships.length || 0})
+          Contrats étudiants & Bourses ({allStudents.length})
         </button>
         <button
           type="button"
@@ -294,16 +315,16 @@ export default function AnnualFeesWorkspace() {
         <button
           type="button"
           role="tab"
-          aria-selected={activeTab === 'awards'}
-          className={`btn ${activeTab === 'awards' ? 'btn-primary' : ''}`}
-          onClick={() => setActiveTab('awards')}
+          aria-selected={activeTab === 'scholarships'}
+          className={`btn ${activeTab === 'scholarships' ? 'btn-primary' : ''}`}
+          onClick={() => setActiveTab('scholarships')}
         >
-          Attributions ({directory?.scholarshipAwards.length || 0})
+          Catalogue des bourses ({directory?.scholarships.length || 0})
         </button>
       </div>
 
-      {/* TAB 1: BOURSES & PARTENARIATS */}
-      {activeTab === 'scholarships' && (
+      {/* TAB 1: CONTRATS ÉTUDIANTS & BOURSES */}
+      {activeTab === 'contracts' && (
         <section className="card">
           <div
             className="card-header"
@@ -312,19 +333,44 @@ export default function AnnualFeesWorkspace() {
               justifyContent: 'space-between',
               alignItems: 'center',
               flexWrap: 'wrap',
-              gap: '0.75rem',
+              gap: '1rem',
               padding: '1rem 1.25rem',
               borderBottom: '1px solid var(--border)',
             }}
           >
-            <h2 style={{ fontSize: '1rem', fontWeight: 600, margin: 0 }}>Catalogue des bourses et partenariats</h2>
+            {/* Filtres d'état */}
+            <div style={{ display: 'flex', gap: '0.4rem', flexWrap: 'wrap', alignItems: 'center' }}>
+              <button
+                type="button"
+                className={`btn btn-sm ${contractsFilter === 'all' ? 'btn-primary' : 'btn-outline'}`}
+                onClick={() => setContractsFilter('all')}
+              >
+                Tous les étudiants ({allStudents.length})
+              </button>
+              <button
+                type="button"
+                className={`btn btn-sm ${contractsFilter === 'awarded' ? 'btn-primary' : 'btn-outline'}`}
+                onClick={() => setContractsFilter('awarded')}
+              >
+                Boursiers ({awardedCount})
+              </button>
+              <button
+                type="button"
+                className={`btn btn-sm ${contractsFilter === 'standard' ? 'btn-primary' : 'btn-outline'}`}
+                onClick={() => setContractsFilter('standard')}
+              >
+                Plein tarif ({standardCount})
+              </button>
+            </div>
+
+            {/* Barre de recherche */}
             <div style={{ maxWidth: '320px', width: '100%' }}>
               <input
                 type="search"
                 className="search-input"
-                placeholder="Rechercher par code ou nom…"
-                value={schQuery}
-                onChange={e => setSchQuery(e.target.value)}
+                placeholder="Rechercher par nom, matricule…"
+                value={contractsQuery}
+                onChange={e => setContractsQuery(e.target.value)}
               />
             </div>
           </div>
@@ -333,65 +379,82 @@ export default function AnnualFeesWorkspace() {
             <ResponsiveTable className="data-table">
               <thead>
                 <tr>
-                  <th>Code</th>
-                  <th>Intitulé & Partenariat</th>
-                  <th>Nature de remise</th>
-                  <th>Valeur</th>
-                  <th>Bénéficiaires</th>
-                  <th>Statut</th>
-                  {canEdit && <th>Actions</th>}
+                  <th>Étudiant & Matricule</th>
+                  <th>Formation & Niveau</th>
+                  <th>Statut Bourse / Partenariat</th>
+                  <th>Tarif de base</th>
+                  <th>Remise déduite</th>
+                  <th>Net contractuel</th>
+                  <th>Modalités</th>
+                  {canEdit && <th>Action</th>}
                 </tr>
               </thead>
               <tbody>
-                {!scholarshipsList.length ? (
+                {!filteredContracts.length ? (
                   <tr>
-                    <td colSpan={canEdit ? 7 : 6}>Aucune bourse trouvée.</td>
+                    <td colSpan={canEdit ? 8 : 7}>Aucun étudiant trouvé pour ces critères.</td>
                   </tr>
                 ) : (
-                  scholarshipsList.map(item => (
-                    <tr key={item.id}>
+                  filteredContracts.map(student => (
+                    <tr key={student.enrollmentId}>
                       <td>
-                        <strong>{item.code}</strong>
+                        <Link href={studentPath(student.matricule)} style={{ fontWeight: 600 }}>
+                          {student.name}
+                        </Link>
+                        <div className="cell-sub">
+                          <code>{student.matricule}</code>
+                        </div>
                       </td>
-                      <td>{item.name}</td>
                       <td>
-                        <span className="pill pill-default">
-                          {item.kind === 'POURCENTAGE' ? 'Pourcentage (%)' : 'Montant fixe'}
-                        </span>
+                        {student.programName} · {student.levelName}
+                      </td>
+                      <td>
+                        {student.hasScholarship ? (
+                          <div>
+                            <span className="pill pill-success" style={{ fontWeight: 600 }}>
+                              {student.scholarshipName}
+                            </span>
+                            <div className="cell-sub">
+                              {student.scholarshipCode} ({student.scholarshipValue})
+                            </div>
+                          </div>
+                        ) : (
+                          <span className="pill pill-default">Sans bourse (Plein tarif)</span>
+                        )}
+                      </td>
+                      <td>
+                        {student.grossAmount != null ? money(student.grossAmount) : '—'}
+                      </td>
+                      <td>
+                        {student.discountAmount != null && student.discountAmount > 0 ? (
+                          <span style={{ color: 'var(--success, #16a34a)', fontWeight: 600 }}>
+                            -{money(student.discountAmount)}
+                          </span>
+                        ) : (
+                          '—'
+                        )}
                       </td>
                       <td>
                         <strong>
-                          {item.kind === 'POURCENTAGE'
-                            ? `${item.percent}%`
-                            : item.amount != null
-                            ? money(item.amount)
-                            : '-'}
+                          {student.netAmount != null ? money(student.netAmount) : '—'}
                         </strong>
                       </td>
-                      <td>{item.awardCount ?? 0} étudiant(s)</td>
                       <td>
-                        <span className={`pill ${item.active ? 'pill-success' : 'pill-default'}`}>
-                          {item.active ? 'Active' : 'Inactive'}
+                        <span className="cell-sub">
+                          {student.installmentsCount
+                            ? `${student.installmentsCount} tranche(s)`
+                            : '1 tranche (comptant)'}
                         </span>
                       </td>
                       {canEdit && (
                         <td>
-                          <div className="btn-group">
-                            <button
-                              type="button"
-                              className="btn btn-sm btn-outline"
-                              onClick={() => openEditScholarship(item)}
-                            >
-                              Modifier
-                            </button>
-                            <button
-                              type="button"
-                              className="btn btn-sm btn-outline"
-                              onClick={() => handleToggleScholarship(item)}
-                            >
-                              {item.active ? 'Désactiver' : 'Activer'}
-                            </button>
-                          </div>
+                          <button
+                            type="button"
+                            className="btn btn-sm btn-outline"
+                            onClick={() => openAwardScholarship(student.enrollmentId)}
+                          >
+                            {student.hasScholarship ? 'Modifier bourse' : 'Attribuer bourse'}
+                          </button>
                         </td>
                       )}
                     </tr>
@@ -513,8 +576,8 @@ export default function AnnualFeesWorkspace() {
         </div>
       )}
 
-      {/* TAB 3: BOURSES ATTRIBUÉES */}
-      {activeTab === 'awards' && (
+      {/* TAB 3: BOURSES & PARTENARIATS */}
+      {activeTab === 'scholarships' && (
         <section className="card">
           <div
             className="card-header"
@@ -528,14 +591,14 @@ export default function AnnualFeesWorkspace() {
               borderBottom: '1px solid var(--border)',
             }}
           >
-            <h2 style={{ fontSize: '1rem', fontWeight: 600, margin: 0 }}>Bourses attribuées aux étudiants (2026-2027)</h2>
+            <h2 style={{ fontSize: '1rem', fontWeight: 600, margin: 0 }}>Catalogue des bourses et partenariats</h2>
             <div style={{ maxWidth: '320px', width: '100%' }}>
               <input
                 type="search"
                 className="search-input"
-                placeholder="Rechercher par matricule ou étudiant…"
-                value={awardQuery}
-                onChange={e => setAwardQuery(e.target.value)}
+                placeholder="Rechercher par code ou nom…"
+                value={schQuery}
+                onChange={e => setSchQuery(e.target.value)}
               />
             </div>
           </div>
@@ -544,36 +607,67 @@ export default function AnnualFeesWorkspace() {
             <ResponsiveTable className="data-table">
               <thead>
                 <tr>
-                  <th>Matricule</th>
-                  <th>Étudiant</th>
-                  <th>Formation & Niveau</th>
-                  <th>Bourse / Partenariat</th>
+                  <th>Code</th>
+                  <th>Intitulé & Partenariat</th>
+                  <th>Nature de remise</th>
                   <th>Valeur</th>
-                  <th>Prise d’effet</th>
+                  <th>Bénéficiaires</th>
+                  <th>Statut</th>
+                  {canEdit && <th>Actions</th>}
                 </tr>
               </thead>
               <tbody>
-                {!awardList.length ? (
+                {!scholarshipsList.length ? (
                   <tr>
-                    <td colSpan={6}>Aucune bourse attribuée pour l’année sélectionnée.</td>
+                    <td colSpan={canEdit ? 7 : 6}>Aucune bourse trouvée.</td>
                   </tr>
                 ) : (
-                  awardList.map(item => (
+                  scholarshipsList.map(item => (
                     <tr key={item.id}>
                       <td>
-                        <strong>{item.studentMatricule}</strong>
+                        <strong>{item.code}</strong>
                       </td>
-                      <td>{item.studentName}</td>
+                      <td>{item.name}</td>
                       <td>
-                        {item.programName} · {item.levelName}
+                        <span className="pill pill-default">
+                          {item.kind === 'POURCENTAGE' ? 'Pourcentage (%)' : 'Montant fixe'}
+                        </span>
                       </td>
                       <td>
-                        <span className="pill pill-default">{item.scholarshipName}</span> ({item.scholarshipCode})
+                        <strong>
+                          {item.kind === 'POURCENTAGE'
+                            ? `${item.percent}%`
+                            : item.amount != null
+                            ? money(item.amount)
+                            : '-'}
+                        </strong>
                       </td>
+                      <td>{item.awardCount ?? 0} étudiant(s)</td>
                       <td>
-                        <strong>{item.scholarshipValue}</strong>
+                        <span className={`pill ${item.active ? 'pill-success' : 'pill-default'}`}>
+                          {item.active ? 'Active' : 'Inactive'}
+                        </span>
                       </td>
-                      <td>{item.validFrom}</td>
+                      {canEdit && (
+                        <td>
+                          <div className="btn-group">
+                            <button
+                              type="button"
+                              className="btn btn-sm btn-outline"
+                              onClick={() => openEditScholarship(item)}
+                            >
+                              Modifier
+                            </button>
+                            <button
+                              type="button"
+                              className="btn btn-sm btn-outline"
+                              onClick={() => handleToggleScholarship(item)}
+                            >
+                              {item.active ? 'Désactiver' : 'Activer'}
+                            </button>
+                          </div>
+                        </td>
+                      )}
                     </tr>
                   ))
                 )}

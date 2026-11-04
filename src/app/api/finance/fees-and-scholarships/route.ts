@@ -112,13 +112,40 @@ export async function GET(request: Request) {
       })
       .sort((a, b) => a.studentName.localeCompare(b.studentName, 'fr'));
 
-    // 4. Enrolled students list (for the award modal dropdown)
+    // 4. Enrolled students list with their contract and scholarship status
+    const contractsMap = new Map((snapshot.tables.financial_contracts || []).map(c => [String(c.enrollment_id), c]));
+    const contractLines = snapshot.tables.contract_lines || [];
+    const contractDiscounts = snapshot.tables.contract_discounts || [];
+    const installments = snapshot.tables.installments || [];
+
     const enrolledStudents = enrollmentsYear
       .map(e => {
         const student = studentsMap.get(String(e.student_id));
         const person = student ? peopleMap.get(String(student.person_id)) : undefined;
         const offering = offeringsMap.get(String(e.offering_id));
         const curriculum = offering ? curriculaMap.get(String(offering.curriculum_id)) : undefined;
+
+        const contract = contractsMap.get(String(e.id));
+        const cLines = contract ? contractLines.filter(l => l.contract_id === contract.id) : [];
+        const grossAmount = contract ? cLines.reduce((sum, l) => sum + Number(l.amount || 0), 0) : null;
+        const cLineIds = new Set(cLines.map(l => String(l.id)));
+        const cDiscounts = contractDiscounts.filter(d => cLineIds.has(String(d.line_id)));
+        const discountAmount = cDiscounts.reduce((sum, d) => sum + Number(d.amount || 0), 0);
+        const netAmount = grossAmount != null ? Math.max(0, grossAmount - discountAmount) : null;
+        const cInsts = contract ? installments.filter(i => i.contract_id === contract.id) : [];
+        const installmentsCount = cInsts.length;
+
+        const studentAward = awards.find(a => a.enrollment_id === e.id && !a.revoked_at);
+        const awardedSch = studentAward ? scholarshipMap.get(String(studentAward.scholarship_id)) : undefined;
+        const hasScholarship = Boolean(studentAward);
+        const scholarshipVal = awardedSch
+          ? awardedSch.kind === 'POURCENTAGE'
+            ? `${awardedSch.percent}%`
+            : awardedSch.amount != null
+            ? `${awardedSch.amount.toLocaleString('fr-FR')} FCFA`
+            : '-'
+          : undefined;
+
         return {
           enrollmentId: e.id,
           studentId: String(e.student_id),
@@ -126,6 +153,17 @@ export async function GET(request: Request) {
           name: person ? `${person.lastname} ${person.firstname}` : 'Étudiant',
           programName: curriculum ? programsMap.get(String(curriculum.program_id)) || '' : '',
           levelName: offering ? levelsMap.get(String(offering.level_id)) || '' : '',
+          hasScholarship,
+          scholarshipCode: awardedSch?.code,
+          scholarshipName: awardedSch?.name,
+          scholarshipValue: scholarshipVal,
+          scholarshipId: studentAward ? String(studentAward.scholarship_id) : undefined,
+          contractId: contract ? String(contract.id) : undefined,
+          contractStatus: contract ? String(contract.status) : 'NON_ETABLI',
+          grossAmount,
+          discountAmount,
+          netAmount,
+          installmentsCount: installmentsCount > 0 ? installmentsCount : undefined,
         };
       })
       .filter(s => s.matricule.length > 0)

@@ -56,6 +56,17 @@ export interface FinanceSettingsDirectory {
     name: string;
     programName: string;
     levelName: string;
+    hasScholarship?: boolean;
+    scholarshipCode?: string;
+    scholarshipName?: string;
+    scholarshipValue?: string;
+    scholarshipId?: string;
+    contractId?: string;
+    contractStatus?: string;
+    grossAmount?: number | null;
+    discountAmount?: number;
+    netAmount?: number | null;
+    installmentsCount?: number;
   }[];
 }
 
