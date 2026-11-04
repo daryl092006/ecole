@@ -2,7 +2,7 @@
 
 Généré avec `npm run db:describe` en exécutant les migrations dans PostgreSQL local (PGlite). Aucun accès à Supabase ou aux données de la sauvegarde.
 
-118 tables métier, 14 tables privées, 1048 colonnes, 294 clés étrangères, 246 CHECK de tables et 4 exclusions. Les domaines ajoutent les bornes des notes, des montants FCFA et des textes obligatoires.
+119 tables métier, 14 tables privées, 1059 colonnes, 297 clés étrangères, 248 CHECK de tables et 5 exclusions. Les domaines ajoutent les bornes des notes, des montants FCFA et des textes obligatoires.
 
 Toutes les tables ont RLS activée, sans accès applicatif permis à ce stade. Les noms techniques ne sont pas des libellés à afficher dans l’interface.
 
@@ -26,7 +26,7 @@ Toutes les tables ont RLS activée, sans accès applicatif permis à ce stade. L
 | escen | assessment_weights | 5 | 1 | Oui |
 | escen | asset_movements | 8 | 4 | Oui |
 | escen | assets | 8 | 1 | Oui |
-| escen | attendances | 12 | 3 | Oui |
+| escen | attendances | 13 | 4 | Oui |
 | escen | blocked_periods | 8 | 2 | Oui |
 | escen | buildings | 6 | 1 | Oui |
 | escen | communication_audiences | 6 | 4 | Oui |
@@ -102,6 +102,7 @@ Toutes les tables ont RLS activée, sans accès applicatif permis à ce stade. L
 | escen | schedule_series | 6 | 1 | Oui |
 | escen | scholarship_awards | 10 | 3 | Oui |
 | escen | scholarships | 7 | 0 | Oui |
+| escen | session_participants | 10 | 2 | Oui |
 | escen | session_supervisors | 3 | 2 | Oui |
 | escen | sessions | 18 | 5 | Oui |
 | escen | sites | 7 | 0 | Oui |
@@ -873,11 +874,14 @@ CREATE INDEX fk_19210 ON escen.assets USING btree (site_id)
 | recorded_at | timestamptz | NO | now() | NEVER |
 | comment | text | YES | — | NEVER |
 | reason | text | YES | — | NEVER |
+| session_participant_id | uuid | YES | — | NEVER |
 
 Contraintes :
 
 ```sql
+attendance_physical_session_fk: FOREIGN KEY (session_id) REFERENCES escen.sessions(id) ON DELETE RESTRICT
 attendance_reason_length: CHECK (((reason IS NULL) OR ((char_length(btrim(reason)) >= 3) AND (char_length(btrim(reason)) <= 1000))))
+attendance_session_participant_fk: FOREIGN KEY (session_participant_id, session_id, offering_id) REFERENCES escen.session_participants(id, session_id, offering_id) ON DELETE RESTRICT
 attendances_check: CHECK (((left_at IS NULL) OR ((arrived_at IS NOT NULL) AND (left_at >= arrived_at))))
 attendances_enrollment_id_not_null: NOT NULL enrollment_id
 attendances_enrollment_id_offering_id_fkey: FOREIGN KEY (enrollment_id, offering_id) REFERENCES escen.enrollments(id, offering_id) ON DELETE RESTRICT
@@ -890,7 +894,6 @@ attendances_recorded_by_fkey: FOREIGN KEY (recorded_by) REFERENCES escen.account
 attendances_recorded_by_not_null: NOT NULL recorded_by
 attendances_session_id_enrollment_id_key: UNIQUE (session_id, enrollment_id)
 attendances_session_id_not_null: NOT NULL session_id
-attendances_session_id_offering_id_fkey: FOREIGN KEY (session_id, offering_id) REFERENCES escen.sessions(id, offering_id) ON DELETE RESTRICT
 attendances_status_check: CHECK ((status = ANY (ARRAY['PRESENT'::text, 'ABSENT'::text, 'RETARD'::text, 'ABSENT_JUSTIFIE'::text, 'RETARD_JUSTIFIE'::text, 'DISPENSE'::text])))
 attendances_status_not_null: NOT NULL status
 ```
@@ -898,6 +901,7 @@ attendances_status_not_null: NOT NULL status
 Index :
 
 ```sql
+CREATE INDEX attendance_session_participant ON escen.attendances USING btree (session_participant_id)
 CREATE UNIQUE INDEX attendances_pkey ON escen.attendances USING btree (id)
 CREATE UNIQUE INDEX attendances_session_id_enrollment_id_key ON escen.attendances USING btree (session_id, enrollment_id)
 CREATE INDEX fk_17529 ON escen.attendances USING btree (recorded_by)
@@ -3894,6 +3898,56 @@ Index :
 ```sql
 CREATE UNIQUE INDEX scholarships_code_key ON escen.scholarships USING btree (code)
 CREATE UNIQUE INDEX scholarships_pkey ON escen.scholarships USING btree (id)
+```
+
+## escen.session_participants
+
+| Attribut | Type | Nullable | Défaut | Généré |
+|---|---|---|---|---|
+| id | uuid | NO | gen_random_uuid() | NEVER |
+| session_id | uuid | NO | — | NEVER |
+| assignment_id | uuid | NO | — | NEVER |
+| offering_id | uuid | NO | — | NEVER |
+| group_id | uuid | NO | — | NEVER |
+| teacher_id | uuid | NO | — | NEVER |
+| starts_at | timestamptz | NO | — | NEVER |
+| ends_at | timestamptz | NO | — | NEVER |
+| active | bool | NO | — | NEVER |
+| reason | text | YES | — | NEVER |
+
+Contraintes :
+
+```sql
+session_participant_group_conflict: EXCLUDE USING gist (group_id WITH =, session_id WITH <>, tstzrange(starts_at, ends_at, '[)'::text) WITH &&) WHERE (active)
+session_participants_active_not_null: NOT NULL active
+session_participants_assignment_id_not_null: NOT NULL assignment_id
+session_participants_assignment_id_offering_id_group_id_te_fkey: FOREIGN KEY (assignment_id, offering_id, group_id, teacher_id) REFERENCES escen.teaching_assignments(id, offering_id, group_id, teacher_id) ON DELETE RESTRICT
+session_participants_check: CHECK ((ends_at > starts_at))
+session_participants_ends_at_not_null: NOT NULL ends_at
+session_participants_group_id_not_null: NOT NULL group_id
+session_participants_id_not_null: NOT NULL id
+session_participants_id_session_id_offering_id_key: UNIQUE (id, session_id, offering_id)
+session_participants_offering_id_not_null: NOT NULL offering_id
+session_participants_pkey: PRIMARY KEY (id)
+session_participants_reason_check: CHECK (((reason IS NULL) OR ((char_length(btrim(reason)) >= 3) AND (char_length(btrim(reason)) <= 1000))))
+session_participants_session_id_assignment_id_key: UNIQUE (session_id, assignment_id)
+session_participants_session_id_fkey: FOREIGN KEY (session_id) REFERENCES escen.sessions(id) ON DELETE RESTRICT
+session_participants_session_id_not_null: NOT NULL session_id
+session_participants_session_id_offering_id_group_id_key: UNIQUE (session_id, offering_id, group_id)
+session_participants_starts_at_not_null: NOT NULL starts_at
+session_participants_teacher_id_not_null: NOT NULL teacher_id
+```
+
+Index :
+
+```sql
+CREATE INDEX session_participant_group_conflict ON escen.session_participants USING gist (group_id, session_id, tstzrange(starts_at, ends_at, '[)'::text)) WHERE active
+CREATE INDEX session_participants_assignment ON escen.session_participants USING btree (assignment_id)
+CREATE UNIQUE INDEX session_participants_id_session_id_offering_id_key ON escen.session_participants USING btree (id, session_id, offering_id)
+CREATE INDEX session_participants_offering ON escen.session_participants USING btree (offering_id)
+CREATE UNIQUE INDEX session_participants_pkey ON escen.session_participants USING btree (id)
+CREATE UNIQUE INDEX session_participants_session_id_assignment_id_key ON escen.session_participants USING btree (session_id, assignment_id)
+CREATE UNIQUE INDEX session_participants_session_id_offering_id_group_id_key ON escen.session_participants USING btree (session_id, offering_id, group_id)
 ```
 
 ## escen.session_supervisors

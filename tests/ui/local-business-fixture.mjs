@@ -9,10 +9,10 @@ import { prepareTestYear } from '../../scripts/academic-year-test-helpers.mjs';
 
 // Only the Auth provider and transport are substituted. Routes, permissions,
 // annual scopes, validation, transactions and reads execute production code.
-export async function localBusinessFixture() {
+export async function localBusinessFixture(migrationOptions) {
   const db = createDatabase();
   await db.exec('create schema auth; create table auth.users(id uuid primary key);');
-  await applyMigrations(db);
+  await applyMigrations(db, migrationOptions);
   const insert = async (table, record) => {
     if (!/^[a-z_]+$/.test(table) || Object.keys(record).some(key => !/^[a-z_]+$/.test(key))) throw new Error('Invalid fixture identifier');
     const keys = Object.keys(record);

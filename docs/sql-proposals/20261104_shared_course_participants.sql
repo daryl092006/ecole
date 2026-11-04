@@ -1,4 +1,4 @@
--- PROPOSITION À RELIRE : aucune migration ajoutée, aucune application distante.
+-- Copie de relecture validée et intégrée dans 202611040087_shared_course_participants.sql.
 -- Une séance physique, plusieurs affectations pédagogiques explicites.
 -- À livrer avec les adaptations API/projections/UI décrites dans le dossier associé.
 begin;

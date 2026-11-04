@@ -4,8 +4,8 @@ import { readFile } from 'node:fs/promises';
 import { localBusinessFixture } from '../tests/ui/local-business-fixture.mjs';
 import { verifyScheduleManagement } from './verify-schedule-management.mjs';
 
-// Offline rehearsal only: the proposal is deliberately outside migrations/.
-const local = await localBusinessFixture();
+// Verify the approved migration against populated data, exclusively in local PGlite.
+const local = await localBusinessFixture({ before: '202611040087_shared_course_participants.sql' });
 const { db, value, insert, account, year, level } = local;
 let checks = 0;
 const check = async (name, run) => { await run(); checks++; console.log(`✓ ${name}`); };
@@ -24,7 +24,7 @@ try {
   const oldAttendance = await insert('attendances', { session_id: oldSession.id, enrollment_id: oldEnrollment.id,
     offering_id: oldSession.offering_id, status: 'ABSENT', recorded_by: account.id, reason: 'Motif historique conservé' });
   await db.exec('create role anon; create role authenticated; create role service_role;');
-  await db.exec(await readFile(new URL('../docs/sql-proposals/20261104_shared_course_participants.sql', import.meta.url), 'utf8'));
+  await db.exec(await readFile(new URL('../supabase/migrations/202611040087_shared_course_participants.sql', import.meta.url), 'utf8'));
   await check('Reprise peuplée : séances, statuts et motifs historiques strictement conservés', async () => {
     assert.deepEqual((await db.query('select * from escen.sessions order by id')).rows, beforeSessions);
     const { session_participant_id, ...after } = (await db.query('select * from escen.attendances where id=$1', [oldAttendance.id])).rows[0];
@@ -196,7 +196,7 @@ try {
     await assert.rejects(insert('session_participants', { session_id: session.id, assignment_id: assignment.id,
       offering_id: offering.id, group_id: group.id, teacher_id: anchor.teacher_id, starts_at: session.starts_at, ends_at: session.ends_at, active: true }), /incompatible/);
   });
-  console.log(JSON.stringify({ checks, remoteWrites: 0, proposalOnly: true }));
+  console.log(JSON.stringify({ checks, remoteWrites: 0, migration: 87 }));
 } catch (error) {
   console.error(error.stack); process.exitCode = 1;
 } finally { await local.close(); }

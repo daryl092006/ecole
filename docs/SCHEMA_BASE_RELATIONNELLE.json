@@ -1,11 +1,11 @@
 {
   "stats": {
-    "businessTables": 118,
+    "businessTables": 119,
     "privateTables": 14,
-    "columns": 1048,
-    "foreignKeys": 294,
-    "checks": 246,
-    "exclusions": 4
+    "columns": 1059,
+    "foreignKeys": 297,
+    "checks": 248,
+    "exclusions": 5
   },
   "tables": [
     {
@@ -476,6 +476,11 @@
     {
       "schema": "escen",
       "name": "scholarships",
+      "rls": true
+    },
+    {
+      "schema": "escen",
+      "name": "session_participants",
       "rls": true
     },
     {
@@ -2151,6 +2156,15 @@
       "table": "attendances",
       "name": "reason",
       "type": "text",
+      "nullable": "YES",
+      "default": null,
+      "generated": "NEVER"
+    },
+    {
+      "schema": "escen",
+      "table": "attendances",
+      "name": "session_participant_id",
+      "type": "uuid",
       "nullable": "YES",
       "default": null,
       "generated": "NEVER"
@@ -7494,6 +7508,96 @@
     },
     {
       "schema": "escen",
+      "table": "session_participants",
+      "name": "id",
+      "type": "uuid",
+      "nullable": "NO",
+      "default": "gen_random_uuid()",
+      "generated": "NEVER"
+    },
+    {
+      "schema": "escen",
+      "table": "session_participants",
+      "name": "session_id",
+      "type": "uuid",
+      "nullable": "NO",
+      "default": null,
+      "generated": "NEVER"
+    },
+    {
+      "schema": "escen",
+      "table": "session_participants",
+      "name": "assignment_id",
+      "type": "uuid",
+      "nullable": "NO",
+      "default": null,
+      "generated": "NEVER"
+    },
+    {
+      "schema": "escen",
+      "table": "session_participants",
+      "name": "offering_id",
+      "type": "uuid",
+      "nullable": "NO",
+      "default": null,
+      "generated": "NEVER"
+    },
+    {
+      "schema": "escen",
+      "table": "session_participants",
+      "name": "group_id",
+      "type": "uuid",
+      "nullable": "NO",
+      "default": null,
+      "generated": "NEVER"
+    },
+    {
+      "schema": "escen",
+      "table": "session_participants",
+      "name": "teacher_id",
+      "type": "uuid",
+      "nullable": "NO",
+      "default": null,
+      "generated": "NEVER"
+    },
+    {
+      "schema": "escen",
+      "table": "session_participants",
+      "name": "starts_at",
+      "type": "timestamptz",
+      "nullable": "NO",
+      "default": null,
+      "generated": "NEVER"
+    },
+    {
+      "schema": "escen",
+      "table": "session_participants",
+      "name": "ends_at",
+      "type": "timestamptz",
+      "nullable": "NO",
+      "default": null,
+      "generated": "NEVER"
+    },
+    {
+      "schema": "escen",
+      "table": "session_participants",
+      "name": "active",
+      "type": "bool",
+      "nullable": "NO",
+      "default": null,
+      "generated": "NEVER"
+    },
+    {
+      "schema": "escen",
+      "table": "session_participants",
+      "name": "reason",
+      "type": "text",
+      "nullable": "YES",
+      "default": null,
+      "generated": "NEVER"
+    },
+    {
+      "schema": "escen",
       "table": "session_supervisors",
       "name": "id",
       "type": "uuid",
@@ -11675,9 +11779,23 @@
     {
       "schema": "escen",
       "table": "attendances",
+      "name": "attendance_physical_session_fk",
+      "type": "f",
+      "definition": "FOREIGN KEY (session_id) REFERENCES escen.sessions(id) ON DELETE RESTRICT"
+    },
+    {
+      "schema": "escen",
+      "table": "attendances",
       "name": "attendance_reason_length",
       "type": "c",
       "definition": "CHECK (((reason IS NULL) OR ((char_length(btrim(reason)) >= 3) AND (char_length(btrim(reason)) <= 1000))))"
+    },
+    {
+      "schema": "escen",
+      "table": "attendances",
+      "name": "attendance_session_participant_fk",
+      "type": "f",
+      "definition": "FOREIGN KEY (session_participant_id, session_id, offering_id) REFERENCES escen.session_participants(id, session_id, offering_id) ON DELETE RESTRICT"
     },
     {
       "schema": "escen",
@@ -11762,13 +11880,6 @@
       "name": "attendances_session_id_not_null",
       "type": "n",
       "definition": "NOT NULL session_id"
-    },
-    {
-      "schema": "escen",
-      "table": "attendances",
-      "name": "attendances_session_id_offering_id_fkey",
-      "type": "f",
-      "definition": "FOREIGN KEY (session_id, offering_id) REFERENCES escen.sessions(id, offering_id) ON DELETE RESTRICT"
     },
     {
       "schema": "escen",
@@ -18205,6 +18316,132 @@
     },
     {
       "schema": "escen",
+      "table": "session_participants",
+      "name": "session_participant_group_conflict",
+      "type": "x",
+      "definition": "EXCLUDE USING gist (group_id WITH =, session_id WITH <>, tstzrange(starts_at, ends_at, '[)'::text) WITH &&) WHERE (active)"
+    },
+    {
+      "schema": "escen",
+      "table": "session_participants",
+      "name": "session_participants_active_not_null",
+      "type": "n",
+      "definition": "NOT NULL active"
+    },
+    {
+      "schema": "escen",
+      "table": "session_participants",
+      "name": "session_participants_assignment_id_not_null",
+      "type": "n",
+      "definition": "NOT NULL assignment_id"
+    },
+    {
+      "schema": "escen",
+      "table": "session_participants",
+      "name": "session_participants_assignment_id_offering_id_group_id_te_fkey",
+      "type": "f",
+      "definition": "FOREIGN KEY (assignment_id, offering_id, group_id, teacher_id) REFERENCES escen.teaching_assignments(id, offering_id, group_id, teacher_id) ON DELETE RESTRICT"
+    },
+    {
+      "schema": "escen",
+      "table": "session_participants",
+      "name": "session_participants_check",
+      "type": "c",
+      "definition": "CHECK ((ends_at > starts_at))"
+    },
+    {
+      "schema": "escen",
+      "table": "session_participants",
+      "name": "session_participants_ends_at_not_null",
+      "type": "n",
+      "definition": "NOT NULL ends_at"
+    },
+    {
+      "schema": "escen",
+      "table": "session_participants",
+      "name": "session_participants_group_id_not_null",
+      "type": "n",
+      "definition": "NOT NULL group_id"
+    },
+    {
+      "schema": "escen",
+      "table": "session_participants",
+      "name": "session_participants_id_not_null",
+      "type": "n",
+      "definition": "NOT NULL id"
+    },
+    {
+      "schema": "escen",
+      "table": "session_participants",
+      "name": "session_participants_id_session_id_offering_id_key",
+      "type": "u",
+      "definition": "UNIQUE (id, session_id, offering_id)"
+    },
+    {
+      "schema": "escen",
+      "table": "session_participants",
+      "name": "session_participants_offering_id_not_null",
+      "type": "n",
+      "definition": "NOT NULL offering_id"
+    },
+    {
+      "schema": "escen",
+      "table": "session_participants",
+      "name": "session_participants_pkey",
+      "type": "p",
+      "definition": "PRIMARY KEY (id)"
+    },
+    {
+      "schema": "escen",
+      "table": "session_participants",
+      "name": "session_participants_reason_check",
+      "type": "c",
+      "definition": "CHECK (((reason IS NULL) OR ((char_length(btrim(reason)) >= 3) AND (char_length(btrim(reason)) <= 1000))))"
+    },
+    {
+      "schema": "escen",
+      "table": "session_participants",
+      "name": "session_participants_session_id_assignment_id_key",
+      "type": "u",
+      "definition": "UNIQUE (session_id, assignment_id)"
+    },
+    {
+      "schema": "escen",
+      "table": "session_participants",
+      "name": "session_participants_session_id_fkey",
+      "type": "f",
+      "definition": "FOREIGN KEY (session_id) REFERENCES escen.sessions(id) ON DELETE RESTRICT"
+    },
+    {
+      "schema": "escen",
+      "table": "session_participants",
+      "name": "session_participants_session_id_not_null",
+      "type": "n",
+      "definition": "NOT NULL session_id"
+    },
+    {
+      "schema": "escen",
+      "table": "session_participants",
+      "name": "session_participants_session_id_offering_id_group_id_key",
+      "type": "u",
+      "definition": "UNIQUE (session_id, offering_id, group_id)"
+    },
+    {
+      "schema": "escen",
+      "table": "session_participants",
+      "name": "session_participants_starts_at_not_null",
+      "type": "n",
+      "definition": "NOT NULL starts_at"
+    },
+    {
+      "schema": "escen",
+      "table": "session_participants",
+      "name": "session_participants_teacher_id_not_null",
+      "type": "n",
+      "definition": "NOT NULL teacher_id"
+    },
+    {
+      "schema": "escen",
       "table": "session_supervisors",
       "name": "session_supervisors_account_id_fkey",
       "type": "f",
@@ -21629,6 +21866,12 @@
     {
       "schema": "escen",
       "table": "attendances",
+      "name": "attendance_session_participant",
+      "definition": "CREATE INDEX attendance_session_participant ON escen.attendances USING btree (session_participant_id)"
+    },
+    {
+      "schema": "escen",
+      "table": "attendances",
       "name": "attendances_pkey",
       "definition": "CREATE UNIQUE INDEX attendances_pkey ON escen.attendances USING btree (id)"
     },
@@ -23725,6 +23968,48 @@
       "table": "scholarships",
       "name": "scholarships_pkey",
       "definition": "CREATE UNIQUE INDEX scholarships_pkey ON escen.scholarships USING btree (id)"
+    },
+    {
+      "schema": "escen",
+      "table": "session_participants",
+      "name": "session_participant_group_conflict",
+      "definition": "CREATE INDEX session_participant_group_conflict ON escen.session_participants USING gist (group_id, session_id, tstzrange(starts_at, ends_at, '[)'::text)) WHERE active"
+    },
+    {
+      "schema": "escen",
+      "table": "session_participants",
+      "name": "session_participants_assignment",
+      "definition": "CREATE INDEX session_participants_assignment ON escen.session_participants USING btree (assignment_id)"
+    },
+    {
+      "schema": "escen",
+      "table": "session_participants",
+      "name": "session_participants_id_session_id_offering_id_key",
+      "definition": "CREATE UNIQUE INDEX session_participants_id_session_id_offering_id_key ON escen.session_participants USING btree (id, session_id, offering_id)"
+    },
+    {
+      "schema": "escen",
+      "table": "session_participants",
+      "name": "session_participants_offering",
+      "definition": "CREATE INDEX session_participants_offering ON escen.session_participants USING btree (offering_id)"
+    },
+    {
+      "schema": "escen",
+      "table": "session_participants",
+      "name": "session_participants_pkey",
+      "definition": "CREATE UNIQUE INDEX session_participants_pkey ON escen.session_participants USING btree (id)"
+    },
+    {
+      "schema": "escen",
+      "table": "session_participants",
+      "name": "session_participants_session_id_assignment_id_key",
+      "definition": "CREATE UNIQUE INDEX session_participants_session_id_assignment_id_key ON escen.session_participants USING btree (session_id, assignment_id)"
+    },
+    {
+      "schema": "escen",
+      "table": "session_participants",
+      "name": "session_participants_session_id_offering_id_group_id_key",
+      "definition": "CREATE UNIQUE INDEX session_participants_session_id_offering_id_group_id_key ON escen.session_participants USING btree (session_id, offering_id, group_id)"
     },
     {
       "schema": "escen",

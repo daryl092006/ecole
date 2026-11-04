@@ -36,7 +36,7 @@ export async function verifyExamReschedule(db, check, { insert, scalar, post, cl
     assert.deepEqual(await state(exam), before);
   };
 
-  await check('Épreuve déplacée : accès décalés ensemble, durée et deux audits conservés, une révision', async () => {
+  await check('Épreuve déplacée : accès décalés ensemble, durée et trois audits conservés, une révision', async () => {
     const exam = await fixture();
     // A blank grade is not a result.
     await insert('grades', { candidate_id: exam.candidate.id, value: null, entered_by: actor.id, last_modified_by: actor.id });
@@ -49,7 +49,7 @@ export async function verifyExamReschedule(db, check, { insert, scalar, post, cl
     assert.equal(Date.parse(after.delivery.access_closes_at) - Date.parse(before.delivery.access_closes_at), 86400000);
     assert.equal(after.delivery.duration_minutes, 60);
     assert.equal(after.delivery.reason, 'Planning confirmé par le responsable');
-    assert.equal(after.revision, before.revision + 1); assert.equal(after.auditCount, before.auditCount + 2);
+    assert.equal(after.revision, before.revision + 1); assert.equal(after.auditCount, before.auditCount + 3);
     const events = (await db.query("select * from escen_private.audit_events where entity_id in ($1,$2) and action='UPDATE' order by happened_at desc limit 2", [exam.session.id, exam.delivery.id])).rows;
     assert.deepEqual(new Set(events.map(event => event.table_name)), new Set(['sessions', 'exam_deliveries']));
     assert.ok(events.every(event => event.actor_id === actor.id && event.reason === 'Planning confirmé par le responsable'));
