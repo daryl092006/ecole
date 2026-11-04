@@ -270,7 +270,7 @@ export default function ExamDeliveryScheduleDialog({
                       <option value="">Choisir une salle disponible</option>
                       {availableRooms.map(room => (
                         <option key={room.id} value={String(room.id)}>
-                          {String(room.name || room.code || 'Salle')} ({String(room.capacity || 0)} pl.)
+                          {String(room.name || room.code || 'Salle')}
                         </option>
                       ))}
                     </select>

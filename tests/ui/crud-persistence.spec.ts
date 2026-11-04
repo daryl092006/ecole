@@ -21,7 +21,7 @@ test('CRUD PostgreSQL : huit référentiels créés, relus, modifiés et archiv�
   const samples: [string, Record<string, unknown>][] = [
     ['programs', { code: 'AUDIT', name: 'Filière de recette', description: '' }],
     ['tracks', { code: 'AUDIT', name: 'Parcours de recette', program_id: local.programs[0].id }],
-    ['rooms', { code: 'AUDIT', name: 'Salle de recette', capacity: 30 }],
+    ['rooms', { code: 'AUDIT', name: 'Salle de recette' }],
     ['assets', { code: 'AUDIT', name: 'Équipement de recette', location: 'Bureau', status: 'DISPONIBLE' }],
     ['suppliers', { name: 'Fournisseur de recette', tax_identifier: '', email: 'fournisseur@example.test', phone: '90112233' }],
     ['academic_years', { code: 'AUDIT-2030', name: 'Année de recette', starts_on: '2030-01-01', ends_on: '2030-12-31' }],

@@ -1,8 +1,6 @@
 export interface Room {
   code: string;
   name: string;
-  building: string;
-  capacity: number;
   status: 'Disponible' | 'Indisponible' | 'En maintenance';
 }
 

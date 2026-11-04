@@ -98,7 +98,7 @@ for (const width of [390, 1440]) {
     await expect(page.getByText('Informations du dossier mises à jour.', { exact: true })).toBeVisible();
     await navigate(page, 'Académique', 'Emploi du temps');
     await openActionPanel(page, 'Salles (0) et périodes bloquées (0)');
-    await page.getByLabel('Code salle', { exact: true }).fill('R1'); await page.getByLabel('Nom salle', { exact: true }).fill('Salle A'); await page.getByLabel('Capacité', { exact: true }).fill('30'); await page.getByRole('button', { name: 'Créer la salle' }).click();
+    await page.getByLabel('Code salle', { exact: true }).fill('R1'); await page.getByLabel('Nom salle', { exact: true }).fill('Salle A'); await page.getByRole('button', { name: 'Créer la salle' }).click();
 
     await navigate(page, 'Académique', 'Examens & Rattrapages');
     await openActionPanel(page, 'Planifier une épreuve');

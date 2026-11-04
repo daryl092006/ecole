@@ -435,7 +435,7 @@ export function useAppState() {
   const addRoom = (room: Room) => {
     if (session) throw new Error('Cette opération de démonstration ne peut pas modifier un dossier connecté. Utilisez les actions disponibles dans le parcours métier.');
     if (!hasPermission(activeRole, 'schedule.create')) throw new Error('Permission insuffisante.');
-    if (!room.code.trim() || !room.name.trim() || !Number.isInteger(room.capacity) || room.capacity < 1) throw new Error('Code, nom et capacité entière positive obligatoires.');
+    if (!room.code.trim() || !room.name.trim()) throw new Error('Code et nom de salle obligatoires.');
     if (rooms.some(item => item.code.toLowerCase() === room.code.toLowerCase())) throw new Error('Code salle déjà utilisé.');
     setRooms(previous => [...previous, room]); logEvent('Création salle', JSON.stringify({ oldValue: null, newValue: room }));
   };

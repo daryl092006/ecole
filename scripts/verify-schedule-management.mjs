@@ -3,7 +3,7 @@ import { randomUUID } from 'node:crypto';
 import { loadLocalApiModule } from './local-api-fixture.mjs';
 import { verifyExamReschedule } from './verify-exam-reschedule.mjs';
 
-export async function verifyScheduleManagement(db, check, { year, site, level }) {
+export async function verifyScheduleManagement(db, check, { year, site, level, verifyExams = true }) {
   const scalar = async (sql, params = []) => (await db.query(sql, params)).rows[0].value;
   const insert = async (table, record) => {
     assert.match(table, /^[a-z_]+$/);
@@ -119,5 +119,5 @@ export async function verifyScheduleManagement(db, check, { year, site, level })
     assert.equal(refused.status, 409); assert.match((await refused.json()).error, /période bloquée/);
     assert.equal(await revision(), before); assert.equal(await audits(), count);
   });
-  await verifyExamReschedule(db, check, { insert, scalar, post, client, actor, year, site, level, offering, component, group, assignment, teachers, rooms });
+  if (verifyExams) await verifyExamReschedule(db, check, { insert, scalar, post, client, actor, year, site, level, offering, component, group, assignment, teachers, rooms });
 }

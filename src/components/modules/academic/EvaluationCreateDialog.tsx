@@ -338,7 +338,7 @@ export default function EvaluationCreateDialog({
                     <option value="">-- Choisir une salle --</option>
                     {availableRooms.map(r => (
                       <option key={r.id} value={r.id}>
-                        {String(r.name)} (Capacité : {String(r.capacity || 'N/C')})
+                        {String(r.name)}
                       </option>
                     ))}
                   </select>

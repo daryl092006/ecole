@@ -23,7 +23,8 @@ for (const position of [0, 1.5, 32768]) {
   assert.throws(() => parseCatalogRecord('curriculum_semesters', { ...samples[0].values, position }));
 }
 assert.equal(parseCatalogRecord('curriculum_semesters', { ...samples[0].values, position: 32767 }).position, 32767);
-assert.throws(() => parseCatalogRecord('rooms', { code: 'R', name: 'Salle', capacity: 1.5 }));
+assert.deepEqual(parseCatalogRecord('rooms', { code: 'R', name: 'Salle' }), { code: 'R', name: 'Salle' });
+assert.throws(() => parseCatalogRecord('rooms', { code: 'R', name: 'Salle', capacity: 30 }));
 const levelsSnapshot: RelationalSnapshot = { revision: 1, tables: {
   levels: [{ id: 'L1', name: 'Licence 1' }, { id: 'L2', name: 'Licence 2' }],
   curricula: [

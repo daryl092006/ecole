@@ -65,14 +65,6 @@ export function planSession(input: ScheduleInput, context: ScheduleContext): Sch
     return { success: false, error: 'Le groupe associé à cet enseignement est introuvable.' };
   }
 
-  const groupSize = context.students.filter(student => student.groupId === group.id).length;
-  if (groupSize > room.capacity) {
-    return {
-      success: false,
-      error: `La salle ${room.name} accueille ${room.capacity} personnes pour un groupe de ${groupSize} étudiants.`,
-    };
-  }
-
   for (const session of context.sessions) {
     if (session.date !== input.date || session.status === 'Annulé') continue;
 

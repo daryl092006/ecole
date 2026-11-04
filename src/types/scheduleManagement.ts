@@ -16,7 +16,7 @@ export interface ScheduleDirectory {
   assignments: TeacherDirectory['assignments']; teachers: TeacherDirectory['teachers'];
   offerings: (TeacherDirectory['offerings'][number] & { siteId: string | null })[];
   groups: TeacherDirectory['groups']; components: TeacherDirectory['components'];
-  rooms: { id: string; name: string; siteId: string | null; capacity: number; available: boolean }[];
+  rooms: { id: string; name: string; siteId: string | null; available: boolean }[];
   sites: { id: string; name: string }[]; canBlockAllSites: boolean;
   sessions: ManagedSession[];
   blockedPeriods: { id: string; name: string; kind: string; siteId: string | null; startsAt: string; endsAt: string; reason: string }[];

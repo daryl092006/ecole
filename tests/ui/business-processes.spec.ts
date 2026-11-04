@@ -21,9 +21,10 @@ for (const width of [390, 1440]) {
       await route.fulfill({ status: 201, json: { revision } });
     });
     await page.goto('/academique/referentiel?collection=rooms');
-    await page.getByRole('button', { name: 'Ajouter une salle', exact: true }).click();
+    await page.getByRole('button', { name: '+ Ajouter une salle', exact: true }).click();
     const room = page.getByRole('dialog', { name: 'Ajouter une salle', exact: true });
-    await room.getByLabel('Code', { exact: true }).fill('B101'); await room.getByLabel('Nom', { exact: true }).fill('Salle B101'); await room.getByLabel('Capacité', { exact: true }).fill('40');
+    await room.getByLabel('Code', { exact: true }).fill('B101'); await room.getByLabel('Nom', { exact: true }).fill('Salle B101');
+    await expect(room.getByLabel(/Capacité|Bâtiment|Nombre de places/)).toHaveCount(0);
     await expect(room.getByRole('combobox')).toHaveCount(0); expect(writes).toBe(0);
     await room.getByRole('button', { name: 'Vérifier les informations', exact: true }).click(); await room.getByRole('button', { name: 'Confirmer l’enregistrement', exact: true }).click();
     await expect(page.getByRole('row').filter({ hasText: 'Salle B101' })).toBeVisible(); expect(writes).toBe(1);

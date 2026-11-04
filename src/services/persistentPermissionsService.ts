@@ -9,7 +9,7 @@ const ownRole = (context: PersistentContext) => context.role === ROLES.STUD || c
 const domainTables: Array<{ permission: Permission; tables: string[] }> = [
   { permission: 'academic.view', tables: ['cycles','levels','programs','tracks','subjects','curricula','curriculum_semesters','teaching_units','curriculum_components','academic_offerings','offering_semesters','group_offerings','teaching_assignments','assessment_weights','syllabuses','teachers'] },
   { permission: 'student.view', tables: ['students','enrollments','enrollment_groups','enrollment_events','student_contacts','delegate_mandates','student_documents','document_types','document_requirements','document_reviews','generated_documents'] },
-  { permission: 'schedule.view', tables: ['sites','buildings','rooms','groups','academic_years','blocked_periods','schedule_series','sessions','session_supervisors'] },
+  { permission: 'schedule.view', tables: ['sites','rooms','groups','academic_years','blocked_periods','schedule_series','sessions','session_supervisors'] },
   { permission: 'attendance.view', tables: ['attendances','teacher_attendances','absence_justifications'] },
   { permission: 'grade.view', tables: ['evaluations','evaluation_candidates','evaluation_transitions','exam_deliveries','exam_papers','exam_parts','exam_questions','exam_options','exam_attempts','exam_answers','answer_corrections','grades','grade_revisions','academic_rule_versions','juries','jury_members','jury_decisions','jury_grade_inputs','credit_awards','exam_rooms','exam_room_candidates','exam_room_supervisors'] },
   { permission: 'complaint.view', tables: ['complaints','complaint_events'] },
@@ -147,7 +147,7 @@ export function filterRelationalSnapshot(snapshot: RelationalSnapshot, context: 
       if (name === 'communication_reads') return communicationIds.has(field(row,'communication_id')) && row.account_id === context.accountId;
       if (name === 'communication_files') return communicationIds.has(field(row,'communication_id'));
       if (name === 'file_objects') return false; // Autorisation séparée par le propriétaire de la pièce.
-      if (['cycles','levels','programs','tracks','subjects','sites','buildings','rooms','academic_years','document_types','document_requirements','fee_types','fee_rates','annual_fee_schedules','annual_payment_channels'].includes(name)) return true;
+      if (['cycles','levels','programs','tracks','subjects','sites','rooms','academic_years','document_types','document_requirements','fee_types','fee_rates','annual_fee_schedules','annual_payment_channels'].includes(name)) return true;
       if (name === 'accounts') return unscoped && can('user.manage') || row.id === context.accountId;
       if (name === 'role_grants') return unscoped || row.account_id === context.accountId;
       if (name === 'teaching_assignments') return assignmentIds.has(row.id);

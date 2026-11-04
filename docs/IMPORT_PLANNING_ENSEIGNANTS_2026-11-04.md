@@ -54,7 +54,8 @@ Les cours sont en présentiel (`COURS`). Correspondances confirmées le 4 novemb
 | L2 IA & GL | Salle IA 2 |
 
 Ces libellés sont ajoutés aux séances candidates. Ils ne signifient pas que les salles
-ont déjà été créées en base. Les capacités et le rattachement au bâtiment restent à établir.
+ont déjà été créées en base. L'utilisateur a demandé de retirer les bâtiments et
+les capacités de l'application ; ces informations ne doivent plus être demandées.
 Règle confirmée ensuite par l'utilisateur : lorsqu'un même enseignant dispense le
 même cours au même horaire à plusieurs groupes, tous suivent le cours ensemble dans
 la salle des L1. Cette exception prime sur la salle habituelle de chaque groupe.
@@ -67,8 +68,10 @@ Des matières ou horaires de fin différents ne sont jamais fusionnés automatiq
   Les contraintes `session_teacher_conflict` empêchent l'insertion de séances distinctes.
   Leur représentation persistante doit conserver tous les groupes concernés ; ne pas
   désactiver les contrôles ni supprimer les rattachements des autres groupes.
-- Aucune salle n'existe dans le snapshot. Les quatre libellés sont désormais confirmés
-  ci-dessus ; leur création nécessite le bâtiment, le site et une capacité réelle.
+- Aucune salle n'existe dans le snapshot. Les quatre libellés sont désormais confirmés.
+  Correction du constat précédent : site et bâtiment sont déjà facultatifs depuis la
+  migration 028. La suppression des contraintes de capacité est préparée dans
+  `docs/sql-proposals/20261104_rooms_without_capacity.sql`, en attente de validation SQL.
 - Correction du constat initial : le groupe L2 IA existe sous le libellé « Licence 2 IA »
   (ID `90e081d0-1e56-4e10-9dc7-7854f155f5ea`), lié à Intelligence Artificielle & Génie Logiciel.
   Réutiliser ce groupe, ne pas créer de doublon. Le rapprochement initial cherchait
@@ -106,8 +109,8 @@ aucune migration distante ne doit être appliquée pendant ce chantier.
 Nouvelle lecture distante : révision 93, six séances les 2, 4, 6, 9, 11 et 13 novembre
 2026. Aucune séance en octobre. Le calendrier vide en octobre correspond donc aux
 données réellement enregistrées, et non à un défaut d'actualisation.
-La base ne contient encore aucun site, bâtiment ni salle. Les noms de salles sont
-confirmés ; leurs capacités et leur bâtiment ne sont pas documentés.
+La base ne contient encore aucune salle. Les noms de salles sont confirmés ; aucun
+bâtiment ni nombre de places ne sera demandé pour cet import.
 Le modèle actuel rattache une séance à une seule affectation et un seul groupe.
 Un import fidèle des cours communs exige de traiter ce rattachement dans le modèle,
 les contrôles de conflits, les droits d'accès et les feuilles de présence.
