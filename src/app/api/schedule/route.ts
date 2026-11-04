@@ -3,6 +3,7 @@ import { requireAccount, requirePermission, RequestError, errorResponse } from '
 import { resolveAcademicYear } from '@/server/academicYearContext';
 import type { DatabaseRow, PersistentChange, RelationalSnapshot } from '@/types/persistence';
 import { canBlockSite, examRescheduleIssue, overlaps, scheduleConflict, scheduleDatabaseError, scheduleDirectory } from '@/services/scheduleManagementService';
+import { ensureSharedSessionParticipants } from '@/services/sharedSessionParticipants';
 
 export const dynamic = 'force-dynamic';
 const common = { revision: z.number().int().nonnegative(), reason: z.string().trim().min(3).max(1000) };
@@ -24,6 +25,7 @@ async function load(request: Request) {
   const result = await auth.client.rpc('escen_backend_snapshot');
   if (result.error) throw new RequestError(503, 'Le planning est indisponible.');
   const snapshot = result.data as RelationalSnapshot;
+  ensureSharedSessionParticipants(snapshot);
   const year = await resolveAcademicYear(request, auth.client, auth.context, snapshot);
   return { ...auth, snapshot, year, directory: scheduleDirectory(snapshot, auth.context, year.selectedYearId) };
 }

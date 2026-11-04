@@ -1,7 +1,9 @@
 import type { DatabaseRow, PersistentContext, RelationalSnapshot } from '@/types/persistence';
 import { ROLES } from '@/types/permissions';
+import { ensureSharedSessionParticipants } from './sharedSessionParticipants';
 
 export function sessionParticipants(snapshot: RelationalSnapshot, session: DatabaseRow): DatabaseRow[] {
+  ensureSharedSessionParticipants(snapshot);
   const participants = (snapshot.tables.session_participants || []).filter(row => row.session_id === session.id);
   // Historical snapshots and the single-session API retain their original relationship.
   return participants.length ? participants : [{ ...session, session_id: session.id }];
