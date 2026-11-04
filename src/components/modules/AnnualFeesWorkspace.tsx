@@ -272,12 +272,12 @@ export default function AnnualFeesWorkspace() {
       </div>
 
       {/* Navigation tabs */}
-      <div className="subtabs" role="tablist" style={{ marginBottom: '1.5rem' }}>
+      <div className="section-tabs" role="tablist" style={{ marginBottom: '1.5rem' }}>
         <button
           type="button"
           role="tab"
           aria-selected={activeTab === 'scholarships'}
-          className={`subtab-btn ${activeTab === 'scholarships' ? 'active' : ''}`}
+          className={`btn ${activeTab === 'scholarships' ? 'btn-primary' : ''}`}
           onClick={() => setActiveTab('scholarships')}
         >
           🎓 Bourses & Partenariats ({directory?.scholarships.length || 0})
@@ -286,7 +286,7 @@ export default function AnnualFeesWorkspace() {
           type="button"
           role="tab"
           aria-selected={activeTab === 'fees'}
-          className={`subtab-btn ${activeTab === 'fees' ? 'active' : ''}`}
+          className={`btn ${activeTab === 'fees' ? 'btn-primary' : ''}`}
           onClick={() => setActiveTab('fees')}
         >
           💵 Tarifs & Tranches ({directory?.feeSchedules.length || 0})
@@ -295,7 +295,7 @@ export default function AnnualFeesWorkspace() {
           type="button"
           role="tab"
           aria-selected={activeTab === 'awards'}
-          className={`subtab-btn ${activeTab === 'awards' ? 'active' : ''}`}
+          className={`btn ${activeTab === 'awards' ? 'btn-primary' : ''}`}
           onClick={() => setActiveTab('awards')}
         >
           📋 Attributions ({directory?.scholarshipAwards.length || 0})
@@ -304,16 +304,29 @@ export default function AnnualFeesWorkspace() {
 
       {/* TAB 1: BOURSES & PARTENARIATS */}
       {activeTab === 'scholarships' && (
-        <section>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem', flexWrap: 'wrap', gap: '0.75rem' }}>
-            <input
-              type="search"
-              className="field-input"
-              style={{ maxWidth: '320px' }}
-              placeholder="Rechercher par code ou nom…"
-              value={schQuery}
-              onChange={e => setSchQuery(e.target.value)}
-            />
+        <section className="card">
+          <div
+            className="card-header"
+            style={{
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'center',
+              flexWrap: 'wrap',
+              gap: '0.75rem',
+              padding: '1rem 1.25rem',
+              borderBottom: '1px solid var(--border)',
+            }}
+          >
+            <h2 style={{ fontSize: '1rem', fontWeight: 600, margin: 0 }}>Catalogue des bourses et partenariats</h2>
+            <div style={{ maxWidth: '320px', width: '100%' }}>
+              <input
+                type="search"
+                className="search-input"
+                placeholder="Rechercher par code ou nom…"
+                value={schQuery}
+                onChange={e => setSchQuery(e.target.value)}
+              />
+            </div>
           </div>
 
           <div className="table-wrap">
@@ -363,7 +376,7 @@ export default function AnnualFeesWorkspace() {
                       </td>
                       {canEdit && (
                         <td>
-                          <div style={{ display: 'flex', gap: '0.5rem' }}>
+                          <div className="btn-group">
                             <button
                               type="button"
                               className="btn btn-sm btn-outline"
@@ -392,17 +405,9 @@ export default function AnnualFeesWorkspace() {
 
       {/* TAB 2: TARIFS & TRANCHES */}
       {activeTab === 'fees' && (
-        <section>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
           {/* Modalités types box */}
-          <div
-            style={{
-              padding: '1.25rem',
-              backgroundColor: 'var(--color-surface, #f9fafb)',
-              border: '1px solid var(--color-border, #e5e7eb)',
-              borderRadius: '8px',
-              marginBottom: '1.5rem',
-            }}
-          >
+          <div className="card" style={{ padding: '1.25rem' }}>
             <h3 style={{ margin: '0 0 0.5rem 0', fontSize: '1rem', fontWeight: 600 }}>
               Modalités de découpage des tranches (Règlement financier ESCEN)
             </h3>
@@ -410,101 +415,129 @@ export default function AnnualFeesWorkspace() {
               Les contrats d’études générés appliquent ces découpages types selon l’échéancier choisi lors de l’inscription :
             </p>
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1rem' }}>
-              <div style={{ padding: '0.75rem', background: '#fff', border: '1px solid #e5e7eb', borderRadius: '6px' }}>
-                <strong>Annuel (1 tranche)</strong>
-                <div className="cell-sub">100% de la scolarité à la rentrée (ex: Octobre ou Mars).</div>
+              <div style={{ padding: '0.85rem 1rem', background: 'var(--surface-alt)', border: '1px solid var(--border)', borderRadius: '8px' }}>
+                <strong style={{ color: 'var(--text-primary)' }}>Annuel (1 tranche)</strong>
+                <div className="cell-sub" style={{ marginTop: '0.25rem' }}>100% de la scolarité à la rentrée (ex: Octobre ou Mars).</div>
               </div>
-              <div style={{ padding: '0.75rem', background: '#fff', border: '1px solid #e5e7eb', borderRadius: '6px' }}>
-                <strong>Trimestriel (3 tranches)</strong>
-                <div className="cell-sub">3 versements égaux (ex: Octobre, Décembre, Février).</div>
+              <div style={{ padding: '0.85rem 1rem', background: 'var(--surface-alt)', border: '1px solid var(--border)', borderRadius: '8px' }}>
+                <strong style={{ color: 'var(--text-primary)' }}>Trimestriel (3 tranches)</strong>
+                <div className="cell-sub" style={{ marginTop: '0.25rem' }}>3 versements égaux (ex: Octobre, Décembre, Février).</div>
               </div>
-              <div style={{ padding: '0.75rem', background: '#fff', border: '1px solid #e5e7eb', borderRadius: '6px' }}>
-                <strong>Bi-mensuel (4 tranches)</strong>
-                <div className="cell-sub">4 versements réguliers (ex: M3, M5, M7, M9 de 25% chacun).</div>
+              <div style={{ padding: '0.85rem 1rem', background: 'var(--surface-alt)', border: '1px solid var(--border)', borderRadius: '8px' }}>
+                <strong style={{ color: 'var(--text-primary)' }}>Bi-mensuel (4 tranches)</strong>
+                <div className="cell-sub" style={{ marginTop: '0.25rem' }}>4 versements réguliers (ex: M3, M5, M7, M9 de 25% chacun).</div>
               </div>
-              <div style={{ padding: '0.75rem', background: '#fff', border: '1px solid #e5e7eb', borderRadius: '6px' }}>
-                <strong>Mensuel (8 à 10 tranches)</strong>
-                <div className="cell-sub">Mensualités étalées sur toute l’année académique.</div>
+              <div style={{ padding: '0.85rem 1rem', background: 'var(--surface-alt)', border: '1px solid var(--border)', borderRadius: '8px' }}>
+                <strong style={{ color: 'var(--text-primary)' }}>Mensuel (8 à 10 tranches)</strong>
+                <div className="cell-sub" style={{ marginTop: '0.25rem' }}>Mensualités étalées sur toute l’année académique.</div>
               </div>
             </div>
           </div>
 
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem', flexWrap: 'wrap', gap: '0.75rem' }}>
-            <input
-              type="search"
-              className="field-input"
-              style={{ maxWidth: '320px' }}
-              placeholder="Filtrer par filière, niveau…"
-              value={feeQuery}
-              onChange={e => setFeeQuery(e.target.value)}
-            />
-          </div>
+          <div className="card">
+            <div
+              className="card-header"
+              style={{
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'center',
+                flexWrap: 'wrap',
+                gap: '0.75rem',
+                padding: '1rem 1.25rem',
+                borderBottom: '1px solid var(--border)',
+              }}
+            >
+              <h2 style={{ fontSize: '1rem', fontWeight: 600, margin: 0 }}>Grille tarifaire annuelle</h2>
+              <div style={{ maxWidth: '320px', width: '100%' }}>
+                <input
+                  type="search"
+                  className="search-input"
+                  placeholder="Filtrer par filière, niveau…"
+                  value={feeQuery}
+                  onChange={e => setFeeQuery(e.target.value)}
+                />
+              </div>
+            </div>
 
-          <div className="table-wrap">
-            <ResponsiveTable className="data-table">
-              <thead>
-                <tr>
-                  <th>Nature de frais</th>
-                  <th>Montant</th>
-                  <th>Filière concernée</th>
-                  <th>Niveau</th>
-                  <th>Mode</th>
-                  {canEdit && <th>Action</th>}
-                </tr>
-              </thead>
-              <tbody>
-                {!feeList.length ? (
+            <div className="table-wrap">
+              <ResponsiveTable className="data-table">
+                <thead>
                   <tr>
-                    <td colSpan={canEdit ? 6 : 5}>
-                      Aucun tarif configuré pour cette année. Utilisez le bouton ci-dessus pour ajouter les frais d’inscription ou de scolarité.
-                    </td>
+                    <th>Nature de frais</th>
+                    <th>Montant</th>
+                    <th>Filière concernée</th>
+                    <th>Niveau</th>
+                    <th>Mode</th>
+                    {canEdit && <th>Action</th>}
                   </tr>
-                ) : (
-                  feeList.map(item => (
-                    <tr key={item.id}>
-                      <td>
-                        <span className={`pill ${item.category === 'INSCRIPTION' ? 'pill-warning' : 'pill-default'}`}>
-                          {item.category === 'INSCRIPTION' ? 'Frais d’inscription' : 'Scolarité'}
-                        </span>
+                </thead>
+                <tbody>
+                  {!feeList.length ? (
+                    <tr>
+                      <td colSpan={canEdit ? 6 : 5}>
+                        Aucun tarif configuré pour cette année. Utilisez le bouton ci-dessus pour ajouter les frais d’inscription ou de scolarité.
                       </td>
-                      <td>
-                        <strong>{money(item.amount)}</strong>
-                      </td>
-                      <td>{item.programName || 'Toutes les filières'}</td>
-                      <td>{item.levelName || 'Tous les niveaux'}</td>
-                      <td>{item.deliveryMode || 'Présentiel'}</td>
-                      {canEdit && (
-                        <td>
-                          <button
-                            type="button"
-                            className="btn btn-sm btn-outline btn-danger"
-                            onClick={() => handleArchiveFee(item)}
-                          >
-                            Archiver
-                          </button>
-                        </td>
-                      )}
                     </tr>
-                  ))
-                )}
-              </tbody>
-            </ResponsiveTable>
+                  ) : (
+                    feeList.map(item => (
+                      <tr key={item.id}>
+                        <td>
+                          <span className={`pill ${item.category === 'INSCRIPTION' ? 'pill-warning' : 'pill-default'}`}>
+                            {item.category === 'INSCRIPTION' ? 'Frais d’inscription' : 'Scolarité'}
+                          </span>
+                        </td>
+                        <td>
+                          <strong>{money(item.amount)}</strong>
+                        </td>
+                        <td>{item.programName || 'Toutes les filières'}</td>
+                        <td>{item.levelName || 'Tous les niveaux'}</td>
+                        <td>{item.deliveryMode || 'Présentiel'}</td>
+                        {canEdit && (
+                          <td>
+                            <button
+                              type="button"
+                              className="btn btn-sm btn-outline btn-danger"
+                              onClick={() => handleArchiveFee(item)}
+                            >
+                              Archiver
+                            </button>
+                          </td>
+                        )}
+                      </tr>
+                    ))
+                  )}
+                </tbody>
+              </ResponsiveTable>
+            </div>
           </div>
-        </section>
+        </div>
       )}
 
       {/* TAB 3: BOURSES ATTRIBUÉES */}
       {activeTab === 'awards' && (
-        <section>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem', flexWrap: 'wrap', gap: '0.75rem' }}>
-            <input
-              type="search"
-              className="field-input"
-              style={{ maxWidth: '320px' }}
-              placeholder="Rechercher par matricule ou étudiant…"
-              value={awardQuery}
-              onChange={e => setAwardQuery(e.target.value)}
-            />
+        <section className="card">
+          <div
+            className="card-header"
+            style={{
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'center',
+              flexWrap: 'wrap',
+              gap: '0.75rem',
+              padding: '1rem 1.25rem',
+              borderBottom: '1px solid var(--border)',
+            }}
+          >
+            <h2 style={{ fontSize: '1rem', fontWeight: 600, margin: 0 }}>Bourses attribuées aux étudiants (2026-2027)</h2>
+            <div style={{ maxWidth: '320px', width: '100%' }}>
+              <input
+                type="search"
+                className="search-input"
+                placeholder="Rechercher par matricule ou étudiant…"
+                value={awardQuery}
+                onChange={e => setAwardQuery(e.target.value)}
+              />
+            </div>
           </div>
 
           <div className="table-wrap">
