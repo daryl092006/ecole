@@ -112,7 +112,7 @@ def prepare(pdf_directory, snapshot_path, roster_path, output):
                           {'groups': sorted({s['group'] for s in occurrences}),
                            'sources': sorted({s['source'] for s in occurrences}),
                            'shared': combined})
-    group_map = {'L1 TC': 'L1 TRONC COMMUN', 'L1 IA & GL': 'L1 IA', 'L2 TC': 'L2 TRONC COMMUN', 'L2 IA & GL': 'L2 IA'}
+    group_map = {'L1 TC': 'L1 TRONC COMMUN', 'L1 IA & GL': 'L1 IA', 'L2 TC': 'L2 TRONC COMMUN', 'L2 IA & GL': 'Licence 2 IA'}
     groups = []
     for source, target in group_map.items():
         found = [g for g in tables['groups'] if g['name'] == target and g['academic_year_id'] == year['id'] and not g.get('archived_at')]

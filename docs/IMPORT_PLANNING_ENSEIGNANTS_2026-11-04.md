@@ -69,7 +69,10 @@ Des matières ou horaires de fin différents ne sont jamais fusionnés automatiq
   désactiver les contrôles ni supprimer les rattachements des autres groupes.
 - Aucune salle n'existe dans le snapshot. Les quatre libellés sont désormais confirmés
   ci-dessus ; leur création nécessite le bâtiment, le site et une capacité réelle.
-- Le groupe L2 IA est absent de 2026-2027.
+- Correction du constat initial : le groupe L2 IA existe sous le libellé « Licence 2 IA »
+  (ID `90e081d0-1e56-4e10-9dc7-7854f155f5ea`), lié à Intelligence Artificielle & Génie Logiciel.
+  Réutiliser ce groupe, ne pas créer de doublon. Le rapprochement initial cherchait
+  seulement le libellé exact « L2 IA » et concluait à tort à son absence.
 - Les maquettes L1 ne comportent pas les matières des PDF. Les groupes TC sont liés
   à plusieurs offres : il faut préciser les rattachements, sans inventer crédits ou coefficients.
 - Sept intervenants des PDF sont absents de la liste : DOUSSIMELE, AZIATI, DEGLA,
@@ -97,3 +100,14 @@ L'étape suivante dépend de la création des salles confirmées, du rattachemen
 des cours communs et des identités manquantes.
 Tout SQL de migration devra être présenté avant accord, conformément à AGENTS.md ;
 aucune migration distante ne doit être appliquée pendant ce chantier.
+
+## Vérification du planning affiché
+
+Nouvelle lecture distante : révision 93, six séances les 2, 4, 6, 9, 11 et 13 novembre
+2026. Aucune séance en octobre. Le calendrier vide en octobre correspond donc aux
+données réellement enregistrées, et non à un défaut d'actualisation.
+La base ne contient encore aucun site, bâtiment ni salle. Les noms de salles sont
+confirmés ; leurs capacités et leur bâtiment ne sont pas documentés.
+Le modèle actuel rattache une séance à une seule affectation et un seul groupe.
+Un import fidèle des cours communs exige de traiter ce rattachement dans le modèle,
+les contrôles de conflits, les droits d'accès et les feuilles de présence.
