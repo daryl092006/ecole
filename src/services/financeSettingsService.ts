@@ -3,6 +3,7 @@ import { academicYearRequestHeaders } from './academicYearSelection';
 import { roleHeaderValue } from './remoteCampusService';
 import type { RoleName } from '@/types/permissions';
 import type { FinanceSettingsDirectory, FinanceSettingsAction } from '@/types/financeSettings';
+import type {ScholarshipFinancialPreview,ScholarshipPreviewRequest} from '@/types/financeSettings';
 
 async function headers(role?: RoleName, yearId?: string) {
   const session = await getSupabaseBrowserClient().auth.getSession();
@@ -53,5 +54,11 @@ export async function mutateFinanceSettings(
     body: JSON.stringify(action),
   });
   return readResponse<{ success: boolean; revision: number }>(res);
+}
+
+export async function previewFinanceScholarship(role:RoleName,input:ScholarshipPreviewRequest):Promise<{revision:number;preview:ScholarshipFinancialPreview}>{
+  const h=await headers(role);
+  const response=await fetch('/api/finance/fees-and-scholarships',{method:'POST',headers:{...h,'Content-Type':'application/json'},body:JSON.stringify({...input,action:'preview_scholarship'})});
+  return readResponse(response);
 }
 

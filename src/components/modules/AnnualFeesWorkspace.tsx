@@ -9,6 +9,7 @@ import ReviewedForm from '@/components/ui/ReviewedForm';
 import DrawerActions from '@/components/ui/DrawerActions';
 import { DrawerCloseButton } from '@/components/ui/DetailDrawer';
 import LoadingState from '@/components/ui/LoadingState';
+import ScholarshipAwardForm from './ScholarshipAwardForm';
 import ErrorState from '@/components/ui/ErrorState';
 import ActionResult from '@/components/ui/ActionResult';
 import { loadFinanceSettings, mutateFinanceSettings } from '@/services/financeSettingsService';
@@ -56,12 +57,6 @@ export default function AnnualFeesWorkspace() {
   const [feeAmount, setFeeAmount] = useState('550000');
   const [feeReason, setFeeReason] = useState('');
 
-  // Award scholarship form state
-  const [awardEnrollmentId, setAwardEnrollmentId] = useState('');
-  const [awardScholarshipId, setAwardScholarshipId] = useState('');
-  const [awardValidFrom, setAwardValidFrom] = useState(new Date().toISOString().slice(0, 10));
-  const [awardReason, setAwardReason] = useState('');
-
   // Search queries
   const [schQuery, setSchQuery] = useState('');
   const [feeQuery, setFeeQuery] = useState('');
@@ -97,7 +92,6 @@ export default function AnnualFeesWorkspace() {
     setSelectedScholarship(null);
     setSchReason('');
     setFeeReason('');
-    setAwardReason('');
     setFormError('');
     setBusy(false);
   };
@@ -137,14 +131,7 @@ export default function AnnualFeesWorkspace() {
     setModalMode('create_fee');
   };
 
-  const openAwardScholarship = () => {
-    setAwardEnrollmentId(directory?.enrolledStudents[0]?.enrollmentId || '');
-    setAwardScholarshipId(directory?.scholarships.find(s => s.active)?.id || '');
-    setAwardValidFrom(new Date().toISOString().slice(0, 10));
-    setAwardReason('');
-    setFormError('');
-    setModalMode('award_scholarship');
-  };
+  const openAwardScholarship = () => setModalMode('award_scholarship');
 
   const handleToggleScholarship = async (item: ScholarshipItem) => {
     if (!directory || !canEdit) return;
@@ -1020,139 +1007,9 @@ export default function AnnualFeesWorkspace() {
         </WorkPage>
       )}
 
-      {/* MODAL 4 : ATTRIBUTION DE BOURSE */}
       {modalMode === 'award_scholarship' && directory && (
-        <WorkPage title="Attribuer une bourse à un étudiant" onClose={closeModal}>
-          <ReviewedForm
-            busy={busy}
-            error={formError}
-            confirmLabel="Confirmer l’attribution"
-            consequence="L’attribution seule ne réduit pas le contrat : vérifiez son effet financier dans la liste des attributions."
-            fields={[
-              {
-                label: 'Étudiant bénéficiaire',
-                value: directory.enrolledStudents.find(s => s.enrollmentId === awardEnrollmentId)?.name || '-',
-              },
-              {
-                label: 'Matricule',
-                value: directory.enrolledStudents.find(s => s.enrollmentId === awardEnrollmentId)?.matricule || '-',
-              },
-              {
-                label: 'Bourse attribuée',
-                value: directory.scholarships.find(s => s.id === awardScholarshipId)?.name || '-',
-              },
-              { label: 'Date de prise d’effet', value: awardValidFrom },
-              { label: 'Motif', value: awardReason },
-            ]}
-            validate={() => {
-              if (!awardEnrollmentId) return 'Veuillez sélectionner un étudiant.';
-              if (!awardScholarshipId) return 'Veuillez sélectionner une bourse.';
-              if (!awardValidFrom) return 'La date d’effet est obligatoire.';
-              if (awardReason.trim().length < 3) return 'Le motif doit comporter au moins 3 caractères.';
-              return null;
-            }}
-            onConfirm={async event => {
-              event.preventDefault();
-              setBusy(true);
-              setFormError('');
-              try {
-                await mutateFinanceSettings(activeRole, {
-                  action: 'award_scholarship',
-                  revision: directory.revision,
-                  enrollmentId: awardEnrollmentId,
-                  scholarshipId: awardScholarshipId,
-                  validFrom: awardValidFrom,
-                  reason: awardReason.trim(),
-                });
-                portal.refreshCampus();
-                setReloadKey(k => k + 1);
-                setNotice('La bourse a été attribuée avec succès.');
-                closeModal();
-              } catch (err: unknown) {
-                setFormError(err instanceof Error ? err.message : 'Erreur lors de l’attribution.');
-              } finally {
-                setBusy(false);
-              }
-            }}
-          >
-            <div className="form-group" style={{ marginBottom: '1rem' }}>
-              <label htmlFor="awd-student" className="field-label">
-                Étudiant inscrit ({directory.selectedYearCode}) *
-              </label>
-              <select
-                id="awd-student"
-                className="field-input"
-                required
-                value={awardEnrollmentId}
-                onChange={e => setAwardEnrollmentId(e.target.value)}
-              >
-                {directory.enrolledStudents.map(s => (
-                  <option key={s.enrollmentId} value={s.enrollmentId}>
-                    [{s.matricule}] {s.name} — {s.levelName} ({s.programName})
-                  </option>
-                ))}
-              </select>
-            </div>
-
-            <div className="form-group" style={{ marginBottom: '1rem' }}>
-              <label htmlFor="awd-sch" className="field-label">
-                Bourse ou partenariat *
-              </label>
-              <select
-                id="awd-sch"
-                className="field-input"
-                required
-                value={awardScholarshipId}
-                onChange={e => setAwardScholarshipId(e.target.value)}
-              >
-                {directory.scholarships
-                  .filter(s => s.active)
-                  .map(s => (
-                    <option key={s.id} value={s.id}>
-                      {s.name} ({s.code}) — {s.kind === 'POURCENTAGE' ? `${s.percent}%` : money(s.amount || 0)}
-                    </option>
-                  ))}
-              </select>
-            </div>
-
-            <div className="form-group" style={{ marginBottom: '1rem' }}>
-              <label htmlFor="awd-date" className="field-label">
-                Date de prise d’effet *
-              </label>
-              <input
-                id="awd-date"
-                type="date"
-                className="field-input"
-                required
-                value={awardValidFrom}
-                onChange={e => setAwardValidFrom(e.target.value)}
-              />
-            </div>
-
-            <div className="form-group" style={{ marginBottom: '1rem' }}>
-              <label htmlFor="awd-reason" className="field-label">
-                Motif d’attribution *
-              </label>
-              <textarea
-                id="awd-reason"
-                className="field-input"
-                rows={2}
-                required
-                placeholder="Ex: Décision de commission d'attribution de bourses…"
-                value={awardReason}
-                onChange={e => setAwardReason(e.target.value)}
-              />
-            </div>
-
-            <DrawerActions>
-              <DrawerCloseButton className="btn btn-outline" onClose={closeModal}>
-                Fermer
-              </DrawerCloseButton>
-              <button type="submit" className="btn btn-primary">
-                Vérifier avant d’attribuer
-              </button>
-            </DrawerActions>
-          </ReviewedForm>
+        <WorkPage title="Attribuer une bourse à un étudiant" busy={busy} onClose={closeModal}>
+          <ScholarshipAwardForm directory={directory} onBusyChange={setBusy} onSaved={message=>{setReloadKey(k=>k+1);setNotice(message);closeModal();}}/>
         </WorkPage>
       )}
     </div>

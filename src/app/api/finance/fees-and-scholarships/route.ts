@@ -3,7 +3,7 @@ import { requireAccount, requirePermission, RequestError, errorResponse } from '
 import { resolveAcademicYear } from '@/server/academicYearContext';
 import { filterRelationalSnapshot } from '@/services/persistentPermissionsService';
 import type { PersistentChange, RelationalSnapshot } from '@/types/persistence';
-import {ScholarshipApplicationError,previewScholarshipApplication} from '@/services/scholarshipApplicationService';
+import {ScholarshipApplicationError,previewScholarshipApplication,planScholarshipApplication,scholarshipTuitionLines,scholarshipContractContext} from '@/services/scholarshipApplicationService';
 import {scholarshipFinancialEffect,scholarshipSavedTerms} from '@/services/scholarshipEffectService';
 import type { FinanceSettingsDirectory } from '@/types/financeSettings';
 
@@ -121,6 +121,7 @@ export async function GET(request: Request) {
         const curriculum = offering ? curriculaMap.get(String(offering.curriculum_id)) : undefined;
         return {
           enrollmentId: e.id,
+          scholarshipContext: scholarshipContractContext(snapshot,e.id),
           studentId: String(e.student_id),
           matricule: String(student?.matricule || ''),
           name: person ? `${person.lastname} ${person.firstname}` : 'Étudiant',
@@ -201,16 +202,17 @@ const archiveFeeScheduleSchema = z.object({
   reason: z.string().trim().min(3).max(1000),
 });
 
-const awardScholarshipSchema = z.object({
-  action: z.literal('award_scholarship'),
-  revision: z.number().int().nonnegative(),
-  enrollmentId: z.uuid(),
-  scholarshipId: z.uuid(),
-  validFrom: z.iso.date(),
-  reason: z.string().trim().min(3).max(1000),
+const scholarshipSelectionSchema=z.object({
+  revision:z.number().int().nonnegative(),enrollmentId:z.uuid(),scholarshipId:z.uuid(),
+  validFrom:z.iso.date(),reason:z.string().trim().min(3).max(1000),
+  calculationBasis:z.enum(['GROSS','REMAINING']),confirmStacking:z.boolean(),
+});
+const awardScholarshipSchema=scholarshipSelectionSchema.extend({
+  action:z.literal('award_scholarship'),versionId:z.uuid(),
+  reviewedReduction:z.number().int().positive(),reviewedTotal:z.number().int().nonnegative(),
+  installments:z.array(z.object({id:z.uuid().optional(),dueOn:z.iso.date(),amount:z.number().int().nonnegative()}).strict()).max(80),
 }).strict();
-
-const previewScholarshipSchema=awardScholarshipSchema.extend({action:z.literal('preview_scholarship'),lineIds:z.array(z.uuid()).min(1).max(50),calculationBasis:z.enum(['GROSS','REMAINING']),confirmStacking:z.boolean()}).strict();
+const previewScholarshipSchema=scholarshipSelectionSchema.extend({action:z.literal('preview_scholarship')}).strict();
 
 const bodySchema = z.discriminatedUnion('action', [
   previewScholarshipSchema,
@@ -241,11 +243,18 @@ export async function POST(request: Request) {
       throw new RequestError(409, 'Les données ont été modifiées par un autre utilisateur. Actualisez la page.');
     }
 
+    if(body.action==='preview_scholarship' || body.action==='award_scholarship'){
+      const selectedYear=year.years.find(row=>row.id===year.selectedYearId);
+      if(!selectedYear || selectedYear.status!=='OUVERTE')throw new RequestError(409,'Choisissez une année ouverte.');
+      if(body.validFrom<selectedYear.starts_on || body.validFrom>selectedYear.ends_on)throw new RequestError(400,'La date d’effet doit appartenir à l’année de l’inscription.');
+    }
+
     if(body.action==='preview_scholarship'){
       const enrollment=snapshot.tables.enrollments?.find(row=>row.id===body.enrollmentId);
       if(!snapshot.tables.academic_offerings?.some(row=>row.id===enrollment?.offering_id && row.academic_year_id===year.selectedYearId))throw new RequestError(409,'Inscription hors de l’année sélectionnée.');
-      const preview=previewScholarshipApplication(snapshot,body);
-      return Response.json({revision:snapshot.revision,preview:{base:preview.base,reduction:preview.reduction,oldTotal:preview.oldTotal,newTotal:preview.newTotal,paid:preview.paid,remaining:preview.remaining,unallocatedCredit:preview.unallocatedCredit,contractStatus:preview.version.status,installments:preview.suggestedInstallments}}, {headers:{'Cache-Control':'no-store'}});
+      const tuition=scholarshipTuitionLines(snapshot,body.enrollmentId);
+      const preview=previewScholarshipApplication(snapshot,{...body,lineIds:tuition.tuition.map(row=>row.id)});
+      return Response.json({revision:snapshot.revision,preview:{versionId:preview.version.id,registration:scholarshipContractContext(snapshot,body.enrollmentId).registration || 0,base:preview.base,reduction:preview.reduction,oldTotal:preview.oldTotal,newTotal:preview.newTotal,paid:preview.paid,remaining:preview.remaining,unallocatedCredit:preview.unallocatedCredit,contractStatus:preview.version.status,installments:preview.suggestedInstallments}}, {headers:{'Cache-Control':'no-store'}});
     }
 
     const changes: PersistentChange[] = [];
@@ -361,45 +370,13 @@ export async function POST(request: Request) {
         },
       });
     } else if (body.action === 'award_scholarship') {
-      const enrollment = snapshot.tables.enrollments?.find(e => e.id === body.enrollmentId);
-      if (!enrollment) throw new RequestError(404, 'Inscription de l’étudiant introuvable.');
-      const offering=snapshot.tables.academic_offerings?.find(row=>row.id===enrollment.offering_id && row.academic_year_id===year.selectedYearId && !row.archived_at);
-      const selectedYear=year.years.find(row=>row.id===year.selectedYearId);
-      if(!offering || !selectedYear || selectedYear.status!=='OUVERTE')throw new RequestError(409,'L’inscription doit appartenir à l’année ouverte sélectionnée.');
-      if(body.validFrom<selectedYear.starts_on || body.validFrom>selectedYear.ends_on)throw new RequestError(400,'La date d’effet doit appartenir à l’année de l’inscription.');
-
-      const scholarship = snapshot.tables.scholarships?.find(s => s.id === body.scholarshipId);
-      if (!scholarship) throw new RequestError(404, 'Bourse introuvable.');
-      if (!scholarship.active) throw new RequestError(400, 'Cette bourse est inactive.');
-
-      const existingAward = (snapshot.tables.scholarship_awards || []).find(
-        a => a.enrollment_id === body.enrollmentId && a.scholarship_id === body.scholarshipId && !a.revoked_at
-      );
-      if (existingAward) {
-        throw new RequestError(409, 'Cette bourse est déjà attribuée à cet étudiant pour cette inscription.');
-      }
-
-      const termsSnapshot = {
-        code: scholarship.code,
-        name: scholarship.name,
-        kind: scholarship.kind,
-        percent: scholarship.percent,
-        amount: scholarship.amount,
-      };
-
-      changes.push({
-        table: 'scholarship_awards',
-        operation: 'insert',
-        record: {
-          id: crypto.randomUUID(),
-          enrollment_id: body.enrollmentId,
-          scholarship_id: body.scholarshipId,
-          valid_from: body.validFrom,
-          granted_by: auth.context.accountId,
-          terms_snapshot: termsSnapshot,
-          reason: body.reason,
-        },
-      });
+      const enrollment=snapshot.tables.enrollments?.find(row=>row.id===body.enrollmentId);
+      if(!snapshot.tables.academic_offerings?.some(row=>row.id===enrollment?.offering_id && row.academic_year_id===year.selectedYearId))throw new RequestError(409,'Inscription hors de l’année sélectionnée.');
+      const tuition=scholarshipTuitionLines(snapshot,body.enrollmentId);
+      const input={...body,lineIds:tuition.tuition.map(row=>row.id)};
+      const preview=previewScholarshipApplication(snapshot,input);
+      if(preview.version.id!==body.versionId || preview.reduction!==body.reviewedReduction || preview.newTotal!==body.reviewedTotal)throw new RequestError(409,'Le récapitulatif financier a changé. Recalculez avant de confirmer.');
+      changes.push(...planScholarshipApplication(snapshot,input,body.installments,auth.context.accountId));
     }
 
     const tx = await auth.client.rpc('escen_backend_transaction', {

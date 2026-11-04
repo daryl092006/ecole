@@ -2,11 +2,37 @@ import type {DatabaseRow,PersistentChange,RelationalSnapshot} from '@/types/pers
 import type {ScholarshipApplicationInput,ScholarshipInstallmentInput} from '@/types/scholarshipApplication';
 import {activePaymentAllocations,effectivePayments,planPaymentAllocations} from './paymentAllocationService';
 import {netContractAmount,netPaymentTotal} from './financialProjectionService';
+import type {ScholarshipContractContext} from '@/types/financeSettings';
 
 export class ScholarshipApplicationError extends Error {}
 const fail=(message:string):never=>{throw new ScholarshipApplicationError(message);};
 const rows=(snapshot:RelationalSnapshot,table:string)=>snapshot.tables[table] || [];
 const amount=(row:DatabaseRow)=>Number(row.amount || 0);
+
+export function scholarshipTuitionLines(snapshot:RelationalSnapshot,enrollmentId:string){
+  const contract=rows(snapshot,'financial_contracts').find(row=>row.enrollment_id===enrollmentId);
+  const versions=rows(snapshot,'contract_versions').filter(row=>row.contract_id===contract?.id && ['APPROVED','DRAFT','EN_COURS'].includes(String(row.status)));
+  if(!contract || versions.length!==1 || !['APPROVED','DRAFT'].includes(String(versions[0].status)))return fail('Le contrat est absent, historique ou comporte plusieurs versions à traiter.');
+  const lines=rows(snapshot,'contract_lines').filter(row=>row.version_id===versions[0].id);
+  const tuition=lines.filter(row=>rows(snapshot,'fee_types').some(type=>type.id===row.fee_type_id && type.category==='SCOLARITE'));
+  if(!tuition.length)return fail('Le contrat ne comporte aucune ligne de scolarité.');
+  return {contract,version:versions[0],lines,tuition};
+}
+
+export function scholarshipContractContext(snapshot:RelationalSnapshot,enrollmentId:string):ScholarshipContractContext{
+  try{
+    const enrollment=rows(snapshot,'enrollments').find(row=>row.id===enrollmentId && !row.archived_at);
+    const offering=rows(snapshot,'academic_offerings').find(row=>row.id===enrollment?.offering_id && !row.archived_at);
+    if(!rows(snapshot,'academic_years').some(row=>row.id===offering?.academic_year_id && row.status==='OUVERTE'))return {eligible:false,blockingReason:'Une inscription dans une année ouverte est requise.'};
+    const {version,lines,tuition}=scholarshipTuitionLines(snapshot,enrollmentId);
+    if(rows(snapshot,'credit_notes').some(note=>lines.some(line=>line.id===note.line_id)))return {eligible:false,blockingReason:'Le contrat comporte un avoir : une révision spécifique est nécessaire.'};
+    const allDiscounts=rows(snapshot,'contract_discounts').filter(row=>row.version_id===version.id);
+    const tuitionDiscounts=allDiscounts.filter(row=>tuition.some(line=>line.id===row.line_id)).reduce((sum,row)=>sum+amount(row),0);
+    const existingReductions=allDiscounts.reduce((sum,row)=>sum+amount(row),0);
+    const tuitionGross=tuition.reduce((sum,row)=>sum+amount(row),0);
+    return {eligible:true,versionId:version.id,status:String(version.status),tuitionGross,tuitionRemaining:tuitionGross-tuitionDiscounts,existingReductions,hasExistingBenefits:allDiscounts.length>0 || rows(snapshot,'scholarship_awards').some(row=>row.enrollment_id===enrollmentId && !row.revoked_at),currentTotal:netContractAmount(snapshot,version.id),registration:lines.filter(line=>rows(snapshot,'fee_types').some(type=>type.id===line.fee_type_id && type.category==='INSCRIPTION')).reduce((sum,row)=>sum+amount(row),0)};
+  }catch(error){return {eligible:false,blockingReason:error instanceof Error?error.message:'Contrat indisponible.'};}
+}
 
 /** Exact distribution of an integer amount; no fractional FCFA is persisted. */
 function distribute(total:number,weights:number[]){
@@ -39,8 +65,9 @@ export function previewScholarshipApplication(snapshot:RelationalSnapshot,input:
   if(rows(snapshot,'credit_notes').some(note=>lines.some(line=>line.id===note.line_id)))return fail('Le contrat comporte un avoir : un traitement de révision spécifique est requis.');
   if(!input.lineIds.length || new Set(input.lineIds).size!==input.lineIds.length || input.lineIds.some(id=>!lines.some(line=>line.id===id)))return fail('Choisissez des lignes de frais distinctes du contrat concerné.');
   const targets=input.lineIds.map(id=>lines.find(line=>line.id===id)!);
+  if(targets.some(line=>!rows(snapshot,'fee_types').some(type=>type.id===line.fee_type_id && type.category==='SCOLARITE')))return fail('Une bourse réduit uniquement la scolarité. Les frais d’inscription restent inchangés.');
   const alreadyDiscounted=(line:DatabaseRow)=>discounts.filter(row=>row.line_id===line.id).reduce((n,row)=>n+amount(row),0);
-  if(!input.confirmStacking && targets.some(line=>alreadyDiscounted(line)>0))return fail('Une réduction existe déjà sur les frais sélectionnés. Une décision explicite de cumul est requise.');
+  if(!input.confirmStacking && (discounts.length>0 || rows(snapshot,'scholarship_awards').some(row=>row.enrollment_id===enrollment.id && !row.revoked_at)))return fail('Une réduction ou une bourse existe déjà. Une décision explicite de cumul est requise.');
   const weights=targets.map(line=>input.calculationBasis==='GROSS'?amount(line):amount(line)-alreadyDiscounted(line));
   if(weights.some(value=>!Number.isSafeInteger(value) || value<0))return fail('Base de calcul invalide.');
   const base=weights.reduce((n,value)=>n+value,0);
@@ -65,7 +92,8 @@ export function planScholarshipApplication(snapshot:RelationalSnapshot,input:Sch
   if(input.reason.trim().length<3 || input.reason.trim().length>1000)return fail('Un motif de 3 à 1000 caractères est requis.');
   const scheduleIds=schedule.flatMap(row=>row.id?[row.id]:[]);
   if(new Set(scheduleIds).size!==scheduleIds.length)return fail('Une échéance ne peut pas être sélectionnée plusieurs fois.');
-  if(schedule.some(row=>!Number.isSafeInteger(row.amount) || row.amount<0 || row.dueOn<String(year.starts_on) || row.dueOn>String(year.ends_on)) || schedule.reduce((n,row)=>n+row.amount,0)!==preview.newTotal)return fail('L’échéancier proposé doit correspondre exactement au nouveau montant net.');
+  if(scheduleIds.some(id=>!preview.installments.some(row=>row.id===id)))return fail('Une échéance ne fait pas partie du contrat concerné.');
+  if(schedule.some(row=>!Number.isSafeInteger(row.amount) || row.amount<0 || ((row.dueOn<String(year.starts_on) || row.dueOn>String(year.ends_on)) && !preview.installments.some(original=>original.id===row.id && original.due_on===row.dueOn))) || schedule.reduce((n,row)=>n+row.amount,0)!==preview.newTotal)return fail('L’échéancier proposé doit correspondre au montant net et conserver des dates valides.');
   if(version.status==='DRAFT' && preview.installments.some(row=>!schedule.some(item=>item.id===row.id && item.amount>0)))return fail('Le brouillon comporte des échéances à retirer : révisez son échéancier avant attribution.');
   const awardId=crypto.randomUUID(),nextVersion=version.status==='APPROVED'?crypto.randomUUID():version.id;
   const reason=input.reason.trim();

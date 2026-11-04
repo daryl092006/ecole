@@ -21,9 +21,11 @@ export async function verifyScholarshipApplication(db,check,{offering,account}){
     lines.push(await insert('contract_lines',{contract_id:contract.id,version_id:version.id,fee_type_id:type.id,amount:value,description:category}));
    }
    const scholarship=await insert('scholarships',{code:randomUUID(),name:'Bourse de recette',kind:'POURCENTAGE',percent:draft?100:50,active:true});
+   let originalInstallment;
    if(!draft){
     await insert('contract_discounts',{line_id:lines[1].id,version_id:version.id,amount:55000,reason:'Remise antérieure conservée'});
-    const installment=await insert('installments',{version_id:version.id,position:1,due_on:'2026-10-15',amount:545000,description:'Échéance initiale'});
+    const installment=await insert('installments',{version_id:version.id,position:1,due_on:'2025-12-15',amount:545000,description:'Échéance initiale antérieure à la rentrée'});
+    originalInstallment=installment;
     await db.query("update escen.contract_versions set status='APPROVED',approved_by=$1,approved_at=now()where id=$2",[account.id,version.id]);
     const payment=await insert('payments',{enrollment_id:enrollment.id,amount:300000,payer_name:'Recette',provider:'Caisse',reference:randomUUID(),method:'ESPECES',paid_on:'2026-10-15',recorded_by:account.id});
     await insert('payment_allocations',{payment_id:payment.id,enrollment_id:enrollment.id,contract_id:contract.id,version_id:version.id,line_id:lines[1].id,installment_id:installment.id,amount:300000,allocated_by:account.id});
@@ -32,6 +34,7 @@ export async function verifyScholarshipApplication(db,check,{offering,account}){
    const input={enrollmentId:enrollment.id,scholarshipId:scholarship.id,lineIds:[lines[1].id],calculationBasis:'GROSS',confirmStacking:!draft,validFrom:'2026-10-01',reason:'Attribution de bourse et effet financier validés'};
    if(!draft)assert.throws(()=>previewScholarshipApplication(snapshot,{...input,confirmStacking:false}),/cumul/);
    assert.throws(()=>previewScholarshipApplication(snapshot,{...input,lineIds:[randomUUID()]}),/lignes/);
+   assert.throws(()=>previewScholarshipApplication(snapshot,{...input,lineIds:[lines[0].id]}),/uniquement la scolarité/);
    const preview=previewScholarshipApplication(snapshot,input);
    assert.equal(preview.reduction,draft?550000:275000);
    assert.equal(preview.newTotal,draft?50000:270000);
@@ -45,7 +48,7 @@ export async function verifyScholarshipApplication(db,check,{offering,account}){
     const refunded={...snapshot,tables:{...snapshot.tables,refunds:[...snapshot.tables.refunds,{id:randomUUID(),payment_id:snapshot.tables.payments.find(row=>row.enrollment_id===enrollment.id).id,amount:10000}]}};
     assert.equal(previewScholarshipApplication(refunded,input).unallocatedCredit,20000);
    }
-   const schedule=[{dueOn:'2026-10-15',amount:preview.newTotal}];
+   const schedule=[{...(originalInstallment?{id:originalInstallment.id}:{}),dueOn:originalInstallment?.due_on || '2026-10-15',amount:preview.newTotal}];
    const changes=planScholarshipApplication(snapshot,input,schedule,account.id);
    assert.ok(!changes.some(change=>['payments','receipts','refunds'].includes(change.table)));
    const execute=batch=>db.query('select public.escen_backend_transaction($1,$2,$3::jsonb)',[account.id,snapshot.revision,JSON.stringify(batch)]);

@@ -43,6 +43,40 @@ export interface ScholarshipAwardItem {
   reason: string;
 }
 
+export interface ScholarshipContractContext {
+  eligible:boolean;
+  blockingReason?:string;
+  versionId?:string;
+  status?:string;
+  tuitionGross?:number;
+  tuitionRemaining?:number;
+  existingReductions?:number;
+  hasExistingBenefits?:boolean;
+  registration?:number;
+  currentTotal?:number;
+}
+export interface ScholarshipFinancialPreview {
+  versionId:string;
+  base:number;
+  reduction:number;
+  oldTotal:number;
+  newTotal:number;
+  paid:number;
+  remaining:number;
+  unallocatedCredit:number;
+  contractStatus:string;
+  registration:number;
+  installments:{id?:string;dueOn:string;amount:number}[];
+}
+export interface ScholarshipPreviewRequest {
+  revision:number;
+  enrollmentId:string;
+  scholarshipId:string;
+  validFrom:string;
+  reason:string;
+  calculationBasis:'GROSS'|'REMAINING';
+  confirmStacking:boolean;
+}
 export interface FinanceSettingsDirectory {
   revision: number;
   selectedYearId: string;
@@ -59,6 +93,7 @@ export interface FinanceSettingsDirectory {
     name: string;
     programName: string;
     levelName: string;
+    scholarshipContext?:ScholarshipContractContext;
   }[];
 }
 
@@ -117,5 +152,11 @@ export type FinanceSettingsAction =
       scholarshipId: string;
       validFrom: string;
       reason: string;
+      calculationBasis:'GROSS'|'REMAINING';
+      confirmStacking:boolean;
+      versionId:string;
+      reviewedReduction:number;
+      reviewedTotal:number;
+      installments:{id?:string;dueOn:string;amount:number}[];
     };
 
