@@ -96,6 +96,22 @@ def prepare(pdf_directory, snapshot_path, roster_path, output):
     for session in sessions:
         shared[(session['date'], session['start'], session['teacher'])].append(session)
     overlaps = [rows for rows in shared.values() if len(rows) > 1]
+    # Confirmed rule: identical simultaneous courses share Salle des L1.
+    # Keep every source/group; this artifact is not a database session payload.
+    collective = []
+    for occurrences in shared.values():
+        if len({(s['subject'], s['end']) for s in occurrences}) != 1:
+            raise ValueError('Cours simultanés différents : ne pas regrouper automatiquement.')
+        combined = len(occurrences) > 1
+        if combined:
+            for occurrence in occurrences:
+                occurrence['room_name'] = 'Salle des L1'
+        first = occurrences[0]
+        collective.append({key: first[key] for key in
+                           ['date', 'start', 'end', 'subject', 'teacher', 'mode', 'room_name']} |
+                          {'groups': sorted({s['group'] for s in occurrences}),
+                           'sources': sorted({s['source'] for s in occurrences}),
+                           'shared': combined})
     group_map = {'L1 TC': 'L1 TRONC COMMUN', 'L1 IA & GL': 'L1 IA', 'L2 TC': 'L2 TRONC COMMUN', 'L2 IA & GL': 'L2 IA'}
     groups = []
     for source, target in group_map.items():
@@ -110,7 +126,8 @@ def prepare(pdf_directory, snapshot_path, roster_path, output):
         (output / name).write_text(json.dumps(value, ensure_ascii=False, indent=2) + '\n')
     save('enseignants-rapprochement.json', identities)
     save('sources.json', sources)
-    save('regroupements-a-confirmer.json', overlaps)
+    save('regroupements-confirmes.json', overlaps)
+    save('cours-regroupes.json', collective)
     save('groupes-et-matieres.json', groups)
     with (output / 'seances-candidates.csv').open('w') as stream:
         writer = csv.DictWriter(stream, fieldnames=sessions[0].keys())
@@ -119,6 +136,7 @@ def prepare(pdf_directory, snapshot_path, roster_path, output):
     summary = {'revision': snapshot['revision'], 'teachers': len(roster),
                'identity_actions': dict(Counter(i['action'] for i in identities)),
                'sessions': len(sessions), 'shared_slots': len(overlaps),
+               'collective_courses': len(collective),
                'rooms': len(tables['rooms']), 'missing_groups': [g['source'] for g in groups if not g['groups']],
                'remote_writes': 0, 'ready_for_import': False}
     save('validation.json', summary)

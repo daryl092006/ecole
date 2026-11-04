@@ -55,13 +55,18 @@ Les cours sont en présentiel (`COURS`). Correspondances confirmées le 4 novemb
 
 Ces libellés sont ajoutés aux séances candidates. Ils ne signifient pas que les salles
 ont déjà été créées en base. Les capacités et le rattachement au bâtiment restent à établir.
-Les salles distinctes ne résolvent pas les chevauchements d'un même enseignant.
+Règle confirmée ensuite par l'utilisateur : lorsqu'un même enseignant dispense le
+même cours au même horaire à plusieurs groupes, tous suivent le cours ensemble dans
+la salle des L1. Cette exception prime sur la salle habituelle de chaque groupe.
+Le fichier `cours-regroupes.json` conserve les groupes et PDF sources de chaque cours.
+Des matières ou horaires de fin différents ne sont jamais fusionnés automatiquement.
 
 ### Blocages constatés
 
-- 20 créneaux ont le même enseignant à la même heure dans plusieurs groupes.
+- 20 créneaux sont des cours communs confirmés, dans la salle des L1.
   Les contraintes `session_teacher_conflict` empêchent l'insertion de séances distinctes.
-  Les cours communs nécessitent un rattachement approuvé ; ne pas désactiver les contrôles.
+  Leur représentation persistante doit conserver tous les groupes concernés ; ne pas
+  désactiver les contrôles ni supprimer les rattachements des autres groupes.
 - Aucune salle n'existe dans le snapshot. Les quatre libellés sont désormais confirmés
   ci-dessus ; leur création nécessite le bâtiment, le site et une capacité réelle.
 - Le groupe L2 IA est absent de 2026-2027.
@@ -81,13 +86,14 @@ issu de la RPC de lecture. Il refuse d'écraser une relecture existante.
 python3 scripts/prepare-october-timetables.py \
   --pdf-directory /Users/gdenis/Downloads \
   --snapshot tmp/integration-planning-2026-11-04/snapshot.json \
-  --output tmp/integration-planning-2026-11-04/relecture-v3
+  --output tmp/integration-planning-2026-11-04/relecture-v4
 ```
 
 Le dossier produit contient les empreintes SHA-256 des quatre sources, les séances
-datées, les regroupements à confirmer, les correspondances d'identité et l'inventaire
+datées, les regroupements confirmés, les correspondances d'identité et l'inventaire
 des matières par groupe. Les données du snapshot restent dans `tmp/`, hors commit.
 
-L'étape suivante dépend de la création des salles confirmées, des regroupements et des identités manquantes.
+L'étape suivante dépend de la création des salles confirmées, du rattachement persistant
+des cours communs et des identités manquantes.
 Tout SQL de migration devra être présenté avant accord, conformément à AGENTS.md ;
 aucune migration distante ne doit être appliquée pendant ce chantier.
