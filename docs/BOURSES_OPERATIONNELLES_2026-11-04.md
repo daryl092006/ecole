@@ -58,3 +58,24 @@ remboursement automatique n’est créé.
 
 Aucune migration SQL supplémentaire n’est nécessaire. Les tests utilisent des
 données locales ou simulées et ne créent pas de bourse sur la base distante.
+
+## Publication vérifiée
+
+La version a été publiée sur https://portail.escen.university à partir du commit
+`ee1be4fdc31684a03c6ec4a350ea011458d9f6b5`.
+
+- Projet Vercel existant : `ecole`, `prj_k0JnJTNXVrSNIMaK4MOt7cu0xRAR`.
+- Déploiement : `dpl_4Hvr2ESBFvjQm1rhoXWeGvtGdeRh`.
+- URL technique : https://ecole-dznhcn0t7-denis-gangnitos-projects.vercel.app
+- Déploiement précédent conservé : `dpl_4pxGLiv5jENE9JDWjYBAjr9V3ndg`.
+
+Construction de production Ready avant promotion ; aucune variable de production
+n’a été remplacée, aucune migration de reprise n’a été appliquée et aucun push
+Git n’a été effectué. L’archive source ne contient pas le fichier `.env.local`.
+
+Contrôles sur le domaine public le 4 novembre 2026 à 09:27 UTC : connexion HTTP 200,
+API financière sans session HTTP 401, présence du code du nouveau formulaire.
+Les quatre tests de saisie, calcul, cumul explicite et confirmation passent sur
+ce domaine à 390 et 1440 px. Les appels métier de ces tests sont interceptés avec
+des données simulées : aucune attribution réelle n’est créée pour vérifier la
+publication. Les résultats sont conservés dans `tmp/scholarship-release/`.
