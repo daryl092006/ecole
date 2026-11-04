@@ -280,7 +280,7 @@ export default function AnnualFeesWorkspace() {
           className={`btn ${activeTab === 'scholarships' ? 'btn-primary' : ''}`}
           onClick={() => setActiveTab('scholarships')}
         >
-          🎓 Bourses & Partenariats ({directory?.scholarships.length || 0})
+          Bourses & Partenariats ({directory?.scholarships.length || 0})
         </button>
         <button
           type="button"
@@ -289,7 +289,7 @@ export default function AnnualFeesWorkspace() {
           className={`btn ${activeTab === 'fees' ? 'btn-primary' : ''}`}
           onClick={() => setActiveTab('fees')}
         >
-          💵 Tarifs & Tranches ({directory?.feeSchedules.length || 0})
+          Tarifs & Tranches ({directory?.feeSchedules.length || 0})
         </button>
         <button
           type="button"
@@ -298,7 +298,7 @@ export default function AnnualFeesWorkspace() {
           className={`btn ${activeTab === 'awards' ? 'btn-primary' : ''}`}
           onClick={() => setActiveTab('awards')}
         >
-          📋 Attributions ({directory?.scholarshipAwards.length || 0})
+          Attributions ({directory?.scholarshipAwards.length || 0})
         </button>
       </div>
 
