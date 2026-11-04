@@ -70,8 +70,9 @@ Des matières ou horaires de fin différents ne sont jamais fusionnés automatiq
   désactiver les contrôles ni supprimer les rattachements des autres groupes.
 - Aucune salle n'existe dans le snapshot. Les quatre libellés sont désormais confirmés.
   Correction du constat précédent : site et bâtiment sont déjà facultatifs depuis la
-  migration 028. La suppression des contraintes de capacité est préparée dans
-  `docs/sql-proposals/20261104_rooms_without_capacity.sql`, en attente de validation SQL.
+  migration 028. La suppression des contraintes de capacité est intégrée dans la migration
+  `202611040086_rooms_without_capacity.sql`, validée dans PGlite local.
+  Elle n’a pas été appliquée à distance.
 - Correction du constat initial : le groupe L2 IA existe sous le libellé « Licence 2 IA »
   (ID `90e081d0-1e56-4e10-9dc7-7854f155f5ea`), lié à Intelligence Artificielle & Génie Logiciel.
   Réutiliser ce groupe, ne pas créer de doublon. Le rapprochement initial cherchait
@@ -114,3 +115,53 @@ bâtiment ni nombre de places ne sera demandé pour cet import.
 Le modèle actuel rattache une séance à une seule affectation et un seul groupe.
 Un import fidèle des cours communs exige de traiter ce rattachement dans le modèle,
 les contrôles de conflits, les droits d'accès et les feuilles de présence.
+
+
+## Reprise — contrôle des 114 cours et proposition à valider
+
+Contrôle hors ligne de `relecture-v5/cours-regroupes.json`, sur le snapshot de
+révision 93 : 114 cours distincts, dont 20 communs, représentant 138 occurrences
+par groupe. Comparaison de toutes les paires le même jour, avec intervalles
+semi-ouverts `[début, fin[` : aucun chevauchement de salle, d’enseignant (libellé
+source identique) ou de groupe après les regroupements. Ce contrôle ne vérifie
+pas les homonymes et ne remplace pas une nouvelle lecture de la base avant import.
+La répétition des grilles sur les deux semaines reste à confirmer explicitement.
+
+### Proposition de représentation des cours communs
+
+Une séance physique unique conserve le créneau, la salle et l’enseignant.
+Chaque groupe participant conserve son affectation pédagogique et sa formation
+via des rattachements explicites à cette séance. Aucun groupe « principal » ne
+doit masquer les autres dans le planning ou les feuilles de présence.
+
+Le SQL actuel ne permet pas de simplement ajouter les séances :
+
+- `sessions` impose une seule affectation, formation et groupe par clé étrangère ;
+- les exclusions concurrentes protègent enseignant, salle et groupe ;
+- `attendances` impose la même formation que la séance ;
+- les projections de planning, permissions et présences filtrent ces champs uniques.
+
+L’évolution devra donc couvrir ensemble les rattachements multi-groupes,
+les conflits de chacun des groupes, les périodes de chaque affectation, les
+présences par inscription et formation, et les accès limités au groupe autorisé.
+Les réservations enseignant et salle restent uniques. Les déplacements et
+annulations d’un cours commun concernent tous ses groupes et doivent être
+récapitulés avant confirmation. Les examens existants doivent conserver leurs
+contraintes et leurs parcours actuels.
+
+Cette proposition n’est pas encore implémentée. Avant toute nouvelle migration,
+présenter son SQL complet et attendre l’accord ; exécuter ensuite uniquement en
+local, avec tests de concurrence, rollback, droits et présences multi-groupes.
+
+### Données encore nécessaires
+
+- Confirmer la répétition hebdomadaire des quatre PDF sur les périodes indiquées.
+- Fournir ou valider les rattachements aux matières et maquettes : les maquettes
+  L1 et L2 IA du snapshot ne couvrent pas les cours sources, et les TC ont plusieurs
+  offres. Ne pas inventer crédits, coefficients ou équivalences de libellés.
+- Résoudre les identités des sept intervenants absents de la liste, ainsi que les
+  rapprochements ambigus déjà décrits. Aucun compte ni email à créer implicitement.
+- Relire un snapshot récent avant de préparer un lot d’écriture final.
+
+Aucun cours, aucune salle et aucun enseignant n’ont été écrits à distance pendant
+cette reprise. Les 114 cours restent des candidats à l’import.
