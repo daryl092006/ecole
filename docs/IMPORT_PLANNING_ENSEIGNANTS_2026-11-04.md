@@ -38,7 +38,7 @@ Aucun nouveau compte Auth n'a été provisionné et aucun email envoyé.
 | L2 IA & GL | 12–24 octobre | 38 |
 
 Total : 138 occurrences, en répétant la grille sur les deux semaines indiquées.
-Cette répétition reste une hypothèse d'import. Les TPE, activités de clubs et plages
+Cette répétition a été confirmée lors de la reprise du 4 novembre 2026. Les TPE, activités de clubs et plages
 libres sont conservés dans les PDF sources mais ne sont pas convertis en cours enseignants.
 Une date passée n'atteste ni une présence ni un cours effectivement réalisé.
 
@@ -125,7 +125,7 @@ par groupe. Comparaison de toutes les paires le même jour, avec intervalles
 semi-ouverts `[début, fin[` : aucun chevauchement de salle, d’enseignant (libellé
 source identique) ou de groupe après les regroupements. Ce contrôle ne vérifie
 pas les homonymes et ne remplace pas une nouvelle lecture de la base avant import.
-La répétition des grilles sur les deux semaines reste à confirmer explicitement.
+La répétition des grilles sur les deux semaines a été confirmée par l'utilisateur.
 
 ### Proposition de représentation des cours communs
 
@@ -149,13 +149,14 @@ annulations d’un cours commun concernent tous ses groupes et doivent être
 récapitulés avant confirmation. Les examens existants doivent conserver leurs
 contraintes et leurs parcours actuels.
 
-Cette proposition n’est pas encore implémentée. Avant toute nouvelle migration,
-présenter son SQL complet et attendre l’accord ; exécuter ensuite uniquement en
-local, avec tests de concurrence, rollback, droits et présences multi-groupes.
+Le principe est confirmé. Une proposition SQL complète et sa recette locale sont
+préparées : voir `docs/COURS_COMMUNS_SQL_RELECTURE_2026-11-04.md`.
+Elle reste hors des migrations dans l'attente de l'accord sur le SQL.
+Les adaptations API, projections et interface restent à réaliser ensemble après cet accord.
 
 ### Données encore nécessaires
 
-- Confirmer la répétition hebdomadaire des quatre PDF sur les périodes indiquées.
+- Répétition hebdomadaire des quatre PDF : confirmée sur les périodes indiquées.
 - Fournir ou valider les rattachements aux matières et maquettes : les maquettes
   L1 et L2 IA du snapshot ne couvrent pas les cours sources, et les TC ont plusieurs
   offres. Ne pas inventer crédits, coefficients ou équivalences de libellés.
