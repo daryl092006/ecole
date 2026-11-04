@@ -134,7 +134,7 @@ export default function PersistentExamCopies({ evaluationId, candidateId, onClos
         const isQcm = ['QCM_SIMPLE', 'QCM_MULTIPLE'].includes(String(q.kind)) || isTrueFalse;
 
         if (!isQcm) {
-          return { points: null, label: '📝 Rédaction / Développement', isAuto: false };
+          return { points: null, label: 'Rédaction / Développement', isAuto: false };
         }
 
         const opts = (tables.exam_options || []).filter(row => row.question_id === questionId);
@@ -153,7 +153,7 @@ export default function PersistentExamCopies({ evaluationId, candidateId, onClos
           if (config.requiresJustification) {
             return {
               points: isCorrectChoice ? roundMark(max * 0.5) : 0,
-              label: isCorrectChoice ? '⚖️ Choix exact · Justification à évaluer' : '⚖️ Choix incorrect',
+              label: isCorrectChoice ? 'Choix exact · Justification à évaluer' : 'Choix incorrect',
               isAuto: false,
             };
           }
@@ -180,7 +180,7 @@ export default function PersistentExamCopies({ evaluationId, candidateId, onClos
           const calculated = roundMark(ratio * max);
           return {
             points: calculated,
-            label: ratio === 1 ? '✓ QCM intégralement exact' : ratio > 0 ? `⚖️ QCM partiel (${correctChosen}/${correctIds.length})` : '✗ QCM incorrect',
+            label: ratio === 1 ? '✓ QCM intégralement exact' : ratio > 0 ? `QCM partiel (${correctChosen}/${correctIds.length})` : '✗ QCM incorrect',
             isAuto: true,
           };
         }
@@ -258,11 +258,11 @@ export default function PersistentExamCopies({ evaluationId, candidateId, onClos
                     const count = raw ? Number(JSON.parse(raw).count) || 0 : 0;
                     return count > 0 ? (
                       <span className="pill pill-danger" style={{ fontWeight: 600 }}>
-                        ⚠️ {count} incident(s) anti-triche
+                        {count} incident(s) anti-triche
                       </span>
                     ) : (
                       <span className="pill pill-success" style={{ fontSize: '11px' }}>
-                        🛡️ Intégrité conforme
+                        Intégrité conforme
                       </span>
                     );
                   })()}
@@ -318,7 +318,7 @@ export default function PersistentExamCopies({ evaluationId, candidateId, onClos
                     onClick={autoGradeAllQuestions}
                     title="Attribue les points calculés pour toutes les questions QCM"
                   >
-                    ⚡ Pré-noter tous les QCM
+                    Pré-noter tous les QCM
                   </button>
                 )}
               </div>
@@ -333,7 +333,7 @@ export default function PersistentExamCopies({ evaluationId, candidateId, onClos
                   <div style={{ background: '#f8fafc', border: '1px solid var(--border-color, #e2e8f0)', borderRadius: '8px', padding: '12px 16px', marginBottom: '18px' }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '8px', marginBottom: '8px' }}>
                       <strong style={{ fontSize: '13px', color: '#0f172a' }}>
-                        🛡️ Audit de composition & Surveillance anti-triche
+                        Audit de composition & Surveillance anti-triche
                       </strong>
                       <span className={`pill ${data.count > 0 ? 'pill-danger' : 'pill-success'}`}>
                         {data.count > 0 ? `${data.count} alerte(s) consignée(s)` : 'Session 100% conforme'}
@@ -404,14 +404,14 @@ export default function PersistentExamCopies({ evaluationId, candidateId, onClos
                         <span className="pill pill-default">Barème : {maxPts} pt{maxPts > 1 ? 's' : ''}</span>
                         <span className="pill pill-subtle" style={{ fontSize: '11px', textTransform: 'uppercase' }}>
                           {isTrueFalse
-                            ? '⚖️ Vrai / Faux'
+                            ? 'Vrai / Faux'
                             : question.kind === 'QCM_SIMPLE'
-                            ? '🔘 QCM Unique'
+                            ? 'QCM Unique'
                             : question.kind === 'QCM_MULTIPLE'
-                            ? '☑️ QCM Multiple'
+                            ? 'QCM Multiple'
                             : isShortText
-                            ? '💬 Réponse courte'
-                            : '📝 Rédaction'}
+                            ? 'Réponse courte'
+                            : 'Rédaction'}
                         </span>
                         {autoInfo.label && (
                           <span
@@ -457,7 +457,7 @@ export default function PersistentExamCopies({ evaluationId, candidateId, onClos
 
                       {Boolean(response?.text) && (
                         <div style={{ display: 'flex', justifyContent: 'flex-end', fontSize: '11px', color: '#64748b', marginTop: '6px' }}>
-                          📝 {countWords(response?.text || '')} mot(s) rédigé(s)
+                          {countWords(response?.text || '')} mot(s) rédigé(s)
                         </div>
                       )}
 

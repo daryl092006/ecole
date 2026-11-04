@@ -158,7 +158,7 @@ export default function FinanceOverview() {
 
         {missing > 0 && (
           <p className="cell-sub" style={{ marginBottom: '1rem', color: 'var(--text-muted)' }}>
-            ⚠️ {missing} dossier(s) n’ont pas encore de situation financière établie. L’inscription et le contrat doivent être validés dans le dossier étudiant.
+            {missing} dossier(s) n’ont pas encore de situation financière établie. L’inscription et le contrat doivent être validés dans le dossier étudiant.
           </p>
         )}
 

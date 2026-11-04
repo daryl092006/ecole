@@ -96,7 +96,7 @@ function OnlineExamEditor({ initial, onBack }: { initial: OnlineExamView; onBack
         history.events.push({ type, time: new Date().toISOString(), message });
         localStorage.setItem(antiCheatKey, JSON.stringify(history));
       } catch { /* storage fallback */ }
-      setAntiCheatAlert(`⚠️ Incident anti-triche détecté (${nextCount}/3) : ${message}. Cet événement est consigné et transmis avec votre copie.`);
+      setAntiCheatAlert(`Incident anti-triche détecté (${nextCount}/3) : ${message}. Cet événement est consigné et transmis avec votre copie.`);
       return nextCount;
     });
   }, [antiCheatKey]);
@@ -339,7 +339,7 @@ function OnlineExamEditor({ initial, onBack }: { initial: OnlineExamView; onBack
                 fontSize: '32px',
               }}
             >
-              🔒
+              •
             </div>
             <h2 style={{ fontSize: '20px', color: '#991b1b', margin: '0 0 12px' }}>
               ÉCRAN VERROUILLÉ — SORTIE D'ÉCRAN DÉTECTÉE
@@ -359,7 +359,7 @@ function OnlineExamEditor({ initial, onBack }: { initial: OnlineExamView; onBack
                 marginBottom: '20px',
               }}
             >
-              ⚠️ Infraction n°{antiCheatCount} enregistrée et portée au rapport de correction.
+              Infraction n°{antiCheatCount} enregistrée et portée au rapport de correction.
             </div>
             <button
               type="button"
@@ -411,9 +411,9 @@ function OnlineExamEditor({ initial, onBack }: { initial: OnlineExamView; onBack
                   {examAnsweredCount(view.answers)} / {questions.length} réponse(s) enregistrée(s)
                 </span>
                 {antiCheatCount > 0 ? (
-                  <span className="pill pill-warning">⚠️ {antiCheatCount} alerte(s) anti-triche consignée(s)</span>
+                  <span className="pill pill-danger">{antiCheatCount} alerte(s) anti-triche consignée(s)</span>
                 ) : (
-                  <span className="pill pill-success">🛡️ Intégrité conforme</span>
+                  <span className="pill pill-success">Intégrité conforme</span>
                 )}
                 {view.attempt.completionStatus === 'NON_TRAITE' && (
                   <span className="pill pill-danger">Copie non traitée (0/20)</span>
@@ -439,7 +439,7 @@ function OnlineExamEditor({ initial, onBack }: { initial: OnlineExamView; onBack
                       boxShadow: remaining <= 300 ? '0 0 12px rgba(220, 38, 38, 0.4)' : 'none',
                     }}
                   >
-                    ⏱️ {timeDisplay}
+                    {timeDisplay}
                   </span>
                   <span className="cell-sub" style={{ fontSize: '13px' }}>
                     Fin de l’épreuve : <strong>{dateLabel(view.attempt.deadlineAt)}</strong>
@@ -452,7 +452,7 @@ function OnlineExamEditor({ initial, onBack }: { initial: OnlineExamView; onBack
                     className={`pill ${answeredCount === questions.length ? 'pill-success' : 'pill-info'}`}
                     style={{ fontWeight: 600 }}
                   >
-                    📝 {answeredCount} / {questions.length} répondues ({progressPercent}%)
+                    {answeredCount} / {questions.length} répondues ({progressPercent}%)
                   </span>
                   <button
                     type="button"
@@ -460,7 +460,7 @@ function OnlineExamEditor({ initial, onBack }: { initial: OnlineExamView; onBack
                     onClick={toggleFullscreen}
                     style={{ display: 'inline-flex', alignItems: 'center', gap: '4px' }}
                   >
-                    {isFullscreen ? 'Quitter plein écran' : '🖥️ Plein écran'}
+                    {isFullscreen ? 'Quitter plein écran' : 'Plein écran'}
                   </button>
                   <span className="cell-sub" style={{ fontSize: '12px' }}>
                     {saving ? 'Enregistrement…' : dirty ? 'Enregistrement en attente' : '✓ Enregistré'}
@@ -476,7 +476,7 @@ function OnlineExamEditor({ initial, onBack }: { initial: OnlineExamView; onBack
               {/* Alerte Urgence Moins de 5 minutes */}
               {remaining > 0 && remaining <= 300 && (
                 <div style={{ padding: '8px 12px', background: '#fef2f2', border: '1px solid #fecaca', borderRadius: '6px', color: '#b91c1c', fontSize: '13px', fontWeight: 600 }}>
-                  ⚠️ Attention : il reste moins de 5 minutes ! Vos réponses enregistrées seront remises automatiquement à 00:00.
+                  Attention : il reste moins de 5 minutes ! Vos réponses enregistrées seront remises automatiquement à 00:00.
                 </div>
               )}
 
@@ -530,7 +530,7 @@ function OnlineExamEditor({ initial, onBack }: { initial: OnlineExamView; onBack
                 key={q.id}
                 type="button"
                 onClick={() => jumpToQuestion(q.id)}
-                title={`Question ${idx + 1} (${q.points} pt${q.points > 1 ? 's' : ''}) — ${isAns ? 'Répondue' : 'En attente'}${isFlg ? ' (Marquée 🚩)' : ''}`}
+                title={`Question ${idx + 1} (${q.points} pt${q.points > 1 ? 's' : ''}) — ${isAns ? 'Répondue' : 'En attente'}${isFlg ? ' (Marquée pour relecture)' : ''}`}
                 style={{
                   minWidth: '34px',
                   height: '34px',
@@ -551,7 +551,7 @@ function OnlineExamEditor({ initial, onBack }: { initial: OnlineExamView; onBack
                 }}
               >
                 {idx + 1}
-                {isFlg && <span style={{ fontSize: '9px' }}>🚩</span>}
+                {isFlg && <span style={{ fontSize: '10px', color: '#854d0e', fontWeight: 700 }}>•</span>}
               </button>
             );
           })}
@@ -597,7 +597,7 @@ function OnlineExamEditor({ initial, onBack }: { initial: OnlineExamView; onBack
               }}
             >
               <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontWeight: 700, color: '#1e40af', marginBottom: '8px', fontSize: '13px' }}>
-                <span>📑</span> DOSSIER DOCUMENTAIRE & SITUATION DU CAS
+                DOSSIER DOCUMENTAIRE & SITUATION DU CAS
               </div>
               {part.instructions && (
                 <div style={{ fontSize: '14px', lineHeight: 1.6, color: '#1e293b', whiteSpace: 'pre-wrap' }}>
@@ -661,14 +661,14 @@ function OnlineExamEditor({ initial, onBack }: { initial: OnlineExamView; onBack
                   </span>
                   <span className="pill pill-subtle" style={{ fontSize: '11px', textTransform: 'uppercase' }}>
                     {isTrueFalse
-                      ? '⚖️ Vrai / Faux'
+                      ? 'Vrai / Faux'
                       : isQcmSimple
-                      ? '🔘 Choix unique'
+                      ? 'Choix unique'
                       : isQcmMultiple
-                      ? '☑️ Choix multiples'
+                      ? 'Choix multiples'
                       : isShortText
-                      ? '💬 Réponse courte'
-                      : '📝 Rédaction'}
+                      ? 'Réponse courte'
+                      : 'Rédaction'}
                   </span>
                   {isAns ? (
                     <span className="pill pill-success" style={{ fontSize: '11px' }}>
@@ -694,7 +694,7 @@ function OnlineExamEditor({ initial, onBack }: { initial: OnlineExamView; onBack
                       color: isFlg ? '#854d0e' : undefined,
                     }}
                   >
-                    {isFlg ? '🚩 Marquée pour relecture' : '🏳️ Marquer pour relecture'}
+                    {isFlg ? 'Marquée pour relecture' : 'Marquer pour relecture'}
                   </button>
                 )}
               </div>
@@ -910,7 +910,7 @@ function OnlineExamEditor({ initial, onBack }: { initial: OnlineExamView; onBack
                       Votre développement / argumentation détaillée :
                     </label>
                     <span style={{ fontSize: '12px', color: '#64748b', fontWeight: 500 }}>
-                      📝 {countWords(answer.text)} mot(s) · {answer.text.length} caractère(s)
+                      {countWords(answer.text)} mot(s) · {answer.text.length} caractère(s)
                     </span>
                   </div>
                   <textarea
@@ -943,7 +943,7 @@ function OnlineExamEditor({ initial, onBack }: { initial: OnlineExamView; onBack
     {review && !terminal && (
       <div style={{ margin: '24px 0', padding: '20px', background: '#f8fafc', border: '1px solid #cbd5e1', borderRadius: '10px' }}>
         <h3 style={{ margin: '0 0 12px', fontSize: '1.1rem', color: '#0f172a' }}>
-          📋 Bilan de composition avant remise finale
+          Bilan de composition avant remise finale
         </h3>
         {(() => {
           const missing = questions.filter(q => {
@@ -955,7 +955,7 @@ function OnlineExamEditor({ initial, onBack }: { initial: OnlineExamView; onBack
             <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginBottom: '16px' }}>
               {missing.length > 0 ? (
                 <div style={{ padding: '10px 14px', background: '#fef2f2', border: '1px solid #fecaca', borderRadius: '6px', color: '#b91c1c', fontSize: '13px' }}>
-                  ⚠️ <strong>{missing.length} question(s) sans réponse :</strong>{' '}
+                  <strong>{missing.length} question(s) sans réponse :</strong>{' '}
                   {missing.map((q, i) => {
                     const idx = questions.findIndex(item => item.id === q.id);
                     return (
@@ -978,7 +978,7 @@ function OnlineExamEditor({ initial, onBack }: { initial: OnlineExamView; onBack
 
               {flaggedList.length > 0 && (
                 <div style={{ padding: '10px 14px', background: '#fffbeb', border: '1px solid #fde68a', borderRadius: '6px', color: '#854d0e', fontSize: '13px' }}>
-                  🚩 <strong>{flaggedList.length} question(s) encore marquée(s) pour relecture :</strong>{' '}
+                  <strong>{flaggedList.length} question(s) encore marquée(s) pour relecture :</strong>{' '}
                   {flaggedList.map((q, i) => {
                     const idx = questions.findIndex(item => item.id === q.id);
                     return (

@@ -318,7 +318,7 @@ export default function ExamDeliveryScheduleDialog({
 
             <div style={{ margin: '14px 0', padding: '12px 16px', background: '#f8fafc', border: '1px solid var(--border-color, #e2e8f0)', borderRadius: '8px' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '6px' }}>
-                <strong style={{ fontSize: '13px', color: '#0f172a' }}>🛡️ Sécurité & Surveillance anti-triche active</strong>
+                <strong style={{ fontSize: '13px', color: '#0f172a' }}>Sécurité & Surveillance anti-triche active</strong>
                 <span className="pill pill-success" style={{ fontSize: '11px' }}>Activée</span>
               </div>
               <ul style={{ margin: 0, paddingLeft: '18px', fontSize: '12px', color: '#64748b' }}>

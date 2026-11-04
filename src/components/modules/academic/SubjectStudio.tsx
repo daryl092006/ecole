@@ -555,9 +555,9 @@ export default function SubjectStudio() {
               aria-label="Filtrer par état"
             >
               <option value="ALL">Tous les statuts</option>
-              <option value="READY">🟢 Prêtes pour composition</option>
-              <option value="TO_SCHEDULE">⚠️ Horaires à programmer</option>
-              <option value="COMPOSED">📝 Sujets déjà rédigés</option>
+              <option value="READY">Prêtes pour composition</option>
+              <option value="TO_SCHEDULE">Horaires à programmer</option>
+              <option value="COMPOSED">Sujets déjà rédigés</option>
             </select>
           </div>
         </div>
