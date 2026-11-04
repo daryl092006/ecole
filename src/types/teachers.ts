@@ -13,7 +13,7 @@ export interface TeacherDirectory {
   assignments: TeachingAssignmentRecord[];
   offerings: { id: string; label: string; curriculumId: string }[];
   groups: { id: string; label: string; offeringIds: string[] }[];
-  components: { id: string; label: string; curriculumId: string }[];
+  components: { id: string; label: string; curriculumId: string; subjectId?: string }[];
   canManageProfiles: boolean; canManageAssignments: boolean; selectedYearId: string | null;
 }
 export type TeacherCommand = { revision: number; reason: string } & (

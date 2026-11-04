@@ -67,7 +67,7 @@ export async function localBusinessFixture(migrationOptions) {
     async rpc(name, args = {}) {
       if (!/^[a-z_]+$/.test(name) || Object.keys(args).some(key => !/^[a-z_]+$/.test(key))) throw new Error('Invalid RPC identifier');
       try {
-        const data = await value(`select public.${name}(${Object.keys(args).map((key, i) => `${key} => $${i + 1}`).join(',')}) as value`, Object.values(args).map(item => item !== null && typeof item === 'object' ? JSON.stringify(item) : item));
+        const data = await value(`select public.${name}(${Object.keys(args).map((key, i) => `${key} => $${i + 1}`).join(',')}) as value`, Object.entries(args).map(([key, item]) => key === 'p_assignment_ids' ? item : item !== null && typeof item === 'object' ? JSON.stringify(item) : item));
         return { data, error: null };
       } catch (error) { return { data: null, error: { code: error.code, message: error.message } }; }
     },

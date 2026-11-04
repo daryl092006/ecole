@@ -43,9 +43,10 @@ assert.deepEqual(student.exam_questions,[{ id:'q1' }]);
 assert.equal(student.people.some(row => row.id === 'p2'),false);
 const teacher = filterRelationalSnapshot(snapshot,context(ROLES.ENS,{ personId:'pt',teacherId:'t1' })).tables;
 const attendanceSnapshot: RelationalSnapshot = { ...snapshot, tables: { ...snapshot.tables,
+  enrollment_groups: snapshot.tables.enrollment_groups.map(row => ({ ...row, offering_id: 'o1', valid_from: '2026-01-01' })),
   sessions: [
-    { id: 'own-session', offering_id: 'o1', group_id: 'g1', assignment_id: 'a1', teacher_id: 't1' },
-    { id: 'colleague-session', offering_id: 'o1', group_id: 'g1', assignment_id: 'a2', teacher_id: 't2' },
+    { id: 'own-session', offering_id: 'o1', group_id: 'g1', assignment_id: 'a1', teacher_id: 't1', starts_at: '2026-11-01T08:00:00Z' },
+    { id: 'colleague-session', offering_id: 'o1', group_id: 'g1', assignment_id: 'a2', teacher_id: 't2', starts_at: '2026-11-01T08:00:00Z' },
   ],
   attendances: [{ id: 'own-presence', session_id: 'own-session', enrollment_id: 'n1' }, { id: 'other-presence', session_id: 'colleague-session', enrollment_id: 'n1' }],
   teacher_attendances: [{ id: 'own-teacher-presence', session_id: 'own-session', teacher_id: 't1' }, { id: 'other-teacher-presence', session_id: 'colleague-session', teacher_id: 't2' }],

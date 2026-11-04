@@ -1,5 +1,6 @@
 import type { DatabaseRow, PersistentContext, RelationalSnapshot } from '@/types/persistence';
 import type { AttendanceDirectory, AttendanceStatus } from '@/types/attendanceManagement';
+import { attendanceEnrollmentIds, visibleSessionParticipants } from './sessionParticipantsService';
 import { ROLES } from '@/types/permissions';
 
 const text = (value: unknown) => typeof value === 'string' ? value : '';
@@ -9,31 +10,7 @@ const name = (person: DatabaseRow | undefined) => `${text(person?.firstname)} ${
 /** One complete grant must cover the session, including for teachers and supervisors. */
 export function attendanceSessions(snapshot: RelationalSnapshot, context: PersistentContext, yearId: string | null) {
   if (!context.permissions.includes('attendance.view')) return [];
-  const rows = (table: string) => snapshot.tables[table] || [];
-  const supervised = new Set(rows('session_supervisors').filter(row => row.account_id === context.accountId).map(row => row.session_id));
-  for (const link of rows('exam_room_supervisors').filter(row => row.account_id === context.accountId)) {
-    const room = rows('exam_rooms').find(row => row.id === link.exam_room_id);
-    const delivery = rows('exam_deliveries').find(row => row.id === room?.delivery_id);
-    if (delivery) supervised.add(delivery.session_id);
-  }
-  return rows('sessions').filter(session => {
-    const offering = rows('academic_offerings').find(row => row.id === session.offering_id);
-    if (!offering || yearId && offering.academic_year_id !== yearId) return false;
-    if (!context.grants.some(grant => (!grant.site_id || grant.site_id === offering.site_id)
-      && (!grant.group_id || grant.group_id === session.group_id)
-      && (!grant.academic_year_id || grant.academic_year_id === offering.academic_year_id))) return false;
-    if (context.role === ROLES.ENS) return !!context.teacherId && (session.replacement_teacher_id || session.teacher_id) === context.teacherId;
-    if (context.role === ROLES.SURV) return supervised.has(session.id);
-    if (context.role === ROLES.DEL || context.role === ROLES.STUD) {
-      const day = text(session.starts_at).slice(0, 10);
-      return !!context.studentId && rows('enrollment_groups').some(link => link.group_id === session.group_id
-        && link.offering_id === session.offering_id && text(link.valid_from) <= day
-        && (!link.valid_until || text(link.valid_until) > day)
-        && rows('enrollments').some(enrollment => enrollment.id === link.enrollment_id
-          && enrollment.student_id === context.studentId && enrollment.offering_id === session.offering_id));
-    }
-    return ![ROLES.STUD, ROLES.DEL].includes(context.role as typeof ROLES.STUD);
-  });
+  return (snapshot.tables.sessions || []).filter(session => visibleSessionParticipants(snapshot, context, session, yearId, 'attendance').length > 0);
 }
 
 export function attendanceDirectory(snapshot: RelationalSnapshot, context: PersistentContext, yearId: string | null): AttendanceDirectory {
@@ -48,22 +25,20 @@ export function attendanceDirectory(snapshot: RelationalSnapshot, context: Persi
   return { revision: snapshot.revision, selectedYearId: yearId, sessions: attendanceSessions(snapshot, context, yearId)
     .sort((a, b) => text(b.starts_at).localeCompare(text(a.starts_at)))
     .map(session => {
-      const day = new Date(text(session.starts_at)).toISOString().slice(0, 10);
+      const participants = visibleSessionParticipants(snapshot, context, session, yearId, 'attendance');
+      const memberIds = attendanceEnrollmentIds(snapshot, context, session, yearId);
       const teacherId = text(session.replacement_teacher_id || session.teacher_id);
       const person = teacherPerson(teacherId);
-      const group = rows('groups').find(row => row.id === session.group_id);
-      const assignment = rows('teaching_assignments').find(row => row.id === session.assignment_id);
+      const groups = [...new Set(participants.map(participant => text(rows('groups').find(row => row.id === participant.group_id)?.name)))];
+      const assignment = rows('teaching_assignments').find(row => row.id === participants[0]?.assignment_id);
       const component = rows('curriculum_components').find(row => row.id === assignment?.component_id);
       const subject = rows('subjects').find(row => row.id === component?.subject_id);
-      // Use membership at the session date, as enforced by guard_attendance in PostgreSQL.
-      const members = new Set(rows('enrollment_groups').filter(link => link.group_id === session.group_id
-        && text(link.valid_from) <= day && (!link.valid_until || text(link.valid_until) > day)).map(link => link.enrollment_id));
-      const students = rows('enrollments').filter(row => members.has(row.id) && row.offering_id === session.offering_id).flatMap(enrollment => {
+      const students = rows('enrollments').filter(row => memberIds.has(row.id)).flatMap(enrollment => {
         const student = rows('students').find(row => row.id === enrollment.student_id);
         const studentPerson = rows('people').find(row => row.id === student?.person_id);
         return student && studentPerson ? [{ enrollmentId: enrollment.id, name: name(studentPerson), matricule: text(student.matricule) }] : [];
       });
-      const attendances = rows('attendances').filter(row => row.session_id === session.id && row.offering_id === session.offering_id).map(row => {
+      const attendances = rows('attendances').filter(row => row.session_id === session.id && memberIds.has(text(row.enrollment_id))).map(row => {
         const enrollment = rows('enrollments').find(item => item.id === row.enrollment_id);
         const student = rows('students').find(item => item.id === enrollment?.student_id);
         return { id: row.id, enrollmentId: text(row.enrollment_id), studentName: name(rows('people').find(item => item.id === student?.person_id)),
@@ -72,7 +47,7 @@ export function attendanceDirectory(snapshot: RelationalSnapshot, context: Persi
       });
       const writable = writableYear && !['ANNULE', 'REPORTE'].includes(text(session.status));
       return {
-        id: session.id, label: `${text(group?.name) || 'Groupe'} · ${text(subject?.name) || 'Séance'}`,
+        id: session.id, label: `${groups.filter(Boolean).join(' + ') || 'Groupe'} · ${text(subject?.name) || 'Séance'}`,
         startsAt: text(session.starts_at), endsAt: text(session.ends_at), status: text(session.status), teacherId, teacherName: name(person), students, attendances,
         teacherAttendances: rows('teacher_attendances').filter(row => row.session_id === session.id).map(row => ({
           id: row.id, teacherId: text(row.teacher_id), teacherName: name(teacherPerson(text(row.teacher_id))),

@@ -3,6 +3,7 @@ import type { DatabaseRow, PersistentContext, RelationalSnapshot } from '@/types
 import type { TeacherDirectory, TeacherProfile } from '@/types/teachers';
 import { filterRelationalSnapshot } from './persistentPermissionsService';
 import { filterSnapshotForAcademicYear } from './academicYearScopeService';
+import { sessionParticipants } from './sessionParticipantsService';
 import { annualOfferingLabel } from './annualOfferingService';
 
 export const hasGlobalStaffManagement = (context: PersistentContext) => context.permissions.includes('staff.manage')
@@ -55,7 +56,7 @@ export function teacherDirectory(snapshot: RelationalSnapshot, context: Persiste
         componentId: String(row.component_id), validFrom: String(row.valid_from), validUntil: row.valid_until ? String(row.valid_until) : null, reason: String(row.reason || '') })),
     offerings: offerings.map(row => ({ id: row.id, label: annualOfferingLabel(row, snapshot), curriculumId: String(row.curriculum_id) })),
     groups: groups.filter(group => links.some(link => link.group_id === group.id)).map(group => ({ id: group.id, label: String(group.name), offeringIds: links.filter(link => link.group_id === group.id).map(link => String(link.offering_id)) })),
-    components: components.map(component => ({ id: component.id, curriculumId: String(component.curriculum_id), label: `${String(component.code)} · ${String(scoped.tables.subjects?.find(subject => subject.id === component.subject_id)?.name || 'Matière')}` })),
+    components: components.map(component => ({ subjectId: String(component.subject_id), id: component.id, curriculumId: String(component.curriculum_id), label: `${String(component.code)} · ${String(scoped.tables.subjects?.find(subject => subject.id === component.subject_id)?.name || 'Matière')}` })),
     canManageProfiles: hasGlobalStaffManagement(context),
     canManageAssignments: context.permissions.includes('academic.assignment.manage') && !!yearId && !!year && !year.archived_at && year.status !== 'CLOTUREE',
     selectedYearId: yearId,
@@ -68,6 +69,6 @@ export function teacherHasUpcomingSessions(snapshot: RelationalSnapshot, teacher
 }
 
 export function assignmentHasSessionsAfter(snapshot: RelationalSnapshot, assignmentId: string, endOn: string) {
-  return (snapshot.tables.sessions || []).some(session => session.assignment_id === assignmentId
+  return (snapshot.tables.sessions || []).some(session => sessionParticipants(snapshot, session).some(participant => participant.assignment_id === assignmentId)
     && !['ANNULE', 'REPORTE'].includes(String(session.status)) && new Date(String(session.ends_at)).toISOString().slice(0, 10) > endOn);
 }

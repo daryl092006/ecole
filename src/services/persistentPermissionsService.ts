@@ -1,5 +1,6 @@
 import type { DatabaseRow, PersistentContext, RelationalSnapshot } from '@/types/persistence';
 import { ROLES, type Permission } from '@/types/permissions';
+import { attendanceEnrollmentIds, sessionParticipants, visibleSessionParticipants } from './sessionParticipantsService';
 import { attendanceSessions } from './attendanceManagementService';
 import { visibleSupportTickets } from './persistentSupportService';
 import { visiblePurchases } from './persistentPurchaseService';
@@ -9,7 +10,7 @@ const ownRole = (context: PersistentContext) => context.role === ROLES.STUD || c
 const domainTables: Array<{ permission: Permission; tables: string[] }> = [
   { permission: 'academic.view', tables: ['cycles','levels','programs','tracks','subjects','curricula','curriculum_semesters','teaching_units','curriculum_components','academic_offerings','offering_semesters','group_offerings','teaching_assignments','assessment_weights','syllabuses','teachers'] },
   { permission: 'student.view', tables: ['students','enrollments','enrollment_groups','enrollment_events','student_contacts','delegate_mandates','student_documents','document_types','document_requirements','document_reviews','generated_documents'] },
-  { permission: 'schedule.view', tables: ['sites','rooms','groups','academic_years','blocked_periods','schedule_series','sessions','session_supervisors'] },
+  { permission: 'schedule.view', tables: ['sites','rooms','groups','academic_years','blocked_periods','schedule_series','sessions','session_participants','session_supervisors'] },
   { permission: 'attendance.view', tables: ['attendances','teacher_attendances','absence_justifications'] },
   { permission: 'grade.view', tables: ['evaluations','evaluation_candidates','evaluation_transitions','exam_deliveries','exam_papers','exam_parts','exam_questions','exam_options','exam_attempts','exam_answers','answer_corrections','grades','grade_revisions','academic_rule_versions','juries','jury_members','jury_decisions','jury_grade_inputs','credit_awards','exam_rooms','exam_room_candidates','exam_room_supervisors'] },
   { permission: 'complaint.view', tables: ['complaints','complaint_events'] },
@@ -32,7 +33,10 @@ export function filterRelationalSnapshot(snapshot: RelationalSnapshot, context: 
   const can = (permission: Permission) => context.permissions.includes(permission);
   const self = ownRole(context);
   const attendanceSessionIds = new Set(attendanceSessions(snapshot, context, null).map(row => row.id));
-  const attendanceIds = new Set(rows('attendances').filter(row => attendanceSessionIds.has(field(row, 'session_id'))).map(row => row.id));
+  const attendanceMembers = new Map(rows('sessions').filter(row => attendanceSessionIds.has(row.id)).map(session => [session.id, attendanceEnrollmentIds(snapshot, context, session)]));
+  const attendanceIds = new Set(rows('attendances').filter(row => attendanceMembers.get(field(row, 'session_id'))?.has(field(row, 'enrollment_id'))).map(row => row.id));
+  const sessionScopes = new Map(rows('sessions').map(session => [session.id, visibleSessionParticipants(snapshot, context, session)]));
+  const sessionAssignmentIds = new Set([...sessionScopes.values()].flat().map(row => field(row, 'assignment_id')));
   const teacher = context.role === ROLES.ENS;
   const supervisor = context.role === ROLES.SURV;
   const unscoped = context.grants.some(grant => !grant.site_id && !grant.academic_year_id && !grant.group_id);
@@ -46,10 +50,10 @@ export function filterRelationalSnapshot(snapshot: RelationalSnapshot, context: 
     const delivery = rows('exam_deliveries').find(row => row.id === room?.delivery_id);
     if (delivery) assignedSessionIds.add(field(delivery,'session_id'));
   }
-  const assignments = rows('teaching_assignments').filter(row => teacher ? !!context.teacherId && row.teacher_id === context.teacherId
-    : supervisor ? rows('sessions').some(session => assignedSessionIds.has(session.id) && session.assignment_id === row.id)
+  const assignments = rows('teaching_assignments').filter(row => teacher ? !!context.teacherId && (row.teacher_id === context.teacherId || sessionAssignmentIds.has(row.id))
+    : supervisor ? sessionAssignmentIds.has(row.id)
     : self ? rows('enrollment_groups').some(link => personalEnrollments.has(field(link,'enrollment_id')) && link.group_id === row.group_id && rows('enrollments').some(enrollment => enrollment.id === link.enrollment_id && enrollment.offering_id === row.offering_id))
-    : rows('academic_offerings').some(offering => offering.id === row.offering_id && grantsOffering(offering,row.group_id)));
+    : rows('academic_offerings').some(offering => offering.id === row.offering_id && grantsOffering(offering,row.group_id))).filter(row => rows('academic_offerings').some(offering => offering.id === row.offering_id && grantsOffering(offering, row.group_id)));
   const assignmentIds = new Set(assignments.map(row => row.id));
   const offeringIds = new Set(rows('academic_offerings').filter(row => self ? rows('enrollments').some(link => personalEnrollments.has(link.id) && link.offering_id === row.id)
     : teacher || supervisor ? assignments.some(link => link.offering_id === row.id) : grantsOffering(row)).map(row => row.id));
@@ -68,7 +72,7 @@ export function filterRelationalSnapshot(snapshot: RelationalSnapshot, context: 
   if (can('student.view') && unscoped && !self && !teacher && !supervisor) rows('students').forEach(row => studentIds.add(row.id));
   const curriculumIds = new Set(rows('academic_offerings').filter(row => offeringIds.has(row.id)).map(row => field(row,'curriculum_id')));
   const semesterIds = new Set(rows('curriculum_semesters').filter(row => curriculumIds.has(field(row,'curriculum_id'))).map(row => row.id));
-  const evaluationIds = new Set(rows('evaluations').filter(row => (row.assignment_id ? assignmentIds.has(field(row,'assignment_id')) : !teacher && !supervisor && (row.offering_id ? offeringIds.has(field(row,'offering_id')) : unscoped && !self) && (!row.group_id || groupIds.has(field(row,'group_id'))))
+  const evaluationIds = new Set(rows('evaluations').filter(row => (row.assignment_id ? assignmentIds.has(field(row,'assignment_id')) && (!teacher || assignments.some(assignment => assignment.id === row.assignment_id && assignment.teacher_id === context.teacherId)) : !teacher && !supervisor && (row.offering_id ? offeringIds.has(field(row,'offering_id')) : unscoped && !self) && (!row.group_id || groupIds.has(field(row,'group_id'))))
     && (!self || rows('evaluation_candidates').some(candidate => candidate.evaluation_id === row.id && enrollmentIds.has(field(candidate,'enrollment_id'))))).map(row => row.id));
   const candidates = rows('evaluation_candidates').filter(row => evaluationIds.has(field(row,'evaluation_id')) && (!self || enrollmentIds.has(field(row,'enrollment_id'))));
   const candidateIds = new Set(candidates.map(row => row.id));
@@ -135,7 +139,7 @@ export function filterRelationalSnapshot(snapshot: RelationalSnapshot, context: 
     source[name] = collection.filter(row => {
       if (name === 'purchases') return purchaseIds.has(row.id);
       if (name === 'purchase_lines' || name === 'purchase_receipts') return purchaseIds.has(field(row, 'purchase_id'));
-      if (name === 'attendances') return attendanceSessionIds.has(field(row, 'session_id')) && (context.role !== ROLES.STUD || personalEnrollments.has(field(row, 'enrollment_id')));
+      if (name === 'attendances') return attendanceIds.has(row.id);
       if (name === 'teacher_attendances') return context.role !== ROLES.STUD && attendanceSessionIds.has(field(row, 'session_id'));
       if (name === 'absence_justifications') return attendanceIds.has(field(row, 'attendance_id')) && (!self
         || rows('attendances').some(attendance => attendance.id === row.attendance_id && personalEnrollments.has(field(attendance, 'enrollment_id'))));
@@ -158,8 +162,9 @@ export function filterRelationalSnapshot(snapshot: RelationalSnapshot, context: 
       if (name === 'curriculum_semesters') return unscoped && !self && !teacher && !supervisor || semesterIds.has(row.id);
       if (name === 'students') return studentIds.has(row.id);
       if (name === 'enrollments') return enrollmentIds.has(row.id);
-      if (name === 'sessions') return supervisor ? assignedSessionIds.has(row.id) : (assignmentIds.has(field(row,'assignment_id')) || (self && groupIds.has(field(row,'group_id'))));
-      if (name === 'session_supervisors') return supervisor ? row.account_id === context.accountId : rows('sessions').some(item => item.id === row.session_id && assignmentIds.has(field(item,'assignment_id')));
+      if (name === 'sessions') return !!sessionScopes.get(row.id)?.length;
+      if (name === 'session_participants') return sessionScopes.get(field(row, 'session_id'))?.some(participant => participant.id === row.id) || false;
+      if (name === 'session_supervisors') return supervisor ? row.account_id === context.accountId : !!sessionScopes.get(field(row, 'session_id'))?.length;
       if (name === 'evaluations') return evaluationIds.has(row.id);
       if (name === 'evaluation_candidates') return candidateIds.has(row.id);
       if (name === 'grades') return gradeIds.has(row.id);
@@ -195,6 +200,10 @@ export function filterRelationalSnapshot(snapshot: RelationalSnapshot, context: 
       if (row.group_id) return groupIds.has(field(row,'group_id'));
       return unscoped && !self && !teacher && !supervisor;
     }).map(row => {
+      if (name === 'sessions') {
+        const participant = sessionScopes.get(row.id)![0];
+        return { ...row, assignment_id: participant.assignment_id, offering_id: participant.offering_id, group_id: participant.group_id, is_shared: sessionParticipants(snapshot, row).length > 1 };
+      }
       if (name === 'accounts') { const safe = { ...row }; delete safe.auth_user_id; return safe; }
       if (self && ['exam_papers','exam_parts','exam_questions','exam_options'].includes(name)) return { id:row.id }; // Le sujet doit passer par la commande de démarrage avec horloge serveur.
       if (self && name === 'exam_options') { const safe = { ...row }; delete safe.is_correct; return safe; }

@@ -27,6 +27,7 @@ type ScheduleCadence = 'single' | 'multi';
 
 const titles: Record<Action, string> = {
   create_session: 'Nouvelle séance',
+  create_shared_course: 'Nouveau cours commun',
   update_session: 'Modifier la séance',
   move_session: 'Déplacer la séance',
   cancel_session: 'Annuler la séance',
@@ -75,6 +76,7 @@ function ScheduleManager() {
   // Explicit dates share the same time range and are sent in one transaction.
   const [cadence, setCadence] = useState<ScheduleCadence>('single');
   const [selectedDates, setSelectedDates] = useState<string[]>([]);
+  const [sharedAssignmentIds, setSharedAssignmentIds] = useState<string[]>([]);
   const [multiStartTime, setMultiStartTime] = useState('08:00');
   const [multiEndTime, setMultiEndTime] = useState('12:00');
 
@@ -121,10 +123,12 @@ function ScheduleManager() {
     const assignment = directory.assignments.find(row => row.id === assignmentId);
     return assignment ? `${groupName(assignment.groupId)} · ${componentName(assignment.id)} · ${teacherName(assignment.teacherId)} · ${directory.offerings.find(offering => offering.id === assignment.offeringId)?.label || 'Formation'}` : 'Affectation indisponible';
   };
+  const sessionGroups = (session: ManagedSession) => [...new Set(session.participants.map(participant => participant.groupId))];
+  const sessionGroupNames = (session: ManagedSession) => sessionGroups(session).map(groupName).join(' + ');
   const roomName = (id: string | null) => id ? directory.rooms.find(room => room.id === id)?.name || 'Salle indisponible' : 'En ligne';
 
   const open = (action: Action, session?: ManagedSession) => {
-    setDetail(null); setSaveError(''); setOperation({ action, session });
+    setDetail(null); setSaveError(''); setSharedAssignmentIds([]); setOperation({ action, session });
     setCadence('single');
     setSelectedDates([]);
     setMultiStartTime('08:00');
@@ -147,12 +151,13 @@ function ScheduleManager() {
 
   const action = operation?.action;
   const current = operation?.session;
-  const editing = action === 'create_session' || action === 'update_session';
+  const sharedCreate = action === 'create_shared_course';
+  const editing = action === 'create_session' || action === 'update_session' || sharedCreate;
   const timed = editing || action === 'move_session' || action === 'block_period';
   const isMultiCreate = action === 'create_session' && cadence === 'multi';
   const effectiveStartsAt = isMultiCreate ? (multiSlots[0] ? localTime(multiSlots[0].startsAt) : '') : form.startsAt;
   const effectiveEndsAt = isMultiCreate ? (multiSlots[0] ? localTime(multiSlots[0].endsAt) : '') : form.endsAt;
-  const effectiveReason = form.reason.trim() || (action === 'create_session'
+  const effectiveReason = form.reason.trim() || (sharedCreate ? 'Programmation du cours commun aux groupes sélectionnés' : action === 'create_session'
     ? (isMultiCreate && multiSlots.length > 1 ? `Programmation groupée de ${multiSlots.length} séances de cours` : 'Programmation pédagogique du cours')
     : action === 'update_session' ? 'Mise à jour des horaires ou de la salle du cours'
     : action === 'move_session' ? 'Déplacement de séance de cours'
@@ -166,11 +171,17 @@ function ScheduleManager() {
   const nextAccess = movingExam && current ? shiftExamAccess(movingExam, current.startsAt, iso(effectiveStartsAt)) : null;
   const assignment = directory.assignments.find(row => row.id === form.assignmentId);
   const siteId = directory.offerings.find(offering => offering.id === assignment?.offeringId)?.siteId;
+  const sharedChoices = directory.assignments.filter(candidate => candidate.id !== assignment?.id && candidate.teacherId === assignment?.teacherId
+    && directory.components.some(component => component.id === candidate.componentId && !!component.subjectId
+      && component.subjectId === directory.components.find(item => item.id === assignment?.componentId)?.subjectId)
+    && directory.offerings.find(offering => offering.id === candidate.offeringId)?.siteId === siteId);
   const selectedYear = portal.academicYearContext?.years.find(year => year.id === directory.selectedYearId);
   const dateMin = [selectedYear?.starts_on, assignment?.validFrom].filter((date): date is string => Boolean(date)).sort().at(-1);
   const dateMax = [selectedYear?.ends_on, assignment?.validUntil].filter((date): date is string => Boolean(date)).sort()[0];
 
   const fields: ReviewField[] = [
+    ...(sharedCreate ? [{ label: 'Groupes et formations participants', value: [form.assignmentId, ...sharedAssignmentIds].map(assignmentName).join(' ; ') }] : []),
+    ...(current?.shared ? [{ label: 'Tous les groupes concernés', value: sessionGroupNames(current) }] : []),
     ...(editing ? [{ label: 'Cours', value: assignmentName(form.assignmentId), ...(current ? { previous: assignmentName(current.assignmentId) } : {}) },
       { label: 'Type de séance', value: form.mode, previous: current?.mode }, { label: 'Salle prévue', value: roomName(form.roomId || null), ...(current ? { previous: roomName(current.roomId) } : {}) }] : []),
     ...(isMultiCreate ? [
@@ -188,7 +199,9 @@ function ScheduleManager() {
     { label: 'Motif', value: effectiveReason },
   ];
 
-  const consequence = action === 'block_period' ? 'La période bloquera toute nouvelle séance sur ce créneau et ce périmètre dans l’année sélectionnée. Les séances existantes doivent être traitées avant ce blocage.'
+  const consequence = sharedCreate ? 'Un seul cours sera créé pour tous les groupes sélectionnés. La salle et l’enseignant seront réservés une seule fois ; chaque groupe conservera ses présences et sa formation.'
+    : current?.shared ? 'Cette opération concerne tous les groupes de ce cours commun. Le déplacement, le remplacement de l’enseignant ou l’annulation s’applique à leur séance unique ; leurs rattachements pédagogiques restent conservés.'
+    : action === 'block_period' ? 'La période bloquera toute nouvelle séance sur ce créneau et ce périmètre dans l’année sélectionnée. Les séances existantes doivent être traitées avant ce blocage.'
     : action === 'cancel_session' ? 'La séance sera marquée annulée avec son motif et restera dans l’historique. Les émargements et les examens avec copies ou résultats protègent son annulation.'
       : action === 'replace_teacher' ? 'Seul l’enseignant effectif de cette séance changera. L’affectation d’origine et les autres séances seront conservées. Les conflits du remplaçant seront contrôlés.'
         : movingExam ? 'La séance et les horaires d’accès à l’épreuve seront déplacés ensemble, dans un seul enregistrement. La durée de composition sera conservée. Le déplacement sera refusé si l’épreuve est déjà ouverte, possède une copie ou un résultat, ou si un conflit apparaît.'
@@ -196,9 +209,9 @@ function ScheduleManager() {
         : 'La séance sera enregistrée après contrôle du groupe, de l’enseignant, de la salle, du semestre et des périodes bloquées. Les autres séances resteront inchangées.';
 
   const yearId = directory.selectedYearId || '';
-  const groups = [...new Map([...directory.groups, ...directory.sessions.map(session => ({ id: session.groupId, label: groupName(session.groupId) }))].map(group => [group.id, group])).values()];
+  const groups = [...new Map([...directory.groups, ...directory.sessions.flatMap(session => sessionGroups(session).map(id => ({ id, label: groupName(id) })))].map(group => [group.id, group])).values()];
   const groupId = groupSelection.yearId === yearId && groups.some(group => group.id === groupSelection.groupId) ? groupSelection.groupId : '';
-  const sessions = directory.sessions.filter(session => !groupId || session.groupId === groupId);
+  const sessions = directory.sessions.filter(session => !groupId || sessionGroups(session).includes(groupId));
   const active = sessions.filter(session => !['ANNULE', 'REPORTE'].includes(session.status));
 
   return <div className="domain-workspace workspace-stack">
@@ -207,7 +220,7 @@ function ScheduleManager() {
       title="Séances et emploi du temps"
       description="Horaires en heure de Lomé (UTC). Programmation à l’heure précise, par séance ou sur plusieurs dates."
     >
-      {directory.canCreate && <button className="btn btn-primary" onClick={() => open('create_session')}>Programmer un cours</button>}
+      {directory.canCreate && <><button className="btn btn-primary" onClick={() => open('create_session')}>Programmer un cours</button><button className="btn btn-outline" onClick={() => open('create_shared_course')}>Programmer un cours commun</button></>}
       {directory.canUpdate && (directory.canBlockAllSites || directory.sites.length > 0) && <button className="btn btn-outline" onClick={() => open('block_period')}>Bloquer une période</button>}
       <Link className="btn btn-outline" href="/academique/referentiel?collection=groups">Créer / gérer une classe</Link>
     </PageHeader>
@@ -215,17 +228,17 @@ function ScheduleManager() {
     {success && <p className="card" role="status">{success}</p>}
     {!directory.selectedYearId && <p className="restricted-box">Choisissez une année scolaire précise pour gérer le planning.</p>}
     <section className="card"><ScheduleGroupFilter groups={groups} value={groupId} onChange={id => setGroupSelection({ yearId, groupId: id })} count={active.length} /></section>
-    <ScheduleCalendar period={portal.academicYearContext?.years.find(year => year.id === directory.selectedYearId)} sessions={active.map(session => ({ id: session.id, start: session.startsAt, end: session.endsAt, title: `${componentName(session.assignmentId)} · ${groupName(session.groupId)}`, subtitle: `${teacherName(session.replacementTeacherId || session.teacherId)} · ${roomName(session.actualRoomId || session.roomId)} · ${session.status}` }))} onSelect={id => setDetail(directory.sessions.find(session => session.id === id) || null)} />
-    {sessions.some(session => ['ANNULE', 'REPORTE'].includes(session.status)) && <section className="card"><h2>Séances annulées ou reportées</h2>{sessions.filter(session => ['ANNULE', 'REPORTE'].includes(session.status)).map(session => <p key={session.id}><button className="btn btn-outline" onClick={() => setDetail(session)}>{displayTime(session.startsAt)} · {groupName(session.groupId)} · {session.status}</button></p>)}</section>}
+    <ScheduleCalendar period={portal.academicYearContext?.years.find(year => year.id === directory.selectedYearId)} sessions={active.map(session => ({ id: session.id, start: session.startsAt, end: session.endsAt, title: `${componentName(session.assignmentId)} · ${sessionGroupNames(session)}`, subtitle: `${teacherName(session.replacementTeacherId || session.teacherId)} · ${roomName(session.actualRoomId || session.roomId)} · ${session.status}` }))} onSelect={id => setDetail(directory.sessions.find(session => session.id === id) || null)} />
+    {sessions.some(session => ['ANNULE', 'REPORTE'].includes(session.status)) && <section className="card"><h2>Séances annulées ou reportées</h2>{sessions.filter(session => ['ANNULE', 'REPORTE'].includes(session.status)).map(session => <p key={session.id}><button className="btn btn-outline" onClick={() => setDetail(session)}>{displayTime(session.startsAt)} · {sessionGroupNames(session)} · {session.status}</button></p>)}</section>}
     <section className="card"><h2>Périodes bloquées ({directory.blockedPeriods.length})</h2>{directory.blockedPeriods.map(period => <p key={period.id}><strong>{period.name}</strong> · {displayTime(period.startsAt)} → {displayTime(period.endsAt)} · {period.reason || 'Motif historique non renseigné'}</p>)}{!directory.blockedPeriods.length && <p>Aucune période bloquée.</p>}</section>
     {detail && <WorkPage title="Détail de la séance" onClose={() => setDetail(null)}><dl className="record-details-grid">
-      <div><dt>Affectation</dt><dd>{assignmentName(detail.assignmentId)}</dd></div><div><dt>Horaires (Lomé)</dt><dd>{displayTime(detail.startsAt)} → {displayTime(detail.endsAt)}</dd></div>
+      <div><dt>Affectation</dt><dd>{detail.participants.map(participant => assignmentName(participant.assignmentId)).join(' ; ')}</dd></div><div><dt>Horaires (Lomé)</dt><dd>{displayTime(detail.startsAt)} → {displayTime(detail.endsAt)}</dd></div>
       <div><dt>Enseignant effectif</dt><dd>{teacherName(detail.replacementTeacherId || detail.teacherId)}</dd></div><div><dt>Salle effective</dt><dd>{roomName(detail.actualRoomId || detail.roomId)}</dd></div>
       <div><dt>Statut</dt><dd>{detail.status}</dd></div><div><dt>Motif</dt><dd>{detail.reason || 'Non renseigné'}</dd></div></dl>
       {detail.exam && <section className="card"><h2>{detail.exam.name}</h2><p>Accès (Lomé) : {displayTime(detail.exam.opensAt)} → {displayTime(detail.exam.closesAt)}</p>{(detail.exam.hasCopies || detail.exam.hasResults) && <p className="restricted-box">Cette épreuve possède une copie ou un résultat : ses horaires ne peuvent plus être déplacés.</p>}</section>}
       {detail.hasAttendance && <p className="restricted-box">Séance déjà émargée : ses horaires, son affectation et son annulation sont protégés.</p>}
-      {directory.canUpdate && !['ANNULE', 'REPORTE'].includes(detail.status) && <div className="btn-group">
-        <button className="btn btn-outline" onClick={() => open('update_session', detail)}>Modifier la séance</button>
+      {directory.canUpdate && detail.canUpdate && !['ANNULE', 'REPORTE'].includes(detail.status) && <div className="btn-group">
+        {!detail.shared && <button className="btn btn-outline" onClick={() => open('update_session', detail)}>Modifier la séance</button>}
         {!detail.hasAttendance && <button className="btn btn-outline" onClick={() => open('move_session', detail)}>Déplacer la séance</button>}
         <button className="btn btn-outline" onClick={() => open('replace_teacher', detail)}>Remplacer l’enseignant</button>
         {!detail.hasAttendance && <button className="btn btn-danger" onClick={() => open('cancel_session', detail)}>Annuler la séance</button>}
@@ -235,6 +248,7 @@ function ScheduleManager() {
       confirmLabel={`Confirmer : ${titles[operation.action].toLocaleLowerCase('fr')}`} danger={action === 'cancel_session'}
       validate={() => {
         if (editing && !assignment) return 'Choisissez le groupe, la matière et l’enseignant du cours.';
+        if (sharedCreate && (sharedAssignmentIds.length < 1 || sharedAssignmentIds.length > 29 || sharedAssignmentIds.some(id => !sharedChoices.some(choice => choice.id === id)))) return 'Choisissez de 2 à 30 affectations compatibles pour ce cours commun.';
         if (isMultiCreate) {
           if (!multiSlots.length) return 'Sélectionnez au moins une date et des heures cohérentes.';
           if (multiSlots.length > 60) return 'Sélectionnez au maximum 60 dates par enregistrement.';
@@ -248,7 +262,8 @@ function ScheduleManager() {
         event.preventDefault(); setSaving(true); setSaveError('');
         const common = { revision: directory.revision, reason: effectiveReason };
         const sessionId = current?.id || '';
-        const command: ScheduleCommand = operation.action === 'block_period' ? { ...common, action: 'block_period', name: form.name, kind: form.kind, siteId: form.siteId || null, startsAt: iso(form.startsAt), endsAt: iso(form.endsAt) }
+        const command: ScheduleCommand = operation.action === 'create_shared_course' ? { ...common, action: 'create_shared_course', assignmentIds: [form.assignmentId, ...sharedAssignmentIds], roomId: form.roomId, startsAt: iso(form.startsAt), endsAt: iso(form.endsAt) }
+          : operation.action === 'block_period' ? { ...common, action: 'block_period', name: form.name, kind: form.kind, siteId: form.siteId || null, startsAt: iso(form.startsAt), endsAt: iso(form.endsAt) }
           : operation.action === 'cancel_session' ? { ...common, action: 'cancel_session', sessionId }
             : operation.action === 'replace_teacher' ? { ...common, action: 'replace_teacher', sessionId, teacherId: form.teacherId || null }
               : operation.action === 'move_session' ? { ...common, action: 'move_session', sessionId, startsAt: iso(form.startsAt), endsAt: iso(form.endsAt) }
@@ -271,8 +286,9 @@ function ScheduleManager() {
         }).catch(cause => setSaveError(cause instanceof Error ? cause.message : 'Enregistrement impossible.')).finally(() => setSaving(false));
       }}>
       {editing && <>
-        {action === 'create_session' ? <ScheduleCourseSelector directory={directory} assignmentId={form.assignmentId} initialGroupId={requestedGroup || groupId} initialComponentId={params.get('matiere') || ''} canAssign={portal.perms.permissions.includes('academic.assignment.manage')} onChange={id => setForm({ ...form, assignmentId: id, roomId: '' })} onAssign={setAssigning} /> : <label className="form-group">Affectation<select className="select-input" required value={form.assignmentId} onChange={event => setForm({ ...form, assignmentId: event.target.value, roomId: '' })}><option value="">Choisir une affectation</option>{directory.assignments.filter(assignment => assignment.id === current?.assignmentId || directory.teachers.some(teacher => teacher.id === assignment.teacherId && teacher.active)).map(assignment => <option key={assignment.id} value={assignment.id}>{assignmentName(assignment.id)}</option>)}</select></label>}
-        <label className="form-group">Type de séance<select className="select-input" value={form.mode} onChange={event => setForm({ ...form, mode: event.target.value as SessionMode, roomId: '' })}><option value="COURS">Cours en présentiel</option><option value="PAPIER">Épreuve sur papier</option><option value="EN_LIGNE">En ligne</option></select></label>
+        {(action === 'create_session' || sharedCreate) ? <ScheduleCourseSelector directory={directory} assignmentId={form.assignmentId} initialGroupId={requestedGroup || groupId} initialComponentId={params.get('matiere') || ''} canAssign={portal.perms.permissions.includes('academic.assignment.manage')} onChange={id => { setSharedAssignmentIds([]); setForm({ ...form, assignmentId: id, roomId: '' }); }} onAssign={setAssigning} /> : <label className="form-group">Affectation<select className="select-input" required value={form.assignmentId} onChange={event => setForm({ ...form, assignmentId: event.target.value, roomId: '' })}><option value="">Choisir une affectation</option>{directory.assignments.filter(assignment => assignment.id === current?.assignmentId || directory.teachers.some(teacher => teacher.id === assignment.teacherId && teacher.active)).map(assignment => <option key={assignment.id} value={assignment.id}>{assignmentName(assignment.id)}</option>)}</select></label>}
+        {sharedCreate && assignment && <fieldset className="card"><legend>Autres groupes et formations du cours commun</legend>{sharedChoices.map(choice => <label className="form-group" key={choice.id}><input type="checkbox" checked={sharedAssignmentIds.includes(choice.id)} onChange={event => setSharedAssignmentIds(ids => event.target.checked ? [...ids, choice.id] : ids.filter(id => id !== choice.id))} />{assignmentName(choice.id)}</label>)}{!sharedChoices.length && <p>Aucune autre affectation compatible : vérifiez la matière, l’enseignant et le site des groupes à réunir.</p>}</fieldset>}
+        {!sharedCreate && <label className="form-group">Type de séance<select className="select-input" value={form.mode} onChange={event => setForm({ ...form, mode: event.target.value as SessionMode, roomId: '' })}><option value="COURS">Cours en présentiel</option><option value="PAPIER">Épreuve sur papier</option><option value="EN_LIGNE">En ligne</option></select></label>}
         {form.mode !== 'EN_LIGNE' && <label className="form-group">Salle prévue<select className="select-input" required disabled={!assignment} value={form.roomId} onChange={event => setForm({ ...form, roomId: event.target.value })}><option value="">Choisir une salle disponible</option>{directory.rooms.filter(room => room.available && (!room.siteId || room.siteId === siteId)).map(room => <option key={room.id} value={room.id}>{room.name}</option>)}</select></label>}
       </>}
       {action === 'block_period' && <><label className="form-group">Intitulé<input className="input" required maxLength={160} value={form.name} onChange={event => setForm({ ...form, name: event.target.value })} /></label>

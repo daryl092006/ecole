@@ -202,3 +202,40 @@ test('Le retour à l’enseignant d’origine inactif est refusé sans empêcher
   const original = fixture.snapshot.tables.sessions[0];
   expect((await fixture.post({ ...createSession, action: 'update_session', sessionId: original.id, startsAt: original.starts_at, endsAt: original.ends_at, roomId: uuid(951) })).status).toBe(200);
 });
+
+test('Cours commun : création multi-affectations, déplacement et annulation synchronisés via RPC dédiées', async () => {
+  const fixture = scheduleFixture(securityContext(), true);
+  const createShared = {
+    action: 'create_shared_course',
+    assignmentIds: [id.assignment(0), id.assignment(1)],
+    roomId: uuid(950),
+    startsAt: '2026-10-21T08:00:00Z',
+    endsAt: '2026-10-21T10:00:00Z',
+  };
+  const response = await fixture.post(createShared);
+  expect(response.status).toBe(201);
+  const { id: sessionId } = await response.json();
+  expect(sessionId).toBeDefined();
+
+  // Doublon d'affectation refusé
+  const duplicate = await fixture.post({ ...createShared, assignmentIds: [id.assignment(0), id.assignment(0)] });
+  expect(duplicate.status).toBe(400);
+
+  // Affectation hors périmètre refusée
+  const outside = await fixture.post({ ...createShared, assignmentIds: [id.assignment(0), id.assignment(2)] });
+  expect(outside.status).toBe(404);
+
+  // Modification directe (update_session) interdite sur un cours commun
+  const updateForbidden = await fixture.post({ ...createSession, action: 'update_session', sessionId });
+  expect(updateForbidden.status).toBe(409);
+  expect((await updateForbidden.json()).error).toMatch(/Utilisez le déplacement/);
+
+  // Déplacement via RPC escen_shared_course_change
+  const move = await fixture.post({ action: 'move_session', sessionId, startsAt: '2026-10-22T08:00:00Z', endsAt: '2026-10-22T10:00:00Z' });
+  expect(move.status).toBe(200);
+
+  // Annulation synchronisée via RPC escen_shared_course_change
+  const cancel = await fixture.post({ action: 'cancel_session', sessionId });
+  expect(cancel.status).toBe(200);
+  expect(fixture.snapshot.tables.sessions.find(s => s.id === sessionId)).toMatchObject({ status: 'ANNULE' });
+});

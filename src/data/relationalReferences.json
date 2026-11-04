@@ -436,5 +436,12 @@
   "website_brochures": {
     "academic_year_id": "academic_years",
     "created_by": "accounts"
+  },
+  "session_participants": {
+    "session_id": "sessions",
+    "assignment_id": "teaching_assignments",
+    "offering_id": "academic_offerings",
+    "group_id": "groups",
+    "teacher_id": "teachers"
   }
 }

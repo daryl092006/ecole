@@ -1,6 +1,7 @@
 import type { DatabaseRow, PersistentContext, RelationalSnapshot } from '@/types/persistence';
 import type { ScheduleDirectory, ScheduledExam } from '@/types/scheduleManagement';
-import { assignmentIsGranted, teacherAcademicScope, teacherDirectory } from './teacherManagementService';
+import { participantGranted, sessionParticipants, visibleSessionParticipants } from './sessionParticipantsService';
+import { teacherDirectory } from './teacherManagementService';
 
 export function canBlockSite(context: PersistentContext, yearId: string | null, siteId: string | null) {
   return !!yearId && context.permissions.includes('schedule.update') && context.grants.some(grant => !grant.group_id
@@ -23,16 +24,12 @@ export function examRescheduleIssue(exam: ScheduledExam, previousStart: string, 
 
 export function scheduleDirectory(snapshot: RelationalSnapshot, context: PersistentContext, yearId: string | null): ScheduleDirectory {
   const directory = teacherDirectory(snapshot, context, yearId);
-  const scoped = teacherAcademicScope(snapshot, context, yearId);
   const rows = (table: string) => snapshot.tables[table] || [];
   const year = rows('academic_years').find(row => row.id === yearId && !row.archived_at);
   const writable = !!year && year.status !== 'CLOTUREE';
   const offerings = directory.offerings.map(offering => ({ ...offering, siteId: (rows('academic_offerings').find(row => row.id === offering.id)?.site_id as string | null) || null }));
   // Keep historical sessions readable even if their assignment/component is now archived.
-  const sessions = (scoped.tables.sessions || []).filter(session => {
-    const offering = rows('academic_offerings').find(row => row.id === session.offering_id);
-    return offering?.academic_year_id === yearId && assignmentIsGranted(context, offering, session.group_id);
-  });
+  const sessions = rows('sessions').filter(session => visibleSessionParticipants(snapshot, context, session, yearId).length > 0);
   const siteAllowed = (siteId: unknown) => context.grants.some(grant => (!grant.academic_year_id || grant.academic_year_id === yearId)
     && (!grant.site_id || grant.site_id === siteId));
   return {
@@ -48,17 +45,22 @@ export function scheduleDirectory(snapshot: RelationalSnapshot, context: Persist
     sites: rows('sites').filter(site => !site.archived_at && canBlockSite(context, yearId, site.id)).map(site => ({ id: site.id, name: String(site.name) })),
     canBlockAllSites: canBlockSite(context, yearId, null),
     sessions: sessions.map(row => {
+      const participants = visibleSessionParticipants(snapshot, context, row, yearId);
+      const allParticipants = sessionParticipants(snapshot, row);
+      const first = participants[0];
       const delivery = rows('exam_deliveries').find(exam => exam.session_id === row.id);
       const candidates = new Set(rows('evaluation_candidates').filter(candidate => candidate.evaluation_id === delivery?.evaluation_id).map(candidate => candidate.id));
       const exam: ScheduledExam | null = delivery ? { id: delivery.id, evaluationId: String(delivery.evaluation_id), name: String(rows('evaluations').find(evaluation => evaluation.id === delivery.evaluation_id)?.name || 'Épreuve liée'),
         opensAt: String(delivery.access_opens_at), closesAt: String(delivery.access_closes_at), durationMinutes: delivery.duration_minutes == null ? null : Number(delivery.duration_minutes),
         hasCopies: rows('exam_attempts').some(attempt => attempt.evaluation_id === delivery.evaluation_id),
         hasResults: rows('grades').some(grade => candidates.has(String(grade.candidate_id)) && (grade.value != null || grade.absence_status != null)) } : null;
-      return { id: row.id, assignmentId: String(row.assignment_id), offeringId: String(row.offering_id), groupId: String(row.group_id),
+      return { id: row.id, assignmentId: String(first.assignment_id), offeringId: String(first.offering_id), groupId: String(first.group_id),
+      participants: participants.map(participant => ({ assignmentId: String(participant.assignment_id), offeringId: String(participant.offering_id), groupId: String(participant.group_id) })),
+      shared: allParticipants.length > 1, canUpdate: writable && context.permissions.includes('schedule.update') && allParticipants.every(participant => participantGranted(snapshot, context, participant, yearId)),
       teacherId: String(row.teacher_id), roomId: row.room_id ? String(row.room_id) : null, startsAt: String(row.starts_at), endsAt: String(row.ends_at),
       mode: row.mode as ScheduleDirectory['sessions'][number]['mode'], status: String(row.status), replacementTeacherId: row.replacement_teacher_id ? String(row.replacement_teacher_id) : null,
       actualRoomId: row.actual_room_id ? String(row.actual_room_id) : null, reason: String(row.reason || ''),
-      hasAttendance: rows('attendances').some(attendance => attendance.session_id === row.id), hasExam: !!exam, exam };
+      hasAttendance: [...rows('attendances'), ...rows('teacher_attendances')].some(attendance => attendance.session_id === row.id), hasExam: !!exam, exam };
     }),
     blockedPeriods: rows('blocked_periods').filter(period => (!period.academic_year_id || period.academic_year_id === yearId)
       && (!period.site_id || siteAllowed(period.site_id))).map(period => ({ id: period.id, name: String(period.name), kind: String(period.kind),
@@ -70,7 +72,9 @@ export const overlaps = (start: unknown, end: unknown, other: DatabaseRow) => Da
 
 export function scheduleConflict(snapshot: RelationalSnapshot, proposed: DatabaseRow): string | null {
   const sessions = (snapshot.tables.sessions || []).filter(row => row.id !== proposed.id && !['ANNULE', 'REPORTE'].includes(String(row.status)) && overlaps(proposed.starts_at, proposed.ends_at, row));
-  if (sessions.some(row => row.group_id === proposed.group_id)) return 'Ce groupe a déjà une séance sur ce créneau.';
+  const participants = sessionParticipants(snapshot, proposed);
+  const groups = new Set((participants.length === 1 ? [proposed] : participants).map(participant => participant.group_id));
+  if (sessions.some(row => sessionParticipants(snapshot, row).some(participant => groups.has(participant.group_id)))) return 'Ce groupe a déjà une séance sur ce créneau.';
   const teacher = proposed.replacement_teacher_id || proposed.teacher_id;
   if (sessions.some(row => (row.replacement_teacher_id || row.teacher_id) === teacher)) return 'Cet enseignant a déjà une séance sur ce créneau.';
   const room = proposed.actual_room_id || proposed.room_id;
@@ -83,7 +87,7 @@ export function scheduleConflict(snapshot: RelationalSnapshot, proposed: Databas
 
 export function scheduleDatabaseError(error: { message?: string; code?: string }) {
   const message = error.message || '';
-  if (message.includes('session_group_conflict')) return 'Ce groupe a déjà une séance sur ce créneau.';
+  if (message.includes('session_group_conflict') || message.includes('session_participant_group_conflict')) return 'Ce groupe a déjà une séance sur ce créneau.';
   if (message.includes('session_teacher_conflict')) return 'Cet enseignant a déjà une séance sur ce créneau.';
   if (message.includes('session_room_conflict')) return 'Cette salle est déjà occupée sur ce créneau.';
   if (/émargée/.test(message)) return 'Cette séance a déjà été émargée : ses horaires, son affectation et son annulation sont protégés.';
@@ -97,7 +101,8 @@ export function scheduleDatabaseError(error: { message?: string; code?: string }
   if (/nouveau créneau doit contenir/.test(message)) return 'Le nouveau créneau doit contenir toute la fenêtre d’accès à l’épreuve.';
   if (/Conflit de salle secondaire/.test(message)) return 'Une salle secondaire de l’épreuve est occupée sur le nouveau créneau.';
   if (/Surveillant déjà affecté/.test(message)) return 'Un surveillant de l’épreuve est déjà affecté sur le nouveau créneau.';
-  if (/Salle|salle/.test(message)) return 'La salle est indisponible, incompatible avec le site ou trop petite pour le groupe.';
+  if (/Cours commun|cours commun|groupes/.test(message)) return 'Vérifiez les affectations de tous les groupes du cours commun et vos autorisations.';
+  if (/Salle|salle/.test(message)) return 'La salle est indisponible ou incompatible avec le site.';
   if (/copies ou résultats/.test(message)) return 'Cette séance d’examen possède des copies ou des résultats et ne peut pas être annulée.';
   return 'Enregistrement refusé : actualisez les données et vérifiez les dates et les conflits. Aucune modification partielle n’est conservée.';
 }

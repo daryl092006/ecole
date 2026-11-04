@@ -1,3 +1,4 @@
+import { sessionParticipants } from './sessionParticipantsService';
 import references from '@/data/relationalReferences.json';
 import type { DatabaseRow, PersistentContext, RelationalSnapshot } from '@/types/persistence';
 import type { AcademicYearOption } from '@/types/academicYearContext';
@@ -24,8 +25,8 @@ export function accessibleAcademicYears(snapshot: RelationalSnapshot, context: P
       && (!grant.group_id || rows('group_offerings').some(link => link.offering_id === offering.id && link.group_id === grant.group_id)));
     const relevant = personal ? rows('enrollments').some(row => row.student_id === context.studentId && row.offering_id === offering.id)
       : teacher ? assignments.some(row => row.teacher_id === context.teacherId && row.offering_id === offering.id)
-        || !!context.teacherId && rows('sessions').some(session => session.replacement_teacher_id === context.teacherId && session.offering_id === offering.id)
-        : supervisor ? rows('sessions').some(session => session.offering_id === offering.id && supervisedSessions.has(session.id)) : granted;
+        || !!context.teacherId && rows('sessions').some(session => session.replacement_teacher_id === context.teacherId && sessionParticipants(snapshot, session).some(participant => participant.offering_id === offering.id))
+        : supervisor ? rows('sessions').some(session => sessionParticipants(snapshot, session).some(participant => participant.offering_id === offering.id) && supervisedSessions.has(session.id)) : granted;
     if (relevant && granted) allowed.add(id(offering, 'academic_year_id'));
   }
   if (personal) {

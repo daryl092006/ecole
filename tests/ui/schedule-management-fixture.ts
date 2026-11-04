@@ -16,9 +16,21 @@ export function scheduleFixture(context: PersistentContext = securityContext(), 
   const client = { async rpc(name: string, args: Record<string, unknown> = {}) {
     if (name === 'escen_backend_snapshot') return { data: snapshot, error: null };
     if (name === 'escen_academic_year_context') return { data: { currentYearId: id.year }, error: null };
-    if (name !== 'escen_backend_transaction') throw new Error(`RPC inattendue : ${name}`);
+    if (!['escen_backend_transaction', 'escen_shared_course_create', 'escen_shared_course_change'].includes(name)) throw new Error(`RPC inattendue : ${name}`);
     if (failure) return { data: null, error: failure };
-    const changes = args.p_changes as PersistentChange[];
+    let changes = args.p_changes as PersistentChange[];
+    if (name === 'escen_shared_course_create') {
+      const assignments = (args.p_assignment_ids as string[]).map(id => tables.teaching_assignments.find(row => row.id === id)!);
+      const first = assignments[0];
+      changes = [{ table: 'sessions', operation: 'insert', record: { id: args.p_session_id, assignment_id: first.id, offering_id: first.offering_id,
+        group_id: first.group_id, teacher_id: first.teacher_id, room_id: args.p_room_id, mode: 'COURS', status: 'PLANIFIE',
+        starts_at: args.p_starts_at, ends_at: args.p_ends_at, reason: args.p_reason } },
+      ...assignments.map(assignment => ({ table: 'session_participants', operation: 'insert' as const, record: { id: crypto.randomUUID(), session_id: args.p_session_id,
+        assignment_id: assignment.id, offering_id: assignment.offering_id, group_id: assignment.group_id, teacher_id: assignment.teacher_id } }))];
+    }
+    if (name === 'escen_shared_course_change') changes = [{ table: 'sessions', operation: 'update', record: { id: args.p_session_id, reason: args.p_reason,
+      ...(args.p_action === 'move' ? { starts_at: args.p_starts_at, ends_at: args.p_ends_at }
+        : args.p_action === 'cancel' ? { status: 'ANNULE' } : { replacement_teacher_id: args.p_teacher_id }) } }];
     transactions.push(changes);
     if (mutate) {
       for (const change of changes) {

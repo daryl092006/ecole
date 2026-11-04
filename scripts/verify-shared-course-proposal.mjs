@@ -3,6 +3,7 @@ import { randomUUID } from 'node:crypto';
 import { readFile } from 'node:fs/promises';
 import { localBusinessFixture } from '../tests/ui/local-business-fixture.mjs';
 import { verifyScheduleManagement } from './verify-schedule-management.mjs';
+import { loadLocalApiModule } from './local-api-fixture.mjs';
 
 // Verify the approved migration against populated data, exclusively in local PGlite.
 const local = await localBusinessFixture({ before: '202611040087_shared_course_participants.sql' });
@@ -148,7 +149,7 @@ try {
     await db.query("update escen.sessions set assignment_id=$1,teacher_id=$2,reason='Changement de recette avant émargement' where id=$3", [replacement.id, teacher, single.id]);
     assert.equal(await value('select assignment_id as value from escen.session_participants where session_id=$1', [single.id]), replacement.id);
   });
-  let secondEnrollment;
+  let secondEnrollment, delegateActor;
   await check('Présence de la deuxième formation liée à sa participation et contexte immuable', async () => {
     const person = await insert('people', { firstname: 'Élève', lastname: 'Deuxième groupe' });
     const student = await insert('students', { person_id: person.id, matricule: 'SHARED-TEST' });
@@ -164,6 +165,7 @@ try {
     const authId = randomUUID(); await db.query('insert into auth.users(id) values($1)', [authId]);
     const personId = await value('select person_id as value from escen.students where id=$1', [secondEnrollment.student_id]);
     const delegate = await insert('accounts', { person_id: personId, auth_user_id: authId, active: true });
+    delegateActor = delegate;
     const role = await value("select id as value from escen.roles where code='DEL'");
     await insert('role_grants', { account_id: delegate.id, role_id: role, group_id: group.id,
       granted_by: account.id, valid_from: '2020-01-01', reason: 'Mandat de recette' });
@@ -195,6 +197,58 @@ try {
     assert.equal(new Date(await value('select access_opens_at as value from escen.exam_deliveries where id=$1', [delivery.id])).toISOString(), '2027-05-11T08:15:00.000Z');
     await assert.rejects(insert('session_participants', { session_id: session.id, assignment_id: assignment.id,
       offering_id: offering.id, group_id: group.id, teacher_id: anchor.teacher_id, starts_at: session.starts_at, ends_at: session.ends_at, active: true }), /incompatible/);
+  });
+  const contextFor = async (actor, code, extra = {}) => ({ accountId: actor.id, personId: actor.person_id, authUserId: actor.auth_user_id,
+    roleCode: code, role: code === 'IT' ? 'Informaticien' : code === 'DEL' ? 'Délégué' : 'Étudiant',
+    permissions: (await db.query('select p.code from escen.permissions p join escen.role_permissions rp on rp.permission_id=p.id join escen.roles r on r.id=rp.role_id where r.code=$1', [code])).rows.map(row => row.code),
+    studentId: null, teacherId: null, grants: [{ role_code: code, role_name: code, site_id: null, group_id: null, academic_year_id: null }], ...extra });
+  const manager = await contextFor(account, 'IT');
+  const api = loadLocalApiModule('app/api/schedule/route.ts', local.client, manager);
+  const request = async body => new Request('http://local.test/api/schedule', { method: 'POST', headers: { 'x-escen-year': year.id },
+    body: JSON.stringify({ revision: await revision(), reason: 'Validation API du cours commun', ...body }) });
+  let apiCourse;
+  await check('API réelle : création, lecture et déplacement multi-groupes avec les RPC intégrées', async () => {
+    const response = await api.POST(await request({ action: 'create_shared_course', assignmentIds: [anchor.id, assignment.id], roomId: room.id,
+      startsAt: '2027-08-10T08:00:00Z', endsAt: '2027-08-10T10:00:00Z' }));
+    const result = await response.json(); assert.equal(response.status, 201, JSON.stringify(result)); apiCourse = result.id;
+    const directory = await (await api.GET(new Request('http://local.test/api/schedule', { headers: { 'x-escen-year': year.id } }))).json();
+    const session = directory.sessions.find(row => row.id === apiCourse);
+    assert.equal(session.shared, true); assert.equal(session.canUpdate, true); assert.equal(session.participants.length, 2);
+    const moved = await api.POST(await request({ action: 'move_session', sessionId: apiCourse, startsAt: '2027-08-11T08:00:00Z', endsAt: '2027-08-11T10:00:00Z' }));
+    assert.equal(moved.status, 200, JSON.stringify(await moved.json()));
+  });
+  await check('API et snapshot : gestionnaire du second groupe voit le cours sans pouvoir modifier tous les groupes', async () => {
+    const scoped = { ...manager, grants: [{ role_code: 'IT', role_name: 'Informaticien', site_id: site.id, group_id: group.id, academic_year_id: year.id }] };
+    const restricted = loadLocalApiModule('app/api/schedule/route.ts', local.client, scoped);
+    const directory = await (await restricted.GET(new Request('http://local.test/api/schedule', { headers: { 'x-escen-year': year.id } }))).json();
+    const session = directory.sessions.find(row => row.id === apiCourse);
+    assert.equal(session.groupId, group.id); assert.equal(session.participants.length, 1); assert.equal(session.canUpdate, false);
+    const denied = await restricted.POST(await request({ action: 'cancel_session', sessionId: apiCourse })); assert.equal(denied.status, 403);
+    const snapshot = await value('select public.escen_backend_snapshot() as value');
+    const { filterRelationalSnapshot } = loadLocalApiModule('services/persistentPermissionsService.ts', local.client, scoped);
+    const { filterSnapshotForAcademicYear } = loadLocalApiModule('services/academicYearScopeService.ts', local.client, scoped);
+    const filtered = filterSnapshotForAcademicYear(filterRelationalSnapshot(snapshot, scoped), year.id);
+    assert.ok(filtered.tables.sessions.some(row => row.id === apiCourse));
+    assert.equal(filtered.tables.session_participants.filter(row => row.session_id === apiCourse).length, 1);
+    assert.ok(filtered.tables.attendances.every(row => row.offering_id === offering.id));
+  });
+  await check('API présences : délégué du second groupe écrit sa formation, étudiant lit seulement ses présences', async () => {
+    const delegateContext = await contextFor(delegateActor, 'DEL', { studentId: secondEnrollment.student_id });
+    const attendanceApi = loadLocalApiModule('app/api/attendances/route.ts', local.client, delegateContext);
+    const getRequest = new Request('http://local.test/api/attendances', { headers: { 'x-escen-year': year.id } });
+    const directory = await (await attendanceApi.GET(getRequest)).json();
+    const session = directory.sessions.find(row => row.id === apiCourse);
+    assert.deepEqual(session.students.map(row => row.enrollmentId), [secondEnrollment.id]);
+    const response = await attendanceApi.POST(new Request('http://local.test/api/attendances', { method: 'POST', headers: { 'x-escen-year': year.id },
+      body: JSON.stringify({ action: 'record_students', revision: await revision(), sessionId: apiCourse,
+        entries: [{ enrollmentId: secondEnrollment.id, status: 'PRESENT', arrivedAt: null, leftAt: null, lateMinutes: null, comment: '' }] }) }));
+    assert.equal(response.status, 200, JSON.stringify(await response.json()));
+    assert.equal(await value('select offering_id as value from escen.attendances where session_id=$1', [apiCourse]), offering.id);
+    const studentContext = await contextFor(delegateActor, 'STUD', { studentId: secondEnrollment.student_id });
+    const studentApi = loadLocalApiModule('app/api/attendances/route.ts', local.client, studentContext);
+    const studentDirectory = await (await studentApi.GET(getRequest)).json();
+    assert.ok(studentDirectory.sessions.find(row => row.id === apiCourse));
+    assert.ok(studentDirectory.sessions.every(row => row.students.every(student => student.enrollmentId === secondEnrollment.id)));
   });
   console.log(JSON.stringify({ checks, remoteWrites: 0, migration: 87 }));
 } catch (error) {

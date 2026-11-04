@@ -79,7 +79,7 @@ export async function POST(request: Request) {
           id: existing?.id || crypto.randomUUID(), status: entry.status, arrived_at: entry.arrivedAt, left_at: entry.leftAt,
           late_minutes: entry.lateMinutes, comment: entry.comment || null, ...(body.reason ? { reason: body.reason } : {}),
           ...(!existing ? { session_id: session.id, enrollment_id: entry.enrollmentId,
-            offering_id: data.snapshot.tables.sessions.find(row => row.id === session.id)!.offering_id, recorded_by: data.context.accountId } : {}),
+            offering_id: data.snapshot.tables.enrollments.find(row => row.id === entry.enrollmentId)!.offering_id, recorded_by: data.context.accountId } : {}),
         } });
       }
     } else if (body.action === 'record_teacher') {

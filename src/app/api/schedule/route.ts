@@ -10,6 +10,7 @@ const times = { startsAt: z.iso.datetime({ offset: true }), endsAt: z.iso.dateti
 const slotSchema = z.object(times).strict();
 const session = { ...times, assignmentId: z.uuid(), roomId: z.uuid().nullable(), mode: z.enum(['COURS', 'PAPIER', 'EN_LIGNE']) };
 const schema = z.discriminatedUnion('action', [
+  z.object({ ...common, ...times, action: z.literal('create_shared_course'), assignmentIds: z.array(z.uuid()).min(2).max(30), roomId: z.uuid() }).strict(),
   z.object({ ...common, ...session, action: z.literal('create_session'), slots: z.array(slotSchema).min(1).max(60).optional() }).strict(),
   z.object({ ...common, ...session, action: z.literal('update_session'), sessionId: z.uuid() }).strict(),
   z.object({ ...common, ...times, action: z.literal('move_session'), sessionId: z.uuid() }).strict(),
@@ -38,15 +39,28 @@ export async function POST(request: Request) {
   try {
     const data = await load(request);
     const body = schema.parse(await request.json());
-    requirePermission(data.context, body.action === 'create_session' ? 'schedule.create' : 'schedule.update');
+    const creating = body.action === 'create_session' || body.action === 'create_shared_course';
+    requirePermission(data.context, creating ? 'schedule.create' : 'schedule.update');
     if (!data.year.selectedYearId) throw new RequestError(409, 'Choisissez une année scolaire précise pour modifier le planning.');
-    if (body.action === 'create_session' ? !data.directory.canCreate : !data.directory.canUpdate) throw new RequestError(409, 'L’état de cette année scolaire interdit cette opération.');
+    if (creating ? !data.directory.canCreate : !data.directory.canUpdate) throw new RequestError(409, 'L’état de cette année scolaire interdit cette opération.');
     if (body.revision !== data.snapshot.revision) throw new RequestError(409, 'Le planning a changé. Actualisez avant de réessayer.');
     if ('startsAt' in body && Date.parse(body.endsAt) <= Date.parse(body.startsAt)) throw new RequestError(400, 'La fin doit être postérieure au début.');
     const rows = (table: string) => data.snapshot.tables[table] || [];
     let id = '';
     const changes: PersistentChange[] = [];
-    if (body.action === 'block_period') {
+    if (body.action === 'create_shared_course') {
+      if (new Set(body.assignmentIds).size !== body.assignmentIds.length) throw new RequestError(400, 'Chaque affectation ne peut être choisie qu’une fois.');
+      if (!body.assignmentIds.every(assignmentId => data.directory.assignments.some(assignment => assignment.id === assignmentId))) {
+        throw new RequestError(404, 'Une affectation est absente de votre périmètre ou de l’année sélectionnée.');
+      }
+      if (!data.directory.rooms.some(room => room.id === body.roomId && room.available)) throw new RequestError(409, 'Choisissez une salle disponible.');
+      id = crypto.randomUUID();
+      const saved = await data.client.rpc('escen_shared_course_create', { p_actor_id: data.context.accountId, p_role_code: data.context.roleCode,
+        p_expected_revision: body.revision, p_session_id: id, p_assignment_ids: body.assignmentIds, p_room_id: body.roomId,
+        p_starts_at: body.startsAt, p_ends_at: body.endsAt, p_reason: body.reason });
+      if (saved.error) throw new RequestError(409, scheduleDatabaseError(saved.error));
+      return Response.json({ id, count: 1, revision: saved.data }, { status: 201, headers: { 'Cache-Control': 'no-store' } });
+    } else if (body.action === 'block_period') {
       if (!canBlockSite(data.context, data.year.selectedYearId, body.siteId)
         || body.siteId && !data.directory.sites.some(site => site.id === body.siteId)) throw new RequestError(403, 'Bloquer une période exige une attribution couvrant tous les groupes du site concerné.');
       const year = data.year.years.find(year => year.id === data.year.selectedYearId)!;
@@ -105,6 +119,17 @@ export async function POST(request: Request) {
     } else {
       const current = 'sessionId' in body ? data.directory.sessions.find(session => session.id === body.sessionId) : undefined;
       if ('sessionId' in body && !current) throw new RequestError(404, 'Séance introuvable dans l’année et le périmètre sélectionnés.');
+      if (current && !current.canUpdate) throw new RequestError(403, 'La modification exige une autorisation sur tous les groupes du cours commun.');
+      if (current?.shared) {
+        if (body.action === 'update_session') throw new RequestError(409, 'Utilisez le déplacement, le remplacement ou l’annulation du cours commun pour conserver ses affectations.');
+        const saved = await data.client.rpc('escen_shared_course_change', { p_actor_id: data.context.accountId, p_role_code: data.context.roleCode,
+          p_expected_revision: body.revision, p_session_id: current.id, p_reason: body.reason,
+          p_action: body.action === 'move_session' ? 'move' : body.action === 'cancel_session' ? 'cancel' : 'replace_teacher',
+          p_starts_at: body.action === 'move_session' ? body.startsAt : null, p_ends_at: body.action === 'move_session' ? body.endsAt : null,
+          p_teacher_id: body.action === 'replace_teacher' ? body.teacherId : null });
+        if (saved.error) throw new RequestError(409, scheduleDatabaseError(saved.error));
+        return Response.json({ id: current.id, count: 1, revision: saved.data }, { headers: { 'Cache-Control': 'no-store' } });
+      }
       const original = current ? rows('sessions').find(session => session.id === current.id)! : undefined;
       id = original?.id || crypto.randomUUID();
       const patch: Record<string, unknown> = { id, reason: body.reason };
