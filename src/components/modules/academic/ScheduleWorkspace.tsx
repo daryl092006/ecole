@@ -228,7 +228,22 @@ function ScheduleManager() {
     {success && <p className="card" role="status">{success}</p>}
     {!directory.selectedYearId && <p className="restricted-box">Choisissez une année scolaire précise pour gérer le planning.</p>}
     <section className="card"><ScheduleGroupFilter groups={groups} value={groupId} onChange={id => setGroupSelection({ yearId, groupId: id })} count={active.length} /></section>
-    <ScheduleCalendar period={portal.academicYearContext?.years.find(year => year.id === directory.selectedYearId)} sessions={active.map(session => ({ id: session.id, start: session.startsAt, end: session.endsAt, title: `${componentName(session.assignmentId)} · ${sessionGroupNames(session)}`, subtitle: `${teacherName(session.replacementTeacherId || session.teacherId)} · ${roomName(session.actualRoomId || session.roomId)} · ${session.status}` }))} onSelect={id => setDetail(directory.sessions.find(session => session.id === id) || null)} />
+    <ScheduleCalendar
+      period={portal.academicYearContext?.years.find(year => year.id === directory.selectedYearId)}
+      sessions={active.map(session => ({
+        id: session.id,
+        start: session.startsAt,
+        end: session.endsAt,
+        title: `${componentName(session.assignmentId)} · ${sessionGroupNames(session)}`,
+        subtitle: `${teacherName(session.replacementTeacherId || session.teacherId)} · ${roomName(session.actualRoomId || session.roomId)} · ${session.status}`,
+        subject: componentName(session.assignmentId),
+        group: sessionGroupNames(session),
+        teacher: teacherName(session.replacementTeacherId || session.teacherId),
+        room: roomName(session.actualRoomId || session.roomId),
+        status: session.status,
+      }))}
+      onSelect={id => setDetail(directory.sessions.find(session => session.id === id) || null)}
+    />
     {sessions.some(session => ['ANNULE', 'REPORTE'].includes(session.status)) && <section className="card"><h2>Séances annulées ou reportées</h2>{sessions.filter(session => ['ANNULE', 'REPORTE'].includes(session.status)).map(session => <p key={session.id}><button className="btn btn-outline" onClick={() => setDetail(session)}>{displayTime(session.startsAt)} · {sessionGroupNames(session)} · {session.status}</button></p>)}</section>}
     <section className="card"><h2>Périodes bloquées ({directory.blockedPeriods.length})</h2>{directory.blockedPeriods.map(period => <p key={period.id}><strong>{period.name}</strong> · {displayTime(period.startsAt)} → {displayTime(period.endsAt)} · {period.reason || 'Motif historique non renseigné'}</p>)}{!directory.blockedPeriods.length && <p>Aucune période bloquée.</p>}</section>
     {detail && <WorkPage title="Détail de la séance" onClose={() => setDetail(null)}><dl className="record-details-grid">
