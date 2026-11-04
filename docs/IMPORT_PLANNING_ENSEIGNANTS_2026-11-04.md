@@ -42,13 +42,28 @@ Cette répétition reste une hypothèse d'import. Les TPE, activités de clubs e
 libres sont conservés dans les PDF sources mais ne sont pas convertis en cours enseignants.
 Une date passée n'atteste ni une présence ni un cours effectivement réalisé.
 
+### Salles confirmées par l'utilisateur
+
+Les cours sont en présentiel (`COURS`). Correspondances confirmées le 4 novembre 2026 :
+
+| Groupe | Salle |
+| --- | --- |
+| L1 TC | Salle des L1 |
+| L1 IA & GL | Salle IA 1 |
+| L2 TC | Salle des L2 |
+| L2 IA & GL | Salle IA 2 |
+
+Ces libellés sont ajoutés aux séances candidates. Ils ne signifient pas que les salles
+ont déjà été créées en base. Les capacités et le rattachement au bâtiment restent à établir.
+Les salles distinctes ne résolvent pas les chevauchements d'un même enseignant.
+
 ### Blocages constatés
 
 - 20 créneaux ont le même enseignant à la même heure dans plusieurs groupes.
   Les contraintes `session_teacher_conflict` empêchent l'insertion de séances distinctes.
   Les cours communs nécessitent un rattachement approuvé ; ne pas désactiver les contrôles.
-- Aucune salle n'existe dans le snapshot. Une séance `COURS` exige une salle.
-  Les PDF n'en précisent aucune. Ne pas passer artificiellement les séances en ligne.
+- Aucune salle n'existe dans le snapshot. Les quatre libellés sont désormais confirmés
+  ci-dessus ; leur création nécessite le bâtiment, le site et une capacité réelle.
 - Le groupe L2 IA est absent de 2026-2027.
 - Les maquettes L1 ne comportent pas les matières des PDF. Les groupes TC sont liés
   à plusieurs offres : il faut préciser les rattachements, sans inventer crédits ou coefficients.
@@ -66,13 +81,13 @@ issu de la RPC de lecture. Il refuse d'écraser une relecture existante.
 python3 scripts/prepare-october-timetables.py \
   --pdf-directory /Users/gdenis/Downloads \
   --snapshot tmp/integration-planning-2026-11-04/snapshot.json \
-  --output tmp/integration-planning-2026-11-04/relecture-v2
+  --output tmp/integration-planning-2026-11-04/relecture-v3
 ```
 
 Le dossier produit contient les empreintes SHA-256 des quatre sources, les séances
 datées, les regroupements à confirmer, les correspondances d'identité et l'inventaire
 des matières par groupe. Les données du snapshot restent dans `tmp/`, hors commit.
 
-L'étape suivante dépend des salles, des regroupements et des identités manquantes.
+L'étape suivante dépend de la création des salles confirmées, des regroupements et des identités manquantes.
 Tout SQL de migration devra être présenté avant accord, conformément à AGENTS.md ;
 aucune migration distante ne doit être appliquée pendant ce chantier.

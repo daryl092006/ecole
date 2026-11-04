@@ -14,6 +14,11 @@ from pathlib import Path
 
 import fitz
 
+# Correspondances et présentiel confirmés par l'utilisateur le 4 novembre 2026.
+# Ce sont des libellés sources, pas des identifiants de salles déjà créées.
+ROOMS = {'L1 TC': 'Salle des L1', 'L1 IA & GL': 'Salle IA 1',
+         'L2 TC': 'Salle des L2', 'L2 IA & GL': 'Salle IA 2'}
+
 
 def normalized(value):
     value = unicodedata.normalize('NFKD', value.casefold())
@@ -78,6 +83,7 @@ def prepare(pdf_directory, snapshot_path, roster_path, output):
                         on = start + timedelta(days=weekday + 7 * week)
                         if on <= end:
                             sessions.append({'source': pdf.name, 'group': group, 'date': str(on),
+                                             'mode': 'COURS', 'room_name': ROOMS[group],
                                              'start': hours[0].replace('h', ':'), 'end': hours[1].replace('h', ':'),
                                              'subject': ' '.join(cell[:teacher.start()].split()),
                                              'teacher': ' '.join(cell[teacher.start():].split()),
