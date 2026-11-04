@@ -9,7 +9,7 @@ bâtiments ne sont plus fournis par la permission de consultation du planning.
 Les conflits de salle, de groupe et d'enseignant, la disponibilité, les dates et l'audit
 restent contrôlés.
 
-## Base de données — étape en attente
+## Base de données — migration intégrée localement
 
 Site et bâtiment sont déjà facultatifs depuis `202610150028_remove_location_prerequisites.sql`.
 La proposition `docs/sql-proposals/20261104_rooms_without_capacity.sql` :
@@ -18,20 +18,18 @@ La proposition `docs/sql-proposals/20261104_rooms_without_capacity.sql` :
 - retire les contrôles de capacité des séances et des placements d'examen ;
 - préserve les colonnes et données historiques, les clés étrangères et les autres contrôles.
 
-Le SQL n'est pas encore une migration du dépôt et n'est pas appliqué à distance.
-**Le déploiement du formulaire simplifié dépend de l'application de cette évolution SQL** :
-la base actuelle exige encore une capacité lors de la création d'une salle.
-AGENTS.md exige la présentation du SQL et l'accord avant ajout d'une migration.
-Après accord : créer une nouvelle migration, régénérer les deux documents de schéma
-avec `npm run db:describe`, puis vérifier la recette CRUD sur le schéma migré.
-Aucune ancienne migration ne doit être modifiée.
+Le SQL validé est intégré dans `supabase/migrations/202611040086_rooms_without_capacity.sql`.
+La migration est vérifiée dans PGlite local, sans application distante. Les deux documents
+de schéma ont été régénérés avec `npm run db:describe`.
+**Le déploiement du formulaire simplifié dépend de l'application de cette évolution SQL**.
+Aucune ancienne migration n'a été modifiée.
 
 ## Vérifications locales
 
 - TypeScript sans incrémental et ESLint.
-- Suite `npm test` sur les migrations existantes.
+- Suite `npm test` sur toutes les migrations, y compris 086.
 - `node scripts/verify-room-simplification.mjs` : 11 contrôles sur PostgreSQL PGlite
-  jetable avec le SQL proposé, dont création par API sans capacité et avec audit,
+  jetable avec la migration intégrée, dont création par API sans capacité et avec audit,
   conflits de planning conservés, réservations d'examen sans capacité.
 - `npx playwright test --config tests/ui/room-simplification.config.ts` : création
   d'une salle à 390 et 1440 px, absence des champs retirés et planning à 390 px.

@@ -2405,13 +2405,12 @@ CREATE UNIQUE INDEX exam_room_supervisors_pkey ON escen.exam_room_supervisors US
 | delivery_id | uuid | NO | — | NEVER |
 | evaluation_id | uuid | NO | — | NEVER |
 | room_id | uuid | NO | — | NEVER |
-| assigned_capacity | int4 | NO | — | NEVER |
+| assigned_capacity | int4 | YES | — | NEVER |
 
 Contraintes :
 
 ```sql
 exam_rooms_assigned_capacity_check: CHECK ((assigned_capacity > 0))
-exam_rooms_assigned_capacity_not_null: NOT NULL assigned_capacity
 exam_rooms_delivery_id_evaluation_id_fkey: FOREIGN KEY (delivery_id, evaluation_id) REFERENCES escen.exam_deliveries(id, evaluation_id) ON DELETE RESTRICT
 exam_rooms_delivery_id_not_null: NOT NULL delivery_id
 exam_rooms_delivery_id_room_id_key: UNIQUE (delivery_id, room_id)
@@ -3754,7 +3753,7 @@ CREATE UNIQUE INDEX roles_pkey ON escen.roles USING btree (id)
 | site_id | uuid | YES | — | NEVER |
 | code | escen.nonempty_text | NO | — | NEVER |
 | name | escen.nonempty_text | NO | — | NEVER |
-| capacity | int4 | NO | — | NEVER |
+| capacity | int4 | YES | — | NEVER |
 | status | text | NO | 'AVAILABLE'::text | NEVER |
 | archived_at | timestamptz | YES | — | NEVER |
 | reason | text | YES | — | NEVER |
@@ -3765,7 +3764,6 @@ Contraintes :
 rooms_archive_reason: CHECK (((archived_at IS NULL) OR ((reason IS NOT NULL) AND (length(btrim(reason)) >= 3))))
 rooms_building_id_site_id_fkey: FOREIGN KEY (building_id, site_id) REFERENCES escen.buildings(id, site_id) ON DELETE RESTRICT
 rooms_capacity_check: CHECK ((capacity > 0))
-rooms_capacity_not_null: NOT NULL capacity
 rooms_code_not_null: NOT NULL code
 rooms_id_not_null: NOT NULL id
 rooms_id_site_id_key: UNIQUE (id, site_id)

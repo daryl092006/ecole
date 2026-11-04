@@ -1,14 +1,12 @@
 import assert from 'node:assert/strict';
-import { readFile } from 'node:fs/promises';
 import { localBusinessFixture } from '../tests/ui/local-business-fixture.mjs';
 import { verifyScheduleManagement } from './verify-schedule-management.mjs';
 
-// Rehearse the proposed SQL in disposable PGlite, never against Supabase.
+// Verify all committed migrations in disposable PGlite, never against Supabase.
 const local = await localBusinessFixture();
 let checks = 0;
 const check = async (name, run) => { await run(); checks++; console.log(`✓ ${name}`); };
 try {
-  await local.db.exec(await readFile(new URL('../docs/sql-proposals/20261104_rooms_without_capacity.sql', import.meta.url), 'utf8'));
   await check('Salle créée par API sans bâtiment ni capacité, avec audit', async () => {
     const revision = await local.value('select revision as value from escen_private.portal_revision where singleton');
     const response = await local.dispatch(new Request('http://local.test/api/catalog/rooms', {

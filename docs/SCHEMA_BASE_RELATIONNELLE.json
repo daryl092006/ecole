@@ -4842,7 +4842,7 @@
       "table": "exam_rooms",
       "name": "assigned_capacity",
       "type": "int4",
-      "nullable": "NO",
+      "nullable": "YES",
       "default": null,
       "generated": "NEVER"
     },
@@ -7254,7 +7254,7 @@
       "table": "rooms",
       "name": "capacity",
       "type": "int4",
-      "nullable": "NO",
+      "nullable": "YES",
       "default": null,
       "generated": "NEVER"
     },
@@ -15042,13 +15042,6 @@
     {
       "schema": "escen",
       "table": "exam_rooms",
-      "name": "exam_rooms_assigned_capacity_not_null",
-      "type": "n",
-      "definition": "NOT NULL assigned_capacity"
-    },
-    {
-      "schema": "escen",
-      "table": "exam_rooms",
       "name": "exam_rooms_delivery_id_evaluation_id_fkey",
       "type": "f",
       "definition": "FOREIGN KEY (delivery_id, evaluation_id) REFERENCES escen.exam_deliveries(id, evaluation_id) ON DELETE RESTRICT"
@@ -17922,13 +17915,6 @@
       "name": "rooms_capacity_check",
       "type": "c",
       "definition": "CHECK ((capacity > 0))"
-    },
-    {
-      "schema": "escen",
-      "table": "rooms",
-      "name": "rooms_capacity_not_null",
-      "type": "n",
-      "definition": "NOT NULL capacity"
     },
     {
       "schema": "escen",

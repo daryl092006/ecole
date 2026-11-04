@@ -1,4 +1,5 @@
--- PROPOSITION : ne pas appliquer à distance. À valider avant ajout aux migrations.
+-- Proposition validée le 4 novembre 2026 et intégrée dans 202611040086_rooms_without_capacity.sql.
+-- Copie de relecture ; utiliser la migration, ne pas appliquer cette copie à distance.
 -- Retirer la capacité des salles et examens de la logique applicative.
 -- Les colonnes historiques restent lisibles ; aucune donnée n’est supprimée.
 -- Site et bâtiment sont déjà facultatifs depuis la migration 028.
