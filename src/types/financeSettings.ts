@@ -25,6 +25,8 @@ export interface FeeScheduleItem {
 }
 
 export interface ScholarshipAwardItem {
+  financialStatus?: 'APPROVED' | 'DRAFT' | 'NOT_APPLIED' | 'NO_CONTRACT';
+  appliedAmount?: number;
   id: string;
   enrollmentId: string;
   studentMatricule: string;

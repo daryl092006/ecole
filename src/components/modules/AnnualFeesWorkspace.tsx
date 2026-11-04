@@ -2,7 +2,6 @@
 
 import { useState, useEffect } from 'react';
 import { usePortal } from '@/hooks/usePortal';
-import { ROLES } from '@/types/permissions';
 import PageHeader from '@/components/ui/PageHeader';
 import ResponsiveTable from '@/components/ui/ResponsiveTable';
 import WorkPage from '@/components/ui/WorkPage';
@@ -91,7 +90,7 @@ export default function AnnualFeesWorkspace() {
     };
   }, [activeRole, portal.academicYearContext?.selectedYearId, reloadKey]);
 
-  const canEdit = [ROLES.RAF, ROLES.IT, ROLES.DG].includes(activeRole as typeof ROLES.RAF);
+  const canEdit = portal.perms.permissions.includes('payment.record') && portal.perms.permissions.includes('finance.view');
 
   const closeModal = () => {
     setModalMode('none');
@@ -186,7 +185,7 @@ export default function AnnualFeesWorkspace() {
   };
 
   if (loading) {
-    return <LoadingState label="Chargement des tarifs, tranches et bourses…" variant="table" />;
+    return <LoadingState label="Chargement des tarifs et bourses…" variant="table" />;
   }
 
   if (error && !directory) {
@@ -218,8 +217,8 @@ export default function AnnualFeesWorkspace() {
     <div className="workspace-stack">
       <PageHeader
         eyebrow="FINANCES & COMPTABILITÉ"
-        title="Tarifs, Tranches & Bourses"
-        description="Configuration centrale des grilles tarifaires annuelles, des modalités d'échéanciers (1, 3, 4 ou 10 tranches) et du catalogue des bourses et partenariats."
+        title="Tarifs annuels & Bourses"
+        description="Configuration des frais annuels, du catalogue des bourses et du suivi de leur effet sur les contrats étudiants."
       >
         <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
           {activeTab === 'scholarships' && canEdit && (
@@ -291,7 +290,7 @@ export default function AnnualFeesWorkspace() {
           className={`subtab-btn ${activeTab === 'fees' ? 'active' : ''}`}
           onClick={() => setActiveTab('fees')}
         >
-          💵 Tarifs & Tranches ({directory?.feeSchedules.length || 0})
+          💵 Tarifs annuels ({directory?.feeSchedules.length || 0})
         </button>
         <button
           type="button"
@@ -392,44 +391,10 @@ export default function AnnualFeesWorkspace() {
         </section>
       )}
 
-      {/* TAB 2: TARIFS & TRANCHES */}
+      {/* TAB 2: TARIFS ANNUELS */}
       {activeTab === 'fees' && (
         <section>
-          {/* Modalités types box */}
-          <div
-            style={{
-              padding: '1.25rem',
-              backgroundColor: 'var(--color-surface, #f9fafb)',
-              border: '1px solid var(--color-border, #e5e7eb)',
-              borderRadius: '8px',
-              marginBottom: '1.5rem',
-            }}
-          >
-            <h3 style={{ margin: '0 0 0.5rem 0', fontSize: '1rem', fontWeight: 600 }}>
-              Modalités de découpage des tranches (Règlement financier ESCEN)
-            </h3>
-            <p className="cell-sub" style={{ margin: '0 0 1rem 0' }}>
-              Les contrats d’études générés appliquent ces découpages types selon l’échéancier choisi lors de l’inscription :
-            </p>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1rem' }}>
-              <div style={{ padding: '0.75rem', background: '#fff', border: '1px solid #e5e7eb', borderRadius: '6px' }}>
-                <strong>Annuel (1 tranche)</strong>
-                <div className="cell-sub">100% de la scolarité à la rentrée (ex: Octobre ou Mars).</div>
-              </div>
-              <div style={{ padding: '0.75rem', background: '#fff', border: '1px solid #e5e7eb', borderRadius: '6px' }}>
-                <strong>Trimestriel (3 tranches)</strong>
-                <div className="cell-sub">3 versements égaux (ex: Octobre, Décembre, Février).</div>
-              </div>
-              <div style={{ padding: '0.75rem', background: '#fff', border: '1px solid #e5e7eb', borderRadius: '6px' }}>
-                <strong>Bi-mensuel (4 tranches)</strong>
-                <div className="cell-sub">4 versements réguliers (ex: M3, M5, M7, M9 de 25% chacun).</div>
-              </div>
-              <div style={{ padding: '0.75rem', background: '#fff', border: '1px solid #e5e7eb', borderRadius: '6px' }}>
-                <strong>Mensuel (8 à 10 tranches)</strong>
-                <div className="cell-sub">Mensualités étalées sur toute l’année académique.</div>
-              </div>
-            </div>
-          </div>
+          <div className="info-box"><strong>Échéanciers contractuels</strong><p>Les dates et les montants effectivement dus figurent dans le contrat de chaque étudiant. Le total des échéances doit correspondre au montant net après réductions.</p></div>
 
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem', flexWrap: 'wrap', gap: '0.75rem' }}>
             <input
@@ -520,13 +485,13 @@ export default function AnnualFeesWorkspace() {
                   <th>Formation & Niveau</th>
                   <th>Bourse / Partenariat</th>
                   <th>Valeur</th>
-                  <th>Prise d’effet</th>
+                  <th>Prise d’effet</th><th>Effet sur le contrat</th>
                 </tr>
               </thead>
               <tbody>
                 {!awardList.length ? (
                   <tr>
-                    <td colSpan={6}>Aucune bourse attribuée pour l’année sélectionnée.</td>
+                    <td colSpan={7}>Aucune bourse attribuée pour l’année sélectionnée.</td>
                   </tr>
                 ) : (
                   awardList.map(item => (
@@ -545,6 +510,7 @@ export default function AnnualFeesWorkspace() {
                         <strong>{item.scholarshipValue}</strong>
                       </td>
                       <td>{item.validFrom}</td>
+                      <td>{item.financialStatus==='APPROVED'?`Réduction appliquée : ${money(item.appliedAmount || 0)}`:item.financialStatus==='DRAFT'?`Intégrée au brouillon : ${money(item.appliedAmount || 0)}`:item.financialStatus==='NO_CONTRACT'?'Contrat absent':'Réduction non appliquée'}</td>
                     </tr>
                   ))
                 )}
@@ -1061,7 +1027,7 @@ export default function AnnualFeesWorkspace() {
             busy={busy}
             error={formError}
             confirmLabel="Confirmer l’attribution"
-            consequence="La bourse sera rattachée à l'inscription de l'étudiant pour cette année et calculera automatiquement les déductions sur son contrat financier."
+            consequence="L’attribution seule ne réduit pas le contrat : vérifiez son effet financier dans la liste des attributions."
             fields={[
               {
                 label: 'Étudiant bénéficiaire',

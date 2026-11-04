@@ -65,7 +65,7 @@ test('Tarif de double diplomation configurable avec récapitulatif avant écritu
     }});
   });
   await page.goto('/finance/contrats');
-  await page.getByRole('tab',{name:/Tarifs & Tranches/}).click();
+  await page.getByRole('tab',{name:/Tarifs annuels/}).click();
   await page.getByRole('button',{name:/Configurer un tarif annuel/}).click();
   const dialog=page.getByRole('dialog');
   await dialog.getByLabel('Filière (facultative)').selectOption('P');
@@ -102,4 +102,14 @@ for(const width of [390,1440])test(`Avenant relu à 15 % et paiements conservés
   await dialog.getByRole('button',{name:'Confirmer l’avenant',exact:true}).click();
   await expect.poll(()=>writes.length).toBe(1);
   expect(writes[0]).toMatchObject({action:'amend_contract',discountPercent:15,feeId:'F'});
+});
+test('Une attribution seule n’est pas présentée comme une réduction appliquée',async({page})=>{
+  await authenticateFixture(page);
+  await page.route('**/api/campus',route=>route.fulfill({json:snapshot}));
+  await page.route('**/api/finance/fees-and-scholarships',route=>route.fulfill({json:{revision:1,selectedYearId:'Y',selectedYearCode:'2026-2027',scholarships:[],feeSchedules:[],enrolledStudents:[],programs:[],levels:[],
+    scholarshipAwards:[{id:'A',studentMatricule:'BOURSE-TEST',studentName:'Bénéficiaire de recette',scholarshipName:'Bourse 50 %',scholarshipValue:'50%',scholarshipCode:'B50',financialStatus:'NOT_APPLIED',appliedAmount:0,validFrom:'2026-10-01'}],
+  }}));
+  await page.goto('/finance/contrats');
+  await page.getByRole('tab',{name:/Attributions/}).click();
+  await expect(page.getByRole('row').filter({hasText:'BOURSE-TEST'})).toContainText('Réduction non appliquée');
 });

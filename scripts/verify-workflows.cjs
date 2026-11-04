@@ -245,3 +245,5 @@ require('../src/services/onlineExamDraftService.test.ts');
 require('../src/services/persistentSupportService.test.ts');
 require('../src/services/persistentPurchaseService.test.ts');
 require('../src/services/studentProvisioningDocuments.test.ts');
+
+require('../src/services/scholarshipEffectService.test.ts');
