@@ -113,7 +113,6 @@ export async function GET(request: Request) {
       .sort((a, b) => a.studentName.localeCompare(b.studentName, 'fr'));
 
     // 4. Enrolled students list with their contract and scholarship status
-    const scholarshipMap = new Map(scholarships.map(s => [s.id, s]));
     const scholarshipMap = new Map((snapshot.tables.scholarships || []).map(s => [s.id, s]));
     const contractsMap = new Map((snapshot.tables.financial_contracts || []).map(c => [String(c.enrollment_id), c]));
     const contractLines = snapshot.tables.contract_lines || [];

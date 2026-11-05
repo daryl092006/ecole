@@ -7,9 +7,9 @@ import ReviewedForm from '@/components/ui/ReviewedForm';
 import DrawerActions from '@/components/ui/DrawerActions';
 
 const money=(value:number)=>`${value.toLocaleString('fr-FR')} FCFA`;
-export default function ScholarshipAwardForm({directory,onSaved,onBusyChange}:{directory:FinanceSettingsDirectory;onSaved:(message:string)=>void;onBusyChange:(busy:boolean)=>void}){
+export default function ScholarshipAwardForm({directory,initialEnrollmentId,onSaved,onBusyChange}:{directory:FinanceSettingsDirectory;initialEnrollmentId?:string;onSaved:(message:string)=>void;onBusyChange:(busy:boolean)=>void}){
   const portal=usePortal();
-  const [enrollmentId,setEnrollmentId]=useState(directory.enrolledStudents.find(row=>row.scholarshipContext?.eligible)?.enrollmentId || directory.enrolledStudents[0]?.enrollmentId || '');
+  const [enrollmentId,setEnrollmentId]=useState(initialEnrollmentId || directory.enrolledStudents.find(row=>row.scholarshipContext?.eligible)?.enrollmentId || directory.enrolledStudents[0]?.enrollmentId || '');
   const [scholarshipId,setScholarshipId]=useState(directory.scholarships.find(row=>row.active)?.id || '');
   const [validFrom,setValidFrom]=useState(new Date().toISOString().slice(0,10));
   const [reason,setReason]=useState(''),[confirmStacking,setConfirmStacking]=useState(false);
