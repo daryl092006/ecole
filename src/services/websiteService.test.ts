@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { diplomaSchema, brochureSchema, articleSchema, identitySchema, guardianSchema, websiteAccess, escapeArticleContent, sniffDocument } from './websiteService';
+import { diplomaSchema, brochureSchema, articleSchema, identitySchema, guardianSchema, websiteAccess, escapeArticleContent, sniffDocument, resolveAllowedWebsiteOrigins } from './websiteService';
 import { ROLES } from '@/types/permissions';
 import type { PersistentContext } from '@/types/persistence';
 
@@ -29,3 +29,13 @@ assert.equal(brochureSchema.safeParse(brochure).success, true);
 assert.equal(brochureSchema.safeParse({ ...brochure, slug: '../secret' }).success, false);
 assert.equal(brochureSchema.safeParse({ ...brochure, id: '11111111-1111-4111-8111-111111111111' }).success, false);
 assert.equal(brochureSchema.safeParse({ ...brochure, object_path: 'private/secret.pdf' }).success, false);
+
+const originsFromApex = resolveAllowedWebsiteOrigins({ ESCEN_WEBSITE_URL: 'https://escen.university' });
+assert.equal(originsFromApex.has('https://www.escen.university'), true);
+assert.equal(originsFromApex.has('https://escen.university'), true);
+assert.equal(originsFromApex.has('https://portail.escen.university'), true);
+assert.equal(originsFromApex.has('https://origine-inconnue.example'), false);
+
+const originsFromCustom = resolveAllowedWebsiteOrigins({ ESCEN_WEBSITE_URL: 'https://www.campus-test.org' });
+assert.equal(originsFromCustom.has('https://www.campus-test.org'), true);
+assert.equal(originsFromCustom.has('https://campus-test.org'), true);

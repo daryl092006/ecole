@@ -152,3 +152,46 @@ export const brochureSchema = z.object({
 }).strict().refine(value => !value.id || !!value.version, 'Version requise.')
   .refine(value => (value.program_id === null) === (value.cycle === null), 'Choisissez la filière et le cycle ensemble.');
 export const BROCHURE_CYCLES = { LICENCE: 'Licence professionnelle', MASTER: 'Master professionnel', EXECUTIVE: 'Executive Master' } as const;
+
+const DEFAULT_WEBSITE_ORIGINS = [
+  'https://www.escen.university',
+  'https://escen.university',
+  'https://portail.escen.university',
+];
+
+export function resolveAllowedWebsiteOrigins(
+  env: Record<string, string | undefined> = {},
+  extraOrigins: Array<string | null | undefined> = [],
+): Set<string> {
+  const allowed = new Set<string>(DEFAULT_WEBSITE_ORIGINS);
+  const rawList = [
+    env.ESCEN_WEBSITE_URL,
+    env.ESCEN_PUBLIC_SITE_URL,
+    env.ESCEN_PORTAL_URL,
+    ...extraOrigins,
+  ];
+  for (const raw of rawList) {
+    for (const item of String(raw ?? '').split(/[\s,]+/)) {
+      if (!item) continue;
+      try {
+        const parsed = new URL(item);
+        if (parsed.protocol !== 'http:' && parsed.protocol !== 'https:') continue;
+        allowed.add(parsed.origin);
+        const host = parsed.hostname.toLowerCase();
+        if (host.includes('.') && !/^\d+\.\d+\.\d+\.\d+$/.test(host)) {
+          const sibling = new URL(parsed.origin);
+          if (host.startsWith('www.')) {
+            sibling.hostname = host.slice(4);
+            allowed.add(sibling.origin);
+          } else if (host.split('.').length === 2) {
+            sibling.hostname = `www.${host}`;
+            allowed.add(sibling.origin);
+          }
+        }
+      } catch {
+        // Ignore malformed URL entries
+      }
+    }
+  }
+  return allowed;
+}

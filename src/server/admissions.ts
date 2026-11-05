@@ -3,7 +3,7 @@ import { createHash, randomUUID } from 'node:crypto';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { z } from 'zod';
 import { RequestError } from './auth';
-import { hashWebsiteToken, websiteRpc } from './website';
+import { hashWebsiteToken, isAllowedWebsiteOrigin, websiteRpc } from './website';
 import { applicationIntakeSchema } from '@/services/admissionsService';
 import { DOCUMENT_LABELS, sniffDocument } from '@/services/websiteService';
 import { processEmailBatch } from './emailWorker';
@@ -19,8 +19,7 @@ export function portalOrigin(request: Request) {
   return url.origin;
 }
 export function assertCandidateOrigin(request: Request) {
-  const allowed = [portalOrigin(request), process.env.ESCEN_WEBSITE_URL ? new URL(process.env.ESCEN_WEBSITE_URL).origin : ''];
-  if (!allowed.includes(request.headers.get('origin') || '')) throw new RequestError(403, 'Origine de la demande non autorisée.');
+  if (!isAllowedWebsiteOrigin(request, [portalOrigin(request)])) throw new RequestError(403, 'Origine de la demande non autorisée.');
 }
 export async function rateCandidateRequest(client: SupabaseClient, request: Request) {
   const trusted = process.env.ESCEN_TRUSTED_IP_HEADER;

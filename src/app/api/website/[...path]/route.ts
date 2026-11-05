@@ -2,7 +2,7 @@ import { createHash, randomBytes, randomUUID } from 'node:crypto';
 import { z } from 'zod';
 import { getSupabaseServerClient } from '@/lib/supabase/server';
 import { errorResponse, RequestError } from '@/server/auth';
-import { boundedRequest, hashWebsiteToken, websiteRpc } from '@/server/website';
+import { boundedRequest, hashWebsiteToken, isAllowedWebsiteOrigin, websiteRpc } from '@/server/website';
 import { DOCUMENT_LABELS, diplomaSchema, escapeArticleContent, guardianSchema, identitySchema, sniffDocument } from '@/services/websiteService';
 import type { WebsiteArticle, WebsiteIntake } from '@/types/website';
 import { attemptApplicationEmails, portalOrigin } from '@/server/admissions';
@@ -10,12 +10,11 @@ export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
 type RouteContext = { params: Promise<{ path: string[] }> };
 function cors(request: Request, response: Response) {
-  const allowed = process.env.ESCEN_WEBSITE_URL;
   const origin = request.headers.get('origin');
-  if (allowed && origin === new URL(allowed).origin) {
+  if (origin && isAllowedWebsiteOrigin(request)) {
     response.headers.set('Access-Control-Allow-Origin', origin);
     response.headers.set('Access-Control-Allow-Methods', 'GET, POST, PATCH, OPTIONS');
-    response.headers.set('Access-Control-Allow-Headers', 'Content-Type');
+    response.headers.set('Access-Control-Allow-Headers', 'Content-Type, Accept, Authorization, X-Requested-With');
     response.headers.set('Vary', 'Origin');
   }
   response.headers.set('Cache-Control', 'no-store');
@@ -72,8 +71,7 @@ async function handle(request: Request, context: RouteContext) {
       }
       throw new RequestError(404, 'Ressource indisponible.');
     }
-    const website = process.env.ESCEN_WEBSITE_URL;
-    if (!website || request.headers.get('origin') !== new URL(website).origin) throw new RequestError(403, 'Origine du formulaire non autorisée.');
+    if (!isAllowedWebsiteOrigin(request)) throw new RequestError(403, 'Origine du formulaire non autorisée.');
     const client = getSupabaseServerClient();
     // Only trust a client-IP header when explicitly configured behind a trusted proxy.
     const trustedIpHeader = process.env.ESCEN_TRUSTED_IP_HEADER;

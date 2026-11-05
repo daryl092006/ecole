@@ -2,8 +2,15 @@ import 'server-only';
 import { createHash } from 'node:crypto';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { RequestError } from '@/server/auth';
+import { resolveAllowedWebsiteOrigins } from '@/services/websiteService';
 
 export const hashWebsiteToken = (value: string) => createHash('sha256').update(value).digest('hex');
+
+export function isAllowedWebsiteOrigin(request: Request, extraOrigins: Array<string | null | undefined> = []): boolean {
+  const origin = request.headers.get('origin');
+  if (!origin) return false;
+  return resolveAllowedWebsiteOrigins(process.env, [...extraOrigins, request.url]).has(origin);
+}
 export async function websiteRpc(client: SupabaseClient, name: string, args: Record<string, unknown>) {
   const result = await client.rpc(name, args);
   if (result.error) {
