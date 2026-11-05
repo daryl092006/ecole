@@ -24,8 +24,8 @@ const { data: brochures, error, refresh } = await useAsyncData('public-brochure-
   return rows
 }, {
   default: () => [],
-  // Hydrate the rendered catalogue, but always revalidate a manual refresh.
-  getCachedData: (key, app, context) => context.cause === 'initial' ? app.payload.data[key] ?? app.static.data[key] : undefined,
+  // Hydrate the rendered catalogue on initial load and route transitions; only bypass cache on manual refresh.
+  getCachedData: (key, app, context) => context.cause !== 'refresh:manual' ? app.payload.data[key] ?? app.static.data[key] : undefined,
 })
 if (import.meta.server && error.value) throw createError({ statusCode: 503, statusMessage: 'Catalogue des brochures indisponible' })
 onMounted(() => { void refresh() })

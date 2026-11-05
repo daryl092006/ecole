@@ -40,9 +40,20 @@ export async function repairWebsiteNavigation(root) {
   flags = flags.replace('class="w-28 h-20 rounded-xl overflow-hidden', 'class="website-country-flag overflow-hidden');
   await writeFile(flagsFile, flags);
 
-  const catalogFile = path.join(root, 'app/pages/formations/index.vue');
-  let catalog = await readFile(catalogFile, 'utf8');
-  // Public content must be visible before any observer or animation runs.
-  catalog = catalog.replace('const isVisible = ref(false)', 'const isVisible = ref(true)');
-  await writeFile(catalogFile, catalog);
+  for (const relativeFile of [
+    'app/pages/formations/index.vue',
+    'app/components/Vision.vue',
+    'app/components/NosValeurs.vue',
+    'app/components/Cta.vue',
+    'app/components/GaleriePreview.vue',
+    'app/components/PartenairesFlag.vue',
+    'app/components/AboutUS.vue',
+    'app/components/Temoignage.vue',
+  ]) {
+    const targetFile = path.join(root, relativeFile);
+    let source = await readFile(targetFile, 'utf8');
+    // Public content must be visible before any observer or animation runs.
+    source = source.replaceAll('const isVisible = ref(false)', 'const isVisible = ref(true)');
+    await writeFile(targetFile, source);
+  }
 }

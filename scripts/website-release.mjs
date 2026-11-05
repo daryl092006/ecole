@@ -39,6 +39,9 @@ export async function prepareWebsiteRelease(root, origins) {
       for (const [missing, existing] of Object.entries({ 'finance-digitale.jpg': 'financedigital.jpg', 'management-projets.jpg': 'managementprojet.jpg', 'marketing-digital.jpg': 'marketingDigital.jpg', 'ia-genie-logiciel.jpg': 'intelligenceartificielle.jpg' })) {
         corrected = corrected.replaceAll(`/formations/${missing}`, `/formations/${existing}`);
       }
+      if (relative.startsWith('formations/') || relative.startsWith('galerie/') || relative.startsWith('blogs/')) {
+        corrected = corrected.replace(/<img\b(?![^>]*\bloading=)/g, '<img loading="lazy" decoding="async"');
+      }
       if (corrected !== source) await writeFile(file, corrected);
     }
   }
@@ -57,17 +60,26 @@ export async function prepareWebsiteRelease(root, origins) {
   slider = slider.replace(/primaryButton: \{ text: '[^']*', link: '\/formations' \}/g, "primaryButton: { text: 'Nos formations', link: '/formations' }");
   slider = slider.replace(/secondaryButton: \{ text: '(?:Nous contacter|Candidater|En savoir plus)', link: '\/(?:contact|inscription)' \}/g, "secondaryButton: { text: 'Candidater', link: '/inscription' }");
   await writeFile(sliderFile, slider);
-  for (const name of ['AboutUS.vue', 'Temoignage.vue']) {
+  for (const name of ['AboutUS.vue', 'Temoignage.vue', 'GaleriePreview.vue', 'PartenairesFlag.vue']) {
     const file = path.join(root, 'app/components', name);
     let source = await readFile(file, 'utf8');
     source = source.replace(/<img\b(?![^>]*\bloading=)/g, '<img loading="lazy" decoding="async"');
     await writeFile(file, source);
+  }
+  const galleryStoreFile = path.join(root, 'app/stores/gallery.ts');
+  let galleryStore = await readFile(galleryStoreFile, 'utf8');
+  if (galleryStore.includes("axios.get('/public/galeries')")) {
+    galleryStore = galleryStore
+      .replace("const response = await axios.get('/public/galeries')", "const response = { data: { success: true, data: [] } }")
+      .replace("const response = await axios.get(`/public/galeries/${id}`)", "const response = { data: { success: false, data: null } }");
+    await writeFile(galleryStoreFile, galleryStore);
   }
   await mkdir(path.join(root, 'app/middleware'), { recursive: true });
   await writeFile(path.join(root, 'app/middleware/portal.global.ts'), `// Candidate authentication belongs to the connected portal.\nexport default defineNuxtRouteMiddleware(to => {\n  if (to.path === '/candidat' || to.path.startsWith('/candidat/')) return navigateTo('/connexion', { redirectCode: 301 });\n});\n`);
   let nuxt = await readFile(path.join(root, 'nuxt.config.ts'), 'utf8');
   nuxt = nuxt.replace(/url: 'https:\/\/www\.escen\.university'/, `url: ${JSON.stringify(origins.site)}`);
   nuxt = nuxt.replace(/url: "http:\/\/localhost:3200"|url: "https?:\/\/[^\"]+"/, `url: ${JSON.stringify(origins.site)}`);
+  nuxt = nuxt.replace("pageTransition: { name: 'page', mode: 'out-in' },", 'pageTransition: false,');
   if (!nuxt.includes('ESCEN connected sitemap')) nuxt = nuxt.replace('  colorMode:', `  // ESCEN connected sitemap: public information only.\n  sitemap: { exclude: ['/docs/**', '/candidat/**', '/connexion', '/inscription', '/preparation-inscription/**', '/verif/**'] },\n\n  colorMode:`);
   await writeFile(path.join(root, 'nuxt.config.ts'), nuxt);
   await writeFile(path.join(root, 'public/robots.txt'), `User-agent: *\nDisallow: /candidat/\nDisallow: /docs/\nSitemap: ${origins.site}/sitemap.xml\n`);

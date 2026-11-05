@@ -29,9 +29,12 @@ export async function prepareWebsiteArticles(root, origins) {
   for (const name of ['index.vue', '[id].vue']) {
     const file = path.join(root, 'app/pages/blogs', name);
     let source = await readFile(file, 'utf8');
-    if (!source.includes('// ESCEN: public content in initial HTML')) {
-      const detail = name === '[id].vue';
-      source = source.replace('const blogStore = useBlogStore()', `const blogStore = useBlogStore()\n// ESCEN: public content in initial HTML; browser mount still revalidates publication.\nconst { error: publicContentError } = await useAsyncData(${detail ? "() => 'public-article-' + route.params.id" : "'public-articles'"}, async () => {\n  await blogStore.${detail ? 'fetchArticleById(String(route.params.id))' : 'fetchArticles()'}\n  if (blogStore.error) throw createError({ statusCode: ${detail ? "blogStore.notFound ? 404 : 503" : '503'}, statusMessage: 'Publication indisponible' })\n  return ${detail ? 'blogStore.currentArticle' : 'blogStore.articles'}\n})\nif (publicContentError.value) throw createError(publicContentError.value)`);
+    const detail = name === '[id].vue';
+    const asyncBlock = `const blogStore = useBlogStore()\n// ESCEN: public content in initial HTML; browser mount still revalidates publication.\nconst { data: cachedPublicContent, error: publicContentError } = await useAsyncData(${detail ? "() => 'public-article-' + route.params.id" : "'public-articles'"}, async () => {\n  await blogStore.${detail ? 'fetchArticleById(String(route.params.id))' : 'fetchArticles()'}\n  if (blogStore.error) throw createError({ statusCode: ${detail ? "blogStore.notFound ? 404 : 503" : '503'}, statusMessage: 'Publication indisponible' })\n  return ${detail ? 'blogStore.currentArticle' : 'blogStore.articles'}\n}, {\n  getCachedData: (key, app, context) => context.cause === 'initial' ? app.payload.data[key] ?? app.static.data[key] : undefined,\n})\nif (cachedPublicContent.value) ${detail ? 'blogStore.currentArticle = cachedPublicContent.value' : 'blogStore.articles = cachedPublicContent.value'}\nif ((import.meta.server || !cachedPublicContent.value) && publicContentError.value) throw createError(publicContentError.value)`;
+    if (source.includes('// ESCEN: public content in initial HTML')) {
+      source = source.replace(/const blogStore = useBlogStore\(\)\n\/\/ ESCEN: public content in initial HTML[\s\S]*?if \([\s\S]*?publicContentError\.value\) throw createError\(publicContentError\.value\)/, asyncBlock);
+    } else {
+      source = source.replace('const blogStore = useBlogStore()', asyncBlock);
     }
     if (name === '[id].vue') {
       // Breadcrumb already supplies the page's H1.
