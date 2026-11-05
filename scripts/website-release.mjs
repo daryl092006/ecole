@@ -74,6 +74,12 @@ export async function prepareWebsiteRelease(root, origins) {
       .replace("const response = await axios.get(`/public/galeries/${id}`)", "const response = { data: { success: false, data: null } }");
     await writeFile(galleryStoreFile, galleryStore);
   }
+  const configStoreFile = path.join(root, 'app/stores/configuration.ts');
+  let configStore = await readFile(configStoreFile, 'utf8');
+  if (configStore.includes('$axios.get(`/public/configurations`)')) {
+    configStore = configStore.replace('const response = await $axios.get(`/public/configurations`);', 'const response = { data: [] };');
+    await writeFile(configStoreFile, configStore);
+  }
   await mkdir(path.join(root, 'app/middleware'), { recursive: true });
   await writeFile(path.join(root, 'app/middleware/portal.global.ts'), `// Candidate authentication belongs to the connected portal.\nexport default defineNuxtRouteMiddleware(to => {\n  if (to.path === '/candidat' || to.path.startsWith('/candidat/')) return navigateTo('/connexion', { redirectCode: 301 });\n});\n`);
   let nuxt = await readFile(path.join(root, 'nuxt.config.ts'), 'utf8');
