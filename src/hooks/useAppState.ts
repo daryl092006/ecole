@@ -178,13 +178,13 @@ export function useAppState() {
 
   // Data state
   const [students, setStudents] = useState<Student[]>(initialStudents);
-  const classes: ClassItem[] = [...initialClasses, ...references.assignments.flatMap(item => {
+  const classes: ClassItem[] = useMemo(() => [...initialClasses, ...references.assignments.flatMap(item => {
     const subject = references.subjects.find(value => value.id === item.subjectId);
     const teacher = references.teachers.find(value => value.id === item.teacherId);
     const group = groups.find(value => value.id === item.groupId);
     const semester = references.semesters.find(value => value.id === item.semesterId);
     return subject && teacher && group && semester ? [{ id: item.id, code: subject.code, name: subject.name, filiere: group.filieres.join(', '), level: group.niveau, groupId: group.id, teacherId: teacher.id, coefficient: subject.coefficient, teacher: `${teacher.firstname} ${teacher.lastname}`, semester: semester.name }] : [];
-  })];
+  })], [references.assignments, references.subjects, references.teachers, groups, references.semesters]);
   const [evaluations, setEvaluations] = useState<Evaluation[]>(initialEvaluations);
   const [reclamations, setReclamations] = useState<Reclamation[]>(initialReclamations);
   const [rooms, setRooms] = useState<Room[]>(initialRooms);
@@ -217,57 +217,65 @@ export function useAppState() {
   const loadedCampusScope = useRef('');
   const reloadCampus = () => { preserveCampusScreen.current = false; setReloadCampusIndex(index => index + 1); };
   const refreshCampus = () => { preserveCampusScreen.current = true; setReloadCampusIndex(index => index + 1); };
-  const history = useHistoricalCampus(activeRole, session?.accountId, session?.mustChangePassword || session?.mustVerifyProfile || (!!session && (!session.capabilities?.[activeRole]?.globalAccess || !session.capabilities?.[activeRole]?.permissions.includes('system.audit.view'))), reloadCampusIndex, academicYearSelection + ':' + (relationalSnapshot.academicContext?.selectedYearId || ''));
+  const history = useHistoricalCampus(activeRole, session?.accountId, campusLoad.status !== 'ready' || session?.mustChangePassword || session?.mustVerifyProfile || (!!session && (!session.capabilities?.[activeRole]?.globalAccess || !session.capabilities?.[activeRole]?.permissions.includes('system.audit.view'))), reloadCampusIndex, academicYearSelection + ':' + (relationalSnapshot.academicContext?.selectedYearId || ''));
 
   const capabilities = session?.capabilities?.[activeRole];
-  const perms = session ? { ...ROLE_PERMISSIONS[activeRole], permissions: ROLE_PERMISSIONS[activeRole].permissions.filter(permission => capabilities?.permissions.includes(permission)) } : ROLE_PERMISSIONS[activeRole];
+  const perms = useMemo(() => session ? { ...ROLE_PERMISSIONS[activeRole], permissions: ROLE_PERMISSIONS[activeRole].permissions.filter(permission => capabilities?.permissions.includes(permission)) } : ROLE_PERMISSIONS[activeRole], [session, activeRole, capabilities]);
   const baseAccess = ROLE_ACCESS[activeRole];
-  const identityStudent = students.find(item => item.matricule === demoIdentity);
-  const access = { ...baseAccess, scope: baseAccess.scope.ownDataOnly
+  const identityStudent = useMemo(() => students.find(item => item.matricule === demoIdentity), [students, demoIdentity]);
+  const access = useMemo(() => ({ ...baseAccess, scope: baseAccess.scope.ownDataOnly
     ? { ...baseAccess.scope, studentId: identityStudent?.matricule ?? '__NONE__', groupIds: identityStudent ? [...new Set([identityStudent.groupId, ...campusRecords.enrollments.filter(item => item.studentId === identityStudent.matricule).map(item => item.groupId)])] : [] }
     : activeRole === ROLES.ENS ? { teacherId: demoIdentity || '__NONE__', groupIds: classes.filter(item => item.teacherId === demoIdentity).map(item => item.groupId) }
-    : activeRole === ROLES.SURV ? { ...baseAccess.scope, sessionIds: campusRecords.exams.filter(item => item.supervisorId === demoIdentity).map(item => item.id) } : baseAccess.scope };
+    : activeRole === ROLES.SURV ? { ...baseAccess.scope, sessionIds: campusRecords.exams.filter(item => item.supervisorId === demoIdentity).map(item => item.id) } : baseAccess.scope }), [baseAccess, identityStudent, campusRecords.enrollments, campusRecords.exams, activeRole, demoIdentity, classes]);
   const availableTabs = useMemo(() => getAvailableTabs(activeRole, session ? session.capabilities?.[activeRole]?.permissions || [] : undefined, session ? !!session.capabilities?.[activeRole]?.globalAccess : true), [activeRole, session]);
 
-  const visibleClasses = !hasPermission(activeRole, 'academic.view') && !hasPermission(activeRole, 'grade.view') && !hasPermission(activeRole, 'attendance.view') && !hasPermission(activeRole, 'schedule.view') ? [] : access.scope.sessionIds
+  const visibleClasses = useMemo(() => !hasPermission(activeRole, 'academic.view') && !hasPermission(activeRole, 'grade.view') && !hasPermission(activeRole, 'attendance.view') && !hasPermission(activeRole, 'schedule.view') ? [] : access.scope.sessionIds
     ? classes.filter(classItem => sessions.some(session => session.classId === classItem.id && access.scope.sessionIds?.includes(session.id)))
     : access.scope.teacherId
     ? classes.filter(classItem => classItem.teacherId === access.scope.teacherId && (!access.scope.groupIds || access.scope.groupIds.includes(classItem.groupId)))
     : access.scope.groupIds
       ? classes.filter(classItem => access.scope.groupIds?.includes(classItem.groupId))
-      : classes;
-  const scopedSessions = !hasPermission(activeRole, 'schedule.view') ? [] : access.scope.sessionIds
+      : classes, [activeRole, access.scope, classes, sessions]);
+  const scopedSessions = useMemo(() => !hasPermission(activeRole, 'schedule.view') ? [] : access.scope.sessionIds
     ? sessions.filter(session => access.scope.sessionIds?.includes(session.id))
     : access.scope.groupIds
       ? sessions.filter(session => access.scope.groupIds?.includes(session.groupId))
-      : sessions;
-  const visibleSessions = access.scope.ownDataOnly ? scopedSessions.map(session => ({
+      : sessions, [activeRole, access.scope, sessions]);
+  const visibleSessions = useMemo(() => access.scope.ownDataOnly ? scopedSessions.map(session => ({
     ...session,
     candidateIds: session.candidateIds?.filter(id => id === demoIdentity),
     attendance: session.attendance ? Object.fromEntries(Object.entries(session.attendance).filter(([id]) => id === demoIdentity)) : undefined,
-  })) : scopedSessions;
-  const visibleStudents = access.scope.studentId
+  })) : scopedSessions, [access.scope.ownDataOnly, scopedSessions, demoIdentity]);
+  const visibleStudents = useMemo(() => access.scope.studentId
     ? students.filter(student => student.matricule === access.scope.studentId)
     : access.scope.groupIds && access.scope.teacherId
       ? students.filter(student => access.scope.groupIds?.includes(student.groupId))
-      : hasPermission(activeRole, 'student.view') ? students : hasPermission(activeRole, 'attendance.view') ? students.filter(student => visibleSessions.some(session => session.groupId === student.groupId)) : [];
-  const visibleClassIds = new Set(visibleClasses.map(classItem => classItem.id));
-  const visibleEvaluations = (hasPermission(activeRole, 'grade.view') ? evaluations : []).filter(evaluation => visibleClassIds.has(evaluation.classId) && (!access.scope.ownDataOnly || evaluation.status === 'PUBLIEES')).map(evaluation => access.scope.studentId ? { ...evaluation, grades: evaluation.grades.filter(grade => grade.matricule === access.scope.studentId), corrections: evaluation.corrections?.filter(item => item.studentId === access.scope.studentId) } : evaluation);
-  const visibleEvaluationIds = new Set(visibleEvaluations.map(evaluation => evaluation.id));
-  const visibleReclamations = reclamations.filter(reclamation =>
-    visibleEvaluationIds.has(reclamation.evaluationId)
-    && (!access.scope.studentId || reclamation.studentMatricule === access.scope.studentId)
-  );
-  const visiblePayments = !hasPermission(activeRole, 'finance.view') && !access.scope.ownDataOnly ? [] : access.scope.studentId
+      : hasPermission(activeRole, 'student.view') ? students : hasPermission(activeRole, 'attendance.view') ? students.filter(student => visibleSessions.some(session => session.groupId === student.groupId)) : [], [access.scope.studentId, access.scope.groupIds, access.scope.teacherId, students, activeRole, visibleSessions]);
+  const visibleEvaluations = useMemo(() => {
+    const visibleClassIds = new Set(visibleClasses.map(classItem => classItem.id));
+    return (hasPermission(activeRole, 'grade.view') ? evaluations : []).filter(evaluation => visibleClassIds.has(evaluation.classId) && (!access.scope.ownDataOnly || evaluation.status === 'PUBLIEES')).map(evaluation => access.scope.studentId ? { ...evaluation, grades: evaluation.grades.filter(grade => grade.matricule === access.scope.studentId), corrections: evaluation.corrections?.filter(item => item.studentId === access.scope.studentId) } : evaluation);
+  }, [visibleClasses, activeRole, evaluations, access.scope.ownDataOnly, access.scope.studentId]);
+  const visibleReclamations = useMemo(() => {
+    const visibleEvaluationIds = new Set(visibleEvaluations.map(evaluation => evaluation.id));
+    return reclamations.filter(reclamation =>
+      visibleEvaluationIds.has(reclamation.evaluationId)
+      && (!access.scope.studentId || reclamation.studentMatricule === access.scope.studentId)
+    );
+  }, [visibleEvaluations, reclamations, access.scope.studentId]);
+  const visiblePayments = useMemo(() => !hasPermission(activeRole, 'finance.view') && !access.scope.ownDataOnly ? [] : access.scope.studentId
     ? payments.filter(payment => payment.studentId === access.scope.studentId)
-    : payments;
-  const visiblePaymentIds = new Set(visiblePayments.map(payment => payment.id));
-  const visibleReceipts = receipts.filter(receipt => visiblePaymentIds.has(receipt.paymentId));
-  const visiblePaymentCancellations = paymentCancellations.filter(cancellation => visiblePaymentIds.has(cancellation.paymentId));
-  const scopedStudents = visibleStudents.map(student => history.catalog ? enrichHistoricalStudent(student, history.catalog) : student).map(student => hasPermission(activeRole, 'finance.view') || access.scope.ownDataOnly ? student : {
+    : payments, [activeRole, access.scope.ownDataOnly, access.scope.studentId, payments]);
+  const { visibleReceipts, visiblePaymentCancellations } = useMemo(() => {
+    const visiblePaymentIds = new Set(visiblePayments.map(payment => payment.id));
+    return {
+      visibleReceipts: receipts.filter(receipt => visiblePaymentIds.has(receipt.paymentId)),
+      visiblePaymentCancellations: paymentCancellations.filter(cancellation => visiblePaymentIds.has(cancellation.paymentId)),
+    };
+  }, [visiblePayments, receipts, paymentCancellations]);
+  const scopedStudents = useMemo(() => visibleStudents.map(student => history.catalog ? enrichHistoricalStudent(student, history.catalog) : student).map(student => hasPermission(activeRole, 'finance.view') || access.scope.ownDataOnly ? student : {
     ...student, financials: { expected: 0, paid: 0, remaining: 0, installments: [] }, bourse: { active: false, type: '', percent: 0, amount: 0 },
     history: student.history.filter(entry => !/financ|contrat|bourse|FCFA/i.test(entry.text)),
-  });
+  }), [visibleStudents, history.catalog, activeRole, access.scope.ownDataOnly]);
 
   // ── Actions ──────────────────────────────────────────────────────────────
 
@@ -735,13 +743,13 @@ export function useAppState() {
 
   const filteredEvals = visibleEvaluations.filter(e => e.classId === selectedClassForGrades?.id);
 
-  const dataset: Dataset = {
+  const dataset: Dataset = useMemo(() => ({
     ...emptyDataset(), ...campusRecords,
     academicYears: references.academicYears, programs: references.programs, tracks: references.tracks,
     levels: references.levels, semesters: references.semesters, units: references.units, subjects: references.subjects,
     teachers: references.teachers, assignments: references.assignments, groups,
     students, evaluations, reclamations, rooms, sessions, blockedPeriods, tickets, fees, payments, receipts, paymentCancellations, announcements,
-  };
+  }), [campusRecords, references.academicYears, references.programs, references.tracks, references.levels, references.semesters, references.units, references.subjects, references.teachers, references.assignments, groups, students, evaluations, reclamations, rooms, sessions, blockedPeriods, tickets, fees, payments, receipts, paymentCancellations, announcements]);
   const runWorkflow = (action: CampusAction, payload: unknown) => {
     if (session) throw new Error('Utilisez le formulaire de gestion connecté à la base. Cette ancienne commande de démonstration ne peut pas enregistrer une opération réelle.');
     const result = executeCampusWorkflow(dataset, { role: activeRole, actor: demoIdentity || activeRole, users: demoUsers.users }, action, payload);
@@ -754,20 +762,22 @@ export function useAppState() {
   const ownData = !!access.scope.ownDataOnly;
   const canFinance = hasPermission(activeRole, 'finance.view');
   const canAcademic = hasPermission(activeRole, 'academic.view') || hasPermission(activeRole, 'grade.view');
-  const enrollmentIds = new Set(visibleStudents.map(item => item.matricule));
-  const campusData: Dataset = {
-    ...emptyDataset(),
-    ...((canAcademic || canFinance) ? { academicYears: dataset.academicYears, programs: dataset.programs, tracks: dataset.tracks, levels: dataset.levels, semesters: dataset.semesters, units: dataset.units, subjects: dataset.subjects, assignments: dataset.assignments, teachers: dataset.teachers } : { academicYears: dataset.academicYears }),
-    settings: campusRecords.settings, students: scopedStudents, groups, evaluations: visibleEvaluations, sessions: visibleSessions, rooms, blockedPeriods, announcements: getVisibleAnnouncements(announcements, activeRole),
-    payments: visiblePayments, receipts: visibleReceipts, paymentCancellations: visiblePaymentCancellations, fees: canFinance ? fees : [],
-    enrollments: (campusLoad.status === 'ready' ? dataset.enrollments : deriveEnrollments(dataset)).filter(item => enrollmentIds.has(item.studentId)).map(item => canFinance || ownData ? item : { ...item, financials: { expected: 0, paid: 0, remaining: 0, installments: [] } }),
-    juryDecisions: campusRecords.juryDecisions.filter(item => ownData ? item.studentId === demoIdentity : hasPermission(activeRole, 'grade.view') && activeRole !== ROLES.ENS),
-    ...getVisibleExamRecords(dataset, activeRole, demoIdentity, examNow),
-    staff: hasPermission(activeRole, 'staff.view') ? campusRecords.staff : [],
-    purchases: hasPermission(activeRole, 'purchase.view') ? campusRecords.purchases : [], assets: hasPermission(activeRole, 'asset.view') ? campusRecords.assets : [],
-    documents: campusRecords.documents.filter(item => enrollmentIds.has(item.studentId) && (hasPermission(activeRole, 'student.view') || ownData)),
-  };
-  const visibleAnnouncements = getVisibleAnnouncements(announcements, activeRole);
+  const visibleAnnouncements = useMemo(() => getVisibleAnnouncements(announcements, activeRole), [announcements, activeRole]);
+  const campusData: Dataset = useMemo(() => {
+    const enrollmentIds = new Set(visibleStudents.map(item => item.matricule));
+    return {
+      ...emptyDataset(),
+      ...((canAcademic || canFinance) ? { academicYears: dataset.academicYears, programs: dataset.programs, tracks: dataset.tracks, levels: dataset.levels, semesters: dataset.semesters, units: dataset.units, subjects: dataset.subjects, assignments: dataset.assignments, teachers: dataset.teachers } : { academicYears: dataset.academicYears }),
+      settings: campusRecords.settings, students: scopedStudents, groups, evaluations: visibleEvaluations, sessions: visibleSessions, rooms, blockedPeriods, announcements: visibleAnnouncements,
+      payments: visiblePayments, receipts: visibleReceipts, paymentCancellations: visiblePaymentCancellations, fees: canFinance ? fees : [],
+      enrollments: (campusLoad.status === 'ready' ? dataset.enrollments : deriveEnrollments(dataset)).filter(item => enrollmentIds.has(item.studentId)).map(item => canFinance || ownData ? item : { ...item, financials: { expected: 0, paid: 0, remaining: 0, installments: [] } }),
+      juryDecisions: campusRecords.juryDecisions.filter(item => ownData ? item.studentId === demoIdentity : hasPermission(activeRole, 'grade.view') && activeRole !== ROLES.ENS),
+      ...getVisibleExamRecords(dataset, activeRole, demoIdentity, examNow),
+      staff: hasPermission(activeRole, 'staff.view') ? campusRecords.staff : [],
+      purchases: hasPermission(activeRole, 'purchase.view') ? campusRecords.purchases : [], assets: hasPermission(activeRole, 'asset.view') ? campusRecords.assets : [],
+      documents: campusRecords.documents.filter(item => enrollmentIds.has(item.studentId) && (hasPermission(activeRole, 'student.view') || ownData)),
+    };
+  }, [visibleStudents, canAcademic, canFinance, dataset, campusRecords, scopedStudents, groups, visibleEvaluations, visibleSessions, rooms, blockedPeriods, visibleAnnouncements, visiblePayments, visibleReceipts, visiblePaymentCancellations, fees, campusLoad.status, ownData, demoIdentity, activeRole, examNow]);
   const uiReferences = { ...references, setPrograms: (update: Parameters<typeof references.setPrograms>[0]) => {
     if (!hasPermission(activeRole, 'academic.structure.manage')) throw new Error('Modification des filières non autorisée.');
     const next = typeof update === 'function' ? update(references.programs) : update;

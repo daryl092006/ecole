@@ -60,8 +60,8 @@ function isTransientRpcError(error: { code?: string; message?: string } | null |
   );
 }
 
-const READ_CACHE_TTL_MS = 4000;
-const HISTORY_CACHE_TTL_MS = 60000;
+const READ_CACHE_TTL_MS = 30_000;
+const HISTORY_CACHE_TTL_MS = 300_000;
 const HISTORY_RPCS = new Set([
   'escen_history_catalog',
   'escen_history_student_ids_year',
@@ -69,14 +69,35 @@ const HISTORY_RPCS = new Set([
   'escen_import_overview',
   'escen_subject_features',
 ]);
-const readCache = new Map<string, { expiresAt: number; value: unknown }>();
-const inFlightRpc = new Map<string, Promise<unknown>>();
-const authCache = new Map<string, { expiresAt: number; value: unknown }>();
-const inFlightAuth = new Map<string, Promise<unknown>>();
-let authCacheGeneration = 0;
+
+interface SupabaseServerCacheState {
+  readCache: Map<string, { expiresAt: number; value: unknown; rpcName: string }>;
+  inFlightRpc: Map<string, Promise<unknown>>;
+  authCache: Map<string, { expiresAt: number; value: unknown }>;
+  inFlightAuth: Map<string, Promise<unknown>>;
+  authCacheGeneration: number;
+  readCacheGeneration: number;
+}
+
+const globalWithCache = globalThis as typeof globalThis & {
+  __escenSupabaseServerCache?: SupabaseServerCacheState;
+};
+
+const cacheState: SupabaseServerCacheState = (globalWithCache.__escenSupabaseServerCache ??= {
+  readCache: new Map(),
+  inFlightRpc: new Map(),
+  authCache: new Map(),
+  inFlightAuth: new Map(),
+  authCacheGeneration: 0,
+  readCacheGeneration: 0,
+});
+
 export function invalidateAuthCache() {
-  authCacheGeneration++;
-  authCache.clear(); inFlightAuth.clear();
+  cacheState.authCacheGeneration++;
+  cacheState.readCacheGeneration++;
+  cacheState.authCache.clear();
+  cacheState.inFlightAuth.clear();
+  cacheState.readCache.clear();
 }
 
 export function getSupabaseServerClient(): SupabaseClient {
@@ -91,22 +112,32 @@ export function getSupabaseServerClient(): SupabaseClient {
   client.rpc = ((fn: string, args?: Record<string, unknown>, options?: unknown) => {
     const readOnly = isReadOnlyRpc(fn, args);
     if (!readOnly) {
-      readCache.clear();
+      if (fn !== 'escen_website_rate') {
+        cacheState.readCacheGeneration++;
+        if (fn === 'escen_catalog_resume') {
+          cacheState.readCache.clear();
+        } else {
+          for (const [k, entry] of cacheState.readCache.entries()) {
+            if (!HISTORY_RPCS.has(entry.rpcName)) cacheState.readCache.delete(k);
+          }
+        }
+      }
       return (rawRpc as (f: string, a?: unknown, o?: unknown) => ReturnType<typeof rawRpc>)(fn, args, options);
     }
 
     const cacheKey = `${fn}:${JSON.stringify(args ?? {})}`;
     const now = Date.now();
-    const cached = readCache.get(cacheKey);
+    const cached = cacheState.readCache.get(cacheKey);
     if (cached && cached.expiresAt > now) {
       return Promise.resolve(structuredClone(cached.value)) as unknown as ReturnType<typeof rawRpc>;
     }
 
-    const existing = inFlightRpc.get(cacheKey);
+    const existing = cacheState.inFlightRpc.get(cacheKey);
     if (existing) {
       return existing.then(res => structuredClone(res)) as unknown as ReturnType<typeof rawRpc>;
     }
 
+    const generation = cacheState.readCacheGeneration;
     const run = (async () => {
       const invoke = rawRpc as unknown as (f: string, a?: unknown, o?: unknown) => Promise<{ data: unknown; error: { code?: string; message?: string } | null }>;
       let result = await invoke(fn, args, options);
@@ -114,16 +145,16 @@ export function getSupabaseServerClient(): SupabaseClient {
         await new Promise(resolve => setTimeout(resolve, 250));
         result = await invoke(fn, args, options);
       }
-      if (!result.error) {
+      if (!result.error && generation === cacheState.readCacheGeneration) {
         const ttl = HISTORY_RPCS.has(fn) ? HISTORY_CACHE_TTL_MS : READ_CACHE_TTL_MS;
-        readCache.set(cacheKey, { expiresAt: Date.now() + ttl, value: result });
+        cacheState.readCache.set(cacheKey, { expiresAt: Date.now() + ttl, value: result, rpcName: fn });
       }
       return result;
     })().finally(() => {
-      inFlightRpc.delete(cacheKey);
+      cacheState.inFlightRpc.delete(cacheKey);
     });
 
-    inFlightRpc.set(cacheKey, run);
+    cacheState.inFlightRpc.set(cacheKey, run);
     return run.then(res => structuredClone(res)) as unknown as ReturnType<typeof rawRpc>;
   }) as typeof client.rpc;
 
@@ -131,29 +162,29 @@ export function getSupabaseServerClient(): SupabaseClient {
   client.auth.getUser = (async (jwt?: string) => {
     if (!jwt) return rawGetUser(jwt);
     const now = Date.now();
-    const cached = authCache.get(jwt);
+    const cached = cacheState.authCache.get(jwt);
     if (cached && cached.expiresAt > now) {
       return structuredClone(cached.value) as Awaited<ReturnType<typeof rawGetUser>>;
     }
-    const existing = inFlightAuth.get(jwt);
+    const existing = cacheState.inFlightAuth.get(jwt);
     if (existing) {
       return (await existing) as Awaited<ReturnType<typeof rawGetUser>>;
     }
-    const generation = authCacheGeneration;
+    const generation = cacheState.authCacheGeneration;
     const run = (async () => {
       let res = await rawGetUser(jwt);
       if (res.error && (!res.error.status || res.error.status === 429 || res.error.status >= 500)) {
         await new Promise(resolve => setTimeout(resolve, 200));
         res = await rawGetUser(jwt);
       }
-      if (!res.error && res.data?.user && generation === authCacheGeneration) {
-        authCache.set(jwt, { expiresAt: Date.now() + READ_CACHE_TTL_MS, value: res });
+      if (!res.error && res.data?.user && generation === cacheState.authCacheGeneration) {
+        cacheState.authCache.set(jwt, { expiresAt: Date.now() + READ_CACHE_TTL_MS, value: res });
       }
       return res;
     })().finally(() => {
-      inFlightAuth.delete(jwt);
+      cacheState.inFlightAuth.delete(jwt);
     });
-    inFlightAuth.set(jwt, run);
+    cacheState.inFlightAuth.set(jwt, run);
     return (await run) as Awaited<ReturnType<typeof rawGetUser>>;
   }) as typeof client.auth.getUser;
 

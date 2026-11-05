@@ -6,7 +6,7 @@ import type { ApplicationNotice } from '@/types/admissions';
 export function useApplicationNotices() {
   const portal = usePortal(); const role = portal.activeRole; const year = portal.academicYearContext?.selectedYearId;
   const [notices, setNotices] = useState<ApplicationNotice[]>([]);
-  const enabled = portal.perms.permissions.includes('application.view');
+  const enabled = Boolean(portal.session && portal.campusLoad.status === 'ready' && portal.globalAccess && portal.perms.permissions.includes('application.view'));
   const refresh = useCallback(async (signal?: AbortSignal) => {
     if (!enabled) return;
     try { const response = await admissionNotices(role,signal); if (!signal?.aborted) setNotices(response.notices); }
