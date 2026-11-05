@@ -31,7 +31,8 @@ export function catalogSpec(key: string) { const spec = CRUD_CATALOG.find(item =
 export function parseCatalogRecord(key: string, input: unknown): Record<string, unknown> {
   const spec = catalogSpec(key); const fields: Record<string,z.ZodType> = {};
   for (const field of spec.fields) {
-    if (field.type === 'reference') fields[field.key] = field.required === false ? z.union([z.uuid(),z.literal(''),z.null()]).transform(value=>value || null) : z.uuid();
+    if (field.key === 'double_degree') fields[field.key] = z.union([z.boolean(), z.enum(['true','false',''])]).optional().transform(value=>value===true || value==='true');
+    else if (field.type === 'reference') fields[field.key] = field.required === false ? z.union([z.uuid(),z.literal(''),z.null()]).transform(value=>value || null) : z.uuid();
     else if (field.type === 'select') fields[field.key] = field.required === false ? z.union([z.enum(field.options!.map(option=>option.value)),z.literal(''),z.null()]).transform(value=>value || null) : z.enum(field.options!.map(option=>option.value));
     else if (field.type === 'email') fields[field.key] = z.union([z.email(),z.literal('')]);
     else if (field.type === 'number') {
@@ -80,13 +81,14 @@ export function annualFeeScheduleChanges(snapshot: RelationalSnapshot, input: Re
     const record = parseCatalogRecord('annual_fee_schedules', { ...values, program_id: programId });
     validateCatalogReferences('annual_fee_schedules', record, snapshot);
     if (target && target.academic_year_id !== record.academic_year_id) throw new Error('Le tarif doit rester dans son année d’origine.');
-    if (snapshot.tables.annual_fee_schedules?.some(row => row.id !== targetId && !row.archived_at && ['academic_year_id', 'category', 'program_id', 'level_id', 'delivery_mode'].every(key => (row[key] || null) === (record[key] || null)))) {
+    if (snapshot.tables.annual_fee_schedules?.some(row => row.id !== targetId && !row.archived_at && (row.double_degree===true)===(record.double_degree===true) && ['academic_year_id', 'category', 'program_id', 'level_id', 'delivery_mode'].every(key => (row[key] || null) === (record[key] || null)))) {
       throw new Error('Un tarif existe déjà pour une filière sélectionnée, ce niveau et ce mode. Modifiez le tarif existant. Aucun tarif enregistré.');
     }
     return { table: 'annual_fee_schedules', operation: index === 0 && targetId ? 'update' : 'insert', record: { ...record, id: index === 0 && targetId ? targetId : crypto.randomUUID(), reason } };
   });
 }
 export function validateCatalogReferences(key: string, values: Record<string,unknown>, snapshot: RelationalSnapshot) {
+  if(key==='annual_fee_schedules' && values.double_degree===true && !snapshot.tables.programs?.some(row=>row.id===values.program_id && row.double_degree_eligible===true))throw new Error('Choisissez une filière éligible à la double diplomation.');
   for (const field of catalogSpec(key).fields.filter(field => field.reference)) {
     if (field.required === false && !values[field.key]) continue;
     const row = snapshot.tables[field.reference!]?.find(row => row.id === values[field.key] && !row.archived_at && row.active !== false);

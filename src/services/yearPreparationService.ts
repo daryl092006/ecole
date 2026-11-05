@@ -371,7 +371,8 @@ export function buildReconductChanges(
       row.category === fee.category &&
       (row.program_id || null) === (fee.program_id || null) &&
       (row.level_id || null) === (fee.level_id || null) &&
-      (row.delivery_mode || null) === (fee.delivery_mode || null)
+      (row.delivery_mode || null) === (fee.delivery_mode || null) &&
+      (row.double_degree===true) === (fee.double_degree===true)
     );
     if (!existing) {
       changes.push({
@@ -384,6 +385,7 @@ export function buildReconductChanges(
           program_id: fee.program_id || null,
           level_id: fee.level_id || null,
           delivery_mode: fee.delivery_mode || null,
+          double_degree: fee.double_degree===true,
           amount: fee.amount,
           reason,
         },
@@ -423,7 +425,7 @@ export function yearPreparation(snapshot:RelationalSnapshot,yearId:string):YearP
   const groups=annual('groups');const fees=annual('annual_fee_schedules');
   const covered=(category:string)=>offerings.length>0 && offerings.every(offering=>{
     const curriculum=rows('curricula').find(row=>row.id===offering.curriculum_id);
-    return fees.some(fee=>fee.category===category && (!fee.program_id || fee.program_id===curriculum?.program_id) && (!fee.level_id || fee.level_id===offering.level_id) && (!fee.delivery_mode || fee.delivery_mode===offering.delivery_mode));
+    return fees.some(fee=>fee.double_degree!==true && fee.category===category && (!fee.program_id || fee.program_id===curriculum?.program_id) && (!fee.level_id || fee.level_id===offering.level_id) && (!fee.delivery_mode || fee.delivery_mode===offering.delivery_mode));
   });
   return [
     {key:'offerings',label:'Filières et niveaux proposés cette année',ready:offerings.length>0 && offerings.every(offering=>rows('curricula').some(curriculum=>curriculum.id===offering.curriculum_id && rows('programs').some(program=>program.id===curriculum.program_id)) && rows('levels').some(level=>level.id===offering.level_id)),detail:offerings.length ? `${offerings.length} formation(s) proposée(s). Vérifiez que leurs filières, niveaux et programmes sont disponibles.` : 'Ajoutez au moins une formation pour cette année ; réutilisez les filières et niveaux existants.',href:'/academique/referentiel?collection=academic_offerings'},

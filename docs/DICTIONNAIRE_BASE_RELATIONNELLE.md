@@ -2,7 +2,7 @@
 
 Généré avec `npm run db:describe` en exécutant les migrations dans PostgreSQL local (PGlite). Aucun accès à Supabase ou aux données de la sauvegarde.
 
-119 tables métier, 14 tables privées, 1059 colonnes, 297 clés étrangères, 248 CHECK de tables et 5 exclusions. Les domaines ajoutent les bornes des notes, des montants FCFA et des textes obligatoires.
+119 tables métier, 14 tables privées, 1062 colonnes, 297 clés étrangères, 248 CHECK de tables et 5 exclusions. Les domaines ajoutent les bornes des notes, des montants FCFA et des textes obligatoires.
 
 Toutes les tables ont RLS activée, sans accès applicatif permis à ce stade. Les noms techniques ne sont pas des libellés à afficher dans l’interface.
 
@@ -15,7 +15,7 @@ Toutes les tables ont RLS activée, sans accès applicatif permis à ce stade. L
 | escen | academic_years | 9 | 0 | Oui |
 | escen | accounts | 8 | 2 | Oui |
 | escen | allocation_reversals | 5 | 2 | Oui |
-| escen | annual_fee_schedules | 9 | 3 | Oui |
+| escen | annual_fee_schedules | 10 | 3 | Oui |
 | escen | annual_payment_channels | 6 | 1 | Oui |
 | escen | answer_corrections | 6 | 2 | Oui |
 | escen | application_documents | 11 | 1 | Oui |
@@ -51,7 +51,7 @@ Toutes les tables ont RLS activée, sans accès applicatif permis à ce stade. L
 | escen | email_outbox | 24 | 3 | Oui |
 | escen | enrollment_events | 7 | 2 | Oui |
 | escen | enrollment_groups | 9 | 4 | Oui |
-| escen | enrollments | 7 | 3 | Oui |
+| escen | enrollments | 8 | 3 | Oui |
 | escen | evaluation_candidates | 7 | 2 | Oui |
 | escen | evaluation_transitions | 7 | 2 | Oui |
 | escen | evaluations | 17 | 6 | Oui |
@@ -89,7 +89,7 @@ Toutes les tables ont RLS activée, sans accès applicatif permis à ce stade. L
 | escen | payments | 15 | 4 | Oui |
 | escen | people | 15 | 0 | Oui |
 | escen | permissions | 3 | 0 | Oui |
-| escen | programs | 7 | 0 | Oui |
+| escen | programs | 8 | 0 | Oui |
 | escen | purchase_lines | 5 | 1 | Oui |
 | escen | purchase_receipts | 7 | 2 | Oui |
 | escen | purchases | 9 | 4 | Oui |
@@ -416,6 +416,7 @@ CREATE INDEX fk_18662 ON escen.allocation_reversals USING btree (actor_id)
 | reason | escen.nonempty_text | NO | — | NEVER |
 | archived_at | timestamptz | YES | — | NEVER |
 | delivery_mode | text | YES | — | NEVER |
+| double_degree | bool | NO | false | NEVER |
 
 Contraintes :
 
@@ -425,12 +426,13 @@ annual_fee_schedules_academic_year_id_not_null: NOT NULL academic_year_id
 annual_fee_schedules_amount_not_null: NOT NULL amount
 annual_fee_schedules_category_check: CHECK ((category = ANY (ARRAY['SCOLARITE'::text, 'INSCRIPTION'::text])))
 annual_fee_schedules_category_not_null: NOT NULL category
+annual_fee_schedules_double_degree_not_null: NOT NULL double_degree
 annual_fee_schedules_id_not_null: NOT NULL id
 annual_fee_schedules_level_id_fkey: FOREIGN KEY (level_id) REFERENCES escen.levels(id) ON DELETE RESTRICT
 annual_fee_schedules_pkey: PRIMARY KEY (id)
 annual_fee_schedules_program_id_fkey: FOREIGN KEY (program_id) REFERENCES escen.programs(id) ON DELETE RESTRICT
 annual_fee_schedules_reason_not_null: NOT NULL reason
-annual_fee_variant: UNIQUE NULLS NOT DISTINCT (academic_year_id, category, program_id, level_id, delivery_mode, archived_at)
+annual_fee_variant: UNIQUE NULLS NOT DISTINCT (academic_year_id, category, program_id, level_id, delivery_mode, double_degree, archived_at)
 ```
 
 Index :
@@ -439,7 +441,7 @@ Index :
 CREATE INDEX annual_fee_level_fk ON escen.annual_fee_schedules USING btree (level_id)
 CREATE INDEX annual_fee_program_fk ON escen.annual_fee_schedules USING btree (program_id)
 CREATE UNIQUE INDEX annual_fee_schedules_pkey ON escen.annual_fee_schedules USING btree (id)
-CREATE UNIQUE INDEX annual_fee_variant ON escen.annual_fee_schedules USING btree (academic_year_id, category, program_id, level_id, delivery_mode, archived_at) NULLS NOT DISTINCT
+CREATE UNIQUE INDEX annual_fee_variant ON escen.annual_fee_schedules USING btree (academic_year_id, category, program_id, level_id, delivery_mode, double_degree, archived_at) NULLS NOT DISTINCT
 CREATE INDEX annual_fee_year_fk ON escen.annual_fee_schedules USING btree (academic_year_id)
 ```
 
@@ -1868,12 +1870,14 @@ CREATE INDEX fk_17148 ON escen.enrollment_groups USING btree (group_id, offering
 | enrolled_on | date | YES | — | NEVER |
 | created_by | uuid | YES | — | NEVER |
 | created_at | timestamptz | NO | now() | NEVER |
+| double_degree | bool | NO | false | NEVER |
 
 Contraintes :
 
 ```sql
 enrollments_created_at_not_null: NOT NULL created_at
 enrollments_created_by_fkey: FOREIGN KEY (created_by) REFERENCES escen.accounts(id) ON DELETE RESTRICT
+enrollments_double_degree_not_null: NOT NULL double_degree
 enrollments_id_not_null: NOT NULL id
 enrollments_id_offering_id_key: UNIQUE (id, offering_id)
 enrollments_id_student_id_key: UNIQUE (id, student_id)
@@ -3434,6 +3438,7 @@ CREATE UNIQUE INDEX permissions_pkey ON escen.permissions USING btree (id)
 | active | bool | NO | true | NEVER |
 | archived_at | timestamptz | YES | — | NEVER |
 | reason | text | YES | — | NEVER |
+| double_degree_eligible | bool | NO | false | NEVER |
 
 Contraintes :
 
@@ -3442,6 +3447,7 @@ programs_active_not_null: NOT NULL active
 programs_archive_reason: CHECK (((archived_at IS NULL) OR ((reason IS NOT NULL) AND (length(btrim(reason)) >= 3))))
 programs_code_key: UNIQUE (code)
 programs_code_not_null: NOT NULL code
+programs_double_degree_eligible_not_null: NOT NULL double_degree_eligible
 programs_id_not_null: NOT NULL id
 programs_name_not_null: NOT NULL name
 programs_pkey: PRIMARY KEY (id)

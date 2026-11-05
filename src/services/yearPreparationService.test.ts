@@ -180,4 +180,10 @@ const reconductedSnapshot = {
 assert.ok(yearPreparation(reconductedSnapshot as unknown as typeof snapshot, 'NEW_YEAR').every(check => check.ready));
 
 console.log('Préparation annuelle : chaque formation couverte, année exacte et paramètres archivés exclus.');
+const doubleDegreeSnapshot = {...snapshot,tables:{...snapshot.tables,
+  annual_fee_schedules:snapshot.tables.annual_fee_schedules.map(row=>({...row,double_degree:true})),
+}};
+assert.ok(yearPreparation(doubleDegreeSnapshot,'Y').filter(check=>['tuition','registration'].includes(check.key)).every(check=>!check.ready));
+const renewedDoubleDegree = buildReconductChanges(doubleDegreeSnapshot,'Y','NEW_YEAR','Reconduction du parcours double diplomation');
+assert.ok(renewedDoubleDegree.filter(change=>change.table==='annual_fee_schedules').every(change=>change.record.double_degree===true));
 

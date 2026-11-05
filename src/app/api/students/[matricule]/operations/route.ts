@@ -7,6 +7,7 @@ import { PaymentAdjustmentError, assertPaymentAdjustment, paymentAdjustmentDirec
 import { paymentReceiptDocument } from '@/services/paymentReceiptService';
 import { netContractAmount, netPaymentTotal } from '@/services/financialProjectionService';
 import { availableEnrollmentGroupLinks } from '@/services/enrollmentGroupReferenceService';
+import {ContractAmendmentError, contractAmendmentOptions, planContractAmendment} from '@/services/contractAmendmentService';
 import { ROLES } from '@/types/permissions';
 import type { PersistentChange, RelationalSnapshot } from '@/types/persistence';
 export const dynamic='force-dynamic';
@@ -70,10 +71,11 @@ export async function GET(request:Request,{params}:Params){try{
       availableGroups,
     };
   });
-  return Response.json({revision:snapshot.revision,adjustmentDirectory:context.permissions.includes('finance.view')?paymentAdjustmentDirectory(scoped,ids):{payments:[],lines:[]},allocationDirectory:context.permissions.includes('finance.view')?paymentAllocationDirectory(scoped,ids):{payments:[],installments:[]},channels:context.permissions.includes('finance.view')?(snapshot.tables.annual_payment_channels || []).filter(row=>row.academic_year_id=== (enrollments[0] ? snapshot.tables.academic_offerings.find(offering=>offering.id===enrollments[0].offering_id)?.academic_year_id : null) && !row.archived_at).map(row=>({name:row.name,method:row.method})):[],enrollments:enrichedEnrollments,contracts,payments:payments.map(row=>({id:row.id,reference:row.reference,amount:row.amount,paidOn:row.paid_on,cancelled:reversals.has(row.id),pending:row.status==='PENDING'})),paid:context.permissions.includes('finance.view')?netPaymentTotal(scoped,ids):0},{headers:{'Cache-Control':'no-store'}});
+  return Response.json({revision:snapshot.revision,amendmentOptions:['RAF','IT'].includes(context.roleCode) && context.grants.some(grant=>!grant.site_id && !grant.group_id && !grant.academic_year_id) && context.permissions.includes('payment.record') && context.permissions.includes('student.lifecycle.manage') && context.permissions.includes('finance.view')?contractAmendmentOptions(snapshot,ids):[],adjustmentDirectory:context.permissions.includes('finance.view')?paymentAdjustmentDirectory(scoped,ids):{payments:[],lines:[]},allocationDirectory:context.permissions.includes('finance.view')?paymentAllocationDirectory(scoped,ids):{payments:[],installments:[]},channels:context.permissions.includes('finance.view')?(snapshot.tables.annual_payment_channels || []).filter(row=>row.academic_year_id=== (enrollments[0] ? snapshot.tables.academic_offerings.find(offering=>offering.id===enrollments[0].offering_id)?.academic_year_id : null) && !row.archived_at).map(row=>({name:row.name,method:row.method})):[],enrollments:enrichedEnrollments,contracts,payments:payments.map(row=>({id:row.id,reference:row.reference,amount:row.amount,paidOn:row.paid_on,cancelled:reversals.has(row.id),pending:row.status==='PENDING'})),paid:context.permissions.includes('finance.view')?netPaymentTotal(scoped,ids):0},{headers:{'Cache-Control':'no-store'}});
 }catch(error){return errorResponse(error);}}
 const common={revision:z.number().int().nonnegative(),enrollmentId:z.uuid(),reason:z.string().trim().min(3).max(1000)};
 const schema=z.discriminatedUnion('action',[
+  z.object({...common,action:z.literal('amend_contract'),versionId:z.uuid(),feeId:z.uuid(),discountPercent:z.number().min(0).lt(100).multipleOf(0.01),dueOn:z.iso.date()}).strict(),
   z.object({...common,action:z.literal('payment'),amount:z.number().int().positive().max(2147483647),payer:z.string().trim().min(2).max(160),reference:z.string().trim().min(2).max(160),provider:z.string().trim().min(2).max(160),method:z.enum(['ESPECES','MOBILE_MONEY','VIREMENT','CHEQUE','CARTE']),paidOn:z.iso.date(),category:z.enum(['INSCRIPTION','SCOLARITE','ANNEXE']).optional()}).strict(),
   z.object({...common,action:z.literal('reallocate_payment'),paymentId:z.uuid(),targets:z.array(z.object({installmentId:z.uuid(),amount:z.number().int().positive().max(2147483647)}).strict()).min(1)}).strict(),
   z.object({...common,action:z.literal('cancel_payment'),paymentId:z.uuid()}).strict(),
@@ -89,6 +91,14 @@ export async function POST(request:Request,{params}:Params){try{
   requirePermission(data.context,(body.action==='status' || body.action==='change_group')?'student.lifecycle.manage':body.action==='cancel_payment'?'payment.cancel':'payment.record');
   const enrollment=data.enrollments.find(row=>row.id===body.enrollmentId);
   if(!enrollment)throw new RequestError(409,'L’inscription officielle doit être enregistrée dans cette année avant cette opération.');
+  if(body.action==='amend_contract'){
+    requirePermission(data.context,'finance.view');requirePermission(data.context,'student.lifecycle.manage');
+    if(!['RAF','IT'].includes(data.context.roleCode) || !data.context.grants.some(grant=>!grant.site_id && !grant.group_id && !grant.academic_year_id))throw new RequestError(403,'Gestion financière et académique globale requise.');
+    const changes=planContractAmendment(data.snapshot,body,data.context.accountId);
+    const saved=await data.client.rpc('escen_backend_transaction',{p_actor_id:data.context.accountId,p_expected_revision:body.revision,p_changes:changes});
+    if(saved.error)throw new RequestError(409,'Avenant refusé : actualisez le dossier. Aucun changement partiel enregistré.');
+    return Response.json({revision:saved.data},{status:201});
+  }
   if(body.action==='cancel_payment' || body.action==='refund_payment' || body.action==='credit_note'){
     requirePermission(data.context,'finance.view');
     const allowed=body.action==='cancel_payment'?['DG','IT']:['RAF','IT'];
@@ -163,5 +173,5 @@ export async function POST(request:Request,{params}:Params){try{
   const saved=await data.client.rpc(paymentId?'escen_payment_transaction':'escen_backend_transaction',{p_actor_id:data.context.accountId,p_expected_revision:body.revision,p_changes:changes,...(paymentId?{p_action:body.action==='payment'?'record':'reallocate',p_payment_id:paymentId}:{})});
   if(saved.error)throw new RequestError(409,'Enregistrement refusé : actualisez le dossier et vérifiez les références. Aucune opération partielle n’a été conservée.');
   return Response.json({revision:saved.data,...allocationResult},{status:201});
-}catch(error){return errorResponse(error instanceof PaymentAllocationError || error instanceof PaymentAdjustmentError?new RequestError(409,error.message):error);}}
+}catch(error){return errorResponse(error instanceof PaymentAllocationError || error instanceof PaymentAdjustmentError || error instanceof ContractAmendmentError?new RequestError(409,error.message):error);}}
 function payerName(value:string){return value;}

@@ -14,6 +14,9 @@ import { verifyScheduleManagement } from './verify-schedule-management.mjs';
 import { verifyBlockedPeriodReasons } from './verify-blocked-period-reasons.mjs';
 import { verifyEmailOutbox } from './verify-email-outbox.mjs';
 import { verifyFinanceRegularization } from './verify-finance-regularization.mjs';
+import { verifyDoubleDegreeFees } from './verify-double-degree-fees.mjs';
+import { verifyContractAmendment } from './verify-contract-amendment.mjs';
+import { verifyScholarshipApplication } from './verify-scholarship-application.mjs';
 import { readFile } from 'node:fs/promises';
 import { fileURLToPath } from 'node:url';
 import { randomUUID } from 'node:crypto';
@@ -79,6 +82,9 @@ try {
   await insert('assessment_weights', { curriculum_id: curriculum.id, component_id: component.id, evaluation_kind: 'EXAMEN', percent: 60 });
   await db.query("update escen.curricula set status = 'APPROVED', approved_by = $1, approved_at = now() where id = $2", [account.id, curriculum.id]);
   const offering = await insert('academic_offerings', { curriculum_id: curriculum.id, academic_year_id: year.id, level_id: level.id, site_id: site.id });
+  await verifyDoubleDegreeFees(db, check, {program,cycle,level,year});
+  await verifyContractAmendment(db, check, {offering,account});
+  await verifyScholarshipApplication(db, check, {offering,account});
   await verifyFinanceRegularization(db, check, { offering, account });
   await insert('offering_semesters', { offering_id: offering.id, curriculum_id: curriculum.id, curriculum_semester_id: semester.id, starts_on: '2026-01-01', ends_on: '2027-12-31' });
   const group = await insert('groups', { academic_year_id: year.id, level_id: level.id, site_id: site.id, name: 'L1-A' });
@@ -88,6 +94,16 @@ try {
   const studentPerson = await insert('people', { firstname: 'Étudiante', lastname: 'Test' });
   const student = await insert('students', { person_id: studentPerson.id, matricule: 'ETU-TEST' });
   const enrollment = await insert('enrollments', { student_id: student.id, offering_id: offering.id, status: 'INSCRIT' });
+  await check('Double diplomation facultative et contrôle de la filière en base', async () => {
+    assert.equal(enrollment.double_degree, false);
+    assert.equal(program.double_degree_eligible, false);
+    await reject('update escen.enrollments set double_degree = true where id = $1', [enrollment.id], /double diplomation/i);
+    await db.query('update escen.programs set double_degree_eligible = true where id = $1', [program.id]);
+    await db.query('update escen.enrollments set double_degree = true where id = $1', [enrollment.id]);
+    assert.equal(await scalar('select double_degree as value from escen.enrollments where id = $1', [enrollment.id]), true);
+    await db.query('update escen.enrollments set double_degree = false where id = $1', [enrollment.id]);
+    await db.query('update escen.programs set double_degree_eligible = false where id = $1', [program.id]);
+  });
   const membership = await insert('enrollment_groups', { enrollment_id: enrollment.id, offering_id: offering.id, group_id: group.id, valid_from: '2026-01-01', changed_by: account.id, reason: 'Inscription' });
   const staff = await insert('staff', { person_id: person.id, employee_number: 'ENS-TEST' });
   const teacher = await insert('teachers', { staff_id: staff.id });

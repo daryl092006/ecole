@@ -3,6 +3,8 @@ import { requireAccount, requirePermission, RequestError, errorResponse } from '
 import { resolveAcademicYear } from '@/server/academicYearContext';
 import { filterRelationalSnapshot } from '@/services/persistentPermissionsService';
 import type { PersistentChange, RelationalSnapshot } from '@/types/persistence';
+import {ScholarshipApplicationError,previewScholarshipApplication,planScholarshipApplication,scholarshipTuitionLines,scholarshipContractContext} from '@/services/scholarshipApplicationService';
+import {scholarshipFinancialEffect,scholarshipSavedTerms} from '@/services/scholarshipEffectService';
 import type { FinanceSettingsDirectory } from '@/types/financeSettings';
 
 export const dynamic = 'force-dynamic';
@@ -14,14 +16,12 @@ export async function GET(request: Request) {
 
     const result = await auth.client.rpc('escen_backend_snapshot');
     if (result.error) throw new RequestError(503, 'Données financières indisponibles.');
-    const snapshot = result.data as RelationalSnapshot;
+    const snapshot = filterRelationalSnapshot(result.data as RelationalSnapshot, auth.context);
 
     const yearContext = await resolveAcademicYear(request, auth.client, auth.context, snapshot);
     const selectedYearId = yearContext.selectedYearId;
     const selectedYear = snapshot.tables.academic_years?.find(y => y.id === selectedYearId);
     const selectedYearCode = selectedYear ? String(selectedYear.code || selectedYear.name || '') : '';
-
-    filterRelationalSnapshot(snapshot, auth.context);
 
     // 1. Scholarships & award counts
     const awards = snapshot.tables.scholarship_awards || [];
@@ -47,6 +47,7 @@ export async function GET(request: Request) {
       .map(row => ({
         id: row.id,
         academicYearId: String(row.academic_year_id),
+        doubleDegree: row.double_degree===true,
         category: row.category as 'SCOLARITE' | 'INSCRIPTION',
         programId: row.program_id ? String(row.program_id) : null,
         programName: row.program_id ? programsMap.get(String(row.program_id)) || 'Filière' : 'Toutes les filières',
@@ -72,8 +73,6 @@ export async function GET(request: Request) {
     const offeringsMap = new Map((snapshot.tables.academic_offerings || []).map(o => [o.id, o]));
     const curriculaMap = new Map((snapshot.tables.curricula || []).map(c => [c.id, c]));
 
-    const scholarshipMap = new Map(scholarships.map(s => [s.id, s]));
-
     const scholarshipAwards = awards
       .filter(a => enrollmentsYearIds.has(String(a.enrollment_id)) && !a.revoked_at)
       .map(a => {
@@ -84,25 +83,26 @@ export async function GET(request: Request) {
         const curriculum = offering ? curriculaMap.get(String(offering.curriculum_id)) : undefined;
         const programName = curriculum ? programsMap.get(String(curriculum.program_id)) : undefined;
         const levelName = offering ? levelsMap.get(String(offering.level_id)) : undefined;
-        const scholarship = scholarshipMap.get(String(a.scholarship_id));
+        const scholarship = scholarshipSavedTerms(a,(snapshot.tables.scholarships || []).find(row=>row.id===a.scholarship_id));
 
         const val =
           scholarship?.kind === 'POURCENTAGE'
             ? `${scholarship.percent}%`
             : scholarship?.amount != null
-            ? `${scholarship.amount.toLocaleString('fr-FR')} FCFA`
+            ? `${Number(scholarship.amount).toLocaleString('fr-FR')} FCFA`
             : '-';
 
         return {
           id: a.id,
+          ...scholarshipFinancialEffect(snapshot,a),
           enrollmentId: String(a.enrollment_id),
           studentMatricule: String(student?.matricule || '-'),
           studentName: person ? `${person.lastname} ${person.firstname}` : 'Étudiant',
           programName: programName || 'Filière',
           levelName: levelName || 'Niveau',
           scholarshipId: String(a.scholarship_id),
-          scholarshipCode: scholarship?.code || '',
-          scholarshipName: scholarship?.name || '',
+          scholarshipCode: String(scholarship.code || ''),
+          scholarshipName: String(scholarship.name || ''),
           scholarshipKind: (scholarship?.kind || 'POURCENTAGE') as 'POURCENTAGE' | 'MONTANT_FIXE',
           scholarshipValue: val,
           validFrom: String(a.valid_from),
@@ -113,6 +113,8 @@ export async function GET(request: Request) {
       .sort((a, b) => a.studentName.localeCompare(b.studentName, 'fr'));
 
     // 4. Enrolled students list with their contract and scholarship status
+    const scholarshipMap = new Map(scholarships.map(s => [s.id, s]));
+    const scholarshipMap = new Map((snapshot.tables.scholarships || []).map(s => [s.id, s]));
     const contractsMap = new Map((snapshot.tables.financial_contracts || []).map(c => [String(c.enrollment_id), c]));
     const contractLines = snapshot.tables.contract_lines || [];
     const contractDiscounts = snapshot.tables.contract_discounts || [];
@@ -142,20 +144,21 @@ export async function GET(request: Request) {
           ? awardedSch.kind === 'POURCENTAGE'
             ? `${awardedSch.percent}%`
             : awardedSch.amount != null
-            ? `${awardedSch.amount.toLocaleString('fr-FR')} FCFA`
+            ? `${Number(awardedSch.amount).toLocaleString('fr-FR')} FCFA`
             : '-'
           : undefined;
 
         return {
           enrollmentId: e.id,
+          scholarshipContext: scholarshipContractContext(snapshot,e.id),
           studentId: String(e.student_id),
           matricule: String(student?.matricule || ''),
           name: person ? `${person.lastname} ${person.firstname}` : 'Étudiant',
           programName: curriculum ? programsMap.get(String(curriculum.program_id)) || '' : '',
           levelName: offering ? levelsMap.get(String(offering.level_id)) || '' : '',
           hasScholarship,
-          scholarshipCode: awardedSch?.code,
-          scholarshipName: awardedSch?.name,
+          scholarshipCode: awardedSch ? String(awardedSch.code) : undefined,
+          scholarshipName: awardedSch ? String(awardedSch.name) : undefined,
           scholarshipValue: scholarshipVal,
           scholarshipId: studentAward ? String(studentAward.scholarship_id) : undefined,
           contractId: contract ? String(contract.id) : undefined,
@@ -176,14 +179,14 @@ export async function GET(request: Request) {
       scholarships,
       feeSchedules,
       scholarshipAwards,
-      programs: (snapshot.tables.programs || []).filter(p => !p.archived_at).map(p => ({ id: p.id, name: String(p.name), code: String(p.code) })),
+      programs: (snapshot.tables.programs || []).filter(p => !p.archived_at).map(p => ({ id: p.id, name: String(p.name), code: String(p.code), doubleDegreeEligible: p.double_degree_eligible===true })),
       levels: (snapshot.tables.levels || []).filter(l => !l.archived_at).map(l => ({ id: l.id, name: String(l.name), code: String(l.code) })),
       enrolledStudents,
     };
 
     return Response.json(directory, { headers: { 'Cache-Control': 'no-store' } });
   } catch (error) {
-    return errorResponse(error);
+    return errorResponse(error instanceof ScholarshipApplicationError?new RequestError(409,error.message):error);
   }
 }
 
@@ -221,6 +224,7 @@ const toggleScholarshipSchema = z.object({
 
 const feeScheduleSchema = z.object({
   action: z.literal('create_fee_schedule'),
+  doubleDegree: z.boolean().default(false),
   revision: z.number().int().nonnegative(),
   academicYearId: z.uuid(),
   category: z.enum(['SCOLARITE', 'INSCRIPTION']),
@@ -238,16 +242,20 @@ const archiveFeeScheduleSchema = z.object({
   reason: z.string().trim().min(3).max(1000),
 });
 
-const awardScholarshipSchema = z.object({
-  action: z.literal('award_scholarship'),
-  revision: z.number().int().nonnegative(),
-  enrollmentId: z.uuid(),
-  scholarshipId: z.uuid(),
-  validFrom: z.iso.date(),
-  reason: z.string().trim().min(3).max(1000),
+const scholarshipSelectionSchema=z.object({
+  revision:z.number().int().nonnegative(),enrollmentId:z.uuid(),scholarshipId:z.uuid(),
+  validFrom:z.iso.date(),reason:z.string().trim().min(3).max(1000),
+  calculationBasis:z.enum(['GROSS','REMAINING']),confirmStacking:z.boolean(),
 });
+const awardScholarshipSchema=scholarshipSelectionSchema.extend({
+  action:z.literal('award_scholarship'),versionId:z.uuid(),
+  reviewedReduction:z.number().int().positive(),reviewedTotal:z.number().int().nonnegative(),
+  installments:z.array(z.object({id:z.uuid().optional(),dueOn:z.iso.date(),amount:z.number().int().nonnegative()}).strict()).max(80),
+}).strict();
+const previewScholarshipSchema=scholarshipSelectionSchema.extend({action:z.literal('preview_scholarship')}).strict();
 
 const bodySchema = z.discriminatedUnion('action', [
+  previewScholarshipSchema,
   scholarshipSchema,
   updateScholarshipSchema,
   toggleScholarshipSchema,
@@ -260,15 +268,33 @@ export async function POST(request: Request) {
   try {
     const auth = await requireAccount(request);
     requirePermission(auth.context, 'payment.record');
+    requirePermission(auth.context, 'finance.view');
 
     const body = bodySchema.parse(await request.json());
+    if(!['award_scholarship','preview_scholarship'].includes(body.action) && !auth.context.grants.some(grant=>!grant.site_id && !grant.group_id && !grant.academic_year_id))throw new RequestError(403,'Gestion globale du catalogue financier requise.');
 
     const result = await auth.client.rpc('escen_backend_snapshot');
     if (result.error) throw new RequestError(503, 'Données financières indisponibles.');
-    const snapshot = result.data as RelationalSnapshot;
+    const snapshot = ['award_scholarship','preview_scholarship'].includes(body.action)?filterRelationalSnapshot(result.data as RelationalSnapshot,auth.context):result.data as RelationalSnapshot;
+    const year=await resolveAcademicYear(request,auth.client,auth.context,snapshot);
+    if(['award_scholarship','preview_scholarship','create_fee_schedule','archive_fee_schedule'].includes(body.action) && !year.selectedYearId)throw new RequestError(409,'Sélectionnez une année précise.');
 
     if (body.revision !== snapshot.revision) {
       throw new RequestError(409, 'Les données ont été modifiées par un autre utilisateur. Actualisez la page.');
+    }
+
+    if(body.action==='preview_scholarship' || body.action==='award_scholarship'){
+      const selectedYear=year.years.find(row=>row.id===year.selectedYearId);
+      if(!selectedYear || selectedYear.status!=='OUVERTE')throw new RequestError(409,'Choisissez une année ouverte.');
+      if(body.validFrom<selectedYear.starts_on || body.validFrom>selectedYear.ends_on)throw new RequestError(400,'La date d’effet doit appartenir à l’année de l’inscription.');
+    }
+
+    if(body.action==='preview_scholarship'){
+      const enrollment=snapshot.tables.enrollments?.find(row=>row.id===body.enrollmentId);
+      if(!snapshot.tables.academic_offerings?.some(row=>row.id===enrollment?.offering_id && row.academic_year_id===year.selectedYearId))throw new RequestError(409,'Inscription hors de l’année sélectionnée.');
+      const tuition=scholarshipTuitionLines(snapshot,body.enrollmentId);
+      const preview=previewScholarshipApplication(snapshot,{...body,lineIds:tuition.tuition.map(row=>row.id)});
+      return Response.json({revision:snapshot.revision,preview:{versionId:preview.version.id,registration:scholarshipContractContext(snapshot,body.enrollmentId).registration || 0,base:preview.base,reduction:preview.reduction,oldTotal:preview.oldTotal,newTotal:preview.newTotal,paid:preview.paid,remaining:preview.remaining,unallocatedCredit:preview.unallocatedCredit,contractStatus:preview.version.status,installments:preview.suggestedInstallments}}, {headers:{'Cache-Control':'no-store'}});
     }
 
     const changes: PersistentChange[] = [];
@@ -337,11 +363,14 @@ export async function POST(request: Request) {
         },
       });
     } else if (body.action === 'create_fee_schedule') {
+      if(body.academicYearId!==year.selectedYearId)throw new RequestError(409,'Le tarif doit appartenir à l’année sélectionnée.');
+      if(body.doubleDegree && !snapshot.tables.programs?.some(row=>row.id===body.programId && row.double_degree_eligible===true))throw new RequestError(400,'Choisissez une filière éligible à la double diplomation.');
       const duplicate = (snapshot.tables.annual_fee_schedules || []).find(
         f =>
           !f.archived_at &&
           f.academic_year_id === body.academicYearId &&
           f.category === body.category &&
+          (f.double_degree===true) === body.doubleDegree &&
           (f.program_id || null) === (body.programId || null) &&
           (f.level_id || null) === (body.levelId || null) &&
           (f.delivery_mode || null) === (body.deliveryMode || null)
@@ -357,6 +386,7 @@ export async function POST(request: Request) {
           id: crypto.randomUUID(),
           academic_year_id: body.academicYearId,
           category: body.category,
+          double_degree: body.doubleDegree,
           program_id: body.programId || null,
           level_id: body.levelId || null,
           delivery_mode: body.deliveryMode || null,
@@ -367,6 +397,7 @@ export async function POST(request: Request) {
     } else if (body.action === 'archive_fee_schedule') {
       const existing = snapshot.tables.annual_fee_schedules?.find(f => f.id === body.id);
       if (!existing) throw new RequestError(404, 'Tarif introuvable.');
+      if(existing.academic_year_id!==year.selectedYearId)throw new RequestError(409,'Le tarif doit appartenir à l’année sélectionnée.');
       if (existing.archived_at) throw new RequestError(409, 'Ce tarif est déjà archivé.');
 
       changes.push({
@@ -379,41 +410,13 @@ export async function POST(request: Request) {
         },
       });
     } else if (body.action === 'award_scholarship') {
-      const enrollment = snapshot.tables.enrollments?.find(e => e.id === body.enrollmentId);
-      if (!enrollment) throw new RequestError(404, 'Inscription de l’étudiant introuvable.');
-
-      const scholarship = snapshot.tables.scholarships?.find(s => s.id === body.scholarshipId);
-      if (!scholarship) throw new RequestError(404, 'Bourse introuvable.');
-      if (!scholarship.active) throw new RequestError(400, 'Cette bourse est inactive.');
-
-      const existingAward = (snapshot.tables.scholarship_awards || []).find(
-        a => a.enrollment_id === body.enrollmentId && a.scholarship_id === body.scholarshipId && !a.revoked_at
-      );
-      if (existingAward) {
-        throw new RequestError(409, 'Cette bourse est déjà attribuée à cet étudiant pour cette inscription.');
-      }
-
-      const termsSnapshot = {
-        code: scholarship.code,
-        name: scholarship.name,
-        kind: scholarship.kind,
-        percent: scholarship.percent,
-        amount: scholarship.amount,
-      };
-
-      changes.push({
-        table: 'scholarship_awards',
-        operation: 'insert',
-        record: {
-          id: crypto.randomUUID(),
-          enrollment_id: body.enrollmentId,
-          scholarship_id: body.scholarshipId,
-          valid_from: body.validFrom,
-          granted_by: auth.context.accountId,
-          terms_snapshot: termsSnapshot,
-          reason: body.reason,
-        },
-      });
+      const enrollment=snapshot.tables.enrollments?.find(row=>row.id===body.enrollmentId);
+      if(!snapshot.tables.academic_offerings?.some(row=>row.id===enrollment?.offering_id && row.academic_year_id===year.selectedYearId))throw new RequestError(409,'Inscription hors de l’année sélectionnée.');
+      const tuition=scholarshipTuitionLines(snapshot,body.enrollmentId);
+      const input={...body,lineIds:tuition.tuition.map(row=>row.id)};
+      const preview=previewScholarshipApplication(snapshot,input);
+      if(preview.version.id!==body.versionId || preview.reduction!==body.reviewedReduction || preview.newTotal!==body.reviewedTotal)throw new RequestError(409,'Le récapitulatif financier a changé. Recalculez avant de confirmer.');
+      changes.push(...planScholarshipApplication(snapshot,input,body.installments,auth.context.accountId));
     }
 
     const tx = await auth.client.rpc('escen_backend_transaction', {
@@ -428,6 +431,6 @@ export async function POST(request: Request) {
 
     return Response.json({ success: true, revision: tx.data }, { status: 201 });
   } catch (error) {
-    return errorResponse(error);
+    return errorResponse(error instanceof ScholarshipApplicationError?new RequestError(409,error.message):error);
   }
 }

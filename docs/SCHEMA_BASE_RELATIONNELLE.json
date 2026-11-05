@@ -2,7 +2,7 @@
   "stats": {
     "businessTables": 119,
     "privateTables": 14,
-    "columns": 1059,
+    "columns": 1062,
     "foreignKeys": 297,
     "checks": 248,
     "exclusions": 5
@@ -1294,6 +1294,15 @@
       "type": "text",
       "nullable": "YES",
       "default": null,
+      "generated": "NEVER"
+    },
+    {
+      "schema": "escen",
+      "table": "annual_fee_schedules",
+      "name": "double_degree",
+      "type": "bool",
+      "nullable": "NO",
+      "default": "false",
       "generated": "NEVER"
     },
     {
@@ -3913,6 +3922,15 @@
       "type": "timestamptz",
       "nullable": "NO",
       "default": "now()",
+      "generated": "NEVER"
+    },
+    {
+      "schema": "escen",
+      "table": "enrollments",
+      "name": "double_degree",
+      "type": "bool",
+      "nullable": "NO",
+      "default": "false",
       "generated": "NEVER"
     },
     {
@@ -6748,6 +6766,15 @@
       "type": "text",
       "nullable": "YES",
       "default": null,
+      "generated": "NEVER"
+    },
+    {
+      "schema": "escen",
+      "table": "programs",
+      "name": "double_degree_eligible",
+      "type": "bool",
+      "nullable": "NO",
+      "default": "false",
       "generated": "NEVER"
     },
     {
@@ -10771,6 +10798,13 @@
     {
       "schema": "escen",
       "table": "annual_fee_schedules",
+      "name": "annual_fee_schedules_double_degree_not_null",
+      "type": "n",
+      "definition": "NOT NULL double_degree"
+    },
+    {
+      "schema": "escen",
+      "table": "annual_fee_schedules",
       "name": "annual_fee_schedules_id_not_null",
       "type": "n",
       "definition": "NOT NULL id"
@@ -10808,7 +10842,7 @@
       "table": "annual_fee_schedules",
       "name": "annual_fee_variant",
       "type": "u",
-      "definition": "UNIQUE NULLS NOT DISTINCT (academic_year_id, category, program_id, level_id, delivery_mode, archived_at)"
+      "definition": "UNIQUE NULLS NOT DISTINCT (academic_year_id, category, program_id, level_id, delivery_mode, double_degree, archived_at)"
     },
     {
       "schema": "escen",
@@ -13924,6 +13958,13 @@
       "name": "enrollments_created_by_fkey",
       "type": "f",
       "definition": "FOREIGN KEY (created_by) REFERENCES escen.accounts(id) ON DELETE RESTRICT"
+    },
+    {
+      "schema": "escen",
+      "table": "enrollments",
+      "name": "enrollments_double_degree_not_null",
+      "type": "n",
+      "definition": "NOT NULL double_degree"
     },
     {
       "schema": "escen",
@@ -17382,6 +17423,13 @@
       "name": "programs_code_not_null",
       "type": "n",
       "definition": "NOT NULL code"
+    },
+    {
+      "schema": "escen",
+      "table": "programs",
+      "name": "programs_double_degree_eligible_not_null",
+      "type": "n",
+      "definition": "NOT NULL double_degree_eligible"
     },
     {
       "schema": "escen",
@@ -21597,7 +21645,7 @@
       "schema": "escen",
       "table": "annual_fee_schedules",
       "name": "annual_fee_variant",
-      "definition": "CREATE UNIQUE INDEX annual_fee_variant ON escen.annual_fee_schedules USING btree (academic_year_id, category, program_id, level_id, delivery_mode, archived_at) NULLS NOT DISTINCT"
+      "definition": "CREATE UNIQUE INDEX annual_fee_variant ON escen.annual_fee_schedules USING btree (academic_year_id, category, program_id, level_id, delivery_mode, double_degree, archived_at) NULLS NOT DISTINCT"
     },
     {
       "schema": "escen",

@@ -3,7 +3,6 @@
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { usePortal } from '@/hooks/usePortal';
-import { ROLES } from '@/types/permissions';
 import { studentPath } from '@/constants/portalRoutes';
 import PageHeader from '@/components/ui/PageHeader';
 import ResponsiveTable from '@/components/ui/ResponsiveTable';
@@ -12,6 +11,7 @@ import ReviewedForm from '@/components/ui/ReviewedForm';
 import DrawerActions from '@/components/ui/DrawerActions';
 import { DrawerCloseButton } from '@/components/ui/DetailDrawer';
 import LoadingState from '@/components/ui/LoadingState';
+import ScholarshipAwardForm from './ScholarshipAwardForm';
 import ErrorState from '@/components/ui/ErrorState';
 import ActionResult from '@/components/ui/ActionResult';
 import { loadFinanceSettings, mutateFinanceSettings } from '@/services/financeSettingsService';
@@ -27,9 +27,11 @@ export default function AnnualFeesWorkspace() {
   const portal = usePortal();
   const { activeRole } = portal;
 
-  const [activeTab, setActiveTab] = useState<'contracts' | 'fees' | 'scholarships'>('contracts');
+  const [activeTab, setActiveTab] = useState<'contracts' | 'fees' | 'scholarships' | 'awards'>('contracts');
   const [contractsFilter, setContractsFilter] = useState<'all' | 'awarded' | 'standard'>('all');
   const [contractsQuery, setContractsQuery] = useState('');
+  const [awardQuery, setAwardQuery] = useState('');
+  const [awardEnrollmentId, setAwardEnrollmentId] = useState('');
   const [directory, setDirectory] = useState<FinanceSettingsDirectory | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -57,14 +59,9 @@ export default function AnnualFeesWorkspace() {
   const [feeProgramId, setFeeProgramId] = useState('');
   const [feeLevelId, setFeeLevelId] = useState('');
   const [feeMode, setFeeMode] = useState('Présentiel');
+  const [feeDoubleDegree, setFeeDoubleDegree] = useState(false);
   const [feeAmount, setFeeAmount] = useState('550000');
   const [feeReason, setFeeReason] = useState('');
-
-  // Award scholarship form state
-  const [awardEnrollmentId, setAwardEnrollmentId] = useState('');
-  const [awardScholarshipId, setAwardScholarshipId] = useState('');
-  const [awardValidFrom, setAwardValidFrom] = useState(new Date().toISOString().slice(0, 10));
-  const [awardReason, setAwardReason] = useState('');
 
   // Search queries
   const [schQuery, setSchQuery] = useState('');
@@ -93,14 +90,13 @@ export default function AnnualFeesWorkspace() {
     };
   }, [activeRole, portal.academicYearContext?.selectedYearId, reloadKey]);
 
-  const canEdit = [ROLES.RAF, ROLES.IT, ROLES.DG].includes(activeRole as typeof ROLES.RAF);
+  const canEdit = portal.perms.permissions.includes('payment.record') && portal.perms.permissions.includes('finance.view');
 
   const closeModal = () => {
     setModalMode('none');
     setSelectedScholarship(null);
     setSchReason('');
     setFeeReason('');
-    setAwardReason('');
     setFormError('');
     setBusy(false);
   };
@@ -133,6 +129,7 @@ export default function AnnualFeesWorkspace() {
     setFeeProgramId('');
     setFeeLevelId('');
     setFeeMode('Présentiel');
+    setFeeDoubleDegree(false);
     setFeeAmount('550000');
     setFeeReason('');
     setFormError('');
@@ -141,9 +138,6 @@ export default function AnnualFeesWorkspace() {
 
   const openAwardScholarship = (enrollmentId?: string) => {
     setAwardEnrollmentId(enrollmentId || directory?.enrolledStudents[0]?.enrollmentId || '');
-    setAwardScholarshipId(directory?.scholarships.find(s => s.active)?.id || '');
-    setAwardValidFrom(new Date().toISOString().slice(0, 10));
-    setAwardReason('');
     setFormError('');
     setModalMode('award_scholarship');
   };
@@ -187,7 +181,7 @@ export default function AnnualFeesWorkspace() {
   };
 
   if (loading) {
-    return <LoadingState label="Chargement des tarifs, tranches et bourses…" variant="table" />;
+    return <LoadingState label="Chargement des tarifs et bourses…" variant="table" />;
   }
 
   if (error && !directory) {
@@ -205,6 +199,14 @@ export default function AnnualFeesWorkspace() {
       f.category.toLowerCase().includes(feeQuery.toLowerCase()) ||
       (f.programName && f.programName.toLowerCase().includes(feeQuery.toLowerCase())) ||
       (f.levelName && f.levelName.toLowerCase().includes(feeQuery.toLowerCase()))
+  );
+
+  const awardList = (directory?.scholarshipAwards || []).filter(
+    a =>
+      a.studentMatricule.toLowerCase().includes(awardQuery.toLowerCase()) ||
+      a.studentName.toLowerCase().includes(awardQuery.toLowerCase()) ||
+      a.scholarshipName.toLowerCase().includes(awardQuery.toLowerCase()) ||
+      a.scholarshipCode.toLowerCase().includes(awardQuery.toLowerCase())
   );
 
   const allStudents = directory?.enrolledStudents || [];
@@ -233,7 +235,7 @@ export default function AnnualFeesWorkspace() {
       <PageHeader
         eyebrow="FINANCES & COMPTABILITÉ"
         title="Contrats étudiants & Bourses"
-        description="Suivi nominatif des contrats d’études, identification précise des étudiants boursiers et plein tarif, et configuration des grilles tarifaires annuelles."
+        description="Configuration des frais annuels, du catalogue des bourses et du suivi de leur effet sur les contrats étudiants."
       >
         <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
           {canEdit && (
@@ -310,7 +312,7 @@ export default function AnnualFeesWorkspace() {
           className={`btn ${activeTab === 'fees' ? 'btn-primary' : ''}`}
           onClick={() => setActiveTab('fees')}
         >
-          Tarifs & Tranches ({directory?.feeSchedules.length || 0})
+          Tarifs annuels ({directory?.feeSchedules.length || 0})
         </button>
         <button
           type="button"
@@ -320,6 +322,15 @@ export default function AnnualFeesWorkspace() {
           onClick={() => setActiveTab('scholarships')}
         >
           Catalogue des bourses ({directory?.scholarships.length || 0})
+        </button>
+        <button
+          type="button"
+          role="tab"
+          aria-selected={activeTab === 'awards'}
+          className={`btn ${activeTab === 'awards' ? 'btn-primary' : ''}`}
+          onClick={() => setActiveTab('awards')}
+        >
+          Attributions ({directory?.scholarshipAwards.length || 0})
         </button>
       </div>
 
@@ -677,6 +688,85 @@ export default function AnnualFeesWorkspace() {
         </section>
       )}
 
+      {/* TAB 4: BOURSES ATTRIBUÉES */}
+      {activeTab === 'awards' && (
+        <section className="card">
+          <div
+            className="card-header"
+            style={{
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'center',
+              flexWrap: 'wrap',
+              gap: '0.75rem',
+              padding: '1rem 1.25rem',
+              borderBottom: '1px solid var(--border)',
+            }}
+          >
+            <h2 style={{ fontSize: '1rem', fontWeight: 600, margin: 0 }}>Attributions de bourses et effet contractuel</h2>
+            <div style={{ maxWidth: '320px', width: '100%' }}>
+              <input
+                type="search"
+                className="search-input"
+                placeholder="Rechercher par matricule ou étudiant…"
+                value={awardQuery}
+                onChange={e => setAwardQuery(e.target.value)}
+              />
+            </div>
+          </div>
+
+          <div className="table-wrap">
+            <ResponsiveTable className="data-table">
+              <thead>
+                <tr>
+                  <th>Matricule</th>
+                  <th>Étudiant</th>
+                  <th>Formation & Niveau</th>
+                  <th>Bourse / Partenariat</th>
+                  <th>Valeur</th>
+                  <th>Prise d’effet</th>
+                  <th>Effet sur le contrat</th>
+                </tr>
+              </thead>
+              <tbody>
+                {!awardList.length ? (
+                  <tr>
+                    <td colSpan={7}>Aucune bourse attribuée pour l’année sélectionnée.</td>
+                  </tr>
+                ) : (
+                  awardList.map(item => (
+                    <tr key={item.id}>
+                      <td>
+                        <strong>{item.studentMatricule}</strong>
+                      </td>
+                      <td>{item.studentName}</td>
+                      <td>
+                        {item.programName} · {item.levelName}
+                      </td>
+                      <td>
+                        <span className="pill pill-default">{item.scholarshipName}</span> ({item.scholarshipCode})
+                      </td>
+                      <td>
+                        <strong>{item.scholarshipValue}</strong>
+                      </td>
+                      <td>{item.validFrom}</td>
+                      <td>
+                        {item.financialStatus === 'APPROVED'
+                          ? `Réduction appliquée : ${money(item.appliedAmount || 0)}`
+                          : item.financialStatus === 'DRAFT'
+                          ? `Intégrée au brouillon : ${money(item.appliedAmount || 0)}`
+                          : item.financialStatus === 'NO_CONTRACT'
+                          ? 'Contrat absent'
+                          : 'Réduction non appliquée'}
+                      </td>
+                    </tr>
+                  ))
+                )}
+              </tbody>
+            </ResponsiveTable>
+          </div>
+        </section>
+      )}
       {/* MODAL 1 : CRÉATION DE BOURSE */}
       {modalMode === 'create_scholarship' && directory && (
         <WorkPage title="Nouvelle bourse ou partenariat" onClose={closeModal}>
@@ -1012,6 +1102,7 @@ export default function AnnualFeesWorkspace() {
             fields={[
               { label: 'Année universitaire', value: directory.selectedYearCode },
               { label: 'Type de frais', value: feeCategory === 'SCOLARITE' ? 'Scolarité' : 'Frais d’inscription' },
+                { label: 'Double diplomation', value: feeDoubleDegree ? 'Oui' : 'Non' },
               {
                 label: 'Filière',
                 value: directory.programs.find(p => p.id === feeProgramId)?.name || 'Toutes les filières',
@@ -1020,10 +1111,11 @@ export default function AnnualFeesWorkspace() {
                 label: 'Niveau',
                 value: directory.levels.find(l => l.id === feeLevelId)?.name || 'Tous les niveaux',
               },
-              { label: 'Montant net', value: money(Number(feeAmount || 0)) },
+              { label: 'Montant avant remise individuelle', value: money(Number(feeAmount || 0)) },
               { label: 'Motif', value: feeReason },
             ]}
             validate={() => {
+                if (feeDoubleDegree && !directory.programs.some(p => p.id === feeProgramId && p.doubleDegreeEligible)) return 'Choisissez une filière éligible à la double diplomation.';
               if (!feeAmount || Number(feeAmount) <= 0) return 'Le montant doit être un entier positif.';
               if (feeReason.trim().length < 3) return 'Le motif doit comporter au moins 3 caractères.';
               return null;
@@ -1041,6 +1133,7 @@ export default function AnnualFeesWorkspace() {
                   programId: feeProgramId || null,
                   levelId: feeLevelId || null,
                   deliveryMode: feeMode || null,
+                  doubleDegree: feeDoubleDegree,
                   amount: Number(feeAmount),
                   reason: feeReason.trim(),
                 });
@@ -1078,7 +1171,7 @@ export default function AnnualFeesWorkspace() {
                 id="fee-prog"
                 className="field-input"
                 value={feeProgramId}
-                onChange={e => setFeeProgramId(e.target.value)}
+                  onChange={e => { setFeeProgramId(e.target.value); setFeeDoubleDegree(false); }}
               >
                 <option value="">Toutes les filières (Tarif commun)</option>
                 {directory.programs.map(p => (
@@ -1125,7 +1218,14 @@ export default function AnnualFeesWorkspace() {
             </div>
 
             <div className="form-group" style={{ marginBottom: '1rem' }}>
-              <label htmlFor="fee-amount" className="field-label">
+                <label htmlFor="fee-double-degree" className="field-label">Double diplomation (facultative)</label>
+                <select id="fee-double-degree" className="field-input" value={feeDoubleDegree ? 'true' : 'false'} onChange={e => setFeeDoubleDegree(e.target.value === 'true')}>
+                  <option value="false">Non</option>
+                  {directory.programs.some(p => p.id === feeProgramId && p.doubleDegreeEligible) && <option value="true">Oui</option>}
+                </select>
+              </div>
+              <div className="form-group" style={{ marginBottom: '1rem' }}>
+                <label htmlFor="fee-amount" className="field-label">
                 Montant en FCFA *
               </label>
               <input
@@ -1167,139 +1267,9 @@ export default function AnnualFeesWorkspace() {
         </WorkPage>
       )}
 
-      {/* MODAL 4 : ATTRIBUTION DE BOURSE */}
       {modalMode === 'award_scholarship' && directory && (
-        <WorkPage title="Attribuer une bourse à un étudiant" onClose={closeModal}>
-          <ReviewedForm
-            busy={busy}
-            error={formError}
-            confirmLabel="Confirmer l’attribution"
-            consequence="La bourse sera rattachée à l'inscription de l'étudiant pour cette année et calculera automatiquement les déductions sur son contrat financier."
-            fields={[
-              {
-                label: 'Étudiant bénéficiaire',
-                value: directory.enrolledStudents.find(s => s.enrollmentId === awardEnrollmentId)?.name || '-',
-              },
-              {
-                label: 'Matricule',
-                value: directory.enrolledStudents.find(s => s.enrollmentId === awardEnrollmentId)?.matricule || '-',
-              },
-              {
-                label: 'Bourse attribuée',
-                value: directory.scholarships.find(s => s.id === awardScholarshipId)?.name || '-',
-              },
-              { label: 'Date de prise d’effet', value: awardValidFrom },
-              { label: 'Motif', value: awardReason },
-            ]}
-            validate={() => {
-              if (!awardEnrollmentId) return 'Veuillez sélectionner un étudiant.';
-              if (!awardScholarshipId) return 'Veuillez sélectionner une bourse.';
-              if (!awardValidFrom) return 'La date d’effet est obligatoire.';
-              if (awardReason.trim().length < 3) return 'Le motif doit comporter au moins 3 caractères.';
-              return null;
-            }}
-            onConfirm={async event => {
-              event.preventDefault();
-              setBusy(true);
-              setFormError('');
-              try {
-                await mutateFinanceSettings(activeRole, {
-                  action: 'award_scholarship',
-                  revision: directory.revision,
-                  enrollmentId: awardEnrollmentId,
-                  scholarshipId: awardScholarshipId,
-                  validFrom: awardValidFrom,
-                  reason: awardReason.trim(),
-                });
-                portal.refreshCampus();
-                setReloadKey(k => k + 1);
-                setNotice('La bourse a été attribuée avec succès.');
-                closeModal();
-              } catch (err: unknown) {
-                setFormError(err instanceof Error ? err.message : 'Erreur lors de l’attribution.');
-              } finally {
-                setBusy(false);
-              }
-            }}
-          >
-            <div className="form-group" style={{ marginBottom: '1rem' }}>
-              <label htmlFor="awd-student" className="field-label">
-                Étudiant inscrit ({directory.selectedYearCode}) *
-              </label>
-              <select
-                id="awd-student"
-                className="field-input"
-                required
-                value={awardEnrollmentId}
-                onChange={e => setAwardEnrollmentId(e.target.value)}
-              >
-                {directory.enrolledStudents.map(s => (
-                  <option key={s.enrollmentId} value={s.enrollmentId}>
-                    [{s.matricule}] {s.name} — {s.levelName} ({s.programName})
-                  </option>
-                ))}
-              </select>
-            </div>
-
-            <div className="form-group" style={{ marginBottom: '1rem' }}>
-              <label htmlFor="awd-sch" className="field-label">
-                Bourse ou partenariat *
-              </label>
-              <select
-                id="awd-sch"
-                className="field-input"
-                required
-                value={awardScholarshipId}
-                onChange={e => setAwardScholarshipId(e.target.value)}
-              >
-                {directory.scholarships
-                  .filter(s => s.active)
-                  .map(s => (
-                    <option key={s.id} value={s.id}>
-                      {s.name} ({s.code}) — {s.kind === 'POURCENTAGE' ? `${s.percent}%` : money(s.amount || 0)}
-                    </option>
-                  ))}
-              </select>
-            </div>
-
-            <div className="form-group" style={{ marginBottom: '1rem' }}>
-              <label htmlFor="awd-date" className="field-label">
-                Date de prise d’effet *
-              </label>
-              <input
-                id="awd-date"
-                type="date"
-                className="field-input"
-                required
-                value={awardValidFrom}
-                onChange={e => setAwardValidFrom(e.target.value)}
-              />
-            </div>
-
-            <div className="form-group" style={{ marginBottom: '1rem' }}>
-              <label htmlFor="awd-reason" className="field-label">
-                Motif d’attribution *
-              </label>
-              <textarea
-                id="awd-reason"
-                className="field-input"
-                rows={2}
-                required
-                placeholder="Ex: Décision de commission d'attribution de bourses…"
-                value={awardReason}
-                onChange={e => setAwardReason(e.target.value)}
-              />
-            </div>
-
-            <DrawerActions>
-              <DrawerCloseButton className="btn btn-outline" onClose={closeModal}>
-                Fermer
-              </DrawerCloseButton>
-              <button type="submit" className="btn btn-primary">
-                Vérifier avant d’attribuer
-              </button>
-            </DrawerActions>
-          </ReviewedForm>
+        <WorkPage title="Attribuer une bourse à un étudiant" busy={busy} onClose={closeModal}>
+          <ScholarshipAwardForm directory={directory} initialEnrollmentId={awardEnrollmentId} onBusyChange={setBusy} onSaved={message=>{setReloadKey(k=>k+1);setNotice(message);closeModal();}}/>
         </WorkPage>
       )}
     </div>

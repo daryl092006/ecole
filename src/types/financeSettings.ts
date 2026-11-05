@@ -10,6 +10,7 @@ export interface ScholarshipItem {
 }
 
 export interface FeeScheduleItem {
+  doubleDegree?: boolean;
   id: string;
   academicYearId: string;
   category: 'SCOLARITE' | 'INSCRIPTION';
@@ -24,6 +25,8 @@ export interface FeeScheduleItem {
 }
 
 export interface ScholarshipAwardItem {
+  financialStatus?: 'APPROVED' | 'DRAFT' | 'NOT_APPLIED' | 'NO_CONTRACT';
+  appliedAmount?: number;
   id: string;
   enrollmentId: string;
   studentMatricule: string;
@@ -40,6 +43,40 @@ export interface ScholarshipAwardItem {
   reason: string;
 }
 
+export interface ScholarshipContractContext {
+  eligible:boolean;
+  blockingReason?:string;
+  versionId?:string;
+  status?:string;
+  tuitionGross?:number;
+  tuitionRemaining?:number;
+  existingReductions?:number;
+  hasExistingBenefits?:boolean;
+  registration?:number;
+  currentTotal?:number;
+}
+export interface ScholarshipFinancialPreview {
+  versionId:string;
+  base:number;
+  reduction:number;
+  oldTotal:number;
+  newTotal:number;
+  paid:number;
+  remaining:number;
+  unallocatedCredit:number;
+  contractStatus:string;
+  registration:number;
+  installments:{id?:string;dueOn:string;amount:number}[];
+}
+export interface ScholarshipPreviewRequest {
+  revision:number;
+  enrollmentId:string;
+  scholarshipId:string;
+  validFrom:string;
+  reason:string;
+  calculationBasis:'GROSS'|'REMAINING';
+  confirmStacking:boolean;
+}
 export interface FinanceSettingsDirectory {
   revision: number;
   selectedYearId: string;
@@ -47,7 +84,7 @@ export interface FinanceSettingsDirectory {
   scholarships: ScholarshipItem[];
   feeSchedules: FeeScheduleItem[];
   scholarshipAwards: ScholarshipAwardItem[];
-  programs: { id: string; name: string; code: string }[];
+  programs: { id: string; name: string; code: string; doubleDegreeEligible?: boolean }[];
   levels: { id: string; name: string; code: string }[];
   enrolledStudents: {
     enrollmentId: string;
@@ -67,6 +104,7 @@ export interface FinanceSettingsDirectory {
     discountAmount?: number;
     netAmount?: number | null;
     installmentsCount?: number;
+    scholarshipContext?: ScholarshipContractContext;
   }[];
 }
 
@@ -102,6 +140,7 @@ export type FinanceSettingsAction =
     }
   | {
       action: 'create_fee_schedule';
+      doubleDegree?: boolean;
       revision: number;
       academicYearId: string;
       category: 'SCOLARITE' | 'INSCRIPTION';
@@ -124,5 +163,11 @@ export type FinanceSettingsAction =
       scholarshipId: string;
       validFrom: string;
       reason: string;
+      calculationBasis:'GROSS'|'REMAINING';
+      confirmStacking:boolean;
+      versionId:string;
+      reviewedReduction:number;
+      reviewedTotal:number;
+      installments:{id?:string;dueOn:string;amount:number}[];
     };
 
