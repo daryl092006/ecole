@@ -23,6 +23,6 @@ export async function applyWebsiteBranding(root) {
   }
   await visit(path.join(root, 'app'));
   let config = await readFile(path.join(root, 'nuxt.config.ts'), 'utf8');
-  config = config.replace(/href: "\/logo\/LOGO_ESCEN\.png"/, 'href: "/logo-escen.png"');
+  config = config.replace(/href: "\/logo-escen\.png"/g, 'href: "/logo/LOGO_ESCEN.png"');
   await writeFile(path.join(root, 'nuxt.config.ts'), config);
 }
