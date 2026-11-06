@@ -90,8 +90,8 @@
 
   --radius-sm: 6px;
   --radius: 10px;
-  --radius-lg: 14px;
-  --radius-xl: 18px;
+  --radius-lg: 10px;
+  --radius-xl: 12px;
 
   --sidebar-width: 252px;
   --topbar-height: 68px;
@@ -1123,7 +1123,8 @@ textarea.input { min-height: 100px; resize: vertical; }
 .modal-box { max-height: calc(100dvh - 3rem); overflow-y: auto; }
 .metric-card { min-width: 0; }
 .metric-value { overflow-wrap: anywhere; }
-.data-table td, .catalog-item { overflow-wrap: anywhere; }
+.catalog-item { overflow-wrap: anywhere; }
+.data-table td { overflow-wrap: break-word; }
 .card .btn-group { flex-wrap: wrap; }
 @media (max-width: 768px) {
   .form-grid, .quick-links { grid-template-columns: 1fr; }
@@ -1244,7 +1245,7 @@ form:not(.academic-year-form) > .form-group + .btn-group { margin-top: 1rem; }
 form { scroll-margin-top: 1rem; }
 .confirmation-context { padding: .8rem 1rem; margin-bottom: 1rem; background: var(--bg-tertiary); border-left: 3px solid var(--accent); border-radius: 6px; font-size: .84rem; }
 .restricted-box { overflow-wrap: anywhere; }
-.data-table:where(:not(:has(tbody > tr:only-child > td:only-child[colspan]))) { min-width: 540px; }
+.data-table:where(:not(:has(tbody > tr:only-child > td:only-child[colspan]))) { min-width: 720px; }
 .data-table th { white-space: nowrap; }
 .sidebar-heading { display: none; align-items: center; justify-content: flex-end; }
 .nav-group-heading { display: flex; align-items: center; gap: .2rem; }
@@ -1330,7 +1331,7 @@ form { scroll-margin-top: 1rem; }
   .card-header > .pill { align-self: flex-start; }
   .card .btn-group { display: flex; flex-direction: column; align-items: stretch; }
   .card .btn-group > .btn { width: 100%; justify-content: center; }
-  .btn { white-space: normal; text-align: center; justify-content: center; overflow-wrap: anywhere; }
+  .btn { white-space: normal; text-align: center; justify-content: center; overflow-wrap: break-word; }
   .card > form > .btn, form.card > .btn, .action-form > .btn,
   .academic-year-form-actions > .btn { width: 100%; }
   .input, .select-input, .search-input { min-height: 44px; }
@@ -3884,7 +3885,7 @@ body.transcript-print-body { page: transcript; display: block; width: 190mm; hei
   .card, .metric-card, .journey-stage { border-radius: var(--radius-lg); }
   .card-header { align-items: center; gap: 1rem; }
   .card-header h2 { line-height: 1.5; }
-  .btn { line-height: 1.5; white-space: normal; overflow-wrap: anywhere; }
+  .btn { line-height: 1.4; white-space: nowrap; overflow-wrap: normal; word-break: normal; flex-shrink: 0; }
   .btn > svg { flex-shrink: 0; }
   .btn-primary { box-shadow: 0 2px 5px rgba(37, 99, 235, .14); }
   .btn-group { gap: .6rem; }
@@ -4160,7 +4161,8 @@ body.transcript-print-body { page: transcript; display: block; width: 190mm; hei
   .topbar-center { min-width: 0; flex: 1 1 220px; }
   .main-content { width: 100%; min-width: 0; }
   .table-wrap { max-width: 100%; overflow-x: auto; }
-  .data-table th, .data-table td { overflow-wrap: anywhere; }
+  .data-table th { white-space: nowrap; overflow-wrap: normal; }
+  .data-table td { overflow-wrap: break-word; }
 }
 
 .data-table.grades-subject-summary { min-width: 960px; }
@@ -5163,10 +5165,6 @@ form > .drawer-form-actions,
 /* ==========================================================================
    GLOBAL REFINEMENT & VISUAL LIGHTENING (Allègement visuel et titres)
    ========================================================================== */
-:root {
-  --radius-lg: 10px;
-  --radius-xl: 12px;
-}
 
 /* 1. Titres plus fins, modernes et aérés */
 .page-intro h1,
@@ -5276,4 +5274,71 @@ form > .drawer-form-actions,
   min-height: 28px !important;
   padding: 0.25rem 0.55rem !important;
   font-size: 0.75rem !important;
+}
+
+/* 6. Protection anti-écrasement des colonnes, boutons et références dans les tableaux */
+.data-table:not(.mobile-record-table) th,
+.data-table:not(.mobile-record-table) td:last-child,
+.data-table:not(.mobile-record-table) .btn,
+.data-table:not(.mobile-record-table) .pill,
+.data-table:not(.mobile-record-table) code {
+  white-space: nowrap !important;
+  overflow-wrap: normal !important;
+  word-break: normal !important;
+}
+
+.data-table:not(.mobile-record-table) td:last-child {
+  width: 1%;
+}
+
+.admissions-filters-bar {
+  display: grid;
+  grid-template-columns: minmax(220px, 1.6fr) minmax(170px, 1fr) minmax(150px, 1fr);
+  gap: 0.75rem;
+  margin-bottom: 0.85rem;
+}
+
+.candidate-cell-flex {
+  min-width: 200px;
+}
+
+.candidate-cell-info {
+  min-width: 0;
+}
+
+.candidate-cell-info strong {
+  display: block;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.candidate-cell-email {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 240px;
+}
+
+.dossier-ref-badge {
+  display: inline-block;
+  padding: 2px 7px;
+  border-radius: 5px;
+  background: #f1f5f9;
+  border: 1px solid #e2e8f0;
+  color: #334155;
+  font-size: 0.75rem;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+@media (max-width: 768px) {
+  .admissions-filters-bar {
+    grid-template-columns: 1fr;
+  }
+  .candidate-cell-email {
+    max-width: 100%;
+    white-space: normal;
+    overflow-wrap: anywhere;
+  }
 }

@@ -214,8 +214,8 @@ export default function AdmissionsWorkflowPanel() {
         <h2>Dossiers de candidature</h2>
         <span>{listed.length} dossier(s)</span>
       </div>
-      <div className="form-grid" style={{ marginBottom: '1rem' }}>
-        <label className="form-group" style={{ flex: '1 1 280px' }}>
+      <div className="admissions-filters-bar">
+        <label className="form-group">
           Rechercher un candidat...
           <input
             className="input"
@@ -225,7 +225,7 @@ export default function AdmissionsWorkflowPanel() {
             onChange={event => setSearch(event.target.value)}
           />
         </label>
-        <label className="form-group" style={{ flex: '0 1 220px' }}>
+        <label className="form-group">
           Filières
           <select
             className="select-input"
@@ -236,7 +236,7 @@ export default function AdmissionsWorkflowPanel() {
             {filiereOptions.map(opt => <option key={opt} value={opt}>{opt}</option>)}
           </select>
         </label>
-        <label className="form-group" style={{ flex: '0 1 180px' }}>
+        <label className="form-group">
           Niveaux
           <select
             className="select-input"
@@ -270,6 +270,9 @@ export default function AdmissionsWorkflowPanel() {
                 const info = getCandidateProgramAndLevel(item, data.intakes);
                 const badge = stageBadge(item);
                 const initials = `${item.identity.prenom?.[0] || ''}${item.identity.nom?.[0] || ''}`.toUpperCase() || 'C';
+                const shortRef = item.reference.length > 18
+                  ? `${item.reference.slice(0, 10)}…${item.reference.slice(-5)}`
+                  : item.reference;
                 return (
                   <tr key={item.id}>
                     <td>
@@ -277,15 +280,17 @@ export default function AdmissionsWorkflowPanel() {
                         <div className="candidate-avatar-circle" aria-hidden="true">
                           {initials}
                         </div>
-                        <div>
+                        <div className="candidate-cell-info">
                           <strong>{item.identity.nom} {item.identity.prenom}</strong>
-                          <div className="cell-sub">{item.identity.email}</div>
+                          <div className="cell-sub candidate-cell-email" title={item.identity.email || ''}>{item.identity.email}</div>
                         </div>
                       </div>
                     </td>
-                    <td><code>{item.reference}</code></td>
+                    <td>
+                      <code className="dossier-ref-badge" title={item.reference}>{shortRef}</code>
+                    </td>
                     <td>{info.program}</td>
-                    <td>{info.level}</td>
+                    <td style={{ whiteSpace: 'nowrap' }}>{info.level}</td>
                     <td>
                       <span className={`pill admission-status admission-status--${badge.tone}`}>
                         {badge.label}
