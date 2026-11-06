@@ -332,7 +332,7 @@ export default function CourseResourcesWorkspace() {
                 <tr key={course.assignmentId}>
                   <td>
                     <strong>{course.subjectName}</strong>
-                    <div className="cell-sub">{course.semesterName}</div>
+                    <div className="cell-sub">{course.subjectCode ? `${course.subjectCode} · ` : ''}{course.semesterName}</div>
                   </td>
                   <td>
                     <strong>{course.groupName}</strong>

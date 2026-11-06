@@ -5,6 +5,7 @@ import { filterRelationalSnapshot } from './persistentPermissionsService';
 import { filterSnapshotForAcademicYear } from './academicYearScopeService';
 import { sessionParticipants } from './sessionParticipantsService';
 import { annualOfferingLabel } from './annualOfferingService';
+import { formatSubjectCode } from './resaoCodeService';
 
 export const hasGlobalStaffManagement = (context: PersistentContext) => context.permissions.includes('staff.manage')
   && context.grants.some(grant => !grant.site_id && !grant.group_id && !grant.academic_year_id);
@@ -56,7 +57,19 @@ export function teacherDirectory(snapshot: RelationalSnapshot, context: Persiste
         componentId: String(row.component_id), validFrom: String(row.valid_from), validUntil: row.valid_until ? String(row.valid_until) : null, reason: String(row.reason || '') })),
     offerings: offerings.map(row => ({ id: row.id, label: annualOfferingLabel(row, snapshot), curriculumId: String(row.curriculum_id) })),
     groups: groups.filter(group => links.some(link => link.group_id === group.id)).map(group => ({ id: group.id, label: String(group.name), offeringIds: links.filter(link => link.group_id === group.id).map(link => String(link.offering_id)) })),
-    components: components.map(component => ({ subjectId: String(component.subject_id), id: component.id, curriculumId: String(component.curriculum_id), label: String(scoped.tables.subjects?.find(subject => subject.id === component.subject_id)?.name || 'Matière') })),
+    components: components.map(component => {
+      const subject = scoped.tables.subjects?.find(item => item.id === component.subject_id);
+      const unit = scoped.tables.teaching_units?.find(item => item.id === component.unit_id);
+      const sem = scoped.tables.curriculum_semesters?.find(item => item.id === unit?.semester_id);
+      const subjectName = String(subject?.name || 'Matière');
+      const code = formatSubjectCode(component.code || subject?.code, subjectName, Number(sem?.position) || undefined);
+      return {
+        subjectId: String(component.subject_id),
+        id: component.id,
+        curriculumId: String(component.curriculum_id),
+        label: code ? `${code} · ${subjectName}` : subjectName,
+      };
+    }),
     canManageProfiles: hasGlobalStaffManagement(context),
     canManageAssignments: context.permissions.includes('academic.assignment.manage') && !!yearId && !!year && !year.archived_at && year.status !== 'CLOTUREE',
     selectedYearId: yearId,

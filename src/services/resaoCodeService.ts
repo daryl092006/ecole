@@ -12,6 +12,61 @@ export const resaoSubjectFields: CrudField[] = [
 
 const STOP_WORDS = new Set(['DE', 'DU', 'DES', 'LA', 'LE', 'LES', 'ET', 'EN', 'AU', 'AUX', 'SUR', 'POUR', 'DANS', 'PAR', 'UN', 'UNE', 'A', 'L', 'D']);
 
+const OFFICIAL_REESAO_BY_NORMALIZED_NAME: Record<string, { defaultCode: string; bySemester?: Record<number, string> }> = {
+  'STATISTIQUES DESCRIPTIVES': { defaultCode: 'MTH1101' },
+  'CALCUL DIFFERENTIEL DANS IR': { defaultCode: 'MTH1102' },
+  'T E E O': { defaultCode: 'TEE1101' },
+  'LES PRINCIPES MARKETING': { defaultCode: 'MKG1101' },
+  'GENERALITES SUR L ECONOMIE NUMERIQUE': { defaultCode: 'ECN1101' },
+  'ECONOMIE GENERALE': { defaultCode: 'ECN1102' },
+  'ARCHITECTURE TECHNOLOGIE DES ORDINATEURS': { defaultCode: 'INF1101' },
+  'COACHING EN ANGLAIS': { defaultCode: 'ANG1301', bySemester: { 1: 'ANG1101', 3: 'ANG1301' } },
+  'THEORIE DES SYSTEMES D EXPLOITATION': { defaultCode: 'INF1306', bySemester: { 1: 'INF1102', 3: 'INF1306' } },
+  'E COMMERCE ET REFERENCEMENT': { defaultCode: 'MKG1302' },
+  'E COMMERCE REFERENCEMENT': { defaultCode: 'MKG1302' },
+  'TECHNOLOGIE DIGITAL AVANCEE': { defaultCode: 'INF1303' },
+  'TECHNOLOGIE DIGITALE AVANCEE': { defaultCode: 'INF1303' },
+  'DIGITALISATION DANS LES SECTEURS CLES DU NUMERIQUE': { defaultCode: 'INF1302' },
+  'DIGITALISATION DES SECTEURS DU NUMERIQUE': { defaultCode: 'INF1302' },
+  'ANALYSE DES COUTS': { defaultCode: 'CPT1301' },
+  'INTRODUCTION AU MANAGEMENT DES PROJETS': { defaultCode: 'ECN1301' },
+  'GESTION DE PROJET': { defaultCode: 'ECN1301' },
+  'ADMINISTRATION SYSTEME WINDOWS LINUX': { defaultCode: 'INF1305' },
+  'ECONOMIE D ENTREPRISE': { defaultCode: 'ECN1302' },
+  'STATISTIQUES INFERENTIELLES DECISIONNELLE': { defaultCode: 'MTH1302' },
+  'ARCHITECTURE FONCTIONNEMENT DES RESEAUX INFORMATIQUES': { defaultCode: 'INF1307' },
+  'MODELISATION UML': { defaultCode: 'INF1308' },
+};
+
+export function formatSubjectCode(rawCode: unknown, subjectName?: unknown, semesterPosition?: number): string {
+  const code = String(rawCode || '').trim().toUpperCase();
+  if (/^[A-Z]{3}\s*\d{3,4}$/.test(code)) {
+    return code.replace(/\s+/g, '');
+  }
+  const normalizedName = String(subjectName || '')
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toUpperCase()
+    .replace(/[^A-Z0-9]+/g, ' ')
+    .trim();
+  const mapped = OFFICIAL_REESAO_BY_NORMALIZED_NAME[normalizedName];
+  if (mapped) {
+    if (semesterPosition && mapped.bySemester?.[semesterPosition]) {
+      return mapped.bySemester[semesterPosition];
+    }
+    return mapped.defaultCode;
+  }
+  if (code && !code.startsWith('SUBJ-')) {
+    return code;
+  }
+  if (normalizedName) {
+    const sigle = deriveResaoDiscipline(String(subjectName || ''));
+    const semDigit = semesterPosition && semesterPosition >= 1 && semesterPosition <= 6 ? semesterPosition : 1;
+    return `${sigle}1${semDigit}01`;
+  }
+  return code;
+}
+
 export function deriveResaoDiscipline(name: string): string {
   const normalized = String(name || '')
     .normalize('NFD')

@@ -16,6 +16,7 @@ import EvaluationGradeDialog from './EvaluationGradeDialog';
 import PersistentExamCopies from './PersistentExamCopies';
 import PageHeader from '@/components/ui/PageHeader';
 import { downloadCsv } from '@/utils/csv';
+import { formatSubjectCode } from '@/services/resaoCodeService';
 import {
   GraduationCap,
   BookOpen,
@@ -90,7 +91,14 @@ export default function GradesWorkspace() {
       const comp = rawComponents.find(c => c.id === compId);
       const assignObj = assignments.find(a => a.id === ev.assignment_id);
       const subj = (comp && rawSubjects.find(s => s.id === comp.subject_id)) || (assignObj && rawSubjects.find(s => s.id === assignObj.subjectId));
-      if (subj) return { id: String(subj.id), code: String(subj.code || ''), name: String(subj.name || subj.code || 'Matière') };
+      if (subj) {
+        const subjectName = String(subj.name || subj.code || 'Matière');
+        return {
+          id: String(subj.id),
+          code: formatSubjectCode(comp?.code || subj.code, subjectName),
+          name: subjectName,
+        };
+      }
       const rawName = String(ev.name || '');
       const parts = rawName.split(' · ');
       const fallbackName = parts.length >= 2 ? parts[1] : rawName || 'Matière';
@@ -540,7 +548,7 @@ export default function GradesWorkspace() {
                       boxShadow: isActive ? '0 1px 3px rgba(37,99,235,0.15)' : 'none',
                     }}
                   >
-                    <span>{s.name}</span>
+                    <span>{s.code ? `${s.code} · ` : ''}{s.name}</span>
                     <span
                       style={{
                         fontSize: '11px',
@@ -567,7 +575,7 @@ export default function GradesWorkspace() {
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '14px', marginBottom: '14px' }}>
                 <div>
                   <h2 style={{ margin: 0, fontSize: '1.25rem', color: '#0f172a' }}>
-                    {activeSubject.name}
+                    {activeSubject.code ? `${activeSubject.code} — ` : ''}{activeSubject.name}
                   </h2>
                   <span className="cell-sub" style={{ fontSize: '13px' }}>
                     Enseignant référent : <strong>{subjectTeacherName}</strong> · {activeSubjectEvals.length} épreuve(s)

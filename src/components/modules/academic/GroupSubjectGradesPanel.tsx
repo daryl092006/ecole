@@ -8,6 +8,7 @@ import { usePortal } from '@/hooks/usePortal';
 import EvaluationGradeDialog from './EvaluationGradeDialog';
 import EvaluationCreateDialog from './EvaluationCreateDialog';
 import { evaluationGradeIsComplete, evaluationGradeValue } from '@/services/evaluationGradePolicy';
+import { formatSubjectCode } from '@/services/resaoCodeService';
 
 interface Props {
   snapshot: RelationalSnapshot;
@@ -62,7 +63,14 @@ export default function GroupSubjectGradesPanel({ snapshot, canViewStudents, onS
     const compId = ev.component_id || assignments.find(a => a.id === ev.assignment_id)?.component_id;
     const comp = components.find(c => c.id === compId);
     const subj = comp && subjects.find(s => s.id === comp.subject_id);
-    if (subj) return { id: String(subj.id), code: String(subj.code || ''), name: String(subj.name || subj.code || 'Matière') };
+    if (subj) {
+      const subjectName = String(subj.name || subj.code || 'Matière');
+      return {
+        id: String(subj.id),
+        code: formatSubjectCode(comp?.code || subj.code, subjectName),
+        name: subjectName,
+      };
+    }
     const rawName = String(ev.name || '');
     const parts = rawName.split(' · ');
     const fallbackName = parts.length >= 2 ? parts[1] : rawName || 'Matière non renseignée';
@@ -243,7 +251,7 @@ export default function GroupSubjectGradesPanel({ snapshot, canViewStudents, onS
           >
             {activeSubjects.map(s => (
               <option key={s.id} value={s.id}>
-                {s.name}
+                {s.code ? `${s.code} — ` : ''}{s.name}
               </option>
             ))}
             {!activeSubjects.length && <option value="">Aucune matière</option>}
@@ -303,6 +311,7 @@ export default function GroupSubjectGradesPanel({ snapshot, canViewStudents, onS
                 >
                   <td>
                     <strong>{item.name}</strong>
+                    {item.code && <div className="cell-sub">{item.code}</div>}
                   </td>
                   <td>{item.kinds.join(' + ')} ({item.evals.length})</td>
                   <td>{item.expectedCount}</td>

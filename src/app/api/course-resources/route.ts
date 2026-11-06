@@ -4,6 +4,7 @@ import { resolveAcademicYear } from '@/server/academicYearContext';
 import { filterRelationalSnapshot } from '@/services/persistentPermissionsService';
 import { filterSnapshotForAcademicYear } from '@/services/academicYearScopeService';
 import { createTeamsOnlineMeeting, syncTeamsMeetingRecording } from '@/services/microsoftGraphService';
+import { formatSubjectCode } from '@/services/resaoCodeService';
 import type { PersistentChange, RelationalSnapshot } from '@/types/persistence';
 import type {
   CourseListEntry,
@@ -164,7 +165,7 @@ function buildDirectory(
         groupId,
         groupName: groupsMap.get(groupId) || 'Groupe',
         componentId,
-        subjectCode: subj?.code || comp?.code || '',
+        subjectCode: formatSubjectCode(comp?.code || subj?.code, subj?.name, Number(allRows('curriculum_semesters').find(s => s.id === semId)?.position) || undefined),
         subjectName: subj?.name || 'Matière',
         semesterName,
         credits: comp?.credits ?? 0,
