@@ -342,6 +342,16 @@ export async function createTeamsOnlineMeeting(params: {
     }
 
     // Secours via l'agenda Outlook/Teams du compte organisateur
+    const attendees =
+      params.organizerEmail && params.organizerEmail.includes('@') && params.organizerEmail.toLowerCase() !== organizerUpn.toLowerCase()
+        ? [
+            {
+              emailAddress: { address: params.organizerEmail.trim(), name: 'Enseignant ESCEN' },
+              type: 'required',
+            },
+          ]
+        : [];
+
     const eventRes = await fetch(
       `https://graph.microsoft.com/v1.0/users/${encodeURIComponent(organizerUpn)}/calendar/events`,
       {
@@ -356,6 +366,7 @@ export async function createTeamsOnlineMeeting(params: {
           end: { dateTime: params.endDateTime, timeZone: 'UTC' },
           isOnlineMeeting: true,
           onlineMeetingProvider: 'teamsForBusiness',
+          attendees,
         }),
       }
     );
@@ -431,25 +442,54 @@ export async function syncTeamsMeetingRecording(params: {
         }
       }
 
-      // Recherche dans le dossier OneDrive Recordings de l'organisateur
-      const driveRes = await fetch(
-        `https://graph.microsoft.com/v1.0/users/${encodeURIComponent(organizerUpn)}/drive/root:/Recordings:/children?$top=10&$orderby=createdDateTime desc`,
-        {
-          method: 'GET',
-          headers: { Authorization: `Bearer ${token}` },
-        }
-      );
-      if (driveRes.ok) {
-        const driveData = (await driveRes.json()) as {
-          value?: Array<{ webUrl?: string; name?: string }>;
-        };
-        const item = driveData.value?.[0];
-        if (item?.webUrl) {
-          return {
-            recordingUrl: item.webUrl,
-            syncedAt,
-            source: 'GRAPH_API',
+      // Recherche dans le dossier OneDrive Recordings / Enregistrements de l'organisateur
+      for (const folderName of ['Recordings', 'Enregistrements']) {
+        const driveRes = await fetch(
+          `https://graph.microsoft.com/v1.0/users/${encodeURIComponent(organizerUpn)}/drive/root:/${folderName}:/children?$top=20&$orderby=createdDateTime desc`,
+          {
+            method: 'GET',
+            headers: { Authorization: `Bearer ${token}` },
+          }
+        );
+        if (driveRes.ok) {
+          const driveData = (await driveRes.json()) as {
+            value?: Array<{ id?: string; webUrl?: string; name?: string }>;
           };
+          const item = driveData.value?.[0];
+          if (item?.webUrl) {
+            if (item.id) {
+              try {
+                const shareRes = await fetch(
+                  `https://graph.microsoft.com/v1.0/users/${encodeURIComponent(organizerUpn)}/drive/items/${encodeURIComponent(item.id)}/createLink`,
+                  {
+                    method: 'POST',
+                    headers: {
+                      Authorization: `Bearer ${token}`,
+                      'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ type: 'view', scope: 'organization' }),
+                  }
+                );
+                if (shareRes.ok) {
+                  const shareData = (await shareRes.json()) as { link?: { webUrl?: string } };
+                  if (shareData.link?.webUrl) {
+                    return {
+                      recordingUrl: shareData.link.webUrl,
+                      syncedAt,
+                      source: 'GRAPH_API',
+                    };
+                  }
+                }
+              } catch {
+                // Repli vers webUrl direct
+              }
+            }
+            return {
+              recordingUrl: item.webUrl,
+              syncedAt,
+              source: 'GRAPH_API',
+            };
+          }
         }
       }
     } catch {

@@ -27,7 +27,8 @@ type ModalOperation =
   | { kind: 'create_resource'; preselectedAssignmentId?: string; preselectedSessionId?: string }
   | { kind: 'archive_resource'; resource: CourseResourceItem }
   | { kind: 'generate_meeting_link'; session: OnlineCourseSessionItem }
-  | { kind: 'save_recording'; session: OnlineCourseSessionItem };
+  | { kind: 'save_recording'; session: OnlineCourseSessionItem }
+  | { kind: 'create_online_session'; preselectedAssignmentId?: string };
 
 const formatDate = (value: string | null) =>
   value ? new Date(value).toLocaleString('fr-FR', { dateStyle: 'short', timeStyle: 'short', timeZone: 'Africa/Lome' }) : '—';
@@ -85,6 +86,9 @@ export default function CourseResourcesWorkspace() {
   const [mimeType, setMimeType] = useState('');
   const [fileContentBase64, setFileContentBase64] = useState('');
   const [reason, setReason] = useState('');
+  const [sessionDate, setSessionDate] = useState(() => new Date().toISOString().slice(0, 10));
+  const [startTime, setStartTime] = useState('08:00');
+  const [endTime, setEndTime] = useState('10:00');
 
   useEffect(() => {
     const controller = new AbortController();
@@ -147,6 +151,18 @@ export default function CourseResourcesWorkspace() {
     if (q && !`${s.subjectName} ${s.groupName} ${s.teacherName}`.toLowerCase().includes(q)) return false;
     return true;
   });
+
+  const openCreateOnlineSessionModal = (preselectedAssignment?: string) => {
+    const defaultCourse = directory.courses.find(c => c.assignmentId === preselectedAssignment) || directory.courses[0];
+    setAssignmentId(defaultCourse?.assignmentId || '');
+    setSessionDate(new Date().toISOString().slice(0, 10));
+    setStartTime('08:00');
+    setEndTime('10:00');
+    setResourceUrl('');
+    setReason('Création d’un cours en ligne avec lien Microsoft Teams automatique');
+    setSaveError('');
+    setOperation({ kind: 'create_online_session', preselectedAssignmentId: preselectedAssignment });
+  };
 
   const openCreateModal = (preselectedAssignment?: string, preselectedSession?: string, defaultKind: CourseResourceKind = 'SUPPORT') => {
     const defaultCourse = directory.courses.find(c => c.assignmentId === preselectedAssignment) || directory.courses[0];
@@ -211,6 +227,11 @@ export default function CourseResourcesWorkspace() {
         {directory.canManage && directory.courses.length > 0 && (
           <button type="button" className="btn btn-primary" onClick={() => openCreateModal()}>
             + Déposer un support ou un replay
+          </button>
+        )}
+        {directory.canScheduleOnline && directory.courses.length > 0 && (
+          <button type="button" className="btn btn-outline" onClick={() => openCreateOnlineSessionModal()}>
+            + Créer cours en ligne (Lien Teams auto)
           </button>
         )}
         {portal.perms.permissions.includes('schedule.create') && (
@@ -358,6 +379,15 @@ export default function CourseResourcesWorkspace() {
                           + Support
                         </button>
                       )}
+                      {directory.canScheduleOnline && (
+                        <button
+                          type="button"
+                          className="btn btn-sm btn-outline"
+                          onClick={() => openCreateOnlineSessionModal(course.assignmentId)}
+                        >
+                          + Lien Teams
+                        </button>
+                      )}
                     </div>
                   </td>
                 </tr>
@@ -463,6 +493,11 @@ export default function CourseResourcesWorkspace() {
                 Accès direct aux salles virtuelles Microsoft Teams (@escen.university) et aux enregistrements vidéo (replays) pour les étudiants et l’équipe académique.
               </p>
             </div>
+            {directory.canScheduleOnline && directory.courses.length > 0 && (
+              <button type="button" className="btn btn-primary" onClick={() => openCreateOnlineSessionModal()}>
+                + Créer un cours en ligne (Teams auto)
+              </button>
+            )}
           </div>
           <ResponsiveTable className="data-table">
             <thead>
@@ -576,6 +611,8 @@ export default function CourseResourcesWorkspace() {
               ? 'Déposer un support de cours ou un enregistrement'
               : operation.kind === 'archive_resource'
               ? 'Retirer le support de cours'
+              : operation.kind === 'create_online_session'
+              ? 'Programmer un cours en ligne (Lien Microsoft Teams automatique)'
               : operation.kind === 'generate_meeting_link'
               ? 'Générer ou modifier le lien Microsoft Teams'
               : 'Synchroniser ou associer l’enregistrement (Replay)'
@@ -591,6 +628,8 @@ export default function CourseResourcesWorkspace() {
                 ? 'Confirmer le dépôt du support'
                 : operation.kind === 'archive_resource'
                 ? 'Confirmer le retrait du support'
+                : operation.kind === 'create_online_session'
+                ? 'Créer la séance et générer le lien Teams'
                 : operation.kind === 'generate_meeting_link'
                 ? 'Confirmer le lien du cours en ligne'
                 : 'Confirmer la publication de l’enregistrement'
@@ -611,6 +650,13 @@ export default function CourseResourcesWorkspace() {
                     { label: 'Cours', value: `${operation.resource.subjectName} · ${operation.resource.groupName}` },
                     { label: 'Motif du retrait', value: reason.trim() },
                   ]
+                : operation.kind === 'create_online_session'
+                ? [
+                    { label: 'Cours', value: selectedCourse ? `${selectedCourse.subjectName} · ${selectedCourse.groupName} (${selectedCourse.teacherName})` : '' },
+                    { label: 'Date & Horaires (UTC/Lomé)', value: `${sessionDate} de ${startTime} à ${endTime}` },
+                    { label: 'Lien Microsoft Teams', value: resourceUrl.trim() || 'Création automatique Microsoft Teams (@escen.university)' },
+                    { label: 'Motif', value: reason.trim() },
+                  ]
                 : operation.kind === 'generate_meeting_link'
                 ? [
                     { label: 'Séance en ligne', value: `${operation.session.subjectName} · ${operation.session.groupName} (${formatDate(operation.session.startsAt)})` },
@@ -628,6 +674,8 @@ export default function CourseResourcesWorkspace() {
                 ? 'Le support sera immédiatement accessible aux étudiants inscrits dans cette classe ainsi qu’à l’équipe pédagogique.'
                 : operation.kind === 'archive_resource'
                 ? 'Le support sera archivé avec son motif et ne sera plus affiché aux étudiants.'
+                : operation.kind === 'create_online_session'
+                ? 'La séance en ligne sera créée dans l’emploi du temps, la réunion Microsoft Teams sera automatiquement générée sur @escen.university, et les étudiants y auront accès depuis cet espace.'
                 : operation.kind === 'generate_meeting_link'
                 ? 'Le lien de visioconférence Microsoft Teams sera rattaché à la séance et visible par les étudiants et l’enseignant.'
                 : 'L’enregistrement vidéo sera rattaché à la séance et publié automatiquement dans l’espace Supports & Replays des étudiants.'
@@ -640,6 +688,11 @@ export default function CourseResourcesWorkspace() {
                 if (!fileContentBase64 && !resourceUrl.trim()) {
                   return 'Sélectionnez un fichier à téléverser ou renseignez un lien URL.';
                 }
+              }
+              if (operation.kind === 'create_online_session') {
+                if (!assignmentId) return 'Choisissez un cours.';
+                if (!sessionDate || !startTime || !endTime) return 'Renseignez la date et les horaires.';
+                if (endTime <= startTime) return 'L’heure de fin doit être postérieure à l’heure de début.';
               }
               return null;
             }}
@@ -668,6 +721,16 @@ export default function CourseResourcesWorkspace() {
                       action: 'archive_resource',
                       revision: directory.revision,
                       resourceId: operation.resource.id,
+                      reason: reason.trim(),
+                    }
+                  : operation.kind === 'create_online_session'
+                  ? {
+                      action: 'create_online_session',
+                      revision: directory.revision,
+                      assignmentId,
+                      startsAt: `${sessionDate}T${startTime}:00Z`,
+                      endsAt: `${sessionDate}T${endTime}:00Z`,
+                      customMeetingUrl: resourceUrl.trim() || null,
                       reason: reason.trim(),
                     }
                   : operation.kind === 'generate_meeting_link'
@@ -758,6 +821,49 @@ export default function CourseResourcesWorkspace() {
                     placeholder="Précisions pour les étudiants..."
                     value={description}
                     onChange={e => setDescription(e.target.value)}
+                  />
+                </label>
+              </>
+            )}
+
+            {operation.kind === 'create_online_session' && (
+              <>
+                <p className="info-box mb-1">
+                  Cette action programme la séance en mode <strong>En ligne</strong> et crée automatiquement sa salle Microsoft Teams officielle sur <code>@escen.university</code>.
+                </p>
+                <label className="form-group">
+                  Cours concerné
+                  <select className="select-input" required value={assignmentId} onChange={e => setAssignmentId(e.target.value)}>
+                    <option value="">Choisir un cours</option>
+                    {directory.courses.map(c => (
+                      <option key={c.assignmentId} value={c.assignmentId}>
+                        {c.groupName} · {c.subjectName} ({c.teacherName})
+                      </option>
+                    ))}
+                  </select>
+                </label>
+                <div className="form-grid">
+                  <label className="form-group">
+                    Date du cours
+                    <input className="input" type="date" required value={sessionDate} onChange={e => setSessionDate(e.target.value)} />
+                  </label>
+                  <label className="form-group">
+                    Heure de début (Lomé / UTC)
+                    <input className="input" type="time" required value={startTime} onChange={e => setStartTime(e.target.value)} />
+                  </label>
+                  <label className="form-group">
+                    Heure de fin (Lomé / UTC)
+                    <input className="input" type="time" required value={endTime} onChange={e => setEndTime(e.target.value)} />
+                  </label>
+                </div>
+                <label className="form-group">
+                  Lien de réunion personnalisé (optionnel — laissez vide pour création automatique Microsoft Teams)
+                  <input
+                    className="input"
+                    type="url"
+                    placeholder="Création automatique via Microsoft Graph (@escen.university) si laissé vide"
+                    value={resourceUrl}
+                    onChange={e => setResourceUrl(e.target.value)}
                   />
                 </label>
               </>

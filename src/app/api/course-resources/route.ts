@@ -55,11 +55,23 @@ const saveRecordingSchema = z.object({
   recordingUrl: z.string().trim().min(5).max(2048).nullable().optional(),
 }).strict();
 
+const createOnlineSessionSchema = z.object({
+  ...commonSchema,
+  action: z.literal('create_online_session'),
+  assignmentId: z.string().uuid(),
+  startsAt: z.string().datetime({ offset: true }),
+  endsAt: z.string().datetime({ offset: true }),
+  customMeetingUrl: z.string().trim().min(5).max(2048).nullable().optional(),
+}).strict().refine(v => new Date(v.endsAt).getTime() > new Date(v.startsAt).getTime(), {
+  message: 'L’heure de fin doit être postérieure à l’heure de début.',
+});
+
 const commandSchema = z.discriminatedUnion('action', [
   createResourceSchema,
   archiveResourceSchema,
   generateMeetingLinkSchema,
   saveRecordingSchema,
+  createOnlineSessionSchema,
 ]);
 
 async function loadContext(request: Request) {
@@ -432,6 +444,7 @@ export async function POST(request: Request) {
           operation: 'update',
           record: {
             id: session.id,
+            mode: 'EN_LIGNE',
             meeting_url: meetingUrl,
             meeting_id: meetingId,
             meeting_provider: provider,
@@ -486,6 +499,7 @@ export async function POST(request: Request) {
               description: 'Enregistrement vidéo de la séance de cours en ligne',
               kind: 'ENREGISTREMENT',
               resource_url: recUrl,
+              uploaded_by: data.context.accountId,
               reason: body.reason.trim(),
             },
           });
@@ -499,6 +513,72 @@ export async function POST(request: Request) {
       });
       if (saved.error) throw new RequestError(409, 'Mise à jour de la séance en ligne refusée.');
       return Response.json({ ok: true, revision: saved.data });
+    }
+
+    if (body.action === 'create_online_session') {
+      if (!data.context.permissions.includes('schedule.create') && !data.context.permissions.includes('course_resource.manage')) {
+        requirePermission(data.context, 'schedule.create');
+      }
+      const assignment = (data.scoped.tables.teaching_assignments || []).find(a => a.id === body.assignmentId && !a.archived_at);
+      if (!assignment) throw new RequestError(404, 'Cours ou affectation introuvable dans votre périmètre.');
+      if (data.context.role === ROLES.ENS && (!data.context.teacherId || assignment.teacher_id !== data.context.teacherId)) {
+        throw new RequestError(403, 'Vous ne pouvez programmer que vos propres cours en ligne.');
+      }
+
+      const teacherRow = (data.snapshot.tables.teachers || []).find(t => t.id === assignment.teacher_id);
+      const staffRow = (data.snapshot.tables.staff || []).find(s => s.id === teacherRow?.staff_id);
+      const personRow = (data.snapshot.tables.people || []).find(p => p.id === staffRow?.person_id);
+      const comp = (data.snapshot.tables.curriculum_components || []).find(c => c.id === assignment.component_id);
+      const subj = (data.snapshot.tables.subjects || []).find(s => s.id === comp?.subject_id);
+      const group = (data.snapshot.tables.groups || []).find(g => g.id === assignment.group_id);
+
+      const newSessionId = crypto.randomUUID();
+      let meetingUrl = body.customMeetingUrl?.trim() || null;
+      let meetingId: string | null = null;
+      let provider: 'TEAMS' | 'LIEN' = meetingUrl && !meetingUrl.includes('teams.microsoft.com') ? 'LIEN' : 'TEAMS';
+
+      if (!meetingUrl) {
+        const created = await createTeamsOnlineMeeting({
+          sessionId: newSessionId,
+          subject: `${String(subj?.name || 'Cours en ligne')} · ${String(group?.name || 'ESCEN')}`,
+          startDateTime: body.startsAt,
+          endDateTime: body.endsAt,
+          organizerEmail: typeof personRow?.email === 'string' ? personRow.email : null,
+        });
+        meetingUrl = created.meetingUrl;
+        meetingId = created.meetingId;
+        provider = created.provider;
+      }
+
+      changes.push({
+        table: 'sessions',
+        operation: 'insert',
+        record: {
+          id: newSessionId,
+          offering_id: assignment.offering_id,
+          group_id: assignment.group_id,
+          assignment_id: assignment.id,
+          teacher_id: assignment.teacher_id,
+          room_id: null,
+          room_label: 'En ligne (Microsoft Teams)',
+          starts_at: body.startsAt,
+          ends_at: body.endsAt,
+          mode: 'EN_LIGNE',
+          status: 'PLANIFIE',
+          meeting_url: meetingUrl,
+          meeting_id: meetingId,
+          meeting_provider: provider,
+          reason: body.reason.trim(),
+        },
+      });
+
+      const saved = await data.client.rpc('escen_backend_transaction', {
+        p_actor_id: data.context.accountId,
+        p_expected_revision: body.revision,
+        p_changes: changes,
+      });
+      if (saved.error) throw new RequestError(409, 'Création de la séance en ligne refusée (vérifiez les dates d’affectation ou d’éventuels chevauchements).');
+      return Response.json({ ok: true, id: newSessionId, meetingUrl, revision: saved.data }, { status: 201 });
     }
 
     throw new RequestError(400, 'Action non reconnue.');

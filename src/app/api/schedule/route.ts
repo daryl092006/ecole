@@ -219,6 +219,7 @@ export async function POST(request: Request) {
                 description: 'Enregistrement vidéo de la séance en ligne',
                 kind: 'ENREGISTREMENT',
                 resource_url: recUrl,
+                uploaded_by: data.context.accountId,
                 reason: body.reason,
               },
             });
