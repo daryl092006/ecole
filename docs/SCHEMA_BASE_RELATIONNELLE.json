@@ -1,10 +1,10 @@
 {
   "stats": {
-    "businessTables": 119,
+    "businessTables": 121,
     "privateTables": 14,
-    "columns": 1062,
-    "foreignKeys": 297,
-    "checks": 248,
+    "columns": 1098,
+    "foreignKeys": 308,
+    "checks": 258,
     "exclusions": 5
   },
   "tables": [
@@ -140,6 +140,11 @@
     },
     {
       "schema": "escen",
+      "name": "complaint_notifications",
+      "rls": true
+    },
+    {
+      "schema": "escen",
       "name": "complaints",
       "rls": true
     },
@@ -156,6 +161,11 @@
     {
       "schema": "escen",
       "name": "contract_versions",
+      "rls": true
+    },
+    {
+      "schema": "escen",
+      "name": "course_resources",
       "rls": true
     },
     {
@@ -2567,6 +2577,96 @@
     },
     {
       "schema": "escen",
+      "table": "complaint_notifications",
+      "name": "id",
+      "type": "uuid",
+      "nullable": "NO",
+      "default": "gen_random_uuid()",
+      "generated": "NEVER"
+    },
+    {
+      "schema": "escen",
+      "table": "complaint_notifications",
+      "name": "complaint_id",
+      "type": "uuid",
+      "nullable": "NO",
+      "default": null,
+      "generated": "NEVER"
+    },
+    {
+      "schema": "escen",
+      "table": "complaint_notifications",
+      "name": "evaluation_id",
+      "type": "uuid",
+      "nullable": "NO",
+      "default": null,
+      "generated": "NEVER"
+    },
+    {
+      "schema": "escen",
+      "table": "complaint_notifications",
+      "name": "academic_year_id",
+      "type": "uuid",
+      "nullable": "NO",
+      "default": null,
+      "generated": "NEVER"
+    },
+    {
+      "schema": "escen",
+      "table": "complaint_notifications",
+      "name": "account_id",
+      "type": "uuid",
+      "nullable": "NO",
+      "default": null,
+      "generated": "NEVER"
+    },
+    {
+      "schema": "escen",
+      "table": "complaint_notifications",
+      "name": "role_code",
+      "type": "text",
+      "nullable": "NO",
+      "default": null,
+      "generated": "NEVER"
+    },
+    {
+      "schema": "escen",
+      "table": "complaint_notifications",
+      "name": "action",
+      "type": "text",
+      "nullable": "NO",
+      "default": null,
+      "generated": "NEVER"
+    },
+    {
+      "schema": "escen",
+      "table": "complaint_notifications",
+      "name": "message",
+      "type": "escen.nonempty_text",
+      "nullable": "NO",
+      "default": null,
+      "generated": "NEVER"
+    },
+    {
+      "schema": "escen",
+      "table": "complaint_notifications",
+      "name": "read_at",
+      "type": "timestamptz",
+      "nullable": "YES",
+      "default": null,
+      "generated": "NEVER"
+    },
+    {
+      "schema": "escen",
+      "table": "complaint_notifications",
+      "name": "created_at",
+      "type": "timestamptz",
+      "nullable": "NO",
+      "default": "now()",
+      "generated": "NEVER"
+    },
+    {
+      "schema": "escen",
       "table": "complaints",
       "name": "id",
       "type": "uuid",
@@ -2867,6 +2967,195 @@
       "table": "contract_versions",
       "name": "legacy_source_row_id",
       "type": "uuid",
+      "nullable": "YES",
+      "default": null,
+      "generated": "NEVER"
+    },
+    {
+      "schema": "escen",
+      "table": "course_resources",
+      "name": "id",
+      "type": "uuid",
+      "nullable": "NO",
+      "default": "gen_random_uuid()",
+      "generated": "NEVER"
+    },
+    {
+      "schema": "escen",
+      "table": "course_resources",
+      "name": "academic_year_id",
+      "type": "uuid",
+      "nullable": "NO",
+      "default": null,
+      "generated": "NEVER"
+    },
+    {
+      "schema": "escen",
+      "table": "course_resources",
+      "name": "offering_id",
+      "type": "uuid",
+      "nullable": "NO",
+      "default": null,
+      "generated": "NEVER"
+    },
+    {
+      "schema": "escen",
+      "table": "course_resources",
+      "name": "group_id",
+      "type": "uuid",
+      "nullable": "NO",
+      "default": null,
+      "generated": "NEVER"
+    },
+    {
+      "schema": "escen",
+      "table": "course_resources",
+      "name": "component_id",
+      "type": "uuid",
+      "nullable": "NO",
+      "default": null,
+      "generated": "NEVER"
+    },
+    {
+      "schema": "escen",
+      "table": "course_resources",
+      "name": "assignment_id",
+      "type": "uuid",
+      "nullable": "YES",
+      "default": null,
+      "generated": "NEVER"
+    },
+    {
+      "schema": "escen",
+      "table": "course_resources",
+      "name": "session_id",
+      "type": "uuid",
+      "nullable": "YES",
+      "default": null,
+      "generated": "NEVER"
+    },
+    {
+      "schema": "escen",
+      "table": "course_resources",
+      "name": "title",
+      "type": "escen.nonempty_text",
+      "nullable": "NO",
+      "default": null,
+      "generated": "NEVER"
+    },
+    {
+      "schema": "escen",
+      "table": "course_resources",
+      "name": "description",
+      "type": "text",
+      "nullable": "YES",
+      "default": null,
+      "generated": "NEVER"
+    },
+    {
+      "schema": "escen",
+      "table": "course_resources",
+      "name": "kind",
+      "type": "text",
+      "nullable": "NO",
+      "default": "'SUPPORT'::text",
+      "generated": "NEVER"
+    },
+    {
+      "schema": "escen",
+      "table": "course_resources",
+      "name": "resource_url",
+      "type": "text",
+      "nullable": "YES",
+      "default": null,
+      "generated": "NEVER"
+    },
+    {
+      "schema": "escen",
+      "table": "course_resources",
+      "name": "file_name",
+      "type": "text",
+      "nullable": "YES",
+      "default": null,
+      "generated": "NEVER"
+    },
+    {
+      "schema": "escen",
+      "table": "course_resources",
+      "name": "mime_type",
+      "type": "text",
+      "nullable": "YES",
+      "default": null,
+      "generated": "NEVER"
+    },
+    {
+      "schema": "escen",
+      "table": "course_resources",
+      "name": "byte_size",
+      "type": "int8",
+      "nullable": "YES",
+      "default": null,
+      "generated": "NEVER"
+    },
+    {
+      "schema": "escen",
+      "table": "course_resources",
+      "name": "storage_bucket",
+      "type": "text",
+      "nullable": "YES",
+      "default": null,
+      "generated": "NEVER"
+    },
+    {
+      "schema": "escen",
+      "table": "course_resources",
+      "name": "storage_path",
+      "type": "text",
+      "nullable": "YES",
+      "default": null,
+      "generated": "NEVER"
+    },
+    {
+      "schema": "escen",
+      "table": "course_resources",
+      "name": "uploaded_by",
+      "type": "uuid",
+      "nullable": "NO",
+      "default": null,
+      "generated": "NEVER"
+    },
+    {
+      "schema": "escen",
+      "table": "course_resources",
+      "name": "reason",
+      "type": "text",
+      "nullable": "YES",
+      "default": null,
+      "generated": "NEVER"
+    },
+    {
+      "schema": "escen",
+      "table": "course_resources",
+      "name": "created_at",
+      "type": "timestamptz",
+      "nullable": "NO",
+      "default": "now()",
+      "generated": "NEVER"
+    },
+    {
+      "schema": "escen",
+      "table": "course_resources",
+      "name": "updated_at",
+      "type": "timestamptz",
+      "nullable": "NO",
+      "default": "now()",
+      "generated": "NEVER"
+    },
+    {
+      "schema": "escen",
+      "table": "course_resources",
+      "name": "archived_at",
+      "type": "timestamptz",
       "nullable": "YES",
       "default": null,
       "generated": "NEVER"
@@ -7814,6 +8103,51 @@
     },
     {
       "schema": "escen",
+      "table": "sessions",
+      "name": "meeting_url",
+      "type": "text",
+      "nullable": "YES",
+      "default": null,
+      "generated": "NEVER"
+    },
+    {
+      "schema": "escen",
+      "table": "sessions",
+      "name": "meeting_id",
+      "type": "text",
+      "nullable": "YES",
+      "default": null,
+      "generated": "NEVER"
+    },
+    {
+      "schema": "escen",
+      "table": "sessions",
+      "name": "meeting_provider",
+      "type": "text",
+      "nullable": "YES",
+      "default": null,
+      "generated": "NEVER"
+    },
+    {
+      "schema": "escen",
+      "table": "sessions",
+      "name": "recording_url",
+      "type": "text",
+      "nullable": "YES",
+      "default": null,
+      "generated": "NEVER"
+    },
+    {
+      "schema": "escen",
+      "table": "sessions",
+      "name": "recording_synced_at",
+      "type": "timestamptz",
+      "nullable": "YES",
+      "default": null,
+      "generated": "NEVER"
+    },
+    {
+      "schema": "escen",
       "table": "sites",
       "name": "id",
       "type": "uuid",
@@ -12372,6 +12706,111 @@
     },
     {
       "schema": "escen",
+      "table": "complaint_notifications",
+      "name": "complaint_notifications_academic_year_id_fkey",
+      "type": "f",
+      "definition": "FOREIGN KEY (academic_year_id) REFERENCES escen.academic_years(id) ON DELETE RESTRICT"
+    },
+    {
+      "schema": "escen",
+      "table": "complaint_notifications",
+      "name": "complaint_notifications_academic_year_id_not_null",
+      "type": "n",
+      "definition": "NOT NULL academic_year_id"
+    },
+    {
+      "schema": "escen",
+      "table": "complaint_notifications",
+      "name": "complaint_notifications_account_id_fkey",
+      "type": "f",
+      "definition": "FOREIGN KEY (account_id) REFERENCES escen.accounts(id) ON DELETE RESTRICT"
+    },
+    {
+      "schema": "escen",
+      "table": "complaint_notifications",
+      "name": "complaint_notifications_account_id_not_null",
+      "type": "n",
+      "definition": "NOT NULL account_id"
+    },
+    {
+      "schema": "escen",
+      "table": "complaint_notifications",
+      "name": "complaint_notifications_action_check",
+      "type": "c",
+      "definition": "CHECK ((action = ANY (ARRAY['OPENED'::text, 'IN_REVIEW'::text, 'RESOLVED'::text, 'REJECTED'::text])))"
+    },
+    {
+      "schema": "escen",
+      "table": "complaint_notifications",
+      "name": "complaint_notifications_action_not_null",
+      "type": "n",
+      "definition": "NOT NULL action"
+    },
+    {
+      "schema": "escen",
+      "table": "complaint_notifications",
+      "name": "complaint_notifications_complaint_id_fkey",
+      "type": "f",
+      "definition": "FOREIGN KEY (complaint_id) REFERENCES escen.complaints(id) ON DELETE RESTRICT"
+    },
+    {
+      "schema": "escen",
+      "table": "complaint_notifications",
+      "name": "complaint_notifications_complaint_id_not_null",
+      "type": "n",
+      "definition": "NOT NULL complaint_id"
+    },
+    {
+      "schema": "escen",
+      "table": "complaint_notifications",
+      "name": "complaint_notifications_created_at_not_null",
+      "type": "n",
+      "definition": "NOT NULL created_at"
+    },
+    {
+      "schema": "escen",
+      "table": "complaint_notifications",
+      "name": "complaint_notifications_evaluation_id_fkey",
+      "type": "f",
+      "definition": "FOREIGN KEY (evaluation_id) REFERENCES escen.evaluations(id) ON DELETE RESTRICT"
+    },
+    {
+      "schema": "escen",
+      "table": "complaint_notifications",
+      "name": "complaint_notifications_evaluation_id_not_null",
+      "type": "n",
+      "definition": "NOT NULL evaluation_id"
+    },
+    {
+      "schema": "escen",
+      "table": "complaint_notifications",
+      "name": "complaint_notifications_id_not_null",
+      "type": "n",
+      "definition": "NOT NULL id"
+    },
+    {
+      "schema": "escen",
+      "table": "complaint_notifications",
+      "name": "complaint_notifications_message_not_null",
+      "type": "n",
+      "definition": "NOT NULL message"
+    },
+    {
+      "schema": "escen",
+      "table": "complaint_notifications",
+      "name": "complaint_notifications_pkey",
+      "type": "p",
+      "definition": "PRIMARY KEY (id)"
+    },
+    {
+      "schema": "escen",
+      "table": "complaint_notifications",
+      "name": "complaint_notifications_role_code_not_null",
+      "type": "n",
+      "definition": "NOT NULL role_code"
+    },
+    {
+      "schema": "escen",
       "table": "complaints",
       "name": "complaints_candidate_id_fkey",
       "type": "f",
@@ -12705,6 +13144,167 @@
       "name": "version_approval_evidence",
       "type": "c",
       "definition": "CHECK (((status = ANY (ARRAY['DRAFT'::text, 'EN_COURS'::text])) OR ((approved_by IS NOT NULL) AND (approved_at IS NOT NULL))))"
+    },
+    {
+      "schema": "escen",
+      "table": "course_resources",
+      "name": "course_resources_academic_year_id_fkey",
+      "type": "f",
+      "definition": "FOREIGN KEY (academic_year_id) REFERENCES escen.academic_years(id) ON DELETE RESTRICT"
+    },
+    {
+      "schema": "escen",
+      "table": "course_resources",
+      "name": "course_resources_academic_year_id_not_null",
+      "type": "n",
+      "definition": "NOT NULL academic_year_id"
+    },
+    {
+      "schema": "escen",
+      "table": "course_resources",
+      "name": "course_resources_archive_reason_check",
+      "type": "c",
+      "definition": "CHECK (((archived_at IS NULL) OR ((reason IS NOT NULL) AND ((length(btrim(reason)) >= 3) AND (length(btrim(reason)) <= 1000)))))"
+    },
+    {
+      "schema": "escen",
+      "table": "course_resources",
+      "name": "course_resources_assignment_id_fkey",
+      "type": "f",
+      "definition": "FOREIGN KEY (assignment_id) REFERENCES escen.teaching_assignments(id) ON DELETE RESTRICT"
+    },
+    {
+      "schema": "escen",
+      "table": "course_resources",
+      "name": "course_resources_byte_size_check",
+      "type": "c",
+      "definition": "CHECK (((byte_size IS NULL) OR (byte_size >= 0)))"
+    },
+    {
+      "schema": "escen",
+      "table": "course_resources",
+      "name": "course_resources_component_id_fkey",
+      "type": "f",
+      "definition": "FOREIGN KEY (component_id) REFERENCES escen.curriculum_components(id) ON DELETE RESTRICT"
+    },
+    {
+      "schema": "escen",
+      "table": "course_resources",
+      "name": "course_resources_component_id_not_null",
+      "type": "n",
+      "definition": "NOT NULL component_id"
+    },
+    {
+      "schema": "escen",
+      "table": "course_resources",
+      "name": "course_resources_created_at_not_null",
+      "type": "n",
+      "definition": "NOT NULL created_at"
+    },
+    {
+      "schema": "escen",
+      "table": "course_resources",
+      "name": "course_resources_group_id_fkey",
+      "type": "f",
+      "definition": "FOREIGN KEY (group_id) REFERENCES escen.groups(id) ON DELETE RESTRICT"
+    },
+    {
+      "schema": "escen",
+      "table": "course_resources",
+      "name": "course_resources_group_id_not_null",
+      "type": "n",
+      "definition": "NOT NULL group_id"
+    },
+    {
+      "schema": "escen",
+      "table": "course_resources",
+      "name": "course_resources_id_not_null",
+      "type": "n",
+      "definition": "NOT NULL id"
+    },
+    {
+      "schema": "escen",
+      "table": "course_resources",
+      "name": "course_resources_kind_check",
+      "type": "c",
+      "definition": "CHECK ((kind = ANY (ARRAY['SUPPORT'::text, 'EXERCICE'::text, 'ENREGISTREMENT'::text, 'LIEN'::text, 'AUTRE'::text])))"
+    },
+    {
+      "schema": "escen",
+      "table": "course_resources",
+      "name": "course_resources_kind_not_null",
+      "type": "n",
+      "definition": "NOT NULL kind"
+    },
+    {
+      "schema": "escen",
+      "table": "course_resources",
+      "name": "course_resources_offering_id_fkey",
+      "type": "f",
+      "definition": "FOREIGN KEY (offering_id) REFERENCES escen.academic_offerings(id) ON DELETE RESTRICT"
+    },
+    {
+      "schema": "escen",
+      "table": "course_resources",
+      "name": "course_resources_offering_id_not_null",
+      "type": "n",
+      "definition": "NOT NULL offering_id"
+    },
+    {
+      "schema": "escen",
+      "table": "course_resources",
+      "name": "course_resources_pkey",
+      "type": "p",
+      "definition": "PRIMARY KEY (id)"
+    },
+    {
+      "schema": "escen",
+      "table": "course_resources",
+      "name": "course_resources_resource_url_check",
+      "type": "c",
+      "definition": "CHECK (((resource_url IS NULL) OR ((length(btrim(resource_url)) >= 5) AND (length(btrim(resource_url)) <= 2048))))"
+    },
+    {
+      "schema": "escen",
+      "table": "course_resources",
+      "name": "course_resources_session_id_fkey",
+      "type": "f",
+      "definition": "FOREIGN KEY (session_id) REFERENCES escen.sessions(id) ON DELETE RESTRICT"
+    },
+    {
+      "schema": "escen",
+      "table": "course_resources",
+      "name": "course_resources_target_check",
+      "type": "c",
+      "definition": "CHECK (((resource_url IS NOT NULL) OR (storage_path IS NOT NULL)))"
+    },
+    {
+      "schema": "escen",
+      "table": "course_resources",
+      "name": "course_resources_title_not_null",
+      "type": "n",
+      "definition": "NOT NULL title"
+    },
+    {
+      "schema": "escen",
+      "table": "course_resources",
+      "name": "course_resources_updated_at_not_null",
+      "type": "n",
+      "definition": "NOT NULL updated_at"
+    },
+    {
+      "schema": "escen",
+      "table": "course_resources",
+      "name": "course_resources_uploaded_by_fkey",
+      "type": "f",
+      "definition": "FOREIGN KEY (uploaded_by) REFERENCES escen.accounts(id) ON DELETE RESTRICT"
+    },
+    {
+      "schema": "escen",
+      "table": "course_resources",
+      "name": "course_resources_uploaded_by_not_null",
+      "type": "n",
+      "definition": "NOT NULL uploaded_by"
     },
     {
       "schema": "escen",
@@ -18645,6 +19245,27 @@
     {
       "schema": "escen",
       "table": "sessions",
+      "name": "sessions_meeting_id_check",
+      "type": "c",
+      "definition": "CHECK (((meeting_id IS NULL) OR ((length(btrim(meeting_id)) >= 1) AND (length(btrim(meeting_id)) <= 512))))"
+    },
+    {
+      "schema": "escen",
+      "table": "sessions",
+      "name": "sessions_meeting_provider_check",
+      "type": "c",
+      "definition": "CHECK (((meeting_provider IS NULL) OR (meeting_provider = ANY (ARRAY['TEAMS'::text, 'LIEN'::text]))))"
+    },
+    {
+      "schema": "escen",
+      "table": "sessions",
+      "name": "sessions_meeting_url_check",
+      "type": "c",
+      "definition": "CHECK (((meeting_url IS NULL) OR ((length(btrim(meeting_url)) >= 5) AND (length(btrim(meeting_url)) <= 2048))))"
+    },
+    {
+      "schema": "escen",
+      "table": "sessions",
       "name": "sessions_mode_check",
       "type": "c",
       "definition": "CHECK ((mode = ANY (ARRAY['PAPIER'::text, 'EN_LIGNE'::text, 'COURS'::text])))"
@@ -18669,6 +19290,13 @@
       "name": "sessions_pkey",
       "type": "p",
       "definition": "PRIMARY KEY (id)"
+    },
+    {
+      "schema": "escen",
+      "table": "sessions",
+      "name": "sessions_recording_url_check",
+      "type": "c",
+      "definition": "CHECK (((recording_url IS NULL) OR ((length(btrim(recording_url)) >= 5) AND (length(btrim(recording_url)) <= 2048))))"
     },
     {
       "schema": "escen",
@@ -22105,6 +22733,24 @@
     },
     {
       "schema": "escen",
+      "table": "complaint_notifications",
+      "name": "complaint_notifications_complaint_idx",
+      "definition": "CREATE INDEX complaint_notifications_complaint_idx ON escen.complaint_notifications USING btree (complaint_id)"
+    },
+    {
+      "schema": "escen",
+      "table": "complaint_notifications",
+      "name": "complaint_notifications_pkey",
+      "definition": "CREATE UNIQUE INDEX complaint_notifications_pkey ON escen.complaint_notifications USING btree (id)"
+    },
+    {
+      "schema": "escen",
+      "table": "complaint_notifications",
+      "name": "complaint_notifications_recipient_idx",
+      "definition": "CREATE INDEX complaint_notifications_recipient_idx ON escen.complaint_notifications USING btree (account_id, role_code, read_at, created_at DESC)"
+    },
+    {
+      "schema": "escen",
       "table": "complaints",
       "name": "complaints_pkey",
       "definition": "CREATE UNIQUE INDEX complaints_pkey ON escen.complaints USING btree (id)"
@@ -22228,6 +22874,36 @@
       "table": "contract_versions",
       "name": "one_approved_contract_version",
       "definition": "CREATE UNIQUE INDEX one_approved_contract_version ON escen.contract_versions USING btree (contract_id) WHERE (status = 'APPROVED'::text)"
+    },
+    {
+      "schema": "escen",
+      "table": "course_resources",
+      "name": "course_resources_assignment_idx",
+      "definition": "CREATE INDEX course_resources_assignment_idx ON escen.course_resources USING btree (assignment_id)"
+    },
+    {
+      "schema": "escen",
+      "table": "course_resources",
+      "name": "course_resources_group_idx",
+      "definition": "CREATE INDEX course_resources_group_idx ON escen.course_resources USING btree (group_id, component_id)"
+    },
+    {
+      "schema": "escen",
+      "table": "course_resources",
+      "name": "course_resources_pkey",
+      "definition": "CREATE UNIQUE INDEX course_resources_pkey ON escen.course_resources USING btree (id)"
+    },
+    {
+      "schema": "escen",
+      "table": "course_resources",
+      "name": "course_resources_session_idx",
+      "definition": "CREATE INDEX course_resources_session_idx ON escen.course_resources USING btree (session_id)"
+    },
+    {
+      "schema": "escen",
+      "table": "course_resources",
+      "name": "course_resources_year_idx",
+      "definition": "CREATE INDEX course_resources_year_idx ON escen.course_resources USING btree (academic_year_id)"
     },
     {
       "schema": "escen",

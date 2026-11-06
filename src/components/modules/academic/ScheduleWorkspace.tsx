@@ -32,6 +32,8 @@ const titles: Record<Action, string> = {
   move_session: 'Déplacer la séance',
   cancel_session: 'Annuler la séance',
   replace_teacher: 'Remplacer l’enseignant',
+  generate_online_link: 'Lien du cours en ligne (Microsoft Teams)',
+  sync_recording: 'Enregistrement du cours en ligne',
   block_period: 'Bloquer une période',
 };
 
@@ -49,7 +51,7 @@ const QUICK_TIME_PRESETS = [
 const localTime = (value: string) => value ? new Date(value).toISOString().slice(0, 16) : '';
 const iso = (value: string) => new Date(`${value}:00Z`).toISOString();
 const displayTime = (value: string) => new Intl.DateTimeFormat('fr-FR', { dateStyle: 'short', timeStyle: 'short', timeZone: 'Africa/Lome' }).format(new Date(value));
-const blank = () => ({ assignmentId: '', startsAt: '', endsAt: '', mode: 'COURS' as SessionMode, roomId: '', teacherId: '', name: '', kind: 'AUTRE' as 'AUTRE' | 'JOUR_FERIE' | 'VACANCES' | 'FERMETURE' | 'EXAMEN', siteId: '', reason: '' });
+const blank = () => ({ assignmentId: '', startsAt: '', endsAt: '', mode: 'COURS' as SessionMode, roomId: '', teacherId: '', meetingUrl: '', recordingUrl: '', name: '', kind: 'AUTRE' as 'AUTRE' | 'JOUR_FERIE' | 'VACANCES' | 'FERMETURE' | 'EXAMEN', siteId: '', reason: '' });
 
 export default function ScheduleWorkspace() {
   const portal = usePortal();
@@ -137,6 +139,7 @@ function ScheduleManager() {
     setForm({ ...blank(), siteId: directory.canBlockAllSites ? '' : directory.sites[0]?.id || '', ...(session ? {
       assignmentId: session.assignmentId, startsAt: localTime(session.startsAt), endsAt: localTime(session.endsAt), mode: session.mode,
       roomId: session.roomId || '', teacherId: session.replacementTeacherId || '',
+      meetingUrl: session.meetingUrl || '', recordingUrl: session.recordingUrl || '',
     } : {}) });
   };
 
@@ -162,6 +165,8 @@ function ScheduleManager() {
     : action === 'update_session' ? 'Mise à jour des horaires ou de la salle du cours'
     : action === 'move_session' ? 'Déplacement de séance de cours'
     : action === 'replace_teacher' ? 'Remplacement d’enseignant pour la séance'
+    : action === 'generate_online_link' ? 'Création ou mise à jour du lien de cours en ligne Teams'
+    : action === 'sync_recording' ? 'Mise à disposition de l’enregistrement du cours en ligne'
     : action === 'cancel_session' ? 'Annulation de la séance de cours'
     : action === 'block_period' ? (form.name ? `Période bloquée : ${form.name}` : 'Période bloquée')
     : 'Opération sur le planning');
@@ -195,6 +200,14 @@ function ScheduleManager() {
       { label: 'Durée de composition conservée', value: movingExam.durationMinutes == null ? 'Non renseignée' : `${movingExam.durationMinutes} minutes` }] : []),
     ...(action === 'cancel_session' && current ? [{ label: 'Séance', value: assignmentName(current.assignmentId) }, { label: 'Statut', value: 'ANNULE', previous: current.status }] : []),
     ...(action === 'replace_teacher' && current ? [{ label: 'Enseignant effectif', value: teacherName(form.teacherId || current.teacherId), previous: teacherName(current.replacementTeacherId || current.teacherId) }] : []),
+    ...(action === 'generate_online_link' && current ? [
+      { label: 'Séance', value: `${assignmentName(current.assignmentId)} · ${displayTime(current.startsAt)}` },
+      { label: 'Lien de visioconférence', value: form.meetingUrl.trim() || 'Génération automatique Microsoft Teams (@escen.university)', previous: current.meetingUrl || 'Aucun' },
+    ] : []),
+    ...(action === 'sync_recording' && current ? [
+      { label: 'Séance', value: `${assignmentName(current.assignmentId)} · ${displayTime(current.startsAt)}` },
+      { label: 'Enregistrement (Replay)', value: form.recordingUrl.trim() || 'Synchronisation automatique Microsoft Graph / OneDrive', previous: current.recordingUrl || 'Aucun' },
+    ] : []),
     ...(action === 'block_period' ? [{ label: 'Intitulé', value: form.name }, { label: 'Type de période', value: form.kind }, { label: 'Site', value: directory.sites.find(site => site.id === form.siteId)?.name || 'Tous les sites' }] : []),
     { label: 'Motif', value: effectiveReason },
   ];
@@ -248,12 +261,28 @@ function ScheduleManager() {
     <section className="card"><h2>Périodes bloquées ({directory.blockedPeriods.length})</h2>{directory.blockedPeriods.map(period => <p key={period.id}><strong>{period.name}</strong> · {displayTime(period.startsAt)} → {displayTime(period.endsAt)} · {period.reason || 'Motif historique non renseigné'}</p>)}{!directory.blockedPeriods.length && <p>Aucune période bloquée.</p>}</section>
     {detail && <WorkPage title="Détail de la séance" onClose={() => setDetail(null)}><dl className="record-details-grid">
       <div><dt>Affectation</dt><dd>{detail.participants.map(participant => assignmentName(participant.assignmentId)).join(' ; ')}</dd></div><div><dt>Horaires (Lomé)</dt><dd>{displayTime(detail.startsAt)} → {displayTime(detail.endsAt)}</dd></div>
-      <div><dt>Enseignant effectif</dt><dd>{teacherName(detail.replacementTeacherId || detail.teacherId)}</dd></div><div><dt>Salle effective</dt><dd>{roomName(detail.actualRoomId || detail.roomId)}</dd></div>
+      <div><dt>Enseignant effectif</dt><dd>{teacherName(detail.replacementTeacherId || detail.teacherId)}</dd></div><div><dt>Salle / Modalité</dt><dd>{roomName(detail.actualRoomId || detail.roomId)}</dd></div>
+      {detail.mode === 'EN_LIGNE' && (
+        <>
+          <div><dt>Lien du cours en ligne</dt><dd>{detail.meetingUrl ? <a href={detail.meetingUrl} target="_blank" rel="noopener noreferrer" className="btn btn-sm btn-primary">Rejoindre le cours Teams</a> : 'Non généré'}</dd></div>
+          <div><dt>Enregistrement (Replay)</dt><dd>{detail.recordingUrl ? <a href={detail.recordingUrl} target="_blank" rel="noopener noreferrer" className="btn btn-sm btn-outline">Accéder à l’enregistrement</a> : 'En attente d’enregistrement'}</dd></div>
+        </>
+      )}
       <div><dt>Statut</dt><dd>{detail.status}</dd></div><div><dt>Motif</dt><dd>{detail.reason || 'Non renseigné'}</dd></div></dl>
       {detail.exam && <section className="card"><h2>{detail.exam.name}</h2><p>Accès (Lomé) : {displayTime(detail.exam.opensAt)} → {displayTime(detail.exam.closesAt)}</p>{(detail.exam.hasCopies || detail.exam.hasResults) && <p className="restricted-box">Cette épreuve possède une copie ou un résultat : ses horaires ne peuvent plus être déplacés.</p>}</section>}
       {detail.hasAttendance && <p className="restricted-box">Séance déjà émargée : ses horaires, son affectation et son annulation sont protégés.</p>}
       {directory.canUpdate && detail.canUpdate && !['ANNULE', 'REPORTE'].includes(detail.status) && <div className="btn-group">
         {!detail.shared && <button className="btn btn-outline" onClick={() => open('update_session', detail)}>Modifier la séance</button>}
+        {detail.mode === 'EN_LIGNE' && (
+          <>
+            <button className="btn btn-primary" onClick={() => open('generate_online_link', detail)}>
+              {detail.meetingUrl ? 'Mettre à jour le lien Teams' : 'Créer le lien Teams automatiquement'}
+            </button>
+            <button className="btn btn-outline" onClick={() => open('sync_recording', detail)}>
+              {detail.recordingUrl ? 'Modifier l’enregistrement' : 'Synchroniser / Ajouter l’enregistrement'}
+            </button>
+          </>
+        )}
         {!detail.hasAttendance && <button className="btn btn-outline" onClick={() => open('move_session', detail)}>Déplacer la séance</button>}
         <button className="btn btn-outline" onClick={() => open('replace_teacher', detail)}>Remplacer l’enseignant</button>
         {!detail.hasAttendance && <button className="btn btn-danger" onClick={() => open('cancel_session', detail)}>Annuler la séance</button>}
@@ -281,18 +310,21 @@ function ScheduleManager() {
           : operation.action === 'block_period' ? { ...common, action: 'block_period', name: form.name, kind: form.kind, siteId: form.siteId || null, startsAt: iso(form.startsAt), endsAt: iso(form.endsAt) }
           : operation.action === 'cancel_session' ? { ...common, action: 'cancel_session', sessionId }
             : operation.action === 'replace_teacher' ? { ...common, action: 'replace_teacher', sessionId, teacherId: form.teacherId || null }
-              : operation.action === 'move_session' ? { ...common, action: 'move_session', sessionId, startsAt: iso(form.startsAt), endsAt: iso(form.endsAt) }
-                : isMultiCreate ? {
-                  ...common,
-                  action: 'create_session',
-                  assignmentId: form.assignmentId,
-                  roomId: form.roomId || null,
-                  mode: form.mode,
-                  startsAt: multiSlots[0].startsAt,
-                  endsAt: multiSlots[0].endsAt,
-                  slots: multiSlots.map(slot => ({ startsAt: slot.startsAt, endsAt: slot.endsAt })),
-                }
-                : { ...common, action: operation.action, ...(operation.action === 'update_session' ? { sessionId } : {}), assignmentId: form.assignmentId, roomId: form.roomId || null, mode: form.mode, startsAt: iso(form.startsAt), endsAt: iso(form.endsAt) } as ScheduleCommand;
+              : operation.action === 'generate_online_link' ? { ...common, action: 'generate_online_link', sessionId, customMeetingUrl: form.meetingUrl.trim() || null }
+                : operation.action === 'sync_recording' ? { ...common, action: 'sync_recording', sessionId, recordingUrl: form.recordingUrl.trim() || null }
+                  : operation.action === 'move_session' ? { ...common, action: 'move_session', sessionId, startsAt: iso(form.startsAt), endsAt: iso(form.endsAt) }
+                    : isMultiCreate ? {
+                      ...common,
+                      action: 'create_session',
+                      assignmentId: form.assignmentId,
+                      roomId: form.roomId || null,
+                      mode: form.mode,
+                      ...(form.mode === 'EN_LIGNE' && form.meetingUrl.trim() ? { meetingUrl: form.meetingUrl.trim() } : {}),
+                      startsAt: multiSlots[0].startsAt,
+                      endsAt: multiSlots[0].endsAt,
+                      slots: multiSlots.map(slot => ({ startsAt: slot.startsAt, endsAt: slot.endsAt })),
+                    }
+                    : { ...common, action: operation.action, ...(operation.action === 'update_session' ? { sessionId } : {}), assignmentId: form.assignmentId, roomId: form.roomId || null, mode: form.mode, ...(form.mode === 'EN_LIGNE' && form.meetingUrl.trim() ? { meetingUrl: form.meetingUrl.trim() } : {}), startsAt: iso(form.startsAt), endsAt: iso(form.endsAt) } as ScheduleCommand;
         void manageSchedule(activeRole, command).then(() => {
           setOperation(null);
           setSuccess(isMultiCreate && multiSlots.length > 1 ? `${multiSlots.length} séances programmées avec succès.` : 'Planning enregistré. Le motif et l’historique sont conservés.');
@@ -305,6 +337,12 @@ function ScheduleManager() {
         {sharedCreate && assignment && <fieldset className="card"><legend>Autres groupes et formations du cours commun</legend>{sharedChoices.map(choice => <label className="form-group" key={choice.id}><input type="checkbox" checked={sharedAssignmentIds.includes(choice.id)} onChange={event => setSharedAssignmentIds(ids => event.target.checked ? [...ids, choice.id] : ids.filter(id => id !== choice.id))} />{assignmentName(choice.id)}</label>)}{!sharedChoices.length && <p>Aucune autre affectation compatible : vérifiez la matière, l’enseignant et le site des groupes à réunir.</p>}</fieldset>}
         {!sharedCreate && <label className="form-group">Type de séance<select className="select-input" value={form.mode} onChange={event => setForm({ ...form, mode: event.target.value as SessionMode, roomId: '' })}><option value="COURS">Cours en présentiel</option><option value="PAPIER">Épreuve sur papier</option><option value="EN_LIGNE">En ligne</option></select></label>}
         {form.mode !== 'EN_LIGNE' && <label className="form-group">Salle prévue<select className="select-input" required disabled={!assignment} value={form.roomId} onChange={event => setForm({ ...form, roomId: event.target.value })}><option value="">Choisir une salle disponible</option>{directory.rooms.filter(room => room.available && (!room.siteId || room.siteId === siteId)).map(room => <option key={room.id} value={room.id}>{room.name}</option>)}</select></label>}
+        {form.mode === 'EN_LIGNE' && (
+          <div className="form-group">
+            <label className="form-label">Lien Microsoft Teams (créé automatiquement si laissé vide)</label>
+            <input className="input" type="url" placeholder="Automatique via Microsoft 365 (@escen.university) ou saisir une URL..." value={form.meetingUrl} onChange={event => setForm({ ...form, meetingUrl: event.target.value })} />
+          </div>
+        )}
       </>}
       {action === 'block_period' && <><label className="form-group">Intitulé<input className="input" required maxLength={160} value={form.name} onChange={event => setForm({ ...form, name: event.target.value })} /></label>
         <label className="form-group">Type de période<select className="select-input" value={form.kind} onChange={event => setForm({ ...form, kind: event.target.value as typeof form.kind })}>{['AUTRE', 'JOUR_FERIE', 'VACANCES', 'FERMETURE', 'EXAMEN'].map(kind => <option key={kind} value={kind}>{kind}</option>)}</select></label>
@@ -382,6 +420,18 @@ function ScheduleManager() {
         </fieldset>
       )}
       {action === 'replace_teacher' && current && <label className="form-group">Remplaçant<select className="select-input" value={form.teacherId} onChange={event => setForm({ ...form, teacherId: event.target.value })}><option value="">Enseignant d’origine : {teacherName(current.teacherId)}</option>{directory.teachers.filter(teacher => teacher.active && teacher.id !== current.teacherId).map(teacher => <option key={teacher.id} value={teacher.id}>{teacher.name}</option>)}</select></label>}
+      {action === 'generate_online_link' && current && (
+        <div className="form-group">
+          <p className="info-box mb-1">Laissez le champ vide pour générer automatiquement un nouveau lien de réunion Microsoft Teams via le compte @escen.university, ou collez un lien de visioconférence existant.</p>
+          <label className="form-group">Lien de réunion (optionnel — automatique si vide)<input className="input" type="url" placeholder="https://teams.microsoft.com/l/meetup-join/..." value={form.meetingUrl} onChange={event => setForm({ ...form, meetingUrl: event.target.value })} /></label>
+        </div>
+      )}
+      {action === 'sync_recording' && current && (
+        <div className="form-group">
+          <p className="info-box mb-1">Laissez le champ vide pour synchroniser automatiquement l’enregistrement depuis Microsoft Teams / OneDrive, ou collez directement le lien du replay pour le rendre immédiatement accessible aux étudiants dans leur espace Supports & Cours.</p>
+          <label className="form-group">Lien de l’enregistrement (Replay)<input className="input" type="url" placeholder="https://escenuniversity-my.sharepoint.com/..." value={form.recordingUrl} onChange={event => setForm({ ...form, recordingUrl: event.target.value })} /></label>
+        </div>
+      )}
       {action === 'cancel_session' && current && <p>{assignmentName(current.assignmentId)} · {displayTime(current.startsAt)} → ANNULE</p>}
       {action === 'cancel_session' && <label className="form-group">Motif d’annulation (facultatif)<textarea className="input" maxLength={1000} placeholder="Facultatif — ex. indisponibilité de l’enseignant" value={form.reason} onChange={event => setForm({ ...form, reason: event.target.value })} /></label>}
       <DrawerActions><DrawerCloseButton className="btn btn-outline" disabled={saving}>Annuler</DrawerCloseButton><button className="btn btn-primary">Vérifier les informations</button></DrawerActions>

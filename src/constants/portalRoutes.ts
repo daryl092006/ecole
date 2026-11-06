@@ -10,6 +10,7 @@ export const PORTAL_ROUTES: PortalRoute[] = [
   { tab: 'espace', section: 'espace_finance', href: '/mon-espace/scolarite', title: 'Mes frais et paiements' },
   { tab: 'dashboard_global', section: 'dashboard_kpis', href: '/tableau-de-bord', title: 'Vue d’ensemble' },
   { tab: 'dashboard_global', section: 'dashboard_reports', href: '/tableau-de-bord/rapports', title: 'Rapports de pilotage' },
+  { tab: 'academique', section: 'acad_resources', href: '/academique/supports', title: 'Cours, supports et enregistrements' },
   { tab: 'academique', section: 'acad_program', href: '/academique/filieres', title: 'Programmes de cours et matières' },
   { tab: 'academique', section: 'acad_groups', href: '/academique/groupes', title: 'Classes et groupes' },
   { tab: 'academique', section: 'acad_reference', href: '/academique/referentiel', title: 'Préparer et gérer l’année' },

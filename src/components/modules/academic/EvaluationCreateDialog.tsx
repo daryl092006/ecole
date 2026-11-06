@@ -50,7 +50,7 @@ export default function EvaluationCreateDialog({
   const [startsAt, setStartsAt] = useState('');
   const [endsAt, setEndsAt] = useState('');
   const [durationMinutes, setDurationMinutes] = useState(120);
-  const [deliveryMode, setDeliveryMode] = useState<'EN_LIGNE' | 'PAPIER'>('EN_LIGNE');
+  const [deliveryMode, setDeliveryMode] = useState<'EN_LIGNE' | 'PAPIER'>(portal.activeRole === ROLES.SURV ? 'PAPIER' : 'EN_LIGNE');
   const [roomId, setRoomId] = useState(availableRooms[0]?.id ? String(availableRooms[0].id) : '');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
@@ -327,22 +327,27 @@ export default function EvaluationCreateDialog({
               </div>
 
               {deliveryMode === 'PAPIER' && (
-                <label className="form-group">
-                  Salle d’examen
-                  <select
-                    className="select-input"
-                    required={deliveryMode === 'PAPIER'}
-                    value={roomId}
-                    onChange={e => setRoomId(e.target.value)}
-                  >
-                    <option value="">-- Choisir une salle --</option>
-                    {availableRooms.map(r => (
-                      <option key={r.id} value={r.id}>
-                        {String(r.name)}
-                      </option>
-                    ))}
-                  </select>
-                </label>
+                <>
+                  <p className="info-box mb-1">
+                    <strong>Épreuve en présentiel (sur table / papier) :</strong> cette épreuve ne se déroule pas en ligne sur la plateforme. Les étudiants composent en salle et le surveillant ou l’enseignant saisit directement leurs notes à l’issue de l’épreuve.
+                  </p>
+                  <label className="form-group">
+                    Salle d’examen
+                    <select
+                      className="select-input"
+                      required={deliveryMode === 'PAPIER'}
+                      value={roomId}
+                      onChange={e => setRoomId(e.target.value)}
+                    >
+                      <option value="">-- Choisir une salle --</option>
+                      {availableRooms.map(r => (
+                        <option key={r.id} value={r.id}>
+                          {String(r.name)}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                </>
               )}
             </div>
           )}

@@ -5,7 +5,7 @@ import { PERMISSION_LABELS } from '@/permissions/permissionLabels';
 
 export const PERMISSION_DOMAINS = [
   { id: 'admissions', label: 'Candidatures et admissions', prefixes: ['application'] },
-  { id: 'academic', label: 'Référentiel académique', prefixes: ['academic'] },
+  { id: 'academic', label: 'Référentiel académique', prefixes: ['academic', 'course_resource'] },
   { id: 'students', label: 'Dossiers étudiants', prefixes: ['student'] },
   { id: 'planning', label: 'Planning et présences', prefixes: ['schedule', 'attendance'] },
   { id: 'grades', label: 'Notes et réclamations', prefixes: ['exam', 'evaluation', 'grade', 'complaint'] },
@@ -18,12 +18,12 @@ export const PERMISSION_DOMAINS = [
 
 export function roleScopeDescription(role: RoleName): string {
   if (role === ROLES.ENS) return 'Uniquement ses enseignements et les groupes qui lui sont affectés.';
-  if (role === ROLES.SURV) return 'Uniquement les séances dont il assure la surveillance.';
+  if (role === ROLES.SURV) return 'Périmètre de l’établissement ou des séances supervisées : planification, présences, dossiers étudiants, notes et réclamations.';
   if (role === ROLES.DEL) return 'Ses données personnelles et les feuilles de présence des groupes auxquels il appartient à la date de la séance ; saisie des étudiants et du professeur, sans décision sur les justificatifs.';
   if (role === ROLES.STUD) return 'Uniquement ses propres données et les séances de ses groupes.';
   if (role === ROLES.IT) return 'Tout l’établissement : tous les modules et actions, avec validations et audit.';
   if (role === ROLES.CC) return 'Candidatures de l’établissement : contrôle, suivi, frais d’inscription et création du dossier étudiant ; décision académique réservée à la direction académique.';
-  if (role === ROLES.STG) return 'Aucune permission métier automatique.';
+  if (role === ROLES.STG) return 'Périmètre opérationnel : cours en ligne, supports de cours, présences, planning, étudiants, notes et consultation financière.';
   return 'Périmètre de l’établissement, limité aux actions attribuées à ce rôle.';
 }
 

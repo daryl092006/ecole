@@ -21,6 +21,7 @@ import SubjectStudio from '@/components/modules/academic/SubjectStudio';
 import ComplaintsPanel from '@/components/modules/academic/ComplaintsPanel';
 import GroupsWorkspace from '@/components/modules/academic/GroupsWorkspace';
 import GradesWorkspace from '@/components/modules/academic/GradesWorkspace';
+import CourseResourcesWorkspace from '@/components/modules/academic/CourseResourcesWorkspace';
 import { ROLES } from '@/types/permissions';
 import StudentExamsWorkspace from '@/components/modules/academic/StudentExamsWorkspace';
 import WorkspaceHome from '@/components/modules/WorkspaceHome';
@@ -57,9 +58,10 @@ export default function PortalScreen({ section }: { tab: string; section: string
   if (state.session && section === 'sys_logs') return <AuditJournalPanel />;
   if (state.session && section === 'sys_emails') return <EmailOutboxPanel key={`${activeRole}:${state.academicYearSelection}`} />;
   if (state.session && section === 'sys_backups') return <AuditJournalPanel exportMode />;
+  if (state.session && section === 'acad_resources') return <CourseResourcesWorkspace key={`${activeRole}:${state.academicYearSelection}`} />;
   if (state.session && section === 'acad_complaints' && perms.permissions.includes('complaint.view') && (
     perms.permissions.includes('complaint.review')
-    || [ROLES.STUD, ROLES.DEL, ROLES.ENS].includes(activeRole as typeof ROLES.STUD)
+    || [ROLES.STUD, ROLES.DEL, ROLES.ENS, ROLES.LOG, ROLES.SURV, ROLES.STG, ROLES.DA, ROLES.DG, ROLES.DGA].includes(activeRole as typeof ROLES.STUD)
   )) return <ComplaintsPanel />;
   if (state.session && section === 'stud_status') return <ReenrollmentWorkspace />;
   if (state.session && section === 'fin_contracts') return <AnnualFeesWorkspace />;

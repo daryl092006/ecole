@@ -27,7 +27,11 @@ export function enrollmentParticipates(snapshot: RelationalSnapshot, session: Da
 export function visibleSessionParticipants(snapshot: RelationalSnapshot, context: PersistentContext, session: DatabaseRow,
   yearId?: string | null, purpose: 'schedule' | 'attendance' = 'schedule') {
   const rows = (name: string) => snapshot.tables[name] || [];
-  if (context.role === ROLES.SURV && !rows('session_supervisors').some(row => row.session_id === session.id && row.account_id === context.accountId)
+  const hasExplicitSupervision = context.role === ROLES.SURV && (
+    rows('session_supervisors').some(row => row.account_id === context.accountId)
+    || rows('exam_room_supervisors').some(row => row.account_id === context.accountId)
+  );
+  if (hasExplicitSupervision && !rows('session_supervisors').some(row => row.session_id === session.id && row.account_id === context.accountId)
     && !rows('exam_room_supervisors').some(row => row.account_id === context.accountId && rows('exam_rooms').some(room => room.id === row.exam_room_id
       && rows('exam_deliveries').some(delivery => delivery.id === room.delivery_id && delivery.session_id === session.id)))) return [];
   if (context.role === ROLES.ENS && (!context.teacherId || (purpose === 'attendance'

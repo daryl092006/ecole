@@ -31,10 +31,83 @@ const transitionComplaintSchema = z.object({
   correctedGrade: z.number().min(0).max(20).optional(),
 }).strict();
 
+const markNotificationsReadSchema = z.object({
+  ...commonSchema,
+  action: z.literal('mark_notifications_read'),
+  notificationIds: z.array(z.string().uuid()).min(1).max(50),
+}).strict();
+
 const requestSchema = z.discriminatedUnion('action', [
   createComplaintSchema,
   transitionComplaintSchema,
+  markNotificationsReadSchema,
 ]);
+
+interface NotificationRecipient {
+  accountId: string;
+  roleCode: string;
+  email: string | null;
+  fullName: string;
+}
+
+function findComplaintRecipients(snapshot: RelationalSnapshot, evaluationId: string, yearId: string): NotificationRecipient[] {
+  const evaluations = snapshot.tables.evaluations || [];
+  const assignments = snapshot.tables.teaching_assignments || [];
+  const offerings = snapshot.tables.academic_offerings || [];
+  const teachers = snapshot.tables.teachers || [];
+  const staff = snapshot.tables.staff || [];
+  const accounts = snapshot.tables.accounts || [];
+  const people = snapshot.tables.people || [];
+  const roles = snapshot.tables.roles || [];
+  const grants = snapshot.tables.role_grants || [];
+
+  const evaluation = evaluations.find(e => e.id === evaluationId);
+  const assignment = evaluation ? assignments.find(a => a.id === evaluation.assignment_id) : undefined;
+  const offering = evaluation ? offerings.find(o => o.id === evaluation.offering_id) : undefined;
+  const teacher = assignment ? teachers.find(t => t.id === assignment.teacher_id) : undefined;
+  const teacherStaff = teacher ? staff.find(s => s.id === teacher.staff_id) : undefined;
+  const teacherPersonId = teacherStaff?.person_id ? String(teacherStaff.person_id) : null;
+
+  const now = Date.now();
+  const recipients: NotificationRecipient[] = [];
+  const seen = new Set<string>();
+
+  for (const grant of grants) {
+    const validFrom = grant.valid_from ? Date.parse(String(grant.valid_from)) : 0;
+    const validUntil = grant.valid_until ? Date.parse(String(grant.valid_until)) : null;
+    if (validFrom > now || (validUntil !== null && validUntil <= now)) continue;
+    if (grant.academic_year_id && grant.academic_year_id !== yearId) continue;
+    if (grant.site_id && offering?.site_id && grant.site_id !== offering.site_id) continue;
+    if (grant.group_id && assignment?.group_id && grant.group_id !== assignment.group_id) continue;
+
+    const role = roles.find(r => r.id === grant.role_id && r.active !== false);
+    const roleCode = role?.code ? String(role.code) : '';
+    if (!['DA', 'LOG', 'SURV', 'ENS'].includes(roleCode)) continue;
+
+    const account = accounts.find(a => a.id === grant.account_id && a.active !== false && !a.archived_at);
+    if (!account) continue;
+
+    if (roleCode === 'ENS' && (!teacherPersonId || account.person_id !== teacherPersonId)) {
+      continue;
+    }
+
+    const key = `${account.id}:${roleCode}`;
+    if (seen.has(key)) continue;
+    seen.add(key);
+
+    const person = people.find(p => p.id === account.person_id);
+    const email = typeof person?.email === 'string' && person.email.includes('@') ? person.email.trim() : null;
+    const fullName = `${String(person?.firstname || '')} ${String(person?.lastname || '')}`.trim() || 'Équipe académique ESCEN';
+    recipients.push({
+      accountId: String(account.id),
+      roleCode,
+      email,
+      fullName,
+    });
+  }
+
+  return recipients.slice(0, 30);
+}
 
 async function loadContext(request: Request) {
   const auth = await requireAccount(request);
@@ -78,6 +151,9 @@ export async function GET(request: Request) {
       }),
       events: (data.snapshot.tables.complaint_events || []).filter(row => ids.has(String(row.complaint_id))),
       revisions: (data.scoped.tables.grade_revisions || []).filter(row => ids.has(String(row.complaint_id))),
+      notifications: (data.scoped.tables.complaint_notifications || [])
+        .filter(row => !row.read_at && (!data.year.selectedYearId || row.academic_year_id === data.year.selectedYearId))
+        .sort((a, b) => String(b.created_at || '').localeCompare(String(a.created_at || ''))),
     }, { headers: { 'Cache-Control': 'no-store' } });
   } catch (error) { return errorResponse(error); }
 }
@@ -130,6 +206,26 @@ export async function POST(request: Request) {
         },
       });
 
+      const candidateLabel = connectedRecordName('evaluation_candidates', candidate, data.annual);
+      const recipients = findComplaintRecipients(data.snapshot, String(evaluation.id), data.year.selectedYearId);
+      const notificationMessage = `Nouvelle réclamation de note : ${candidateLabel} (${String(evaluation.name || 'Évaluation')}) — Motif : ${body.reason}`;
+      for (const recipient of recipients) {
+        changes.push({
+          table: 'complaint_notifications',
+          operation: 'insert',
+          record: {
+            id: crypto.randomUUID(),
+            complaint_id: complaintId,
+            evaluation_id: evaluation.id,
+            academic_year_id: data.year.selectedYearId,
+            account_id: recipient.accountId,
+            role_code: recipient.roleCode,
+            action: 'OPENED',
+            message: notificationMessage.slice(0, 950),
+          },
+        });
+      }
+
       const saved = await data.client.rpc('escen_backend_transaction', {
         p_actor_id: data.context.accountId,
         p_expected_revision: body.revision,
@@ -139,7 +235,58 @@ export async function POST(request: Request) {
       if (saved.error) {
         throw new RequestError(409, 'Dépôt de réclamation refusé : vérifiez les données.');
       }
+
+      for (const recipient of recipients) {
+        if (!recipient.email) continue;
+        try {
+          await data.client.rpc('escen_email_enqueue', {
+            p_year_id: data.year.selectedYearId,
+            p_template: 'application_status_changed',
+            p_entity_table: 'complaints',
+            p_entity_id: complaintId,
+            p_dedupe_key: `OPENED:${recipient.accountId}:${recipient.roleCode}`,
+            p_recipient_email: recipient.email,
+            p_recipient_name: recipient.fullName,
+            p_subject: `Réclamation de note ESCEN · ${String(evaluation.name || 'Évaluation')}`,
+            p_text_body: `${notificationMessage}\n\nConnectez-vous au portail ESCEN (rubrique Réclamations) pour consulter et traiter cette demande.`,
+            p_html_body: `<p><strong>Nouvelle réclamation de note déposée sur le portail ESCEN</strong></p><p>${notificationMessage}</p><p>Connectez-vous au portail ESCEN (rubrique <em>Évaluations &amp; Examens &rarr; Réclamations</em>) pour la traiter.</p>`,
+            p_actor_id: data.context.accountId,
+          });
+        } catch {
+          // Ne pas interrompre la réponse si l'envoi d'email échoue
+        }
+      }
+
       return Response.json({ ok: true, id: complaintId, revision: saved.data }, { status: 201 });
+    }
+
+    if (body.action === 'mark_notifications_read') {
+      const unread = (data.scoped.tables.complaint_notifications || []).filter(
+        n => body.notificationIds.includes(String(n.id)) && !n.read_at && n.account_id === data.context.accountId
+      );
+      if (!unread.length) {
+        return Response.json({ ok: true, revision: data.snapshot.revision });
+      }
+      const nowIso = new Date().toISOString();
+      for (const item of unread) {
+        changes.push({
+          table: 'complaint_notifications',
+          operation: 'update',
+          record: {
+            id: item.id,
+            read_at: nowIso,
+          },
+        });
+      }
+      const saved = await data.client.rpc('escen_backend_transaction', {
+        p_actor_id: data.context.accountId,
+        p_expected_revision: body.revision,
+        p_changes: changes,
+      });
+      if (saved.error) {
+        throw new RequestError(409, 'Mise à jour des notifications refusée.');
+      }
+      return Response.json({ ok: true, revision: saved.data });
     }
 
     if (body.action === 'transition_complaint') {
@@ -204,6 +351,32 @@ export async function POST(request: Request) {
           reason: body.reason,
         },
       });
+
+      const candidateRow = data.annual.tables.evaluation_candidates?.find(row => row.id === complaint.candidate_id);
+      const evaluationRow = candidateRow ? data.annual.tables.evaluations?.find(row => row.id === candidateRow.evaluation_id) : undefined;
+      if (evaluationRow && candidateRow) {
+        const recipients = findComplaintRecipients(data.snapshot, String(evaluationRow.id), data.year.selectedYearId);
+        const candidateLabel = connectedRecordName('evaluation_candidates', candidateRow, data.annual);
+        const actionType = body.toStatus === 'CLOTUREE' ? (correcting ? 'RESOLVED' : 'REJECTED') : 'IN_REVIEW';
+        const statusMsg = `Réclamation (${candidateLabel}) passée à l’étape ${body.toStatus} : ${body.reason}`;
+        for (const recipient of recipients) {
+          if (recipient.accountId === data.context.accountId && recipient.roleCode === data.context.roleCode) continue;
+          changes.push({
+            table: 'complaint_notifications',
+            operation: 'insert',
+            record: {
+              id: crypto.randomUUID(),
+              complaint_id: complaint.id,
+              evaluation_id: evaluationRow.id,
+              academic_year_id: data.year.selectedYearId,
+              account_id: recipient.accountId,
+              role_code: recipient.roleCode,
+              action: actionType,
+              message: statusMsg.slice(0, 950),
+            },
+          });
+        }
+      }
 
       const saved = await data.client.rpc('escen_backend_transaction', {
         p_actor_id: data.context.accountId,

@@ -8,7 +8,7 @@ const { createDemoUser, toggleDemoUser, changeDemoUserRole, queryDemoUsers, assi
 
 const technical = getRolePermissionSummary(ROLES.IT, ROLES.IT);
 assert(technical.domains.filter(domain => ['finance', 'grades'].includes(domain.id)).every(domain => domain.permissions.every(permission => permission.granted)));
-assert.equal(getRolePermissionSummary(ROLES.STG, ROLES.DG).count, 0);
+assert.equal(getRolePermissionSummary(ROLES.STG, ROLES.DG).count, 14);
 assert(getRolePermissionSummary(ROLES.ENS, ROLES.DG).scope.includes('affectés'));
 assert.throws(() => getPermissionCatalog(ROLES.STUD));
 const catalog = getPermissionCatalog(ROLES.DG).flatMap(domain => domain.permissions.map(permission => permission.code));

@@ -2,7 +2,7 @@
 
 Généré avec `npm run db:describe` en exécutant les migrations dans PostgreSQL local (PGlite). Aucun accès à Supabase ou aux données de la sauvegarde.
 
-119 tables métier, 14 tables privées, 1062 colonnes, 297 clés étrangères, 248 CHECK de tables et 5 exclusions. Les domaines ajoutent les bornes des notes, des montants FCFA et des textes obligatoires.
+121 tables métier, 14 tables privées, 1098 colonnes, 308 clés étrangères, 258 CHECK de tables et 5 exclusions. Les domaines ajoutent les bornes des notes, des montants FCFA et des textes obligatoires.
 
 Toutes les tables ont RLS activée, sans accès applicatif permis à ce stade. Les noms techniques ne sont pas des libellés à afficher dans l’interface.
 
@@ -34,10 +34,12 @@ Toutes les tables ont RLS activée, sans accès applicatif permis à ce stade. L
 | escen | communication_reads | 4 | 2 | Oui |
 | escen | communications | 9 | 2 | Oui |
 | escen | complaint_events | 7 | 2 | Oui |
+| escen | complaint_notifications | 10 | 4 | Oui |
 | escen | complaints | 7 | 2 | Oui |
 | escen | contract_discounts | 6 | 2 | Oui |
 | escen | contract_lines | 7 | 3 | Oui |
 | escen | contract_versions | 9 | 4 | Oui |
+| escen | course_resources | 21 | 7 | Oui |
 | escen | credit_awards | 5 | 2 | Oui |
 | escen | credit_notes | 6 | 2 | Oui |
 | escen | curricula | 10 | 4 | Oui |
@@ -104,7 +106,7 @@ Toutes les tables ont RLS activée, sans accès applicatif permis à ce stade. L
 | escen | scholarships | 7 | 0 | Oui |
 | escen | session_participants | 10 | 2 | Oui |
 | escen | session_supervisors | 3 | 2 | Oui |
-| escen | sessions | 18 | 5 | Oui |
+| escen | sessions | 23 | 5 | Oui |
 | escen | sites | 7 | 0 | Oui |
 | escen | staff | 5 | 1 | Oui |
 | escen | staff_contracts | 7 | 2 | Oui |
@@ -1164,6 +1166,49 @@ CREATE INDEX fk_17973 ON escen.complaint_events USING btree (complaint_id)
 CREATE INDEX fk_17978 ON escen.complaint_events USING btree (actor_id)
 ```
 
+## escen.complaint_notifications
+
+| Attribut | Type | Nullable | Défaut | Généré |
+|---|---|---|---|---|
+| id | uuid | NO | gen_random_uuid() | NEVER |
+| complaint_id | uuid | NO | — | NEVER |
+| evaluation_id | uuid | NO | — | NEVER |
+| academic_year_id | uuid | NO | — | NEVER |
+| account_id | uuid | NO | — | NEVER |
+| role_code | text | NO | — | NEVER |
+| action | text | NO | — | NEVER |
+| message | escen.nonempty_text | NO | — | NEVER |
+| read_at | timestamptz | YES | — | NEVER |
+| created_at | timestamptz | NO | now() | NEVER |
+
+Contraintes :
+
+```sql
+complaint_notifications_academic_year_id_fkey: FOREIGN KEY (academic_year_id) REFERENCES escen.academic_years(id) ON DELETE RESTRICT
+complaint_notifications_academic_year_id_not_null: NOT NULL academic_year_id
+complaint_notifications_account_id_fkey: FOREIGN KEY (account_id) REFERENCES escen.accounts(id) ON DELETE RESTRICT
+complaint_notifications_account_id_not_null: NOT NULL account_id
+complaint_notifications_action_check: CHECK ((action = ANY (ARRAY['OPENED'::text, 'IN_REVIEW'::text, 'RESOLVED'::text, 'REJECTED'::text])))
+complaint_notifications_action_not_null: NOT NULL action
+complaint_notifications_complaint_id_fkey: FOREIGN KEY (complaint_id) REFERENCES escen.complaints(id) ON DELETE RESTRICT
+complaint_notifications_complaint_id_not_null: NOT NULL complaint_id
+complaint_notifications_created_at_not_null: NOT NULL created_at
+complaint_notifications_evaluation_id_fkey: FOREIGN KEY (evaluation_id) REFERENCES escen.evaluations(id) ON DELETE RESTRICT
+complaint_notifications_evaluation_id_not_null: NOT NULL evaluation_id
+complaint_notifications_id_not_null: NOT NULL id
+complaint_notifications_message_not_null: NOT NULL message
+complaint_notifications_pkey: PRIMARY KEY (id)
+complaint_notifications_role_code_not_null: NOT NULL role_code
+```
+
+Index :
+
+```sql
+CREATE INDEX complaint_notifications_complaint_idx ON escen.complaint_notifications USING btree (complaint_id)
+CREATE UNIQUE INDEX complaint_notifications_pkey ON escen.complaint_notifications USING btree (id)
+CREATE INDEX complaint_notifications_recipient_idx ON escen.complaint_notifications USING btree (account_id, role_code, read_at, created_at DESC)
+```
+
 ## escen.complaints
 
 | Attribut | Type | Nullable | Défaut | Généré |
@@ -1320,6 +1365,70 @@ CREATE INDEX fk_18402 ON escen.contract_versions USING btree (approved_by)
 CREATE INDEX fk_18407 ON escen.contract_versions USING btree (supersedes_id, contract_id)
 CREATE UNIQUE INDEX one_active_contract_version ON escen.contract_versions USING btree (contract_id) WHERE (status = ANY (ARRAY['APPROVED'::text, 'EN_COURS'::text]))
 CREATE UNIQUE INDEX one_approved_contract_version ON escen.contract_versions USING btree (contract_id) WHERE (status = 'APPROVED'::text)
+```
+
+## escen.course_resources
+
+| Attribut | Type | Nullable | Défaut | Généré |
+|---|---|---|---|---|
+| id | uuid | NO | gen_random_uuid() | NEVER |
+| academic_year_id | uuid | NO | — | NEVER |
+| offering_id | uuid | NO | — | NEVER |
+| group_id | uuid | NO | — | NEVER |
+| component_id | uuid | NO | — | NEVER |
+| assignment_id | uuid | YES | — | NEVER |
+| session_id | uuid | YES | — | NEVER |
+| title | escen.nonempty_text | NO | — | NEVER |
+| description | text | YES | — | NEVER |
+| kind | text | NO | 'SUPPORT'::text | NEVER |
+| resource_url | text | YES | — | NEVER |
+| file_name | text | YES | — | NEVER |
+| mime_type | text | YES | — | NEVER |
+| byte_size | int8 | YES | — | NEVER |
+| storage_bucket | text | YES | — | NEVER |
+| storage_path | text | YES | — | NEVER |
+| uploaded_by | uuid | NO | — | NEVER |
+| reason | text | YES | — | NEVER |
+| created_at | timestamptz | NO | now() | NEVER |
+| updated_at | timestamptz | NO | now() | NEVER |
+| archived_at | timestamptz | YES | — | NEVER |
+
+Contraintes :
+
+```sql
+course_resources_academic_year_id_fkey: FOREIGN KEY (academic_year_id) REFERENCES escen.academic_years(id) ON DELETE RESTRICT
+course_resources_academic_year_id_not_null: NOT NULL academic_year_id
+course_resources_archive_reason_check: CHECK (((archived_at IS NULL) OR ((reason IS NOT NULL) AND ((length(btrim(reason)) >= 3) AND (length(btrim(reason)) <= 1000)))))
+course_resources_assignment_id_fkey: FOREIGN KEY (assignment_id) REFERENCES escen.teaching_assignments(id) ON DELETE RESTRICT
+course_resources_byte_size_check: CHECK (((byte_size IS NULL) OR (byte_size >= 0)))
+course_resources_component_id_fkey: FOREIGN KEY (component_id) REFERENCES escen.curriculum_components(id) ON DELETE RESTRICT
+course_resources_component_id_not_null: NOT NULL component_id
+course_resources_created_at_not_null: NOT NULL created_at
+course_resources_group_id_fkey: FOREIGN KEY (group_id) REFERENCES escen.groups(id) ON DELETE RESTRICT
+course_resources_group_id_not_null: NOT NULL group_id
+course_resources_id_not_null: NOT NULL id
+course_resources_kind_check: CHECK ((kind = ANY (ARRAY['SUPPORT'::text, 'EXERCICE'::text, 'ENREGISTREMENT'::text, 'LIEN'::text, 'AUTRE'::text])))
+course_resources_kind_not_null: NOT NULL kind
+course_resources_offering_id_fkey: FOREIGN KEY (offering_id) REFERENCES escen.academic_offerings(id) ON DELETE RESTRICT
+course_resources_offering_id_not_null: NOT NULL offering_id
+course_resources_pkey: PRIMARY KEY (id)
+course_resources_resource_url_check: CHECK (((resource_url IS NULL) OR ((length(btrim(resource_url)) >= 5) AND (length(btrim(resource_url)) <= 2048))))
+course_resources_session_id_fkey: FOREIGN KEY (session_id) REFERENCES escen.sessions(id) ON DELETE RESTRICT
+course_resources_target_check: CHECK (((resource_url IS NOT NULL) OR (storage_path IS NOT NULL)))
+course_resources_title_not_null: NOT NULL title
+course_resources_updated_at_not_null: NOT NULL updated_at
+course_resources_uploaded_by_fkey: FOREIGN KEY (uploaded_by) REFERENCES escen.accounts(id) ON DELETE RESTRICT
+course_resources_uploaded_by_not_null: NOT NULL uploaded_by
+```
+
+Index :
+
+```sql
+CREATE INDEX course_resources_assignment_idx ON escen.course_resources USING btree (assignment_id)
+CREATE INDEX course_resources_group_idx ON escen.course_resources USING btree (group_id, component_id)
+CREATE UNIQUE INDEX course_resources_pkey ON escen.course_resources USING btree (id)
+CREATE INDEX course_resources_session_idx ON escen.course_resources USING btree (session_id)
+CREATE INDEX course_resources_year_idx ON escen.course_resources USING btree (academic_year_id)
 ```
 
 ## escen.credit_awards
@@ -4007,6 +4116,11 @@ CREATE UNIQUE INDEX session_supervisors_session_id_account_id_key ON escen.sessi
 | reason | text | YES | — | NEVER |
 | effective_teacher_id | uuid | YES | — | ALWAYS |
 | effective_room_id | uuid | YES | — | ALWAYS |
+| meeting_url | text | YES | — | NEVER |
+| meeting_id | text | YES | — | NEVER |
+| meeting_provider | text | YES | — | NEVER |
+| recording_url | text | YES | — | NEVER |
+| recording_synced_at | timestamptz | YES | — | NEVER |
 
 Contraintes :
 
@@ -4026,10 +4140,14 @@ sessions_group_id_not_null: NOT NULL group_id
 sessions_id_assignment_id_key: UNIQUE (id, assignment_id)
 sessions_id_not_null: NOT NULL id
 sessions_id_offering_id_key: UNIQUE (id, offering_id)
+sessions_meeting_id_check: CHECK (((meeting_id IS NULL) OR ((length(btrim(meeting_id)) >= 1) AND (length(btrim(meeting_id)) <= 512))))
+sessions_meeting_provider_check: CHECK (((meeting_provider IS NULL) OR (meeting_provider = ANY (ARRAY['TEAMS'::text, 'LIEN'::text]))))
+sessions_meeting_url_check: CHECK (((meeting_url IS NULL) OR ((length(btrim(meeting_url)) >= 5) AND (length(btrim(meeting_url)) <= 2048))))
 sessions_mode_check: CHECK ((mode = ANY (ARRAY['PAPIER'::text, 'EN_LIGNE'::text, 'COURS'::text])))
 sessions_mode_not_null: NOT NULL mode
 sessions_offering_id_not_null: NOT NULL offering_id
 sessions_pkey: PRIMARY KEY (id)
+sessions_recording_url_check: CHECK (((recording_url IS NULL) OR ((length(btrim(recording_url)) >= 5) AND (length(btrim(recording_url)) <= 2048))))
 sessions_replacement_teacher_id_fkey: FOREIGN KEY (replacement_teacher_id) REFERENCES escen.teachers(id) ON DELETE RESTRICT
 sessions_room_id_fkey: FOREIGN KEY (room_id) REFERENCES escen.rooms(id) ON DELETE RESTRICT
 sessions_series_id_fkey: FOREIGN KEY (series_id) REFERENCES escen.schedule_series(id) ON DELETE RESTRICT

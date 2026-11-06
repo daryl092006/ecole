@@ -18,7 +18,7 @@ import PersistentExamCopies from './PersistentExamCopies';
 import EvaluationGradeDialog from './EvaluationGradeDialog';
 import StudentRecordDialog from '../StudentRecordDialog';
 
-interface ComplaintDirectory { revision: number; complaints: DatabaseRow[]; events: DatabaseRow[]; revisions: DatabaseRow[]; }
+interface ComplaintDirectory { revision: number; complaints: DatabaseRow[]; events: DatabaseRow[]; revisions: DatabaseRow[]; notifications?: DatabaseRow[]; }
 interface TransitionAction { complaint: DatabaseRow; target: ComplaintWorkflowStatus; label: string; correction?: boolean; }
 
 export default function ComplaintsPanel() {
@@ -133,6 +133,42 @@ export default function ComplaintsPanel() {
     </PageHeader>
     {!preciseYear && <p className="info-box">Toutes les années : consultation uniquement. Choisissez une année précise pour déposer ou traiter une réclamation.</p>}
     {message && <p role="status">{message}</p>}
+    {directory?.notifications && directory.notifications.length > 0 && (
+      <section className="card mb-2" role="region" aria-label="Notifications de réclamations">
+        <div className="card-header">
+          <div>
+            <h2>Notifications de réclamations ({directory.notifications.length})</h2>
+            <p className="cell-sub">Alertes reçues pour votre fonction ({portal.activeRole})</p>
+          </div>
+          {preciseYear && (
+            <button
+              type="button"
+              className="btn btn-sm btn-outline"
+              disabled={busy}
+              onClick={() => {
+                setBusy(true);
+                void manageComplaint(portal.activeRole, {
+                  action: 'mark_notifications_read',
+                  notificationIds: directory.notifications!.map(n => String(n.id)),
+                  revision: directory.revision,
+                })
+                  .then(() => { setRetry(v => v + 1); portal.refreshCampus(); })
+                  .catch(() => {})
+                  .finally(() => setBusy(false));
+              }}
+            >
+              Tout marquer comme lu
+            </button>
+          )}
+        </div>
+        {directory.notifications.map(notif => (
+          <div key={String(notif.id)} className="ledger-item">
+            <strong>{String(notif.message)}</strong>
+            <div className="cell-sub">{notif.created_at ? new Date(String(notif.created_at)).toLocaleString('fr-FR') : ''}</div>
+          </div>
+        ))}
+      </section>
+    )}
     {loadError ? <section className="card" role="alert"><p>{loadError}</p><button className="btn btn-outline" onClick={() => setRetry(value => value + 1)}>Réessayer</button></section> : !directory ? <LoadingState label="Chargement des réclamations…" /> : <section className="card card-full">
       <div className="card-header"><h2>Réclamations ({records.length})</h2><label className="form-group">État du traitement<select className="select-input" value={filter} onChange={event => setFilter(event.target.value)}><option value="">Toutes</option><option value="EN_COURS">En cours</option><option value="CLOTUREE">Clôturées</option></select></label></div>
       {records.map(complaint => {

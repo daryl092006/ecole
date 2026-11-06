@@ -19,6 +19,7 @@ export interface AttendanceJustification {
 }
 export interface AttendanceSession {
   id: string; label: string; startsAt: string; endsAt: string; status: string;
+  mode?: string; meetingUrl?: string | null; recordingUrl?: string | null;
   teacherId: string; teacherName: string; students: AttendanceStudent[];
   attendances: StudentAttendance[]; teacherAttendances: TeacherAttendance[]; justifications: AttendanceJustification[];
   canRecordStudents: boolean; canRecordTeacher: boolean; canReview: boolean;

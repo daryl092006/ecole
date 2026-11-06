@@ -32,6 +32,7 @@ export const ALL_TABS = [
     name: 'Pédagogie',
     icon: 'BookOpen',
     subTabs: [
+      { id: 'acad_resources', name: 'Cours, supports et enregistrements' },
       { id: 'acad_program', name: 'Filières & Matières' },
       { id: 'acad_groups', name: 'Classes & Groupes' },
       { id: 'acad_reference', name: 'Référentiel académique' },
@@ -132,6 +133,7 @@ const SUBTAB_PERMISSIONS: Record<string, Permission[]> = {
   log_suppliers:['purchase.view'],
   sys_data: ['system.audit.view'],
   stud_accounts: ['user.manage'],
+  acad_resources: ['academic.view', 'schedule.view'],
   acad_program: ['academic.view'],
   acad_reference: ['academic.structure.manage', 'academic.group.manage', 'academic.assignment.manage'],
   acad_schedule: ['schedule.view'],

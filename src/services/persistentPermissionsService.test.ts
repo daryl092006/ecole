@@ -82,13 +82,17 @@ assert.deepEqual(ccFiltered.students.map(row => row.id),['s1','s2']);
 assert.deepEqual(ccFiltered.academic_offerings.map(row => row.id),['o1']);
 assert.deepEqual(ccFiltered.groups.map(row => row.id),['g1','g2']);
 assert.equal(ccFiltered.payments,undefined);
-for (const role of [ROLES.STG,ROLES.ACHATS]) {
+for (const role of [ROLES.ACHATS]) {
   const filtered = filterRelationalSnapshot(snapshot,context(role)).tables;
   assert.deepEqual(filtered.people.map(row => row.id),['pm']);
   assert.equal(filtered.grades,undefined);
   assert.equal(filtered.payments,undefined);
   assert.equal(filtered.communications?.length ?? 0,0);
 }
+const stgFiltered = filterRelationalSnapshot(snapshot,context(ROLES.STG,{ roleCode:'STG' })).tables;
+assert.deepEqual(stgFiltered.students.map(row => row.id),['s1','s2']);
+assert.equal(stgFiltered.grades.length,3);
+assert.equal(stgFiltered.payments.length,2);
 const technician = filterRelationalSnapshot(snapshot,context(ROLES.IT)).tables;
 assert.equal(technician.grades.length,3);
 assert.equal(technician.payments.length,2);

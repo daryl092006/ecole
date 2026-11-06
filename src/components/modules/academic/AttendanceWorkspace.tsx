@@ -31,6 +31,7 @@ export default function AttendanceWorkspace() {
   const [error, setError] = useState('');
   const [reload, setReload] = useState(0);
   const [selectedId, setSelectedId] = useState('');
+  const [modeFilter, setModeFilter] = useState<'ALL' | 'EN_LIGNE' | 'PRESENTIEL'>('ALL');
   const [operation, setOperation] = useState<Operation | null>(null);
   const [drafts, setDrafts] = useState<Record<string, Draft>>({});
   const [teacher, setTeacher] = useState({ arrivedAt: '', leftAt: '', comment: '' });
@@ -52,7 +53,12 @@ export default function AttendanceWorkspace() {
   if (loading) return <LoadingState label="Chargement des feuilles de présence…" variant="table" />;
   if (error || !directory) return <ErrorState title="Présences indisponibles" message={error || 'Les feuilles de présence n’ont pas pu être chargées.'} onRetry={() => setReload(value => value + 1)} />;
   if (archives) return <div><button className="btn btn-outline" onClick={() => setArchives(false)}>Revenir aux feuilles de présence</button><HistoricalWorkspace section="acad_attendance" /></div>;
-  const session = directory.sessions.find(row => row.id === selectedId) || directory.sessions[0];
+  const filteredSessions = directory.sessions.filter(row => {
+    if (modeFilter === 'EN_LIGNE') return row.mode === 'EN_LIGNE';
+    if (modeFilter === 'PRESENTIEL') return row.mode !== 'EN_LIGNE';
+    return true;
+  });
+  const session = filteredSessions.find(row => row.id === selectedId) || filteredSessions[0];
   const previous = (enrollmentId: string): Draft => {
     const row = session?.attendances.find(item => item.enrollmentId === enrollmentId);
     return { status: row?.status || '', arrivedAt: local(row?.arrivedAt || null), leftAt: local(row?.leftAt || null), lateMinutes: row?.lateMinutes == null ? '' : String(row.lateMinutes), comment: row?.comment || '' };
@@ -103,11 +109,31 @@ export default function AttendanceWorkspace() {
     {activeRole === ROLES.DEL && <p className="info-box">Vous pouvez faire l’appel de votre groupe et enregistrer les horaires du professeur prévu ou de son remplaçant. Les justificatifs sont traités par la direction académique.</p>}
     {success && <p role="status" className="attendance-success">{success}</p>}
     {fileError && <p role="alert" className="restricted-box">{fileError}</p>}
-    <section className="card attendance-session-sheet"><label className="form-group">Séance<select className="select-input" value={session?.id || ''} onChange={event => setSelectedId(event.target.value)}>
-      {!directory.sessions.length && <option value="">Aucune séance</option>}{directory.sessions.map(row => <option key={row.id} value={row.id}>{date(row.startsAt)} · {row.label}</option>)}
-    </select></label>{!directory.selectedYearId && <p>Choisissez une année précise pour enregistrer des présences.</p>}{!session && <p>Aucune séance dans cette année et votre périmètre.</p>}
+    <section className="card attendance-session-sheet">
+      <div className="form-grid">
+        <label className="form-group">Modalité de séance
+          <select className="select-input" value={modeFilter} onChange={event => { setModeFilter(event.target.value as 'ALL' | 'EN_LIGNE' | 'PRESENTIEL'); setSelectedId(''); }}>
+            <option value="ALL">Toutes les séances ({directory.sessions.length})</option>
+            <option value="EN_LIGNE">Cours en ligne ({directory.sessions.filter(row => row.mode === 'EN_LIGNE').length})</option>
+            <option value="PRESENTIEL">Présentiel ({directory.sessions.filter(row => row.mode !== 'EN_LIGNE').length})</option>
+          </select>
+        </label>
+        <label className="form-group">Séance
+          <select className="select-input" value={session?.id || ''} onChange={event => setSelectedId(event.target.value)}>
+            {!filteredSessions.length && <option value="">Aucune séance</option>}
+            {filteredSessions.map(row => <option key={row.id} value={row.id}>{row.mode === 'EN_LIGNE' ? '[En ligne] ' : ''}{date(row.startsAt)} · {row.label}</option>)}
+          </select>
+        </label>
+      </div>
+      {!directory.selectedYearId && <p>Choisissez une année précise pour enregistrer des présences.</p>}
+      {!session && <p>Aucune séance dans cette année et votre périmètre.</p>}
     {session && <>
-      <div className="card-header"><div><h2>{session.label}</h2><p>{date(session.startsAt)} → {date(session.endsAt)} · {session.teacherName} · {session.status}</p></div>
+      <div className="card-header"><div><h2>{session.label} {session.mode === 'EN_LIGNE' && <span className="pill pill-info">Cours en ligne</span>}</h2><p>{date(session.startsAt)} → {date(session.endsAt)} · {session.teacherName} · {session.status}</p>
+        {(session.meetingUrl || session.recordingUrl) && <div className="btn-group mt-1">
+          {session.meetingUrl && <a className="btn btn-sm btn-outline" href={session.meetingUrl} target="_blank" rel="noopener noreferrer">Lien du cours en ligne</a>}
+          {session.recordingUrl && <a className="btn btn-sm btn-outline" href={session.recordingUrl} target="_blank" rel="noopener noreferrer">Voir l’enregistrement</a>}
+        </div>}
+      </div>
         {session.canRecordStudents && <button className="btn btn-primary" onClick={() => open({ kind: 'students' })}>Saisir ou corriger les présences</button>}</div>
         <ResponsiveTable className="data-table"><thead><tr><th>Étudiant</th><th>Présence</th><th>Horaires</th><th>Commentaire</th></tr></thead><tbody>{session.students.map(student => {
           const attendance = session.attendances.find(row => row.enrollmentId === student.enrollmentId);

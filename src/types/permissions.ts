@@ -29,6 +29,7 @@ export type Permission =
   | 'academic.year.open'
   | 'academic.group.manage'
   | 'academic.assignment.manage'
+  | 'course_resource.manage'
   | 'schedule.view'
   | 'schedule.create'
   | 'schedule.update'

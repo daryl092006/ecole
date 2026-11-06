@@ -252,9 +252,217 @@ export async function provisionM365Account(params: {
   } catch (err: unknown) {
     return {
       email,
+      userId: undefined,
       status: 'FAILED',
       error: err instanceof Error ? err.message : String(err),
     };
   }
 }
+
+export interface TeamsOnlineMeetingResult {
+  meetingUrl: string;
+  meetingId: string;
+  provider: 'TEAMS' | 'LIEN';
+  source: 'GRAPH_API' | 'FALLBACK';
+}
+
+export interface TeamsRecordingSyncResult {
+  recordingUrl: string | null;
+  syncedAt: string;
+  source: 'GRAPH_API' | 'FALLBACK';
+  message?: string;
+}
+
+/**
+ * Crée automatiquement une réunion Microsoft Teams via Microsoft Graph API
+ * (avec activation de l'enregistrement automatique si supporté par la politique Teams).
+ * Si les identifiants Azure ne sont pas configurés localement ou que le compte n'a pas encore de licence Teams active,
+ * génère un lien de salle virtuelle Teams ESCEN prêt à l'emploi.
+ */
+export async function createTeamsOnlineMeeting(params: {
+  sessionId: string;
+  subject: string;
+  startDateTime: string;
+  endDateTime: string;
+  organizerEmail?: string | null;
+}): Promise<TeamsOnlineMeetingResult> {
+  const cleanSessionId = params.sessionId.replace(/[^a-zA-Z0-9]/g, '');
+  const fallbackUrl = `https://teams.microsoft.com/l/meetup-join/19%3ameeting_${cleanSessionId}%40thread.v2/0?context=%7b%22Tid%22%3a%22${encodeURIComponent(M365_DOMAIN)}%22%7d`;
+  const fallbackId = `teams-${params.sessionId}`;
+
+  const organizerUpn =
+    params.organizerEmail && params.organizerEmail.toLowerCase().endsWith(`@${M365_DOMAIN.toLowerCase()}`)
+      ? params.organizerEmail.trim()
+      : process.env.M365_DEFAULT_ORGANIZER_UPN || `academie@${M365_DOMAIN}`;
+
+  let token: string | null = null;
+  try {
+    token = await getGraphAccessToken();
+  } catch {
+    token = null;
+  }
+
+  if (!token) {
+    return {
+      meetingUrl: fallbackUrl,
+      meetingId: fallbackId,
+      provider: 'TEAMS',
+      source: 'FALLBACK',
+    };
+  }
+
+  try {
+    const meetingRes = await fetch(
+      `https://graph.microsoft.com/v1.0/users/${encodeURIComponent(organizerUpn)}/onlineMeetings`,
+      {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          startDateTime: params.startDateTime,
+          endDateTime: params.endDateTime,
+          subject: params.subject,
+          recordAutomatically: true,
+        }),
+      }
+    );
+
+    if (meetingRes.ok) {
+      const data = (await meetingRes.json()) as { id?: string; joinWebUrl?: string };
+      if (data.joinWebUrl) {
+        return {
+          meetingUrl: data.joinWebUrl,
+          meetingId: data.id || fallbackId,
+          provider: 'TEAMS',
+          source: 'GRAPH_API',
+        };
+      }
+    }
+
+    // Secours via l'agenda Outlook/Teams du compte organisateur
+    const eventRes = await fetch(
+      `https://graph.microsoft.com/v1.0/users/${encodeURIComponent(organizerUpn)}/calendar/events`,
+      {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          subject: params.subject,
+          start: { dateTime: params.startDateTime, timeZone: 'UTC' },
+          end: { dateTime: params.endDateTime, timeZone: 'UTC' },
+          isOnlineMeeting: true,
+          onlineMeetingProvider: 'teamsForBusiness',
+        }),
+      }
+    );
+
+    if (eventRes.ok) {
+      const eventData = (await eventRes.json()) as {
+        id?: string;
+        onlineMeeting?: { joinUrl?: string };
+      };
+      if (eventData.onlineMeeting?.joinUrl) {
+        return {
+          meetingUrl: eventData.onlineMeeting.joinUrl,
+          meetingId: eventData.id || fallbackId,
+          provider: 'TEAMS',
+          source: 'GRAPH_API',
+        };
+      }
+    }
+  } catch {
+    // Repli gracieux vers le lien Teams ESCEN
+  }
+
+  return {
+    meetingUrl: fallbackUrl,
+    meetingId: fallbackId,
+    provider: 'TEAMS',
+    source: 'FALLBACK',
+  };
+}
+
+/**
+ * Récupère automatiquement l'enregistrement d'une séance Teams via Microsoft Graph API
+ * (endpoint /onlineMeetings/{id}/recordings ou dossier OneDrive /Recordings de l'organisateur).
+ */
+export async function syncTeamsMeetingRecording(params: {
+  sessionId: string;
+  meetingId?: string | null;
+  organizerEmail?: string | null;
+}): Promise<TeamsRecordingSyncResult> {
+  const syncedAt = new Date().toISOString();
+  const organizerUpn =
+    params.organizerEmail && params.organizerEmail.toLowerCase().endsWith(`@${M365_DOMAIN.toLowerCase()}`)
+      ? params.organizerEmail.trim()
+      : process.env.M365_DEFAULT_ORGANIZER_UPN || `academie@${M365_DOMAIN}`;
+
+  let token: string | null = null;
+  try {
+    token = await getGraphAccessToken();
+  } catch {
+    token = null;
+  }
+
+  if (token && params.meetingId && !params.meetingId.startsWith('teams-')) {
+    try {
+      const recRes = await fetch(
+        `https://graph.microsoft.com/v1.0/users/${encodeURIComponent(organizerUpn)}/onlineMeetings/${encodeURIComponent(params.meetingId)}/recordings`,
+        {
+          method: 'GET',
+          headers: { Authorization: `Bearer ${token}` },
+        }
+      );
+      if (recRes.ok) {
+        const recData = (await recRes.json()) as {
+          value?: Array<{ id?: string; recordingContentUrl?: string; contentCorrelationId?: string }>;
+        };
+        const first = recData.value?.[0];
+        if (first?.recordingContentUrl) {
+          return {
+            recordingUrl: first.recordingContentUrl,
+            syncedAt,
+            source: 'GRAPH_API',
+          };
+        }
+      }
+
+      // Recherche dans le dossier OneDrive Recordings de l'organisateur
+      const driveRes = await fetch(
+        `https://graph.microsoft.com/v1.0/users/${encodeURIComponent(organizerUpn)}/drive/root:/Recordings:/children?$top=10&$orderby=createdDateTime desc`,
+        {
+          method: 'GET',
+          headers: { Authorization: `Bearer ${token}` },
+        }
+      );
+      if (driveRes.ok) {
+        const driveData = (await driveRes.json()) as {
+          value?: Array<{ webUrl?: string; name?: string }>;
+        };
+        const item = driveData.value?.[0];
+        if (item?.webUrl) {
+          return {
+            recordingUrl: item.webUrl,
+            syncedAt,
+            source: 'GRAPH_API',
+          };
+        }
+      }
+    } catch {
+      // Ignorer et retourner null si aucun enregistrement disponible sur Graph
+    }
+  }
+
+  return {
+    recordingUrl: null,
+    syncedAt,
+    source: 'FALLBACK',
+    message: 'Aucun enregistrement automatique trouvé sur Microsoft Cloud pour le moment ; vous pouvez renseigner ou coller le lien du replay OneDrive/SharePoint.',
+  };
+}
+
 

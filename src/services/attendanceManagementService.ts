@@ -48,7 +48,11 @@ export function attendanceDirectory(snapshot: RelationalSnapshot, context: Persi
       const writable = writableYear && !['ANNULE', 'REPORTE'].includes(text(session.status));
       return {
         id: session.id, label: `${groups.filter(Boolean).join(' + ') || 'Groupe'} · ${text(subject?.name) || 'Séance'}`,
-        startsAt: text(session.starts_at), endsAt: text(session.ends_at), status: text(session.status), teacherId, teacherName: name(person), students, attendances,
+        startsAt: text(session.starts_at), endsAt: text(session.ends_at), status: text(session.status),
+        mode: text(session.mode) || 'COURS',
+        meetingUrl: timestamp(session.meeting_url),
+        recordingUrl: timestamp(session.recording_url),
+        teacherId, teacherName: name(person), students, attendances,
         teacherAttendances: rows('teacher_attendances').filter(row => row.session_id === session.id).map(row => ({
           id: row.id, teacherId: text(row.teacher_id), teacherName: name(teacherPerson(text(row.teacher_id))),
           arrivedAt: timestamp(row.arrived_at), leftAt: timestamp(row.left_at), comment: text(row.comment),
@@ -59,8 +63,8 @@ export function attendanceDirectory(snapshot: RelationalSnapshot, context: Persi
             status: row.status as 'EN_ATTENTE' | 'VALIDE' | 'REFUSE', reviewReason: text(row.review_reason), reviewedAt: timestamp(row.reviewed_at),
             hasFile: rows('file_objects').some(file => file.id === row.file_id) }] : [];
         }),
-        canRecordStudents: writable && context.permissions.includes('attendance.record') && [ROLES.SURV, ROLES.DEL, ROLES.IT].includes(context.role as typeof ROLES.SURV),
-        canRecordTeacher: writable && context.permissions.includes('attendance.record') && [ROLES.SURV, ROLES.DEL, ROLES.IT].includes(context.role as typeof ROLES.SURV) && !!person && person.id !== context.personId,
+        canRecordStudents: writable && context.permissions.includes('attendance.record') && [ROLES.SURV, ROLES.STG, ROLES.DEL, ROLES.IT].includes(context.role as typeof ROLES.SURV),
+        canRecordTeacher: writable && context.permissions.includes('attendance.record') && [ROLES.SURV, ROLES.STG, ROLES.DEL, ROLES.IT].includes(context.role as typeof ROLES.SURV) && !!person && person.id !== context.personId,
         canReview: writable && context.permissions.includes('attendance.review') && [ROLES.DA, ROLES.IT].includes(context.role as typeof ROLES.DA),
       };
     }) };

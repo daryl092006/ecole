@@ -4,12 +4,20 @@ import { resolveAcademicYear } from '@/server/academicYearContext';
 import type { DatabaseRow, PersistentChange, RelationalSnapshot } from '@/types/persistence';
 import { canBlockSite, examRescheduleIssue, overlaps, scheduleConflict, scheduleDatabaseError, scheduleDirectory } from '@/services/scheduleManagementService';
 import { ensureSharedSessionParticipants } from '@/services/sharedSessionParticipants';
+import { createTeamsOnlineMeeting, syncTeamsMeetingRecording } from '@/services/microsoftGraphService';
 
 export const dynamic = 'force-dynamic';
 const common = { revision: z.number().int().nonnegative(), reason: z.string().trim().min(3).max(1000) };
 const times = { startsAt: z.iso.datetime({ offset: true }), endsAt: z.iso.datetime({ offset: true }) };
 const slotSchema = z.object(times).strict();
-const session = { ...times, assignmentId: z.uuid(), roomId: z.uuid().nullable(), mode: z.enum(['COURS', 'PAPIER', 'EN_LIGNE']) };
+const session = {
+  ...times,
+  assignmentId: z.uuid(),
+  roomId: z.uuid().nullable(),
+  mode: z.enum(['COURS', 'PAPIER', 'EN_LIGNE']),
+  meetingUrl: z.string().trim().min(5).max(2048).nullable().optional(),
+  recordingUrl: z.string().trim().min(5).max(2048).nullable().optional(),
+};
 const schema = z.discriminatedUnion('action', [
   z.object({ ...common, ...times, action: z.literal('create_shared_course'), assignmentIds: z.array(z.uuid()).min(2).max(30), roomId: z.uuid() }).strict(),
   z.object({ ...common, ...session, action: z.literal('create_session'), slots: z.array(slotSchema).min(1).max(60).optional() }).strict(),
@@ -17,6 +25,8 @@ const schema = z.discriminatedUnion('action', [
   z.object({ ...common, ...times, action: z.literal('move_session'), sessionId: z.uuid() }).strict(),
   z.object({ ...common, action: z.literal('cancel_session'), sessionId: z.uuid() }).strict(),
   z.object({ ...common, action: z.literal('replace_teacher'), sessionId: z.uuid(), teacherId: z.uuid().nullable() }).strict(),
+  z.object({ ...common, action: z.literal('generate_online_link'), sessionId: z.uuid(), customMeetingUrl: z.string().trim().min(5).max(2048).nullable().optional() }).strict(),
+  z.object({ ...common, action: z.literal('sync_recording'), sessionId: z.uuid(), recordingUrl: z.string().trim().min(5).max(2048).nullable().optional() }).strict(),
   z.object({ ...common, ...times, action: z.literal('block_period'), name: z.string().trim().min(1).max(160), siteId: z.uuid().nullable(), kind: z.enum(['JOUR_FERIE', 'VACANCES', 'FERMETURE', 'EXAMEN', 'AUTRE']) }).strict(),
 ]);
 async function load(request: Request) {
@@ -104,6 +114,32 @@ export async function POST(request: Request) {
           mode: body.mode,
           status: 'PLANIFIE',
         };
+        if (body.mode === 'EN_LIGNE') {
+          if (body.meetingUrl) {
+            patch.meeting_url = body.meetingUrl;
+            patch.meeting_provider = body.meetingUrl.includes('teams.microsoft.com') ? 'TEAMS' : 'LIEN';
+          } else {
+            const teacherRow = rows('teachers').find(t => t.id === assignment.teacherId);
+            const staffRow = rows('staff').find(s => s.id === teacherRow?.staff_id);
+            const personRow = rows('people').find(p => p.id === staffRow?.person_id);
+            const component = data.directory.components.find(c => c.id === assignment.componentId);
+            const group = data.directory.groups.find(g => g.id === assignment.groupId);
+            const online = await createTeamsOnlineMeeting({
+              sessionId: slotId,
+              subject: `${component?.label || 'Cours'} · ${group?.label || 'ESCEN'}`,
+              startDateTime: slot.startsAt,
+              endDateTime: slot.endsAt,
+              organizerEmail: typeof personRow?.email === 'string' ? personRow.email : null,
+            });
+            patch.meeting_url = online.meetingUrl;
+            patch.meeting_id = online.meetingId;
+            patch.meeting_provider = online.provider;
+          }
+          if (body.recordingUrl) {
+            patch.recording_url = body.recordingUrl;
+            patch.recording_synced_at = new Date().toISOString();
+          }
+        }
         const proposed = patch as DatabaseRow;
         const from = new Date(String(proposed.starts_at)).toISOString().slice(0, 10);
         const until = new Date(String(proposed.ends_at)).toISOString().slice(0, 10);
@@ -122,6 +158,77 @@ export async function POST(request: Request) {
       const current = 'sessionId' in body ? data.directory.sessions.find(session => session.id === body.sessionId) : undefined;
       if ('sessionId' in body && !current) throw new RequestError(404, 'Séance introuvable dans l’année et le périmètre sélectionnés.');
       if (current && !current.canUpdate) throw new RequestError(403, 'La modification exige une autorisation sur tous les groupes du cours commun.');
+      if (body.action === 'generate_online_link' || body.action === 'sync_recording') {
+        const original = rows('sessions').find(session => session.id === current!.id)!;
+        id = original.id;
+        const patch: Record<string, unknown> = { id, reason: body.reason };
+        const teacherRow = rows('teachers').find(t => t.id === (original.replacement_teacher_id || original.teacher_id));
+        const staffRow = rows('staff').find(s => s.id === teacherRow?.staff_id);
+        const personRow = rows('people').find(p => p.id === staffRow?.person_id);
+        const rawAssignment = rows('teaching_assignments').find(a => a.id === original.assignment_id);
+        const component = data.directory.components.find(c => c.id === rawAssignment?.component_id);
+        const group = data.directory.groups.find(g => g.id === original.group_id);
+        if (body.action === 'generate_online_link') {
+          if (body.customMeetingUrl) {
+            patch.meeting_url = body.customMeetingUrl;
+            patch.meeting_provider = body.customMeetingUrl.includes('teams.microsoft.com') ? 'TEAMS' : 'LIEN';
+          } else {
+            const online = await createTeamsOnlineMeeting({
+              sessionId: id,
+              subject: `${component?.label || 'Cours en ligne'} · ${group?.label || 'ESCEN'}`,
+              startDateTime: String(original.starts_at),
+              endDateTime: String(original.ends_at),
+              organizerEmail: typeof personRow?.email === 'string' ? personRow.email : null,
+            });
+            patch.meeting_url = online.meetingUrl;
+            patch.meeting_id = online.meetingId;
+            patch.meeting_provider = online.provider;
+          }
+        } else {
+          let recUrl = body.recordingUrl || null;
+          let syncedAt = new Date().toISOString();
+          if (!recUrl) {
+            const synced = await syncTeamsMeetingRecording({
+              sessionId: id,
+              meetingId: original.meeting_id ? String(original.meeting_id) : null,
+              organizerEmail: typeof personRow?.email === 'string' ? personRow.email : null,
+            });
+            if (!synced.recordingUrl) {
+              throw new RequestError(404, synced.message || 'Aucun enregistrement automatique trouvé sur Microsoft Cloud ; renseignez le lien du replay.');
+            }
+            recUrl = synced.recordingUrl;
+            syncedAt = synced.syncedAt;
+          }
+          patch.recording_url = recUrl;
+          patch.recording_synced_at = syncedAt;
+          const offering = rows('academic_offerings').find(o => o.id === original.offering_id);
+          if (offering && rawAssignment?.component_id) {
+            const existingResource = rows('course_resources').find(r => r.session_id === id && r.kind === 'ENREGISTREMENT' && !r.archived_at);
+            changes.push({
+              table: 'course_resources',
+              operation: existingResource ? 'update' : 'insert',
+              record: {
+                id: existingResource ? existingResource.id : crypto.randomUUID(),
+                academic_year_id: offering.academic_year_id,
+                offering_id: original.offering_id,
+                group_id: original.group_id,
+                component_id: rawAssignment.component_id,
+                assignment_id: original.assignment_id,
+                session_id: id,
+                title: `Enregistrement · ${component?.label || 'Cours'} (${new Date(String(original.starts_at)).toLocaleDateString('fr-FR')})`,
+                description: 'Enregistrement vidéo de la séance en ligne',
+                kind: 'ENREGISTREMENT',
+                resource_url: recUrl,
+                reason: body.reason,
+              },
+            });
+          }
+        }
+        changes.unshift({ table: 'sessions', operation: 'update', record: patch });
+        const saved = await data.client.rpc('escen_backend_transaction', { p_actor_id: data.context.accountId, p_expected_revision: body.revision, p_changes: changes });
+        if (saved.error) throw new RequestError(409, scheduleDatabaseError(saved.error));
+        return Response.json({ id, count: changes.length, revision: saved.data }, { status: 200, headers: { 'Cache-Control': 'no-store' } });
+      }
       if (current?.shared) {
         if (body.action === 'update_session') throw new RequestError(409, 'Utilisez le déplacement, le remplacement ou l’annulation du cours commun pour conserver ses affectations.');
         const saved = await data.client.rpc('escen_shared_course_change', { p_actor_id: data.context.accountId, p_role_code: data.context.roleCode,
@@ -142,7 +249,9 @@ export async function POST(request: Request) {
         if ((body.mode === 'EN_LIGNE') !== (body.roomId === null)) throw new RequestError(400, 'Une séance en ligne ne réserve pas de salle ; une séance en présentiel exige une salle.');
         if (current && current.assignmentId !== assignment.id && original?.series_id) throw new RequestError(409, 'Cette séance appartient à une série : son affectation ne peut pas être changée individuellement.');
         Object.assign(patch, { assignment_id: assignment.id, offering_id: assignment.offeringId, group_id: assignment.groupId, teacher_id: assignment.teacherId,
-          starts_at: body.startsAt, ends_at: body.endsAt, room_id: body.roomId, mode: body.mode });
+          starts_at: body.startsAt, ends_at: body.endsAt, room_id: body.roomId, mode: body.mode,
+          ...(body.meetingUrl !== undefined ? { meeting_url: body.meetingUrl, meeting_provider: body.meetingUrl ? (body.meetingUrl.includes('teams.microsoft.com') ? 'TEAMS' : 'LIEN') : null } : {}),
+          ...(body.recordingUrl !== undefined ? { recording_url: body.recordingUrl, recording_synced_at: body.recordingUrl ? new Date().toISOString() : null } : {}) });
       } else if (body.action === 'move_session') Object.assign(patch, { starts_at: body.startsAt, ends_at: body.endsAt });
       else if (body.action === 'cancel_session') patch.status = 'ANNULE';
       else {

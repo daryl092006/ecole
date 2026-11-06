@@ -18,10 +18,12 @@ try {
  // Le transfert est limité aux admissions ; les fonctions académiques et financières sont préservées.
  const permissions=async(role)=>(await run('select p.code from escen.role_permissions rp join escen.permissions p on p.id=rp.permission_id where rp.role_id=$1 order by p.code',[roles[role]])).map(row=>row.code);
  assert.deepEqual(await permissions('CC'),['academic.view','application.followup','application.payment.confirm','application.review','application.view','schedule.view','student.view']);checks++;
- for(const role of ['LOG','RAF']){
+ for(const role of ['RAF']){
   assert.ok(!(await permissions(role)).some(code=>code.startsWith('application.')));
   await assert.rejects(rpc('escen_admissions_context',[actors[role],role,null]),/refusé/);checks++;
  }
+ assert.ok((await permissions('LOG')).includes('application.decide'));
+ assert.ok((await permissions('LOG')).includes('application.view'));checks++;
  await assert.rejects(run("delete from escen.role_permissions where role_id=$1",[roles.CC]),/Suppression interdite/);checks++;
  assert.ok((await permissions('LOG')).includes('academic.group.manage'));
  assert.ok((await permissions('RAF')).includes('payment.record'));checks++;
@@ -83,8 +85,10 @@ try {
 
  await command('CC','review');await command('CC','complete',{identity_checked:true,guardians_checked:true,checked_documents:[doc]});await command('CC','transmit');
  assert.equal((await rpc('escen_admissions_context',[actors.DA,'DA',year])).applications.length,1);checks++;
- assert.deepEqual(await noticeRoles('transmit'),['DA']);checks++;
+ assert.equal((await rpc('escen_admissions_context',[actors.LOG,'LOG',year])).applications.length,1);checks++;
+ assert.deepEqual(await noticeRoles('transmit'),['DA','LOG']);checks++;
  assert.equal((await rpc('escen_admission_document',[actors.DA,'DA',year,doc])).filename,'diplome.pdf');checks++;
+ assert.equal((await rpc('escen_admission_document',[actors.LOG,'LOG',year,doc])).filename,'diplome.pdf');checks++;
  await command('DA','study');
  await run("insert into escen.annual_fee_schedules(academic_year_id,category,program_id,amount,reason) values($1,'INSCRIPTION',$2,50000,'Tarif programme de recette')",[year,program]);
  await run("insert into escen.annual_fee_schedules(academic_year_id,category,level_id,amount,reason) values($1,'INSCRIPTION',$2,50000,'Tarif niveau de recette')",[year,level]);

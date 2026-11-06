@@ -60,6 +60,11 @@ export function scheduleDirectory(snapshot: RelationalSnapshot, context: Persist
       teacherId: String(row.teacher_id), roomId: row.room_id ? String(row.room_id) : null, startsAt: String(row.starts_at), endsAt: String(row.ends_at),
       mode: row.mode as ScheduleDirectory['sessions'][number]['mode'], status: String(row.status), replacementTeacherId: row.replacement_teacher_id ? String(row.replacement_teacher_id) : null,
       actualRoomId: row.actual_room_id ? String(row.actual_room_id) : null, reason: String(row.reason || ''),
+      meetingUrl: row.meeting_url ? String(row.meeting_url) : null,
+      meetingId: row.meeting_id ? String(row.meeting_id) : null,
+      meetingProvider: row.meeting_provider ? (String(row.meeting_provider) as 'TEAMS' | 'LIEN') : null,
+      recordingUrl: row.recording_url ? String(row.recording_url) : null,
+      recordingSyncedAt: row.recording_synced_at ? String(row.recording_synced_at) : null,
       hasAttendance: [...rows('attendances'), ...rows('teacher_attendances')].some(attendance => attendance.session_id === row.id), hasExam: !!exam, exam };
     }),
     blockedPeriods: rows('blocked_periods').filter(period => (!period.academic_year_id || period.academic_year_id === yearId)

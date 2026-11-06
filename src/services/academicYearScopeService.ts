@@ -9,9 +9,8 @@ const id = (row: DatabaseRow, field: string) => String(row[field] || '');
 export function accessibleAcademicYears(snapshot: RelationalSnapshot, context: PersistentContext): AcademicYearOption[] {
   const rows = (table: string) => snapshot.tables[table] || [];
   const personal = [ROLES.STUD, ROLES.DEL].includes(context.role as typeof ROLES.STUD);
-  const teacher = context.role === ROLES.ENS; const supervisor = context.role === ROLES.SURV;
+  const teacher = context.role === ROLES.ENS;
   if (!context.permissions.length && !personal) return [];
-  const global = !personal && !teacher && !supervisor && context.grants.some(grant => !grant.site_id && !grant.group_id && !grant.academic_year_id);
   const allowed = new Set<string>();
   const assignments = rows('teaching_assignments');
   const supervisedSessions = new Set(rows('session_supervisors').filter(link => link.account_id === context.accountId).map(link => link.session_id));
@@ -20,6 +19,8 @@ export function accessibleAcademicYears(snapshot: RelationalSnapshot, context: P
     const delivery = rows('exam_deliveries').find(row => row.id === room?.delivery_id);
     if (delivery) supervisedSessions.add(delivery.session_id);
   }
+  const supervisor = context.role === ROLES.SURV && supervisedSessions.size > 0;
+  const global = !personal && !teacher && !supervisor && context.grants.some(grant => !grant.site_id && !grant.group_id && !grant.academic_year_id);
   for (const offering of rows('academic_offerings')) {
     const granted = context.grants.some(grant => (!grant.site_id || grant.site_id === offering.site_id) && (!grant.academic_year_id || grant.academic_year_id === offering.academic_year_id)
       && (!grant.group_id || rows('group_offerings').some(link => link.offering_id === offering.id && link.group_id === grant.group_id)));

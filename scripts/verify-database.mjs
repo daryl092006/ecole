@@ -55,11 +55,11 @@ try {
       assert.ok(await scalar('select to_regclass($1)::text as value', [target]), target);
     }
   });
-  await check('Informaticien avec tous les droits, Stagiaire sans droit et aucune attribution automatique', async () => {
+  await check('Informaticien avec tous les droits, Stagiaire avec ses droits opérationnels et aucune attribution automatique', async () => {
     assert.equal(await scalar('select count(*)::integer as value from escen.roles'), 15);
-    assert.equal(await scalar('select count(*)::integer as value from escen.permissions'), 51);
-    assert.equal(await scalar("select count(*)::integer as value from escen.role_permissions rp join escen.roles r on r.id = rp.role_id where r.code = 'IT'"), 51);
-    assert.equal(await scalar("select count(*)::integer as value from escen.role_permissions rp join escen.roles r on r.id = rp.role_id where r.code = 'STG'"), 0);
+    assert.equal(await scalar('select count(*)::integer as value from escen.permissions'), 52);
+    assert.equal(await scalar("select count(*)::integer as value from escen.role_permissions rp join escen.roles r on r.id = rp.role_id where r.code = 'IT'"), 52);
+    assert.equal(await scalar("select count(*)::integer as value from escen.role_permissions rp join escen.roles r on r.id = rp.role_id where r.code = 'STG'"), 14);
     assert.equal(await scalar('select count(*)::integer as value from escen.role_grants'), 0);
   });
 
