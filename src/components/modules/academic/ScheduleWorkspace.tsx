@@ -127,7 +127,12 @@ function ScheduleManager() {
   };
   const sessionGroups = (session: ManagedSession) => [...new Set(session.participants.map(participant => participant.groupId))];
   const sessionGroupNames = (session: ManagedSession) => sessionGroups(session).map(groupName).join(' + ');
-  const roomName = (id: string | null) => id ? directory.rooms.find(room => room.id === id)?.name || 'Salle indisponible' : 'En ligne';
+  const roomName = (id: string | null, mode?: SessionMode) =>
+    mode === 'EN_LIGNE'
+      ? 'En ligne (Microsoft Teams)'
+      : id
+        ? directory.rooms.find(room => room.id === id)?.name || 'Salle indisponible'
+        : 'Salle non précisée';
 
   const open = (action: Action, session?: ManagedSession) => {
     setDetail(null); setSaveError(''); setSharedAssignmentIds([]); setOperation({ action, session });
@@ -188,7 +193,7 @@ function ScheduleManager() {
     ...(sharedCreate ? [{ label: 'Groupes et formations participants', value: [form.assignmentId, ...sharedAssignmentIds].map(assignmentName).join(' ; ') }] : []),
     ...(current?.shared ? [{ label: 'Tous les groupes concernés', value: sessionGroupNames(current) }] : []),
     ...(editing ? [{ label: 'Cours', value: assignmentName(form.assignmentId), ...(current ? { previous: assignmentName(current.assignmentId) } : {}) },
-      { label: 'Type de séance', value: form.mode, previous: current?.mode }, { label: 'Salle prévue', value: roomName(form.roomId || null), ...(current ? { previous: roomName(current.roomId) } : {}) }] : []),
+      { label: 'Type de séance', value: form.mode, previous: current?.mode }, { label: 'Salle prévue', value: roomName(form.roomId || null, form.mode), ...(current ? { previous: roomName(current.roomId, current.mode) } : {}) }] : []),
     ...(isMultiCreate ? [
       { label: 'Nombre de séances', value: String(multiSlots.length) },
       ...multiSlots.map((slot, index) => ({ label: `Séance ${index + 1}`, value: slot.label })),
@@ -248,11 +253,11 @@ function ScheduleManager() {
         start: session.startsAt,
         end: session.endsAt,
         title: `${componentName(session.assignmentId)} · ${sessionGroupNames(session)}`,
-        subtitle: `${teacherName(session.replacementTeacherId || session.teacherId)} · ${roomName(session.actualRoomId || session.roomId)} · ${session.status}`,
+        subtitle: `${teacherName(session.replacementTeacherId || session.teacherId)} · ${roomName(session.actualRoomId || session.roomId, session.mode)} · ${session.status}`,
         subject: componentName(session.assignmentId),
         group: sessionGroupNames(session),
         teacher: teacherName(session.replacementTeacherId || session.teacherId),
-        room: roomName(session.actualRoomId || session.roomId),
+        room: roomName(session.actualRoomId || session.roomId, session.mode),
         status: session.status,
       }))}
       onSelect={id => setDetail(directory.sessions.find(session => session.id === id) || null)}
@@ -261,7 +266,7 @@ function ScheduleManager() {
     <section className="card"><h2>Périodes bloquées ({directory.blockedPeriods.length})</h2>{directory.blockedPeriods.map(period => <p key={period.id}><strong>{period.name}</strong> · {displayTime(period.startsAt)} → {displayTime(period.endsAt)} · {period.reason || 'Motif historique non renseigné'}</p>)}{!directory.blockedPeriods.length && <p>Aucune période bloquée.</p>}</section>
     {detail && <WorkPage title="Détail de la séance" onClose={() => setDetail(null)}><dl className="record-details-grid">
       <div><dt>Affectation</dt><dd>{detail.participants.map(participant => assignmentName(participant.assignmentId)).join(' ; ')}</dd></div><div><dt>Horaires (Lomé)</dt><dd>{displayTime(detail.startsAt)} → {displayTime(detail.endsAt)}</dd></div>
-      <div><dt>Enseignant effectif</dt><dd>{teacherName(detail.replacementTeacherId || detail.teacherId)}</dd></div><div><dt>Salle / Modalité</dt><dd>{roomName(detail.actualRoomId || detail.roomId)}</dd></div>
+      <div><dt>Enseignant effectif</dt><dd>{teacherName(detail.replacementTeacherId || detail.teacherId)}</dd></div><div><dt>Salle / Modalité</dt><dd>{roomName(detail.actualRoomId || detail.roomId, detail.mode)}</dd></div>
       {detail.mode === 'EN_LIGNE' && (
         <>
           <div><dt>Lien du cours en ligne</dt><dd>{detail.meetingUrl ? <a href={detail.meetingUrl} target="_blank" rel="noopener noreferrer" className="btn btn-sm btn-primary">Rejoindre le cours Teams</a> : 'Non généré'}</dd></div>

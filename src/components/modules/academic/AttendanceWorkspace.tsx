@@ -129,7 +129,7 @@ export default function AttendanceWorkspace() {
       {!session && <p>Aucune séance dans cette année et votre périmètre.</p>}
     {session && <>
       <div className="card-header"><div><h2>{session.label} {session.mode === 'EN_LIGNE' && <span className="pill pill-info">Cours en ligne</span>}</h2><p>{date(session.startsAt)} → {date(session.endsAt)} · {session.teacherName} · {session.status}</p>
-        {(session.meetingUrl || session.recordingUrl) && <div className="btn-group mt-1">
+        {session.mode === 'EN_LIGNE' && (session.meetingUrl || session.recordingUrl) && <div className="btn-group mt-1">
           {session.meetingUrl && <a className="btn btn-sm btn-outline" href={session.meetingUrl} target="_blank" rel="noopener noreferrer">Lien du cours en ligne</a>}
           {session.recordingUrl && <a className="btn btn-sm btn-outline" href={session.recordingUrl} target="_blank" rel="noopener noreferrer">Voir l’enregistrement</a>}
         </div>}
