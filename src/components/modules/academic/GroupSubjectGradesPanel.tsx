@@ -243,7 +243,7 @@ export default function GroupSubjectGradesPanel({ snapshot, canViewStudents, onS
           >
             {activeSubjects.map(s => (
               <option key={s.id} value={s.id}>
-                {s.code ? `${s.code} — ` : ''}{s.name}
+                {s.name}
               </option>
             ))}
             {!activeSubjects.length && <option value="">Aucune matière</option>}
@@ -303,7 +303,6 @@ export default function GroupSubjectGradesPanel({ snapshot, canViewStudents, onS
                 >
                   <td>
                     <strong>{item.name}</strong>
-                    {item.code && <div className="cell-sub">{item.code}</div>}
                   </td>
                   <td>{item.kinds.join(' + ')} ({item.evals.length})</td>
                   <td>{item.expectedCount}</td>

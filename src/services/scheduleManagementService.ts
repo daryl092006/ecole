@@ -40,7 +40,7 @@ export function scheduleDirectory(snapshot: RelationalSnapshot, context: Persist
       && directory.groups.some(group => group.id === assignment.groupId && group.offeringIds.includes(assignment.offeringId))),
     offerings, groups: directory.groups, components: directory.components,
     rooms: rows('rooms').filter(room => !room.archived_at && (!room.site_id || siteAllowed(room.site_id))).map(room => ({ id: room.id,
-      name: `${String(room.code || '')} · ${String(room.name || '')}`, siteId: room.site_id ? String(room.site_id) : null,
+      name: String(room.name || room.code || ''), siteId: room.site_id ? String(room.site_id) : null,
       available: room.status === 'AVAILABLE' })),
     sites: rows('sites').filter(site => !site.archived_at && canBlockSite(context, yearId, site.id)).map(site => ({ id: site.id, name: String(site.name) })),
     canBlockAllSites: canBlockSite(context, yearId, null),

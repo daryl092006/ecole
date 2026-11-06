@@ -56,7 +56,7 @@ export function teacherDirectory(snapshot: RelationalSnapshot, context: Persiste
         componentId: String(row.component_id), validFrom: String(row.valid_from), validUntil: row.valid_until ? String(row.valid_until) : null, reason: String(row.reason || '') })),
     offerings: offerings.map(row => ({ id: row.id, label: annualOfferingLabel(row, snapshot), curriculumId: String(row.curriculum_id) })),
     groups: groups.filter(group => links.some(link => link.group_id === group.id)).map(group => ({ id: group.id, label: String(group.name), offeringIds: links.filter(link => link.group_id === group.id).map(link => String(link.offering_id)) })),
-    components: components.map(component => ({ subjectId: String(component.subject_id), id: component.id, curriculumId: String(component.curriculum_id), label: `${String(component.code)} · ${String(scoped.tables.subjects?.find(subject => subject.id === component.subject_id)?.name || 'Matière')}` })),
+    components: components.map(component => ({ subjectId: String(component.subject_id), id: component.id, curriculumId: String(component.curriculum_id), label: String(scoped.tables.subjects?.find(subject => subject.id === component.subject_id)?.name || 'Matière') })),
     canManageProfiles: hasGlobalStaffManagement(context),
     canManageAssignments: context.permissions.includes('academic.assignment.manage') && !!yearId && !!year && !year.archived_at && year.status !== 'CLOTUREE',
     selectedYearId: yearId,
