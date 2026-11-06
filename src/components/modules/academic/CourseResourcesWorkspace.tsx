@@ -222,26 +222,26 @@ export default function CourseResourcesWorkspace() {
       <PageHeader
         eyebrow="PÉDAGOGIE & NUMÉRIQUE"
         title="Cours, supports et enregistrements"
-        description="Liste des enseignements, supports de cours téléchargeables, création automatique des liens de cours en ligne Microsoft Teams et accès aux replays."
+        description="Liste des enseignements de l’année, supports de cours téléchargeables et suivi des séances en ligne."
       >
         {directory.canManage && directory.courses.length > 0 && (
           <button type="button" className="btn btn-primary" onClick={() => openCreateModal()}>
-            + Déposer un support ou un replay
+            + Déposer un support de cours
           </button>
         )}
-        {directory.canScheduleOnline && directory.courses.length > 0 && (
+        {view === 'online' && directory.canScheduleOnline && directory.courses.length > 0 && (
           <button type="button" className="btn btn-outline" onClick={() => openCreateOnlineSessionModal()}>
-            + Créer cours en ligne (Lien Teams auto)
+            + Programmer un cours en ligne
           </button>
         )}
         {portal.perms.permissions.includes('schedule.create') && (
           <Link className="btn btn-outline" href="/academique/emploi-du-temps">
-            Programmer un cours →
+            Emploi du temps →
           </Link>
         )}
         {portal.perms.permissions.includes('attendance.view') && (
           <Link className="btn btn-outline" href="/academique/presences">
-            Présences en ligne / présentiel →
+            Feuilles de présence →
           </Link>
         )}
       </PageHeader>
@@ -312,7 +312,7 @@ export default function CourseResourcesWorkspace() {
           <div className="card-header">
             <div>
               <h2>Liste des cours ({filteredCourses.length})</h2>
-              <p className="cell-sub">Enseignements actifs de l’année sélectionnée avec leurs supports et séances en ligne.</p>
+              <p className="cell-sub">Enseignements actifs de l’année sélectionnée et supports pédagogiques associés.</p>
             </div>
           </div>
           <ResponsiveTable className="data-table">
@@ -322,8 +322,8 @@ export default function CourseResourcesWorkspace() {
                 <th>Classe / Formation</th>
                 <th>Enseignant</th>
                 <th>Crédits / Coef.</th>
-                <th>Séances & En ligne</th>
-                <th>Supports & Replays</th>
+                <th>Séances</th>
+                <th>Supports</th>
                 <th>Actions</th>
               </tr>
             </thead>
@@ -353,7 +353,7 @@ export default function CourseResourcesWorkspace() {
                   </td>
                   <td>
                     <div>{course.resourcesCount} support(s)</div>
-                    {course.recordingsCount > 0 && (
+                    {course.onlineSessions > 0 && course.recordingsCount > 0 && (
                       <div className="cell-sub">{course.recordingsCount} enregistrement(s)</div>
                     )}
                   </td>
@@ -368,7 +368,7 @@ export default function CourseResourcesWorkspace() {
                           setView('resources');
                         }}
                       >
-                        Voir les supports ({course.resourcesCount})
+                        Supports ({course.resourcesCount})
                       </button>
                       {directory.canManage && (
                         <button
@@ -379,13 +379,17 @@ export default function CourseResourcesWorkspace() {
                           + Support
                         </button>
                       )}
-                      {directory.canScheduleOnline && (
+                      {course.onlineSessions > 0 && (
                         <button
                           type="button"
                           className="btn btn-sm btn-outline"
-                          onClick={() => openCreateOnlineSessionModal(course.assignmentId)}
+                          onClick={() => {
+                            setGroupFilter(course.groupId);
+                            setSearch(course.subjectName);
+                            setView('online');
+                          }}
                         >
-                          + Lien Teams
+                          Séances en ligne ({course.onlineSessions})
                         </button>
                       )}
                     </div>
