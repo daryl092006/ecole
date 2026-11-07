@@ -1,3 +1,4 @@
+import { articlePlainText } from '@/utils/articleDocument';
 import { createHash, randomBytes, randomUUID } from 'node:crypto';
 import { z } from 'zod';
 import { getSupabaseServerClient } from '@/lib/supabase/server';
@@ -26,7 +27,7 @@ export async function OPTIONS(request: Request) { return cors(request, new Respo
 const publicArticle = (article: WebsiteArticle) => ({
   id: article.id, title: article.title, slug: article.slug, excerpt: article.excerpt,
   content: escapeArticleContent(article.content), image: article.image || '/valeurs/bg.jpg', author: 'ESCEN',
-  date: article.published_at?.slice(0, 10), readTime: `${Math.max(1, Math.ceil(article.content.split(/\s+/).length / 200))} min`,
+  date: article.published_at?.slice(0, 10), readTime: `${Math.max(1, Math.ceil(articlePlainText(article.content).trim().split(/\s+/).filter(Boolean).length / 200))} min`,
   comments: [], tags: [], is_event: false, featured: false,
 });
 async function handle(request: Request, context: RouteContext) {

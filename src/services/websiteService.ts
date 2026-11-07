@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { ARTICLE_DOCUMENT_PREFIX, articlePlainText, parseArticleDocument, renderArticleContent } from '@/utils/articleDocument';
 import { ROLES } from '@/types/permissions';
 import type { PersistentContext } from '@/types/persistence';
 
@@ -114,7 +115,7 @@ export const guardianSchema = z.object({
 }).strict();
 export const articleSchema = z.object({
   title: z.string().trim().min(3).max(180), slug: z.string().regex(/^[a-z0-9]+(?:-[a-z0-9]+)*$/).max(180),
-  excerpt: z.string().trim().min(3).max(500), content: z.string().trim().min(3).max(50000),
+  excerpt: z.string().trim().min(3).max(500), content: z.string().trim().min(3).max(50000).refine(value => !value.startsWith(ARTICLE_DOCUMENT_PREFIX) || !!parseArticleDocument(value), 'Document d’article invalide.').refine(value => articlePlainText(value).trim().length >= 3, 'Le contenu de l’article est vide.'),
   image: z.union([z.literal(''), z.url().refine(value => new URL(value).protocol === 'https:')]),
   status: z.enum(['BROUILLON', 'PUBLIE', 'RETIRE']),
 }).strict();
@@ -133,7 +134,7 @@ export function websiteAccess(context: PersistentContext) {
   };
 }
 export function escapeArticleContent(content: string) {
-  return content.split(/\n\s*\n/).map(paragraph => `<p>${paragraph.replace(/[&<>"']/g, character => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[character] || character).replaceAll('\n', '<br>')}</p>`).join('');
+  return renderArticleContent(content);
 }
 export function sniffDocument(bytes: Uint8Array): string | undefined {
   if (Buffer.from(bytes.subarray(0, 5)).toString() === '%PDF-') return 'application/pdf';
