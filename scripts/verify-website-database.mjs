@@ -2,8 +2,10 @@ import assert from 'node:assert/strict';
 import { randomUUID, createHash } from 'node:crypto';
 import { readFile } from 'node:fs/promises';
 import { createDatabase, applyMigrations } from './database-engine.mjs';
+import { verifyPublicArticleVisibility } from './verify-public-article-visibility.mjs';
 
 export async function verifyWebsiteDatabase({ db, check, account, level, program, year }) {
+  await verifyPublicArticleVisibility(check);
   await check('Articles : migration peuplée, contenu existant et ancien audit préservés', async () => {
     const historical = createDatabase();
     try {
