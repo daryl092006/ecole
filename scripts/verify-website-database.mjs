@@ -1,7 +1,30 @@
 import assert from 'node:assert/strict';
 import { randomUUID, createHash } from 'node:crypto';
+import { readFile } from 'node:fs/promises';
+import { createDatabase, applyMigrations } from './database-engine.mjs';
 
 export async function verifyWebsiteDatabase({ db, check, account, level, program, year }) {
+  await check('Articles : migration peuplée, contenu existant et ancien audit préservés', async () => {
+    const historical = createDatabase();
+    try {
+      const migration = '202611070092_remove_article_reason.sql';
+      await applyMigrations(historical, { before: migration });
+      const person = (await historical.query("insert into escen.people(firstname,lastname) values('Auteur','Recette') returning id")).rows[0].id;
+      const actor = (await historical.query('insert into escen.accounts(person_id) values($1) returning id', [person])).rows[0].id;
+      const academicYear = (await historical.query("insert into escen.academic_years(code,name,starts_on,ends_on,status) values('RECETTE','Recette','2040-01-01','2040-12-31','OUVERTE') returning id")).rows[0].id;
+      const article = (await historical.query("insert into escen.website_articles(title,slug,excerpt,content,created_by,academic_year_id,reason) values('Article existant','article-existant','Résumé','Texte original',$1,$2,'Ancien motif') returning *", [actor, academicYear])).rows[0];
+      const previousAudit = (await historical.query("select * from escen_private.audit_events where table_name='website_articles' and entity_id=$1", [article.id])).rows[0];
+      await historical.exec(await readFile(new URL(`../supabase/migrations/${migration}`, import.meta.url), 'utf8'));
+      const after = (await historical.query('select * from escen.website_articles where id=$1', [article.id])).rows[0];
+      const { reason: removedReason, ...expected } = article;
+      assert.equal(removedReason, 'Ancien motif');
+      assert.deepEqual(after, expected);
+      assert.equal((await historical.query('select count(*)::int count from escen_private.audit_events where entity_id=$1', [article.id])).rows[0].count, 1);
+      assert.deepEqual((await historical.query('select * from escen_private.audit_events where id=$1', [previousAudit.id])).rows[0], previousAudit);
+      await historical.query("update escen.website_articles set title='Article modifié' where id=$1", [article.id]);
+      assert.equal((await historical.query("select count(*)::int count from escen_private.audit_events where entity_id=$1 and action='UPDATE'", [article.id])).rows[0].count, 1);
+    } finally { await historical.close(); }
+  });
   const value = async (sql, args = []) => (await db.query(sql, args)).rows[0].value;
   const manage = (action, data = {}, role = 'IT') => value('select public.escen_website_manage($1,$2,$3,$4::jsonb) as value', [account.id, role, action, JSON.stringify(action === 'article-save' ? {academic_year_id:year.id,...data} : data)]);
   const token = createHash('sha256').update(randomUUID()).digest('hex');
@@ -146,17 +169,30 @@ export async function verifyWebsiteDatabase({ db, check, account, level, program
     }
   });
   await check('Site : brouillons privés, publication, retrait, concurrence et droits effectifs', async () => {
-    const input = { title: 'Article de recette', slug: 'article-de-recette', excerpt: 'Résumé de recette', content: 'Un texte conservé', image: '', status: 'BROUILLON', reason: 'Préparation de la publication' };
+    const input = { title: 'Article de recette', slug: 'article-de-recette', excerpt: 'Résumé de recette', content: 'Un texte conservé', image: '', status: 'BROUILLON' };
     const article = await manage('article-save', input);
+    assert.equal(await value("select count(*)::int as value from information_schema.columns where table_schema='escen' and table_name='website_articles' and column_name='reason'"), 0);
+    const createdAudit = (await db.query("select * from escen_private.audit_events where table_name='website_articles' and entity_id=$1 order by happened_at desc limit 1", [article.id])).rows[0];
+    assert.equal(createdAudit.actor_id, account.id);
+    assert.equal(createdAudit.action, 'INSERT');
+    assert.equal(createdAudit.reason, null);
+    assert.equal(Object.hasOwn(createdAudit.new_value, 'reason'), false);
+
     assert.equal((await pub('articles')).length, 0);
-    await manage('article-save', { ...input, id: article.id, version: 1, status: 'PUBLIE', reason: 'Publication confirmée' });
+    await manage('article-save', { ...input, id: article.id, version: 1, status: 'PUBLIE' });
     const published = (await pub('articles'))[0];
     assert.equal(published.slug, input.slug); assert.ok(published.published_at);
     assert.equal(published.created_by, undefined); assert.equal(published.reason, undefined);
     await assert.rejects(manage('article-save', { ...input, id: article.id, version: 1 }), /concurrente/i);
-    await manage('article-save', { ...input, id: article.id, version: 2, status: 'RETIRE', reason: 'Retrait conservant l’historique' });
+    await manage('article-save', { ...input, id: article.id, version: 2, status: 'RETIRE' });
     assert.equal((await pub('articles')).length, 0);
     assert.equal((await manage('articles')).find(item => item.id === article.id).version, 3);
+    const updatedAudit = (await db.query("select * from escen_private.audit_events where table_name='website_articles' and entity_id=$1 and action='UPDATE' order by happened_at desc limit 1", [article.id])).rows[0];
+    assert.equal(updatedAudit.actor_id, account.id);
+    assert.equal(updatedAudit.old_value.status, 'PUBLIE');
+    assert.equal(updatedAudit.new_value.status, 'RETIRE');
+    assert.equal(Object.hasOwn(updatedAudit.new_value, 'reason'), false);
+
     await assert.rejects(manage('admissions', {}, 'STUD'), /Accès/i);
     await assert.rejects(manage('article-save', input, 'ENS'), /Accès/i);
     await assert.rejects(db.query('delete from escen.online_applications where id=$1', [draft.id]), /Suppression/i);

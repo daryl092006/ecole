@@ -14,18 +14,18 @@ L’éditeur visuel d’articles est implémenté dans le commit local `1ebaba7`
 
 Vérifications de cette étape : TypeScript sans génération incrémentale, ESLint, `npm test` complet (dont 201 groupes PostgreSQL et les vérifications supplémentaires du dépôt), deux tests Playwright réussis aux largeurs 390 et 1440 px. Les tests couvrent mise en forme, aperçu, refus d’adresse dangereuse, confirmation, reprise après erreur concurrente et réouverture du contenu enregistré.
 
-Le champ motif de l’article est encore présent à cette étape pour garder le formulaire compatible avec le schéma actuel. Il sera retiré avec sa validation API et sa colonne lorsque le SQL proposé sera approuvé. Aucun push GitHub, déploiement ou changement distant effectué.
+SQL articles approuvé par l’utilisateur le 7 novembre 2026. La migration `202611070092_remove_article_reason.sql` retire réellement la colonne ; le formulaire, le type métier et le schéma API ne contiennent plus le motif. Aucun motif automatique n’est transmis. Le script de reprise des articles et les tests existants ont été adaptés. Aucun push GitHub, déploiement ou changement distant effectué.
 
 1. Adapter les RPC, triggers, contraintes et projections dépendants ; garder leurs contrôles de droits, année, concurrence, montants et états.
 2. Retirer les paramètres et validations de motif dans les API/services et les formulaires. Ne pas envoyer une valeur automatique pour satisfaire un ancien contrôle.
 3. Supprimer les colonnes par de nouvelles migrations. Ne modifier aucune migration existante. Ne pas utiliser `CASCADE`.
 4. Vérifier les workflows sans motif, les refus d’accès et les contre-opérations, puis régénérer les deux documents du schéma.
 
-Le premier SQL complet proposé est `PROPOSITION_SQL_RETRAIT_MOTIF_ARTICLES_2026-11-07.sql`. Il retire uniquement la dépendance du parcours articles ; le retrait global n’est pas encore réalisé. Son application et l’adaptation correspondante de l’API/formulaire attendent l’accord imposé par AGENTS.md avant chaque migration. Les autres domaines doivent recevoir leurs migrations et adaptations propres avant suppression des colonnes.
+Le premier SQL complet proposé est `PROPOSITION_SQL_RETRAIT_MOTIF_ARTICLES_2026-11-07.sql`. Il retire uniquement la dépendance du parcours articles ; le retrait global n’est pas encore réalisé. Son contenu approuvé a été repris dans la nouvelle migration 092 et appliqué uniquement dans les bases de test locales. Les autres domaines doivent recevoir leurs migrations et adaptations propres avant suppression des colonnes.
 
 L’audit continuera à conserver l’auteur, la date, l’action et les valeurs avant/après. Aucune purge des anciennes charges JSON d’audit n’est incluse dans la proposition.
 
-## Colonnes à retirer
+## Inventaire initial des colonnes (71 restantes après les articles)
 
 - `escen.absence_justifications.reason`
 - `escen.absence_justifications.review_reason`
@@ -92,7 +92,7 @@ L’audit continuera à conserver l’auteur, la date, l’action et les valeurs
 - `escen.teaching_assignments.reason`
 - `escen.teaching_units.reason`
 - `escen.tracks.reason`
-- `escen.website_articles.reason`
+- `escen.website_articles.reason` — retirée par la migration 092
 - `escen.website_brochures.reason`
 - `escen.website_intakes.reason`
 - `escen.website_level_document_rules.reason`
@@ -142,3 +142,13 @@ L’audit continuera à conserver l’auteur, la date, l’action et les valeurs
 - `public.escen_website_level_documents`
 - `public.escen_website_manage_before_annual_scope`
 - `public.escen_website_public_before_annual_scope`
+
+## Vérification du retrait des motifs des articles
+
+- Tests PostgreSQL : absence physique de la colonne, création/publication/retrait sans motif, droits et concurrence conservés, audit sans nouveau motif. Migration sur une base peuplée : contenu existant conservé, ancien audit strictement inchangé.
+- API : enregistrement sans motif, champ ancien refusé par le schéma strict, absence de motif généré dans le payload RPC, permission et version obligatoires.
+- Interface : aucun champ motif ; rédaction, aperçu, relecture, sauvegarde, réouverture, reprise après conflit, publication et retrait. Contrôles mobiles des actions et des messages de succès conservés.
+- Documentation du schéma régénérée avec `npm run db:describe` : 1097 colonnes au lieu de 1098.
+- Le retrait des motifs des autres domaines et leur application distante restent à faire.
+
+Bilan de la migration 092 : `npm test` complet réussi, dont 202 groupes de contrôles PostgreSQL ; 5 tests Playwright éditeur/API et 5 tests de régression publication/retrait/fenêtres réussis. Un test facultatif de lecture depuis une copie externe du site est ignoré faute de serveur externe configuré. TypeScript et ESLint sans erreur.

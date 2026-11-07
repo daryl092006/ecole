@@ -38,7 +38,6 @@ export default function WebsiteArticlesPanel() {
   const [slugTouched, setSlugTouched] = useState(false);
   const [editorError, setEditorError] = useState('');
   const [loading, setLoading] = useState(true); const [loadError, setLoadError] = useState(''); const [message, setMessage] = useState('');
-  const [reason, setReason] = useState('');
   const [success, setSuccess] = useState('');
   const [busy, setBusy] = useState(false); const [archives, setArchives] = useState(false);
   const [revision, setRevision] = useState(0);
@@ -77,8 +76,7 @@ export default function WebsiteArticlesPanel() {
     try {
       const { id, version, title, slug, excerpt, content, image, status } = editing;
       const finalSlug = slugifyWebsiteText(slug || title) || 'actualite-escen';
-      const finalReason = reason.trim().length >= 3 ? reason.trim() : `${statusLabels[status]} : ${title}`;
-      await saveWebsiteData({ action: 'article-save', ...(id ? { id, version } : {}), title, slug: finalSlug, excerpt, content, image, status, reason: finalReason }, role);
+      await saveWebsiteData({ action: 'article-save', ...(id ? { id, version } : {}), title, slug: finalSlug, excerpt, content, image, status }, role);
       setEditing(null); setRevision(value => value + 1);
       setSuccess(status === 'PUBLIE' ? 'Article enregistré et publié sur le site.' : status === 'RETIRE' ? 'Article retiré du site. Son historique est conservé.' : 'Brouillon de l’article enregistré.');
       state.refreshCampus();
@@ -98,7 +96,7 @@ export default function WebsiteArticlesPanel() {
     >
       <Link className="btn btn-outline" href="/site-web/brochures">Brochures PDF</Link>
       <button className="btn btn-outline" onClick={() => setArchives(true)}>Consulter les archives</button>
-      {canManage && <button className="btn btn-primary" onClick={() => { setSuccess(''); setEditorError(''); setEditing({ ...emptyArticle }); setSlugTouched(false); setReason(''); }}>+ Rédiger un article</button>}
+      {canManage && <button className="btn btn-primary" onClick={() => { setSuccess(''); setEditorError(''); setEditing({ ...emptyArticle }); setSlugTouched(false); }}>+ Rédiger un article</button>}
     </PageHeader>
 
     <div className="editorial-stats-grid" aria-label="Synthèse éditoriale">
@@ -152,7 +150,7 @@ export default function WebsiteArticlesPanel() {
                   <div>
                     <p className="cell-sub">{article.status} · Version {article.version} · /blogs/{article.slug}</p>
                     {canManage && (
-                      <button className="btn btn-outline" onClick={() => { setSuccess(''); setEditorError(''); setEditing(article); setSlugTouched(true); setReason(''); }}>
+                      <button className="btn btn-outline" onClick={() => { setSuccess(''); setEditorError(''); setEditing(article); setSlugTouched(true); }}>
                         Modifier : {article.title}
                       </button>
                     )}
@@ -198,7 +196,6 @@ export default function WebsiteArticlesPanel() {
           <label className="form-group">Diffusion<select aria-label="Diffusion" className="select-input" value={editing.status} onChange={event => setEditing({ ...editing, status: event.target.value as WebsiteArticle['status'] })}><option value="BROUILLON">Brouillon privé</option><option value="PUBLIE">Publié sur le site</option><option value="RETIRE">Retiré du site</option></select></label>
         </div>
 
-        <label className="form-group">Motif de l’enregistrement<textarea className="input" rows={2} maxLength={1000} placeholder="Facultatif — généré automatiquement si laissé vide (ex. Publication institutionnelle)" value={reason} onChange={event => { setReason(event.target.value); }} /></label>
 
         <DrawerActions><button className="btn btn-primary" disabled={busy}>Relire avant enregistrement</button></DrawerActions>
       </ReviewedForm>

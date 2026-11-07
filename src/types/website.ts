@@ -2,7 +2,7 @@ export interface WebsiteArticle {
   academic_year_id?: string | null;
   id: string; title: string; slug: string; excerpt: string; content: string;
   image: string; status: 'BROUILLON' | 'PUBLIE' | 'RETIRE'; version: number;
-  published_at: string | null; updated_at: string; reason: string;
+  published_at: string | null; updated_at: string;
 }
 export interface WebsiteIntake {
   id: string; academic_year_id?: string | null; level_id: string; program_id: string; label: string;

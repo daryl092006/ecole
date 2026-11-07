@@ -57,7 +57,7 @@ for (const b of blogs) {
   console.log(`Import: ${b.title} (${slug})`);
   const sql = `
     insert into escen.website_articles (
-      academic_year_id, title, slug, excerpt, content, image, status, published_at, created_by, reason
+      academic_year_id, title, slug, excerpt, content, image, status, published_at, created_by
     ) values (
       '${activeYear}'::uuid,
       ${quoteSql(b.title)},
@@ -67,8 +67,7 @@ for (const b of blogs) {
       '/valeurs/bg.jpg',
       'PUBLIE',
       '${publishedAt}'::timestamptz,
-      '${creator}'::uuid,
-      'Reprise initiale des articles historiques'
+      '${creator}'::uuid
     )
     on conflict (slug) do update set
       title = excluded.title,

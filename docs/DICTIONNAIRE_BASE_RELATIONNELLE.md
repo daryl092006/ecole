@@ -2,7 +2,7 @@
 
 Généré avec `npm run db:describe` en exécutant les migrations dans PostgreSQL local (PGlite). Aucun accès à Supabase ou aux données de la sauvegarde.
 
-121 tables métier, 14 tables privées, 1098 colonnes, 308 clés étrangères, 258 CHECK de tables et 5 exclusions. Les domaines ajoutent les bornes des notes, des montants FCFA et des textes obligatoires.
+121 tables métier, 14 tables privées, 1097 colonnes, 308 clés étrangères, 258 CHECK de tables et 5 exclusions. Les domaines ajoutent les bornes des notes, des montants FCFA et des textes obligatoires.
 
 Toutes les tables ont RLS activée, sans accès applicatif permis à ce stade. Les noms techniques ne sont pas des libellés à afficher dans l’interface.
 
@@ -125,7 +125,7 @@ Toutes les tables ont RLS activée, sans accès applicatif permis à ce stade. L
 | escen | teaching_assignments | 9 | 4 | Oui |
 | escen | teaching_units | 8 | 1 | Oui |
 | escen | tracks | 7 | 1 | Oui |
-| escen | website_articles | 13 | 2 | Oui |
+| escen | website_articles | 12 | 2 | Oui |
 | escen | website_brochures | 16 | 3 | Oui |
 | escen | website_intakes | 9 | 3 | Oui |
 | escen | website_level_document_rules | 7 | 2 | Oui |
@@ -4844,7 +4844,6 @@ CREATE UNIQUE INDEX tracks_program_id_code_key ON escen.tracks USING btree (prog
 | published_at | timestamptz | YES | — | NEVER |
 | created_by | uuid | NO | — | NEVER |
 | updated_at | timestamptz | NO | now() | NEVER |
-| reason | text | NO | — | NEVER |
 | academic_year_id | uuid | YES | — | NEVER |
 
 Contraintes :
@@ -4859,7 +4858,6 @@ website_articles_excerpt_not_null: NOT NULL excerpt
 website_articles_id_not_null: NOT NULL id
 website_articles_image_not_null: NOT NULL image
 website_articles_pkey: PRIMARY KEY (id)
-website_articles_reason_not_null: NOT NULL reason
 website_articles_slug_check: CHECK ((slug ~ '^[a-z0-9]+(-[a-z0-9]+)*$'::text))
 website_articles_slug_key: UNIQUE (slug)
 website_articles_slug_not_null: NOT NULL slug

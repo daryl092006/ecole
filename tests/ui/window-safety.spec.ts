@@ -161,13 +161,13 @@ for (const width of [360, 390]) {
 
   test(`Rédiger un article : actions mobiles et succès visible à ${width}px`, async ({ page }) => {
     await page.setViewportSize({ width, height: 844 }); const fixture = await prepare(page);
-    await page.goto('/site-web/articles'); await page.getByRole('button', { name: 'Rédiger un article', exact: true }).click();
+    await page.goto('/site-web/articles'); await page.getByRole('button', { name: '+ Rédiger un article', exact: true }).click();
     const dialog = page.getByRole('dialog', { name: 'Rédiger un article', exact: true }); await visibleActions(page, dialog);
     await dialog.getByLabel('Titre', { exact: true }).fill('Actualité de test'); await dialog.getByLabel('Adresse de l’article', { exact: true }).fill('actualite-test');
     await dialog.getByLabel('Résumé', { exact: true }).fill('Présentation de cette actualité.');
     await dialog.getByLabel('Contenu de l’article', { exact: true }).fill('Contenu de l’article.\n'.repeat(80));
-    const reason = dialog.getByRole('textbox', { name: 'Motif de l’enregistrement', exact: true }); await reason.fill('Rédaction vérifiée');
-    await reducedViewport(page, dialog, reason, width);
+    await expect(dialog.getByLabel(/Motif/)).toHaveCount(0);
+    await reducedViewport(page, dialog, dialog.getByLabel('Diffusion', { exact: true }), width);
     await dialog.getByRole('button', { name: 'Relire avant enregistrement', exact: true }).click(); expect(fixture.commands).toHaveLength(0);
     await visibleActions(page, dialog); await dialog.getByRole('button', { name: 'Confirmer l’enregistrement', exact: true }).click();
     await expect(dialog).toHaveCount(0); await expect(page.getByRole('status').filter({ hasText: 'Brouillon de l’article enregistré.' })).toBeVisible();
@@ -201,11 +201,10 @@ test('Validation et publication restent sans écriture avant la confirmation', a
 });
 
 test('FormFeedback suit la dernière modale active et revient au parent après fermeture', async ({ page }) => {
-  await prepare(page); await page.goto('/site-web/articles'); await page.getByRole('button', { name: 'Rédiger un article', exact: true }).click();
+  await prepare(page); await page.goto('/site-web/articles'); await page.getByRole('button', { name: '+ Rédiger un article', exact: true }).click();
   const dialog = page.getByRole('dialog');
   await dialog.getByLabel('Titre', { exact: true }).fill('Article enregistré'); await dialog.getByLabel('Adresse de l’article', { exact: true }).fill('article-enregistre');
   await dialog.getByLabel('Résumé', { exact: true }).fill('Résumé du test'); await dialog.getByLabel('Contenu de l’article', { exact: true }).fill('Contenu du test');
-  await dialog.getByRole('textbox', { name: 'Motif de l’enregistrement', exact: true }).fill('Test de retour visible');
   await dialog.getByRole('button', { name: 'Relire avant enregistrement', exact: true }).click(); await dialog.getByRole('button', { name: 'Confirmer l’enregistrement', exact: true }).click();
   await expect(dialog).toHaveCount(0);
   await page.evaluate(() => {

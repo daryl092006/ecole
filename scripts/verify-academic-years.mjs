@@ -29,7 +29,7 @@ export async function verifyAcademicYears({ db, check, insert, account, year, le
 
   });
   await check('Années : activités obligatoirement rattachées, années figées et articles publics intemporels', async () => {
-    const article={title:'Article annuel de recette',slug:'recette-annuelle-'+randomUUID(),excerpt:'Résumé',content:'Contenu',created_by:account.id,reason:'Rattachement annuel vérifié'};
+    const article={title:'Article annuel de recette',slug:'recette-annuelle-'+randomUUID(),excerpt:'Résumé',content:'Contenu',created_by:account.id};
     await assert.rejects(insert('website_articles',article),/année scolaire/i);
     const saved=await insert('website_articles',{...article,academic_year_id:year.id,status:'PUBLIE',published_at:new Date().toISOString()});
     const other=await insert('website_articles',{...article,slug:'autre-'+randomUUID(),academic_year_id:fresh.id,status:'PUBLIE',published_at:new Date().toISOString()});

@@ -8,7 +8,7 @@ const yearId = '44444444-4444-4444-8444-444444444444';
 const applicationId = '33333333-3333-4333-8333-333333333333';
 async function manageFixture(page: Page) {
   await authenticateFixture(page);
-  await page.route('**/api/campus', route => route.fulfill({ json: snapshot }));
+  await page.route('**/api/campus', route => route.fulfill({ json: { ...snapshot, academicContext: { currentYearId: yearId, selectedYearId: yearId, selection: 'current', years: [{ id: yearId, name: '2026-2027', status: 'OUVERTE', starts_on: '2026-09-01', ends_on: '2027-07-31' }] } } }));
   const articles: Record<string, unknown>[] = [];
   const application = { id: applicationId, reference: 'WEB-RECETTE', identity: { nom: 'Candidate', prenom: 'Alice', email: 'alice@example.test', tel: '+22890000000' }, diploma: { type_diplome_id: 'BAC déclaré' }, guardians: [{ nom: 'Parent', prenom: 'Marie', tel: '+22891000000' }], intake_id: intakeId, intake_label: 'Licence Informatique', status: 'RECU', version: 1, documents: [{ id: articleId, document_key: 'diplome_file', filename: 'diplome.pdf' }] };
   const commands: Record<string, unknown>[] = [];
@@ -36,22 +36,20 @@ for (const width of [390, 1440]) {
   test(`Articles : aperçu, confirmation, publication, retrait et rechargement à ${width}px`, async ({ page }) => {
     await page.setViewportSize({ width, height: 950 }); const fixture = await manageFixture(page);
     await page.goto('/site-web/articles');
-    await page.getByRole('button', { name: 'Rédiger un article', exact: true }).click();
+    await page.getByRole('button', { name: '+ Rédiger un article', exact: true }).click();
     await page.getByLabel('Titre', { exact: true }).fill('Actualité publiée depuis la plateforme');
     await page.getByLabel('Adresse de l’article', { exact: true }).fill('actualite-plateforme');
     await page.getByLabel('Résumé', { exact: true }).fill('Présentation de cette actualité.');
     await page.getByLabel('Contenu de l’article', { exact: true }).fill('Le texte de cette actualité.\n\nDeuxième paragraphe.');
     await page.getByLabel('Diffusion', { exact: true }).selectOption('PUBLIE');
-    await page.getByLabel('Motif de l’enregistrement', { exact: true }).fill('Publication institutionnelle validée');
     await page.getByRole('button', { name: 'Relire avant enregistrement', exact: true }).click();
     expect(fixture.commands).toHaveLength(0);
-    await expect(page.getByRole('region', { name: 'Confirmation de l’article' })).toContainText('visible publiquement');
+    await expect(page.getByRole('region', { name: 'Vérification avant enregistrement' })).toContainText('visible publiquement');
     await page.getByRole('button', { name: 'Confirmer l’enregistrement', exact: true }).click();
     await expect(page.getByRole('heading', { name: 'Publications du site' })).toBeVisible();
     await page.reload();
     await page.getByRole('button', { name: 'Modifier : Actualité publiée depuis la plateforme' }).click();
     await page.getByLabel('Diffusion', { exact: true }).selectOption('RETIRE');
-    await page.getByLabel('Motif de l’enregistrement', { exact: true }).fill('Retrait demandé par la rédaction');
     await page.getByRole('button', { name: 'Relire avant enregistrement', exact: true }).click();
     await page.getByRole('button', { name: 'Confirmer l’enregistrement', exact: true }).click();
     await expect(page.getByText('RETIRE · Version 2', { exact: false })).toBeVisible();

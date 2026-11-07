@@ -43,7 +43,7 @@ export async function GET(request: Request) {
 }
 const common = { id: z.uuid().optional(), version: z.number().int().positive().optional(), reason: z.string().trim().min(3).max(1000) };
 const commandSchema = z.discriminatedUnion('action', [
-  articleSchema.extend({ ...common, action: z.literal('article-save') }).strict(),
+  articleSchema.extend({ id: common.id, version: common.version, action: z.literal('article-save') }).strict(),
   intakeSchema.extend({ ...common, action: z.literal('intake-save') }).strict(),
   z.object({ action: z.literal('level-documents-save'), academic_year_id: z.uuid(), level_id: z.uuid(), required_documents: intakeSchema.shape.required_documents, expected_intakes: z.array(z.object({ id: z.uuid(), version: z.number().int().positive() }).strict()).min(1).max(500), expected_rule_version: z.number().int().positive().nullable(), reason: common.reason }).strict(),
   z.object({ action: z.literal('application-status'), ...common, id: z.uuid(), version: z.number().int().positive(), status: z.enum(['RECU', 'EN_ANALYSE', 'CLASSE']) }).strict(),

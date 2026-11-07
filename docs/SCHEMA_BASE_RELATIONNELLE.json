@@ -2,7 +2,7 @@
   "stats": {
     "businessTables": 121,
     "privateTables": 14,
-    "columns": 1098,
+    "columns": 1097,
     "foreignKeys": 308,
     "checks": 258,
     "exclusions": 5
@@ -9440,15 +9440,6 @@
       "type": "timestamptz",
       "nullable": "NO",
       "default": "now()",
-      "generated": "NEVER"
-    },
-    {
-      "schema": "escen",
-      "table": "website_articles",
-      "name": "reason",
-      "type": "text",
-      "nullable": "NO",
-      "default": null,
       "generated": "NEVER"
     },
     {
@@ -20669,13 +20660,6 @@
       "name": "website_articles_pkey",
       "type": "p",
       "definition": "PRIMARY KEY (id)"
-    },
-    {
-      "schema": "escen",
-      "table": "website_articles",
-      "name": "website_articles_reason_not_null",
-      "type": "n",
-      "definition": "NOT NULL reason"
     },
     {
       "schema": "escen",

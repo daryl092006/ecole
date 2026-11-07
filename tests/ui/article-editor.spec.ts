@@ -14,6 +14,7 @@ for (const width of [390, 1440]) {
     await page.route('**/api/website-management*', async route => {
       if (route.request().method() === 'POST') {
         payload = route.request().postDataJSON();
+        expect(payload).not.toHaveProperty('reason');
         if (fail) return route.fulfill({ status: 409, json: { error: 'Modification concurrente.' } });
         saved = true;
         return route.fulfill({ status: 201, json: { id: '55555555-5555-4555-8555-555555555555' } });
@@ -22,6 +23,7 @@ for (const width of [390, 1440]) {
     });
     await page.goto('/site-web/articles');
     await page.getByRole('button', { name: '+ Rédiger un article', exact: true }).click();
+    await expect(page.getByLabel(/Motif/)).toHaveCount(0);
     await page.getByLabel('Titre', { exact: true }).fill('Les ateliers du campus');
     await page.getByLabel('Résumé', { exact: true }).fill('Découvrez les ateliers ouverts aux étudiants.');
     const canvas = page.getByRole('textbox', { name: 'Contenu de l’article', exact: true });
