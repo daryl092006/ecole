@@ -1,6 +1,7 @@
 'use client';
 import PageHeader from '@/components/ui/PageHeader';
 import Link from 'next/link';
+import { FileText, Pencil, Plus, Archive, BookOpen } from 'lucide-react';
 import DrawerActions from '@/components/ui/DrawerActions';
 import IconButton from '@/components/ui/IconButton';
 import LoadingState from '@/components/ui/LoadingState';
@@ -87,16 +88,16 @@ export default function WebsiteArticlesPanel() {
   if (archives) return <><button className="btn btn-outline mb-2" onClick={() => setArchives(false)}>Revenir aux articles du site</button><ConnectedDomainWorkspace section="comm_news" /></>;
 
 
-  return <section>
+  return <section className="articles-workspace">
     <FormFeedback message={success} error={false} />
     <PageHeader
       eyebrow="COMMUNICATION & SITE WEB"
-      title="Espace éditorial & Actualités"
-      description="Rédaction, publication et gestion des articles d’actualité diffusés sur le site officiel ESCEN."
+      title="Articles du site"
+      description="Préparez vos actualités et gérez leur publication sur le site ESCEN."
     >
-      <Link className="btn btn-outline" href="/site-web/brochures">Brochures PDF</Link>
-      <button className="btn btn-outline" onClick={() => setArchives(true)}>Consulter les archives</button>
-      {canManage && <button className="btn btn-primary" onClick={() => { setSuccess(''); setEditorError(''); setEditing({ ...emptyArticle }); setSlugTouched(false); }}>+ Rédiger un article</button>}
+      <Link className="btn btn-outline" href="/site-web/brochures"><BookOpen size={16} aria-hidden="true" />Brochures PDF</Link>
+      <button className="btn btn-outline" onClick={() => setArchives(true)}><Archive size={16} aria-hidden="true" />Consulter les archives</button>
+      {canManage && <button className="btn btn-primary" aria-label="+ Rédiger un article" onClick={() => { setSuccess(''); setEditorError(''); setEditing({ ...emptyArticle }); setSlugTouched(false); }}><Plus size={17} aria-hidden="true" />Rédiger un article</button>}
     </PageHeader>
 
     <div className="editorial-stats-grid" aria-label="Synthèse éditoriale">
@@ -106,12 +107,13 @@ export default function WebsiteArticlesPanel() {
       <div className="editorial-stat-card"><span>Retirés / Archivés</span><strong>{counts.retired}</strong></div>
     </div>
 
+    <div className="articles-library">
     <div className="editorial-toolbar">
       <div className="editorial-filter-pills" role="group" aria-label="Filtrer par statut de publication">
-        <button type="button" className={`btn ${statusFilter === 'ALL' ? 'btn-primary' : 'btn-outline'}`} onClick={() => setStatusFilter('ALL')}>Tous ({counts.total})</button>
-        <button type="button" className={`btn ${statusFilter === 'PUBLIE' ? 'btn-primary' : 'btn-outline'}`} onClick={() => setStatusFilter('PUBLIE')}>Publiés ({counts.published})</button>
-        <button type="button" className={`btn ${statusFilter === 'BROUILLON' ? 'btn-primary' : 'btn-outline'}`} onClick={() => setStatusFilter('BROUILLON')}>Brouillons ({counts.drafts})</button>
-        <button type="button" className={`btn ${statusFilter === 'RETIRE' ? 'btn-primary' : 'btn-outline'}`} onClick={() => setStatusFilter('RETIRE')}>Retirés ({counts.retired})</button>
+        <button type="button" aria-pressed={statusFilter === 'ALL'} className={`btn ${statusFilter === 'ALL' ? 'btn-primary' : 'btn-outline'}`} onClick={() => setStatusFilter('ALL')}>Tous ({counts.total})</button>
+        <button type="button" aria-pressed={statusFilter === 'PUBLIE'} className={`btn ${statusFilter === 'PUBLIE' ? 'btn-primary' : 'btn-outline'}`} onClick={() => setStatusFilter('PUBLIE')}>Publiés ({counts.published})</button>
+        <button type="button" aria-pressed={statusFilter === 'BROUILLON'} className={`btn ${statusFilter === 'BROUILLON' ? 'btn-primary' : 'btn-outline'}`} onClick={() => setStatusFilter('BROUILLON')}>Brouillons ({counts.drafts})</button>
+        <button type="button" aria-pressed={statusFilter === 'RETIRE'} className={`btn ${statusFilter === 'RETIRE' ? 'btn-primary' : 'btn-outline'}`} onClick={() => setStatusFilter('RETIRE')}>Retirés ({counts.retired})</button>
       </div>
       <div className="editorial-search-wrap">
         <input className="input" type="search" aria-label="Rechercher un article" placeholder="Rechercher par titre, résumé ou slug…" value={searchQuery} onChange={e => setSearchQuery(e.target.value)} />
@@ -124,34 +126,35 @@ export default function WebsiteArticlesPanel() {
     ) : loading ? (
       <LoadingState label="Chargement des articles…" variant="cards" />
     ) : (
-      <div className="card">
+      <div className="articles-results">
         <div className="card-header">
           <h2>Publications du site</h2>
           <span className="cell-sub">{filteredArticles.length} {filteredArticles.length > 1 ? 'articles affichés' : 'article affiché'}</span>
         </div>
         {filteredArticles.length === 0 ? (
-          <p>{articles.length === 0 ? 'Aucun article créé pour le site.' : 'Aucun article ne correspond aux filtres sélectionnés.'}</p>
+          <div className="articles-empty"><FileText size={30} aria-hidden="true" /><h3>{articles.length === 0 ? 'Votre prochain article commence ici' : 'Aucun résultat'}</h3><p>{articles.length === 0 ? 'Utilisez « Rédiger un article » pour préparer votre première publication.' : 'Essayez un autre mot-clé ou un autre statut.'}</p></div>
         ) : (
           <div className="editorial-articles-grid">
             {filteredArticles.map(article => {
               const stats = estimateReadingStats(article.content || '');
               return (
-                <article className="editorial-article-card publication-card" key={article.id}>
-                  <div>
+                <article className="editorial-article-card" key={article.id}>
+                  <div className="article-row-icon" aria-hidden="true"><FileText size={24} /></div>
+                  <div className="article-row-body">
                     <div className="editorial-article-meta">
                       <span className={`pill ${article.status === 'PUBLIE' ? 'pill-success' : article.status === 'BROUILLON' ? 'pill-warning' : 'pill-default'}`}>
                         {statusLabels[article.status]}
                       </span>
-                      <span>~{stats.minutes} min de lecture ({stats.words} mots)</span>
+                      <span>{stats.minutes} min de lecture</span>
                     </div>
                     <h3>{article.title}</h3>
                     <p>{article.excerpt}</p>
+                    <p className="article-row-address">Version {article.version} · /blogs/{article.slug}</p>
                   </div>
-                  <div>
-                    <p className="cell-sub">{article.status} · Version {article.version} · /blogs/{article.slug}</p>
+                  <div className="article-row-actions">
                     {canManage && (
-                      <button className="btn btn-outline" onClick={() => { setSuccess(''); setEditorError(''); setEditing(article); setSlugTouched(true); }}>
-                        Modifier : {article.title}
+                      <button className="btn btn-outline" aria-label={`Modifier : ${article.title}`} onClick={() => { setSuccess(''); setEditorError(''); setEditing(article); setSlugTouched(true); }}>
+                        <Pencil size={15} aria-hidden="true" />Modifier
                       </button>
                     )}
                   </div>
@@ -163,8 +166,10 @@ export default function WebsiteArticlesPanel() {
       </div>
     )}
 
+    </div>
+
     {editing && <WorkPage busy={busy} title={editing.id ? 'Modifier l’article du site' : 'Rédiger un article'} onClose={() => { if (!busy) setEditing(null); }}>
-      <ReviewedForm className="card" busy={busy} error={message} confirmLabel="Confirmer l’enregistrement" fields={[
+      <ReviewedForm className="article-compose-form" busy={busy} error={message} confirmLabel="Confirmer l’enregistrement" fields={[
         { label: 'Titre', value: editing.title, previous: articles.find(article => article.id === editing.id)?.title },
         { label: 'Adresse', value: `/blogs/${editing.slug}` },
         { label: 'Résumé', value: editing.excerpt },
@@ -175,6 +180,8 @@ export default function WebsiteArticlesPanel() {
         validate={() => editorError || (articlePlainText(editing.content).trim().length < 3 ? 'Rédigez au moins trois caractères de contenu.' : editing.content.length > 50000 ? 'Le contenu dépasse la limite de 50 000 caractères.' : null)}
         onConfirm={() => void save()}>
         {message && <p role="alert" className="auth-error">{message}</p>}
+        <div className="article-compose-layout"><div className="article-compose-main">
+        <div className="article-compose-heading"><span className="page-eyebrow">RÉDACTION</span><h3>Votre article</h3><p>Un titre clair, un résumé et votre contenu.</p></div>
         <label className="form-group">Titre<input className="input" required minLength={3} maxLength={180} placeholder="Ex : Rentrée académique 2026-2027 à l’ESCEN" value={editing.title} onChange={event => {
           const nextTitle = event.target.value;
           setEditing({
@@ -183,19 +190,20 @@ export default function WebsiteArticlesPanel() {
             slug: (!editing.id && !slugTouched) ? slugifyWebsiteText(nextTitle) : editing.slug,
           });
         }} /></label>
-        <label className="form-group">Adresse de l’article<input className="input" required pattern="[a-z0-9]+(-[a-z0-9]+)*" maxLength={180} placeholder="nouvelle-rentree-escen" value={editing.slug} onChange={event => {
-          setSlugTouched(true);
-          setEditing({ ...editing, slug: event.target.value });
-        }} /></label>
         <label className="form-group">Résumé<textarea className="input" rows={3} required minLength={3} maxLength={500} placeholder="Chapeau introductif affiché sur la liste des actualités (1 à 2 phrases)…" value={editing.excerpt} onChange={event => setEditing({ ...editing, excerpt: event.target.value })} /></label>
 
         <ArticleEditor value={editing.content} disabled={busy} onValidityChange={setEditorError} onChange={content => setEditing({ ...editing, content })} />
 
-        <div className="brochure-fields">
-          <label className="form-group">Image de couverture — URL HTTPS (facultatif)<input className="input" type="url" pattern="https://.*" placeholder="https://..." value={editing.image} onChange={event => setEditing({ ...editing, image: event.target.value })} /></label>
-          <label className="form-group">Diffusion<select aria-label="Diffusion" className="select-input" value={editing.status} onChange={event => setEditing({ ...editing, status: event.target.value as WebsiteArticle['status'] })}><option value="BROUILLON">Brouillon privé</option><option value="PUBLIE">Publié sur le site</option><option value="RETIRE">Retiré du site</option></select></label>
-        </div>
-
+        </div><aside className="article-compose-settings" aria-label="Réglages de publication">
+          <div className="article-compose-heading"><span className="page-eyebrow">PUBLICATION</span><h3>Réglages de l’article</h3></div>
+          <label className="form-group">Diffusion<select aria-label="Diffusion" className="select-input" value={editing.status} onChange={event => setEditing({ ...editing, status: event.target.value as WebsiteArticle['status'] })}><option value="BROUILLON">Brouillon privé</option><option value="PUBLIE">Publié sur le site</option><option value="RETIRE">Retiré du site</option></select><span className="article-field-help">{editing.status === 'PUBLIE' ? 'Visible par tous après confirmation.' : editing.status === 'RETIRE' ? 'Masqué du site, conservé dans le portail.' : 'Visible uniquement dans le portail.'}</span></label>
+        <label className="form-group">Adresse de l’article<input className="input" required pattern="[a-z0-9]+(-[a-z0-9]+)*" maxLength={180} placeholder="nouvelle-rentree-escen" value={editing.slug} onChange={event => {
+          setSlugTouched(true);
+          setEditing({ ...editing, slug: event.target.value });
+        }} /></label>
+          <label className="form-group">Image de couverture — URL HTTPS (facultatif)<input className="input" type="url" pattern="https://.*" placeholder="https://..." value={editing.image} onChange={event => setEditing({ ...editing, image: event.target.value })} /><span className="article-field-help">L’image présentera l’article sur le site.</span></label>
+          <p className="article-publication-note">Vous pourrez vérifier les informations avant de confirmer l’enregistrement.</p>
+        </aside></div>
 
         <DrawerActions><button className="btn btn-primary" disabled={busy}>Relire avant enregistrement</button></DrawerActions>
       </ReviewedForm>

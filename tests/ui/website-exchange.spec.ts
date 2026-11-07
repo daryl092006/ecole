@@ -52,7 +52,9 @@ for (const width of [390, 1440]) {
     await page.getByLabel('Diffusion', { exact: true }).selectOption('RETIRE');
     await page.getByRole('button', { name: 'Relire avant enregistrement', exact: true }).click();
     await page.getByRole('button', { name: 'Confirmer l’enregistrement', exact: true }).click();
-    await expect(page.getByText('RETIRE · Version 2', { exact: false })).toBeVisible();
+    const retired = page.getByRole('article').filter({ has: page.getByRole('heading', { name: 'Actualité publiée depuis la plateforme', exact: true }) });
+    await expect(retired.getByText('Retiré du site', { exact: true })).toBeVisible();
+    await expect(retired.getByText('Version 2', { exact: false })).toBeVisible();
     expect(fixture.commands[1]).toMatchObject({ action: 'article-save', id: articleId, version: 1, status: 'RETIRE' });
     await expect.poll(() => page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
     await page.screenshot({ path: `tmp/screenshots/annual-offerings/${width}/articles-site.png`, fullPage: true });
