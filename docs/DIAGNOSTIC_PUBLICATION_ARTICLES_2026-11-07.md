@@ -25,4 +25,15 @@ La nouvelle migration `202611070093_public_articles_all_years.sql` reprend exact
 
 TypeScript, ESLint, suite `npm test` complète et 10 tests Playwright articles réussis. Le schéma documentaire a été régénéré ; aucune structure de table ne change.
 
-Application distante prévue uniquement pour 093, avec garde sur l’empreinte des deux fonctions concernées, vérification de la liste publique dans la transaction et enregistrement atomique dans l’historique des migrations. Les autres migrations locales en attente ne font pas partie de cette autorisation.
+## Application et contrôle en production
+
+La migration 093 a été appliquée seule, après les vérifications locales, avec garde sur l’empreinte des fonctions, vérification de la liste publique dans la transaction et enregistrement atomique dans `supabase_migrations.schema_migrations`. La transaction a confirmé 7 articles publics. Les autres migrations locales en attente n’ont pas été appliquées.
+
+- La base conserve ses 8 articles, dont 7 publiés et 1 brouillon. L’empreinte de toutes les lignes articles est identique avant/après : `b9a63a6425005ac30f2184cf266a62f3`.
+- L’année de travail reste 2026–2027.
+- Les fonctions principale et de base, leurs droits, leurs propriétaires et leur `search_path` restent identiques. Seul le corps de l’enveloppe retirant le filtre annuel change.
+- L’API publique renvoie 7 articles, avec l’origine CORS `https://escen.university` autorisée.
+- Le navigateur Chrome confirme le chargement des 7 articles et l’affichage du premier sur `https://escen.university/blogs/`, aux largeurs 390 et 1440 px. Les liens d’articles sont présents et l’API de détail du premier article répond HTTP 200 avec le bon identifiant.
+- Captures : `tmp/screenshots/public-article-publication/blogs-390.png` et `blogs-1440.png`.
+
+Le correctif ne nécessite ni reconstruction du site ni déploiement du portail : les pages existantes rechargent leur liste depuis l’API publique. Le code et le bilan sont conservés dans des commits locaux, sans push GitHub.
