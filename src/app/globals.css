@@ -5548,23 +5548,62 @@ form > .drawer-form-actions,
 .home-destinations > a:hover,
 .metric-card:hover { transform: none !important; box-shadow: none !important; }
 
-/* Contenu : respiration réduite, une seule logique d'espacement */
-.main-content { padding: 16px 24px 32px !important; }
+/* Contenu : respiration nette, largeur maîtrisée, une seule logique d'espacement */
+.main-content { padding: 18px 24px 36px !important; max-width: 1440px !important; }
 .workspace-stack,
 .domain-workspace { display: flex; flex-direction: column; gap: 12px; }
 .workspace-stack > *,
 .domain-workspace > * { margin-top: 0 !important; margin-bottom: 0 !important; }
-.workspace-location { margin-bottom: 8px !important; padding-bottom: 6px !important; border-bottom: 0 !important; }
-.page-intro { margin-bottom: 10px !important; }
+.workspace-location { margin-bottom: 8px !important; padding-bottom: 6px !important; border-bottom: 1px solid #f1f5f9 !important; }
+.page-intro { margin-bottom: 12px !important; }
 
-/* Cartes à plat, jamais de carte dans une carte */
-.card { box-shadow: none !important; border-color: #e8edf3 !important; padding: 14px 16px !important; }
+/* Cartes épurées, jamais de cadre lourd imbriqué */
+.card {
+  background: #ffffff !important;
+  border: 1px solid #e2e8f0 !important;
+  border-radius: 10px !important;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.03) !important;
+  padding: 16px 20px !important;
+}
 .card .card,
 .card .table-wrap,
-.card .kpi-card { border: 0 !important; background: transparent !important; padding-left: 0 !important; padding-right: 0 !important; }
+.card .kpi-card { border: 0 !important; background: transparent !important; box-shadow: none !important; padding: 0 !important; }
 .card-header { border-bottom: 0 !important; margin-bottom: 8px !important; padding-bottom: 0 !important; }
 .card-header h2,
 .card > h2 { font-size: 0.95rem !important; margin-bottom: 8px !important; }
+
+/* Barres d'outils et sélecteurs de table : transparents, sans boîte grise */
+.browser-toolbar,
+.directory-toolbar,
+.app-wrapper :is(.browser-toolbar, .directory-toolbar) {
+  background: transparent !important;
+  border: 0 !important;
+  padding: 0 0 8px 0 !important;
+  box-shadow: none !important;
+  gap: 10px !important;
+}
+.record-sections {
+  background: transparent !important;
+  border: 0 !important;
+  padding: 0 !important;
+  gap: 6px !important;
+  margin: 4px 0 12px 0 !important;
+}
+.record-sections button {
+  background: #f1f5f9 !important;
+  color: #475569 !important;
+  border: 1px solid transparent !important;
+  border-radius: 6px !important;
+  padding: 5px 12px !important;
+  font-size: 0.78rem !important;
+  min-height: 30px !important;
+}
+.record-sections button.selected {
+  background: #eff6ff !important;
+  color: #2563eb !important;
+  border-color: #bfdbfe !important;
+  font-weight: 600 !important;
+}
 
 /* Chiffres clés : un seul bandeau discret au lieu de grosses tuiles */
 .kpi-grid,
@@ -5596,33 +5635,53 @@ form > .drawer-form-actions,
 .articles-workspace .editorial-stats-grid { border: 0 !important; }
 .articles-workspace .editorial-stat-card { padding: 0 !important; border: 0 !important; }
 
-/* Tableaux : lignes fines, en-têtes discrets, texte secondaire estompé sur une ligne */
+/* Tableaux : fond blanc pur, aucune zébrure, en-têtes discrets, séparateurs très doux */
 .table-wrap { border: 0 !important; border-radius: 0 !important; }
-.data-table th {
-  background: transparent !important; text-transform: none !important; letter-spacing: 0 !important;
-  font-size: 0.74rem !important; font-weight: 500 !important; color: #94a3b8 !important;
-  padding: 6px 12px !important; border-bottom: 1px solid #e8edf3 !important;
+.table-wrap:not(:has(> .mobile-record-table)) .data-table th:last-child,
+.table-wrap:not(:has(> .mobile-record-table)) .data-table td:last-child {
+  background: inherit !important;
+  box-shadow: none !important;
 }
-.data-table td { padding: 8px 12px !important; border-bottom: 1px solid #f3f5f8 !important; }
+.app-wrapper .data-table tbody tr:nth-child(even) td,
+.data-table tbody tr:nth-child(even) td { background: transparent !important; }
+.data-table th {
+  background: #fafbfc !important;
+  color: #64748b !important;
+  font-size: 0.72rem !important;
+  font-weight: 600 !important;
+  text-transform: uppercase !important;
+  letter-spacing: 0.04em !important;
+  padding: 8px 12px !important;
+  border-top: 1px solid #e8edf3 !important;
+  border-bottom: 1px solid #e8edf3 !important;
+}
+.data-table td {
+  padding: 10px 12px !important;
+  border-bottom: 1px solid #f3f5f8 !important;
+  font-size: 0.82rem !important;
+  color: #1e293b;
+  vertical-align: middle;
+}
 .data-table tr:hover td { background: #fafbfd !important; }
 .data-table .cell-sub {
-  color: #94a3b8 !important; font-size: 0.7rem !important; margin-top: 0 !important;
+  color: #64748b !important; font-size: 0.72rem !important; margin-top: 1px !important;
   max-width: 280px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
 }
-.data-table td strong { font-weight: 600; }
+.data-table td strong { font-weight: 600; color: #0f172a; }
 
-/* Pastilles calmes : texte coloré, sans cadre ni fond marqué */
-.pill { border-color: transparent !important; font-size: 0.7rem !important; padding: 2px 8px !important; font-weight: 500 !important; }
+/* Pastilles calmes : texte coloré, sans cadre ni fond criard */
+.pill { border-color: transparent !important; font-size: 0.7rem !important; padding: 2px 8px !important; font-weight: 500 !important; border-radius: 9999px !important; }
 
 /* Boutons secondaires discrets, un seul bouton plein par zone */
-.btn-outline { border-color: #e2e8f0 !important; color: #334155 !important; background: #fff !important; }
+.btn-outline { border-color: #cbd5e1 !important; color: #334155 !important; background: #fff !important; }
 .btn-outline:hover { background: #f8fafc !important; }
 .data-table .btn-sm { min-height: 26px !important; padding: 2px 8px !important; }
 
 /* Formulaires et filtres plus serrés */
 .form-grid { gap: 10px !important; margin: 8px 0 !important; }
 .form-group { gap: 4px !important; font-size: 0.78rem; color: #64748b; }
-.input, .select-input { min-height: 34px !important; font-size: 0.84rem !important; }
+.input, .select-input { min-height: 34px !important; height: 34px !important; font-size: 0.82rem !important; border-color: #cbd5e1 !important; border-radius: 6px !important; }
+.input:focus, .select-input:focus { border-color: #3b82f6 !important; outline: none !important; box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.15) !important; }
 .section-tabs { gap: 4px !important; margin-bottom: 8px !important; }
 .info-box, .review-notice { margin: 6px 0 !important; }
 
