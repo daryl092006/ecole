@@ -397,7 +397,7 @@ function OnlineExamEditor({ initial, onBack }: { initial: OnlineExamView; onBack
                     <textarea
                       aria-label="Votre réponse"
                       className="input"
-                      rows={isShortText ? 2 : 5}
+                      rows={isShortText ? 2 : 6}
                       maxLength={20000}
                       value={answer.text}
                       onChange={event => update(question.id, { text: event.target.value, option_ids: [] })}

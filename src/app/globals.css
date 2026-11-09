@@ -1050,16 +1050,20 @@ textarea.input { min-height: 100px; resize: vertical; }
 .search-result strong, .search-result small { display: block; }
 .search-result strong { font-size: .82rem; }
 .search-result small { font-size: .72rem; color: var(--text-secondary); margin-top: .2rem; }
-.notification-panel { width: min(360px, calc(100vw - 1.5rem)); right: 0; display: flex; flex-direction: column; overflow: hidden; }
-.notification-panel ul { list-style: none; margin: 0; padding: 0; overflow-y: auto; max-height: min(320px, 55dvh); }
-.notification-panel li { padding: .75rem 1rem; border-bottom: 1px solid var(--border); font-size: .82rem; line-height: 1.45; overflow-wrap: anywhere; }
+.notification-panel { width: min(390px, calc(100vw - 1.5rem)); right: 0; display: flex; flex-direction: column; overflow: hidden; border-radius: 12px; box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.08), 0 8px 10px -6px rgba(0, 0, 0, 0.04); border: 1px solid var(--border); }
+.notification-panel-header { display: flex; align-items: center; justify-content: space-between; padding: .75rem 1rem; border-bottom: 1px solid var(--border); font-size: .8rem; font-weight: 600; color: var(--text-primary); background: #f8fafc; }
+.notification-count-pill { display: inline-flex; align-items: center; justify-content: center; background: #e2e8f0; color: #475569; font-size: .7rem; font-weight: 700; padding: 1px 7px; border-radius: 9999px; margin-left: 6px; }
+.notification-mark-all-link { background: transparent; border: 0; color: #2563eb; font-size: .75rem; font-weight: 600; cursor: pointer; padding: 2px 6px; border-radius: 4px; transition: background .15s ease; text-decoration: none; }
+.notification-mark-all-link:hover { background: #eff6ff; text-decoration: underline; }
+.notification-panel ul { list-style: none; margin: 0; padding: 0; overflow-y: auto; max-height: min(360px, 60dvh); }
+.notification-panel li { padding: 0; border-bottom: 1px solid #f1f5f9; font-size: .82rem; line-height: 1.45; }
 .notification-panel li:last-child { border-bottom: 0; }
-.notification-link { display: flex; align-items: center; justify-content: space-between; gap: .65rem; color: var(--text-primary); text-decoration: none; font-weight: 500; transition: color .15s ease; }
-.notification-link:hover, .notification-link:focus-visible { color: var(--accent); text-decoration: none; }
-.notification-link svg { flex-shrink: 0; color: var(--text-muted); }
-.notification-link:hover svg { color: var(--accent); }
-.notification-panel-footer { padding: .75rem 1rem; border-top: 1px solid var(--border); background: #f8fafc; }
-.notification-mark-read-btn { width: 100%; white-space: normal; text-align: center; justify-content: center; line-height: 1.35; font-size: .78rem; padding: .5rem .75rem; }
+.notification-item > .notification-text { display: block; padding: .75rem 1rem; color: var(--text-secondary); }
+.notification-link { display: flex; align-items: center; justify-content: space-between; gap: .75rem; padding: .75rem 1rem; color: #1e293b !important; text-decoration: none !important; font-weight: 500; transition: background .15s ease; }
+.notification-link:hover, .notification-link:focus-visible { background: #f8fafc; color: #0f172a !important; text-decoration: none !important; }
+.notification-text { flex: 1; overflow-wrap: break-word; word-break: break-word; color: inherit; }
+.notification-arrow { flex-shrink: 0; color: #94a3b8; }
+.notification-link:hover .notification-arrow { color: #2563eb; }
 .skip-link { position: fixed; top: -80px; left: 12px; z-index: 3000; background: white; padding: .75rem 1rem; border-radius: 8px; color: var(--accent); }
 .skip-link:focus { top: 12px; }
 @media (max-width: 1024px) {
@@ -5517,4 +5521,112 @@ form > .drawer-form-actions,
 @media (max-width: 768px) {
   .article-editor-canvas, .article-editor-preview { padding: 1rem; min-height: 280px; }
   .article-editor-toolbar { gap: .2rem; }
+}
+
+
+/* ============================================================
+   Sobriété globale : toutes les pages, tableaux et cartes.
+   Principe : moins de bordures, moins d'ombres, moins de texte
+   secondaire, des chiffres clés en simple bandeau.
+   ============================================================ */
+
+/* Bruit visuel retiré partout */
+.page-eyebrow,
+.page-intro p,
+.module-header p,
+.home-section-heading p,
+.workspace-data-footer,
+.connected-data-bar,
+.card-header p.cell-sub,
+.card-header > div > p,
+.card > h2 + p.cell-sub { display: none !important; }
+
+/* Aucun effet de survol « flottant » */
+.card:hover,
+.kpi-card:hover,
+.home-metrics > div:hover,
+.home-destinations > a:hover,
+.metric-card:hover { transform: none !important; box-shadow: none !important; }
+
+/* Contenu : respiration réduite, une seule logique d'espacement */
+.main-content { padding: 16px 24px 32px !important; }
+.workspace-stack,
+.domain-workspace { display: flex; flex-direction: column; gap: 12px; }
+.workspace-stack > *,
+.domain-workspace > * { margin-top: 0 !important; margin-bottom: 0 !important; }
+.workspace-location { margin-bottom: 8px !important; padding-bottom: 6px !important; border-bottom: 0 !important; }
+.page-intro { margin-bottom: 10px !important; }
+
+/* Cartes à plat, jamais de carte dans une carte */
+.card { box-shadow: none !important; border-color: #e8edf3 !important; padding: 14px 16px !important; }
+.card .card,
+.card .table-wrap,
+.card .kpi-card { border: 0 !important; background: transparent !important; padding-left: 0 !important; padding-right: 0 !important; }
+.card-header { border-bottom: 0 !important; margin-bottom: 8px !important; padding-bottom: 0 !important; }
+.card-header h2,
+.card > h2 { font-size: 0.95rem !important; margin-bottom: 8px !important; }
+
+/* Chiffres clés : un seul bandeau discret au lieu de grosses tuiles */
+.kpi-grid,
+.kpi-stat-grid,
+.editorial-stats-grid,
+.home-metrics {
+  display: flex !important; flex-wrap: wrap; gap: 6px 22px !important;
+  margin: 0 0 4px !important; padding: 0 !important;
+  border: 0 !important; background: transparent !important;
+}
+.kpi-card,
+.kpi-stat-tile,
+.editorial-stat-card,
+.home-metrics > div {
+  display: inline-flex !important; flex-direction: row !important; align-items: baseline; gap: 8px !important;
+  padding: 0 !important; border: 0 !important; border-radius: 0 !important;
+  background: transparent !important; box-shadow: none !important; min-width: 0;
+}
+.kpi-card .cell-sub,
+.kpi-card svg,
+.kpi-stat-tile svg,
+.home-metrics svg { display: none !important; }
+.kpi-label,
+.editorial-stat-card > span,
+.home-metrics span { order: 2; font-size: 0.78rem !important; font-weight: 500 !important; text-transform: none !important; letter-spacing: 0 !important; color: #64748b !important; }
+.kpi-value,
+.editorial-stat-card strong,
+.home-metrics strong { order: 1; font-size: 1.05rem !important; font-weight: 600 !important; margin: 0 !important; color: #0f172a; }
+.articles-workspace .editorial-stats-grid { border: 0 !important; }
+.articles-workspace .editorial-stat-card { padding: 0 !important; border: 0 !important; }
+
+/* Tableaux : lignes fines, en-têtes discrets, texte secondaire estompé sur une ligne */
+.table-wrap { border: 0 !important; border-radius: 0 !important; }
+.data-table th {
+  background: transparent !important; text-transform: none !important; letter-spacing: 0 !important;
+  font-size: 0.74rem !important; font-weight: 500 !important; color: #94a3b8 !important;
+  padding: 6px 12px !important; border-bottom: 1px solid #e8edf3 !important;
+}
+.data-table td { padding: 8px 12px !important; border-bottom: 1px solid #f3f5f8 !important; }
+.data-table tr:hover td { background: #fafbfd !important; }
+.data-table .cell-sub {
+  color: #94a3b8 !important; font-size: 0.7rem !important; margin-top: 0 !important;
+  max-width: 280px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.data-table td strong { font-weight: 600; }
+
+/* Pastilles calmes : texte coloré, sans cadre ni fond marqué */
+.pill { border-color: transparent !important; font-size: 0.7rem !important; padding: 2px 8px !important; font-weight: 500 !important; }
+
+/* Boutons secondaires discrets, un seul bouton plein par zone */
+.btn-outline { border-color: #e2e8f0 !important; color: #334155 !important; background: #fff !important; }
+.btn-outline:hover { background: #f8fafc !important; }
+.data-table .btn-sm { min-height: 26px !important; padding: 2px 8px !important; }
+
+/* Formulaires et filtres plus serrés */
+.form-grid { gap: 10px !important; margin: 8px 0 !important; }
+.form-group { gap: 4px !important; font-size: 0.78rem; color: #64748b; }
+.input, .select-input { min-height: 34px !important; font-size: 0.84rem !important; }
+.section-tabs { gap: 4px !important; margin-bottom: 8px !important; }
+.info-box, .review-notice { margin: 6px 0 !important; }
+
+@media (max-width: 768px) {
+  .main-content { padding: 12px 12px 28px !important; }
+  .kpi-grid, .kpi-stat-grid, .editorial-stats-grid, .home-metrics { gap: 4px 14px !important; }
 }

@@ -5,7 +5,9 @@ import { admissionNotices, admissionsOperation } from '@/services/remoteCampusSe
 import type { ApplicationNotice } from '@/types/admissions';
 
 function formatNoticeMessage(message: string, appRow?: Record<string, unknown>): string {
-  const normalized = message.replace(/\b(WEB-[A-Za-z0-9]{6})[A-Za-z0-9]{8,}([A-Za-z0-9]{4})\b/g, '$1…$2');
+  const normalized = message
+    .replace(/\b(WEB-[A-Za-z0-9]{4})[A-Za-z0-9]+([A-Za-z0-9]{4})\b/g, '$1…$2')
+    .replace(/\s*:\s*(WEB-)/g, ' · $1');
   if (!appRow) return normalized;
   const identity = (appRow.identity && typeof appRow.identity === 'object' ? appRow.identity : {}) as Record<string, unknown>;
   const fullName = [identity.prenom, identity.nom].map(v => String(v || '').trim()).filter(Boolean).join(' ');

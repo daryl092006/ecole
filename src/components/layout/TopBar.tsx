@@ -105,17 +105,30 @@ export default function TopBar({ userName, userEmail, activeRole, availableRoles
         <button className="notif-btn" aria-label={`Notifications : ${notificationCount}`} aria-expanded={panel === 'notifications'} onClick={() => { if (accountControl.current) accountControl.current.open = false; setPanel(current => current === 'notifications' ? null : 'notifications'); }}><Bell size={18} />{notificationCount > 0 && <span className="notif-badge">{notificationCount}</span>}</button>
         {panel === 'notifications' && (
           <section className="header-popover notification-panel" aria-label="Notifications">
-            <div className="popover-heading">Notifications</div>
+            <div className="popover-heading notification-panel-header">
+              <span>Notifications {notificationCount > 0 && <span className="notification-count-pill">{notificationCount}</span>}</span>
+              {applicationNotices.notices.length > 0 && (
+                <button
+                  type="button"
+                  className="notification-mark-all-link"
+                  onClick={() => { void applicationNotices.markRead().catch(() => undefined); }}
+                >
+                  Tout marquer comme lu
+                </button>
+              )}
+            </div>
             {notificationCount ? (
               <ul className="notification-list">
                 {notifications.map(item => (
-                  <li key={`session-${item.id}`} className="notification-item">{item.text}</li>
+                  <li key={`session-${item.id}`} className="notification-item">
+                    <span className="notification-text">{item.text}</span>
+                  </li>
                 ))}
                 {applicationNotices.notices.map(item => (
                   <li key={item.id} className="notification-item">
                     <Link href="/site-web/demandes" className="notification-link" onClick={() => setPanel(null)}>
-                      <span>{item.message}</span>
-                      <ArrowUpRight size={14} aria-hidden="true" />
+                      <span className="notification-text">{item.message}</span>
+                      <ArrowUpRight size={14} className="notification-arrow" aria-hidden="true" />
                     </Link>
                   </li>
                 ))}
@@ -124,17 +137,6 @@ export default function TopBar({ userName, userEmail, activeRole, availableRoles
               <div className="empty-state">
                 <strong>Vous êtes à jour</strong>
                 <span>Aucune notification pour ce rôle.</span>
-              </div>
-            )}
-            {applicationNotices.notices.length > 0 && (
-              <div className="notification-panel-footer">
-                <button
-                  type="button"
-                  className="btn btn-outline notification-mark-read-btn"
-                  onClick={() => { void applicationNotices.markRead().catch(() => undefined); }}
-                >
-                  Marquer les notifications de candidature comme lues
-                </button>
               </div>
             )}
           </section>

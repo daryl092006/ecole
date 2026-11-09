@@ -6,9 +6,7 @@ import WorkPage from '@/components/ui/WorkPage';
 import ReviewedForm from '@/components/ui/ReviewedForm';
 import { connectedRecordName } from '@/services/connectedRecordDisplayService';
 import {
-  evaluationCandidateStatusLabel,
   evaluationGradeIsComplete,
-  evaluationGradeNoteLabel,
   evaluationGradeValue,
 } from '@/services/evaluationGradePolicy';
 import { manageEvaluation } from '@/services/remoteCampusService';
@@ -138,7 +136,6 @@ export default function PersistentExamCopies({ evaluationId, candidateId, onClos
 
         const studentInitials = studentName.split(' ').map(w => w[0]).filter(Boolean).slice(0, 2).join('').toUpperCase() || 'ET';
         const statusPillClass = attempt.status === 'EN_COURS' ? 'pill-warning' : attempt.status === 'REMISE' ? 'pill-success' : 'pill-info';
-        const gradeVal = evaluationGradeNoteLabel(grade, String(attempt.status));
 
         return (
           <article className="online-exam-entry" key={attempt.id}>
@@ -163,9 +160,13 @@ export default function PersistentExamCopies({ evaluationId, candidateId, onClos
                 </div>
               </div>
               <div className="online-exam-score-box">
-                <span className={gradeVal !== '—' ? 'online-exam-grade-badge' : 'pill pill-default'}>
-                  Note : {gradeVal} · {evaluationCandidateStatusLabel(grade, String(attempt.status))}
-                </span>
+                {existingNumericGrade !== null ? (
+                  <span className="online-exam-grade-badge">Note : {existingNumericGrade} / 20</span>
+                ) : (
+                  <span className="pill pill-warning">
+                    {attempt.status === 'EN_COURS' ? 'En cours de composition' : 'Copie remise · À corriger'}
+                  </span>
+                )}
                 <button
                   type="button"
                   className="btn btn-sm btn-outline"
@@ -212,7 +213,7 @@ export default function PersistentExamCopies({ evaluationId, candidateId, onClos
                         )}
                         {Boolean(response?.text) && (
                           <p className="subject-text" style={{ margin: '0.2rem 0' }}>
-                            {isTrueFalse ? <>Justification : {response?.text}</> : response?.text}
+                            {choiceLabels.length > 0 || isTrueFalse ? <>Justification : {response?.text}</> : response?.text}
                           </p>
                         )}
                         {!choiceLabels.length && !response?.text && (
