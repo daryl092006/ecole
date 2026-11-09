@@ -1,6 +1,8 @@
 -- Migration : Déblocage complet des fonctions internes de gestion du site web et des pièces pour le Responsable Marketing (MKT) et Chargé de Communication (CC)
 begin;
 
+alter table escen.website_articles drop column if exists reason;
+
 -- 1. Mise à jour de escen_website_manage_before_annual_scope pour inclure MKT et CC
 create or replace function public.escen_website_manage_before_annual_scope(
   p_actor_id uuid,
