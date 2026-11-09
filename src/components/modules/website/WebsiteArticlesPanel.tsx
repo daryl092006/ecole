@@ -207,6 +207,45 @@ export default function WebsiteArticlesPanel() {
             <Eye size={15} aria-hidden="true" />{fullPreview ? 'Revenir à l’éditeur' : 'Aperçu complet sur le site'}
           </button>
         </div>
+
+        <div className="article-publication-choice-bar mb-3" style={{ background: 'var(--surface-variant, #f8fafc)', border: '1px solid var(--border)', borderRadius: '8px', padding: '12px 14px' }}>
+          <span className="field-label" style={{ fontWeight: 600, display: 'block', marginBottom: '8px' }}>
+            Destination de publication :
+          </span>
+          <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+            <button
+              type="button"
+              className={`btn btn-sm ${editing.status === 'PUBLIE' ? 'btn-primary' : 'btn-outline'}`}
+              onClick={() => setEditing({ ...editing, status: 'PUBLIE' })}
+            >
+              🌐 Publier sur le site officiel
+            </button>
+            <button
+              type="button"
+              className={`btn btn-sm ${editing.status === 'BROUILLON' ? 'btn-primary' : 'btn-outline'}`}
+              onClick={() => setEditing({ ...editing, status: 'BROUILLON' })}
+            >
+              📝 Conserver en brouillon privé
+            </button>
+            {editing.id && (
+              <button
+                type="button"
+                className={`btn btn-sm ${editing.status === 'RETIRE' ? 'btn-danger' : 'btn-outline'}`}
+                onClick={() => setEditing({ ...editing, status: 'RETIRE' })}
+              >
+                🚫 Retirer du site
+              </button>
+            )}
+          </div>
+          <p className="cell-sub" style={{ marginTop: '6px', marginBottom: 0 }}>
+            {editing.status === 'PUBLIE'
+              ? '✓ L’article sera visible par tous les visiteurs sur le site public ESCEN dès confirmation.'
+              : editing.status === 'RETIRE'
+              ? 'L’article sera masqué du site web public mais son historique restera conservé.'
+              : 'L’article restera un brouillon de travail : visible uniquement par l’équipe de communication dans le portail.'}
+          </p>
+        </div>
+
         <div hidden={fullPreview}>
           <label className="form-group">Titre<input className="input" required minLength={3} maxLength={180} placeholder="Ex : Rentrée académique 2026-2027 à l’ESCEN" value={editing.title} onChange={event => {
             const nextTitle = event.target.value;
@@ -323,7 +362,15 @@ export default function WebsiteArticlesPanel() {
           <p className="article-publication-note">Vous pourrez vérifier les informations avant de confirmer l’enregistrement.</p>
         </aside></div>
 
-        <DrawerActions><button className="btn btn-primary" disabled={busy}>Relire avant enregistrement</button></DrawerActions>
+        <DrawerActions>
+          <button className="btn btn-primary" disabled={busy}>
+            {editing.status === 'PUBLIE'
+              ? 'Relire avant publication sur le site'
+              : editing.status === 'RETIRE'
+              ? 'Relire avant retrait du site'
+              : 'Relire avant enregistrement du brouillon'}
+          </button>
+        </DrawerActions>
       </ReviewedForm>
     </WorkPage>}
   </section>;

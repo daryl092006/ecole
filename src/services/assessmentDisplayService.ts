@@ -19,7 +19,8 @@ export function assessmentProgress(values: Record<string, unknown>, now = new Da
   if (values.status === 'SOUMISES') return 'Correction soumise';
   if (values.correction_submission_date) return 'Correction soumise';
   if (values.status === 'SAISIES') return 'Notes saisies';
-  const date = String(values.held_on || values.date || '');
+  const rawDate = String(values.access_opens_at || values.starts_at || values.held_on || values.date || '');
+  const date = rawDate.includes('T') ? rawDate.slice(0, 10) : rawDate;
   if (/^\d{4}-\d{2}-\d{2}$/.test(date) && Number.isFinite(Date.parse(date))) {
     const today = now.toISOString().slice(0, 10);
     if (date > today) return 'Programmée';

@@ -6,7 +6,6 @@ import WorkPage from '@/components/ui/WorkPage';
 import ReviewedForm from '@/components/ui/ReviewedForm';
 import DrawerActions from '@/components/ui/DrawerActions';
 import { manageEvaluation } from '@/services/remoteCampusService';
-import { connectedRecordValue } from '@/services/connectedRecordDisplayService';
 import { ROLES } from '@/types/permissions';
 import { isEvaluationEnrollmentStatus } from '@/services/evaluationCandidateService';
 
@@ -159,112 +158,134 @@ export default function EvaluationCreateDialog({
           ...(kind === 'RATTRAPAGE' ? [{ label: 'Évaluation d’origine', value: String(parentOptions.find(row => row.id === parentEvaluationId)?.name || '') }] : []),
         ]}
         validate={validate}
-        consequence={scheduleNow ? (deliveryMode === 'PAPIER' ? 'L’épreuve sur table, la liste des candidats et le créneau en salle seront enregistrés. Le surveillant assurera l’émargement en salle et l’enseignant saisira le bordereau de notes une fois les copies physiques corrigées.' : 'L’évaluation, ses candidats et sa séance d’examen seront enregistrés ensemble. Le sujet sera immédiatement débloqué pour la rédaction.') : 'L’évaluation et ses candidats seront enregistrés en brouillon sans horaire fixé.'}>
+        consequence={scheduleNow ? (deliveryMode === 'PAPIER' ? `L’épreuve sur table sera programmée le ${startsAt.replace('T', ' à ')} en salle ${availableRooms.find(r => r.id === roomId)?.name || 'sélectionnée'}. Le surveillant assurera l’émargement en salle, et l’enseignant saisira le bordereau de notes sur la plateforme une fois les copies physiques corrigées.` : `L’évaluation en ligne sera programmée le ${startsAt.replace('T', ' à ')}. Le sujet sera immédiatement débloqué pour la saisie des questions et du barème.`) : 'L’évaluation et ses candidats seront enregistrés sans horaire fixé (à programmer ultérieurement).'}
+      >
         {error && <div className="restricted-box mb-2" role="alert">{error}</div>}
 
-        <label className="form-group mb-2">Groupe concerné
-          <select className="select-input" required value={groupId} onChange={event => {
-            const id = event.target.value;
-            setGroupId(id); setAssignmentId(filteredAssignments.find(row => row.group_id === id)?.id || ''); setParentEvaluationId('');
-          }}>
-            {!groupId && <option value="">Choisir un groupe</option>}
-            {groups.filter(group => filteredAssignments.some(row => row.group_id === group.id)).map(group => <option key={group.id} value={group.id}>{String(group.name || group.code || 'Groupe')}</option>)}
-          </select>
-        </label>
-
-        <label className="form-group mb-2">
-          Enseignement (Matière &amp; Groupe)
-          <select
-            className="select-input"
-            required
-            value={assignmentId}
-            onChange={e => {
-              setAssignmentId(e.target.value);
-              setParentEvaluationId('');
-            }}
-          >
-            {filteredAssignments.filter(row => !groupId || row.group_id === groupId).map(a => {
-              const comp = components.find(c => c.id === a.component_id);
-              const subj = comp && subjects.find(s => s.id === comp.subject_id);
-              const grp = groups.find(g => g.id === a.group_id);
-              const offName = connectedRecordValue('teaching_assignments', 'offering_id', a.offering_id, snapshot);
-              return (
-                <option key={a.id} value={a.id}>
-                  {String(subj?.name || subj?.code || 'Matière')} · {String(grp?.name || 'Groupe')} ({offName})
-                </option>
-              );
-            })}
-            {!filteredAssignments.length && (
-              <option value="">Aucun enseignement affecté disponible</option>
+        {/* Étape 1 : Cadre pédagogique */}
+        <div className="card mb-3" style={{ border: '1px solid var(--border)', background: 'var(--surface, #ffffff)', padding: '16px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '12px' }}>
+            <span className="page-eyebrow" style={{ color: 'var(--primary, #0284c7)', fontWeight: 700 }}>ÉTAPE 1 · CADRE PÉDAGOGIQUE</span>
+            {selectedAssignment && (
+              <span className="pill pill-default" style={{ fontSize: '0.82rem' }}>
+                👥 {candidateCount} candidat(s) rattaché(s)
+              </span>
             )}
-          </select>
-        </label>
+          </div>
 
-        <div className="form-grid mb-2">
-          <label className="form-group">
-            Nature de l’évaluation
-            <select
-              className="select-input"
-              value={kind}
-              onChange={e => setKind(e.target.value as typeof kind)}
-            >
-              <option value="DEVOIR">Contrôle continu (Devoir)</option>
-              <option value="EXAMEN">Examen sur table</option>
-              <option value="INTERROGATION">Interrogation écrite / orale</option>
-              <option value="TP">Travaux Pratiques (TP)</option>
-              <option value="PROJET">Projet / Étude de cas</option>
-              <option value="EXPOSE">Exposé / Présentation</option>
-              <option value="RATTRAPAGE">Session de rattrapage</option>
-            </select>
-          </label>
+          <div className="form-grid mb-2">
+            <label className="form-group">
+              Groupe / Classe
+              <select className="select-input" required value={groupId} onChange={event => {
+                const id = event.target.value;
+                setGroupId(id);
+                setAssignmentId(filteredAssignments.find(row => row.group_id === id)?.id || '');
+                setParentEvaluationId('');
+              }}>
+                {!groupId && <option value="">Choisir un groupe</option>}
+                {groups.filter(group => filteredAssignments.some(row => row.group_id === group.id)).map(group => (
+                  <option key={group.id} value={group.id}>{String(group.name || group.code || 'Groupe')}</option>
+                ))}
+              </select>
+            </label>
 
-          <label className="form-group">
-            Intitulé de l’évaluation
-            <input
-              type="text"
-              required
-              maxLength={160}
-              className="input"
-              placeholder="Ex : Contrôle continu n°1, Examen partiel…"
-              value={name}
-              onChange={e => setName(e.target.value)}
-            />
-          </label>
+            <label className="form-group">
+              Matière enseignée
+              <select
+                className="select-input"
+                required
+                value={assignmentId}
+                onChange={e => {
+                  setAssignmentId(e.target.value);
+                  setParentEvaluationId('');
+                }}
+              >
+                {filteredAssignments.filter(row => !groupId || row.group_id === groupId).map(a => {
+                  const comp = components.find(c => c.id === a.component_id);
+                  const subj = comp && subjects.find(s => s.id === comp.subject_id);
+                  return (
+                    <option key={a.id} value={a.id}>
+                      {String(subj?.name || subj?.code || 'Matière')}
+                    </option>
+                  );
+                })}
+                {!filteredAssignments.length && (
+                  <option value="">Aucun enseignement disponible</option>
+                )}
+              </select>
+            </label>
+          </div>
+
+          <div className="form-grid mb-2">
+            <label className="form-group">
+              Nature de l’évaluation
+              <select
+                className="select-input"
+                value={kind}
+                onChange={e => setKind(e.target.value as typeof kind)}
+              >
+                <option value="EXAMEN">Examen sur table (Partiel / Final)</option>
+                <option value="DEVOIR">Contrôle continu (Devoir sur table)</option>
+                <option value="INTERROGATION">Interrogation écrite / orale</option>
+                <option value="TP">Travaux Pratiques (TP)</option>
+                <option value="PROJET">Projet / Étude de cas</option>
+                <option value="EXPOSE">Exposé / Présentation</option>
+                <option value="RATTRAPAGE">Session de rattrapage</option>
+              </select>
+            </label>
+
+            <label className="form-group">
+              Intitulé de l’épreuve
+              <input
+                type="text"
+                required
+                maxLength={160}
+                className="input"
+                placeholder="Ex : Examen final du 1er semestre, Devoir surveillé n°1…"
+                value={name}
+                onChange={e => setName(e.target.value)}
+              />
+            </label>
+          </div>
+
+          {kind === 'RATTRAPAGE' && (
+            <label className="form-group mb-2">
+              Évaluation d’origine à rattraper
+              <select
+                className="select-input"
+                required
+                value={parentEvaluationId}
+                onChange={e => setParentEvaluationId(e.target.value)}
+              >
+                <option value="">-- Choisir l’évaluation d’origine --</option>
+                {parentOptions.map(p => (
+                  <option key={p.id} value={p.id}>
+                    {String(p.name)} ({String(p.kind)})
+                  </option>
+                ))}
+              </select>
+            </label>
+          )}
         </div>
 
-        {kind === 'RATTRAPAGE' && (
-          <label className="form-group mb-2">
-            Évaluation parente à rattraper
-            <select
-              className="select-input"
-              required
-              value={parentEvaluationId}
-              onChange={e => setParentEvaluationId(e.target.value)}
-            >
-              <option value="">-- Choisir l’évaluation d’origine --</option>
-              {parentOptions.map(p => (
-                <option key={p.id} value={p.id}>
-                  {String(p.name)} ({String(p.kind)})
-                </option>
-              ))}
-            </select>
-          </label>
-        )}
+        {/* Étape 2 : Modalités et Programmation */}
+        <div className="card mb-3" style={{ border: '1px solid var(--border)', background: scheduleNow ? '#f0f9ff' : 'var(--surface-variant, #f8fafc)', padding: '16px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px' }}>
+            <span className="page-eyebrow" style={{ color: 'var(--primary, #0284c7)', fontWeight: 700 }}>ÉTAPE 2 · SÉANCE ET HORAIRE</span>
+          </div>
 
-        {/* Programmation de la séance */}
-        <div className="card mb-2" style={{ border: '1px solid var(--border)', background: scheduleNow ? '#f0f9ff' : 'var(--surface-variant, #f8fafc)' }}>
-          <label className="checkbox-field" style={{ marginBottom: scheduleNow ? '12px' : 0 }}>
+          <label className="checkbox-field" style={{ marginBottom: scheduleNow ? '14px' : 0 }}>
             <input
               type="checkbox"
               checked={scheduleNow}
               onChange={e => setScheduleNow(e.target.checked)}
             />
-            <strong>Programmer immédiatement la séance d’examen</strong>
+            <strong>Programmer immédiatement la séance d’examen (date, heure et salle)</strong>
           </label>
           <p className="cell-sub" style={{ margin: '4px 0 0 0' }}>
             {scheduleNow
-              ? 'Fixez la date, l’heure et le mode pour débloquer immédiatement la composition du sujet.'
-              : 'Si décoché, l’évaluation sera créée sans horaire et devra être programmée ultérieurement.'}
+              ? 'Fixez la date, l’heure et le mode pour inscrire l’épreuve à l’emploi du temps et dans la liste des examens programmés.'
+              : 'Si décoché, l’épreuve sera créée sans créneau et devra être planifiée ultérieurement.'}
           </p>
 
           {scheduleNow && (
@@ -326,10 +347,16 @@ export default function EvaluationCreateDialog({
                 </label>
               </div>
 
+              {deliveryMode === 'EN_LIGNE' && (
+                <p className="info-box mb-1" style={{ background: '#f0fdf4', borderColor: '#bbf7d0', color: '#166534' }}>
+                  <strong>Épreuve en ligne (sur le portail) :</strong> le sujet de l’épreuve sera immédiatement débloqué pour y rédiger les questions et barèmes. Les étudiants accèderont au sujet en ligne et composeront directement depuis leur espace personnel pendant la fenêtre horaire.
+                </p>
+              )}
+
               {deliveryMode === 'PAPIER' && (
                 <>
                   <p className="info-box mb-1">
-                    <strong>Épreuve en présentiel (sur table / papier) :</strong> les étudiants composent sur papier en salle d’examen. Le surveillant effectue l’émargement en salle et ramasse les copies physiques. L’enseignant correcteur (ou le secrétariat d’examen) saisit ensuite les notes sur la plateforme à partir des copies corrigées.
+                    <strong>Épreuve sur table (en salle) :</strong> les étudiants composent sur papier en salle d’examen. Le surveillant effectue l’émargement en salle et ramasse les copies physiques. L’enseignant correcteur (ou le secrétariat d’examen) saisit ensuite les notes sur la plateforme à partir des copies corrigées.
                   </p>
                   <label className="form-group">
                     Salle d’examen
@@ -357,7 +384,7 @@ export default function EvaluationCreateDialog({
           <p className="cell-sub" style={{ margin: 0 }}>
             {selectedAssignment ? (
               <>
-                <strong>Effectif rattaché :</strong> {candidateCount} étudiant(s) inscrit(s) dans le groupe{' '}
+                <strong>Effectif convoqué :</strong> {candidateCount} étudiant(s) inscrit(s) dans le groupe{' '}
                 <strong>{String(selectedGroup?.name ?? '')}</strong> pour la matière{' '}
                 <strong>{String(selectedSubject?.name || 'Matière')}</strong> seront automatiquement enregistrés comme candidats éligibles.
               </>
@@ -376,7 +403,7 @@ export default function EvaluationCreateDialog({
             className="btn btn-primary"
             disabled={busy || !assignmentId || !candidateCount}
           >
-            {scheduleNow ? 'Créer et programmer l’épreuve' : 'Créer l’évaluation en brouillon'}
+            {scheduleNow ? 'Confirmer et programmer l’épreuve' : 'Enregistrer l’épreuve (sans créneau)'}
           </button>
         </DrawerActions>
       </ReviewedForm>

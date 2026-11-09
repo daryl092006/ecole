@@ -61,6 +61,10 @@ export default function NativeAssessmentWorkspace({ category }: { category: Asse
   const allGrades = data.tables.grades || [];
   const gradeDataAvailable = Array.isArray(data.tables.grades);
   const allAttempts = data.tables.exam_attempts || [];
+  const allDeliveries = data.tables.exam_deliveries || [];
+  const allSessions = data.tables.sessions || [];
+  const deliveryByEval = new Map(allDeliveries.map(d => [String(d.evaluation_id), d]));
+  const sessionById = new Map(allSessions.map(s => [String(s.id), s]));
   const gradeByCand = new Map(allGrades.map(g => [String(g.candidate_id), g]));
   const lastAttemptByCand = new Map<string, DatabaseRow>();
   for (const attempt of allAttempts) {
@@ -94,13 +98,19 @@ export default function NativeAssessmentWorkspace({ category }: { category: Asse
       : vals.length
       ? `${vals.length} note(s) · Moy. ${avg!.toLocaleString('fr-FR', { maximumFractionDigits: 2 })}/20${absentCount ? ` · ${absentCount} abs.` : ''}${pendingCount ? ` · ${pendingCount} à corriger` : ''}`
       : `${cands.length} candidat(s)${absentCount ? ` · ${absentCount} abs.` : ''}${pendingCount ? ` · ${pendingCount} à corriger` : ''}`;
+    const membersWithDelivery = members.map(m => {
+      const delivery = deliveryByEval.get(String(m.id));
+      const session = delivery?.session_id ? sessionById.get(String(delivery.session_id)) : null;
+      const date = delivery?.access_opens_at || session?.starts_at;
+      return date ? { ...m, access_opens_at: date } : m;
+    });
     return {
       key: groupKey(members[0]),
       primary: members[0],
       members,
       subjectLabel: subjectName(members[0]),
       groupLabel: groupName(members[0]),
-      statusLabel: combinedAssessmentProgress(members, pendingCount, cands.length),
+      statusLabel: combinedAssessmentProgress(membersWithDelivery, pendingCount, cands.length),
       notesCount: vals.length,
       absentCount,
       pendingCount,
