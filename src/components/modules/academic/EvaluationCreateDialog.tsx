@@ -76,9 +76,12 @@ export default function EvaluationCreateDialog({
     if (kind === 'RATTRAPAGE' && !parentEvaluationId) return 'Choisissez l’évaluation d’origine.';
     if (scheduleNow) {
       if (!startsAt || !endsAt) return 'Renseignez la date et les heures de début et de fin.';
-      const s = new Date(startsAt).getTime();
-      const e = new Date(endsAt).getTime();
+      const s = new Date(`${startsAt}:00Z`).getTime();
+      const e = new Date(`${endsAt}:00Z`).getTime();
       if (isNaN(s) || isNaN(e) || s >= e) return 'L’heure de début doit précéder l’heure de fin.';
+      if (deliveryMode === 'EN_LIGNE' && s <= Date.now()) {
+        return 'Pour une épreuve en ligne, l’heure de début doit être dans le futur afin de permettre la composition et l’autorisation du sujet.';
+      }
       if (durationMinutes < 1) return 'La durée de composition doit être d’au moins 1 minute.';
       if ((e - s) < durationMinutes * 60000) return 'La fenêtre horaire doit couvrir au moins la durée de l’épreuve.';
       if (deliveryMode === 'PAPIER' && !roomId) return 'Choisissez une salle pour l’épreuve sur papier.';
@@ -250,7 +253,7 @@ export default function EvaluationCreateDialog({
 
           {kind === 'RATTRAPAGE' && (
             <label className="form-group mb-2">
-              Évaluation d’origine à rattraper
+              Évaluation parente à rattraper
               <select
                 className="select-input"
                 required
@@ -301,9 +304,11 @@ export default function EvaluationCreateDialog({
                     onChange={e => {
                       setStartsAt(e.target.value);
                       if (e.target.value && !endsAt) {
-                        const d = new Date(e.target.value);
-                        d.setHours(d.getHours() + 2);
-                        setEndsAt(d.toISOString().slice(0, 16));
+                        const d = new Date(`${e.target.value}:00Z`);
+                        if (!isNaN(d.getTime())) {
+                          d.setUTCHours(d.getUTCHours() + 2);
+                          setEndsAt(d.toISOString().slice(0, 16));
+                        }
                       }
                     }}
                   />

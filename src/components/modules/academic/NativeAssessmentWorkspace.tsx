@@ -223,6 +223,8 @@ export default function NativeAssessmentWorkspace({ category }: { category: Asse
                     </span>{' '}
                     {String(selectedPaper.title || '')} · {String(selectedPaper.duration_minutes)} min
                   </span>
+                ) : isPaper ? (
+                  <span className="cell-sub">Sujet distribué sur table (papier)</span>
                 ) : (
                   <span className="cell-sub">Aucun sujet composé</span>
                 )}
