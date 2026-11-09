@@ -2,13 +2,18 @@ import { resolveAcademicYear } from '@/server/academicYearContext';
 import type { RelationalSnapshot } from '@/types/persistence';
 import { z } from 'zod';
 import { requireAccount, requirePermission, RequestError, errorResponse } from '@/server/auth';
-import { boundedRequest, websiteRpc } from '@/server/website';
-import { articleSchema, intakeSchema, websiteAccess } from '@/services/websiteService';
+import { boundedRequest, manageWebsiteGalleries, websiteRpc } from '@/server/website';
+import { articleSchema, gallerySchema, intakeSchema, websiteAccess } from '@/services/websiteService';
 export const dynamic = 'force-dynamic';
 export async function GET(request: Request) {
   try {
     const { client, context } = await requireAccount(request); const access = websiteAccess(context);
     const params = new URL(request.url).searchParams; const kind = params.get('kind');
+    if (kind === 'galleries') {
+      if (!access.articles) throw new RequestError(403, 'Accès non autorisé.');
+      const data = await manageWebsiteGalleries(client, { p_actor_id: context.accountId, p_role_code: context.roleCode, p_action: 'list', p_data: {} });
+      return Response.json(data, { headers: { 'Cache-Control': 'no-store' } });
+    }
     if (kind === 'brochure-programs') {
       requirePermission(context, 'communication.manage');
       if (!access.manageArticles) throw new RequestError(403, 'Accès non autorisé.');
@@ -44,6 +49,7 @@ export async function GET(request: Request) {
 const common = { id: z.uuid().optional(), version: z.number().int().positive().optional(), reason: z.string().trim().min(3).max(1000) };
 const commandSchema = z.discriminatedUnion('action', [
   articleSchema.extend({ id: common.id, version: common.version, action: z.literal('article-save') }).strict(),
+  gallerySchema.extend({ id: common.id, version: common.version, action: z.literal('gallery-save') }).strict(),
   intakeSchema.extend({ ...common, action: z.literal('intake-save') }).strict(),
   z.object({ action: z.literal('level-documents-save'), academic_year_id: z.uuid(), level_id: z.uuid(), required_documents: intakeSchema.shape.required_documents, expected_intakes: z.array(z.object({ id: z.uuid(), version: z.number().int().positive() }).strict()).min(1).max(500), expected_rule_version: z.number().int().positive().nullable(), reason: common.reason }).strict(),
   z.object({ action: z.literal('application-status'), ...common, id: z.uuid(), version: z.number().int().positive(), status: z.enum(['RECU', 'EN_ANALYSE', 'CLASSE']) }).strict(),
@@ -51,9 +57,9 @@ const commandSchema = z.discriminatedUnion('action', [
 export async function POST(request: Request) {
   try {
     const { client, context } = await requireAccount(request); const access = websiteAccess(context);
-    const body = commandSchema.parse(await (await boundedRequest(request, 4 * 1024 * 1024)).json());
+    const body = commandSchema.parse(await (await boundedRequest(request, 16 * 1024 * 1024)).json());
     if ('id' in body && body.id && !body.version) throw new RequestError(400, 'Version requise.');
-    if (body.action === 'article-save' ? !access.manageArticles : !access.manageAdmissions) throw new RequestError(403, 'Modification non autorisée pour ce rôle.');
+    if ((body.action === 'article-save' || body.action === 'gallery-save') ? !access.manageArticles : !access.manageAdmissions) throw new RequestError(403, 'Modification non autorisée pour ce rôle.');
     const { action, ...data } = body;
     let selectedYearId: string;
     {
@@ -61,7 +67,11 @@ export async function POST(request: Request) {
       if (snapshot.error) throw new RequestError(503,'Contexte annuel indisponible.');
       const year = await resolveAcademicYear(request,client,context,snapshot.data as RelationalSnapshot);
       selectedYearId = String(year.selectedYearId || (snapshot.data as RelationalSnapshot).tables.academic_working_year?.[0]?.academic_year_id || '');
-      if (!year.selectedYearId && body.action !== 'article-save') throw new RequestError(409,'Choisissez une année scolaire précise avant toute modification.');
+      if (!year.selectedYearId && body.action !== 'article-save' && body.action !== 'gallery-save') throw new RequestError(409,'Choisissez une année scolaire précise avant toute modification.');
+      if (body.action === 'gallery-save') {
+        const result = await manageWebsiteGalleries(client, { p_actor_id: context.accountId, p_role_code: context.roleCode, p_action: 'save', p_data: { ...data, academic_year_id: selectedYearId } });
+        return Response.json(result, { status: 201, headers: { 'Cache-Control': 'no-store' } });
+      }
       if (body.action === 'level-documents-save') {
         requirePermission(context, 'student.lifecycle.manage');
         if (body.academic_year_id !== year.selectedYearId) throw new RequestError(409, 'Choisissez la même année que la consultation pour les pièces du niveau.');

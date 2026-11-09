@@ -40,3 +40,23 @@ export interface WebsiteBrochure {
 }
 export type BrochureCycle = 'LICENCE' | 'MASTER' | 'EXECUTIVE';
 export interface WebsiteProgramReference { id: string; name: string; code: string; }
+export interface WebsiteGalleryPhoto {
+  id: string;
+  url: string;
+  caption?: string;
+}
+export interface WebsiteGallery {
+  id: string;
+  academic_year_id?: string | null;
+  title: string;
+  slug: string;
+  subtitle: string;
+  category: string;
+  location: string;
+  cover: string;
+  photos: WebsiteGalleryPhoto[];
+  status: 'BROUILLON' | 'PUBLIE' | 'RETIRE';
+  version: number;
+  published_at: string | null;
+  updated_at: string;
+}

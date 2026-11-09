@@ -1,10 +1,10 @@
 {
   "stats": {
-    "businessTables": 121,
+    "businessTables": 122,
     "privateTables": 14,
-    "columns": 1097,
-    "foreignKeys": 308,
-    "checks": 258,
+    "columns": 1111,
+    "foreignKeys": 310,
+    "checks": 266,
     "exclusions": 5
   },
   "tables": [
@@ -601,6 +601,11 @@
     {
       "schema": "escen",
       "name": "website_brochures",
+      "rls": true
+    },
+    {
+      "schema": "escen",
+      "name": "website_galleries",
       "rls": true
     },
     {
@@ -9593,6 +9598,132 @@
       "type": "text",
       "nullable": "YES",
       "default": null,
+      "generated": "NEVER"
+    },
+    {
+      "schema": "escen",
+      "table": "website_galleries",
+      "name": "id",
+      "type": "uuid",
+      "nullable": "NO",
+      "default": "gen_random_uuid()",
+      "generated": "NEVER"
+    },
+    {
+      "schema": "escen",
+      "table": "website_galleries",
+      "name": "academic_year_id",
+      "type": "uuid",
+      "nullable": "NO",
+      "default": null,
+      "generated": "NEVER"
+    },
+    {
+      "schema": "escen",
+      "table": "website_galleries",
+      "name": "title",
+      "type": "text",
+      "nullable": "NO",
+      "default": null,
+      "generated": "NEVER"
+    },
+    {
+      "schema": "escen",
+      "table": "website_galleries",
+      "name": "slug",
+      "type": "text",
+      "nullable": "NO",
+      "default": null,
+      "generated": "NEVER"
+    },
+    {
+      "schema": "escen",
+      "table": "website_galleries",
+      "name": "subtitle",
+      "type": "text",
+      "nullable": "NO",
+      "default": "''::text",
+      "generated": "NEVER"
+    },
+    {
+      "schema": "escen",
+      "table": "website_galleries",
+      "name": "category",
+      "type": "text",
+      "nullable": "NO",
+      "default": "'Vie étudiante'::text",
+      "generated": "NEVER"
+    },
+    {
+      "schema": "escen",
+      "table": "website_galleries",
+      "name": "location",
+      "type": "text",
+      "nullable": "NO",
+      "default": "'Campus principal'::text",
+      "generated": "NEVER"
+    },
+    {
+      "schema": "escen",
+      "table": "website_galleries",
+      "name": "cover",
+      "type": "text",
+      "nullable": "NO",
+      "default": "''::text",
+      "generated": "NEVER"
+    },
+    {
+      "schema": "escen",
+      "table": "website_galleries",
+      "name": "photos",
+      "type": "jsonb",
+      "nullable": "NO",
+      "default": "'[]'::jsonb",
+      "generated": "NEVER"
+    },
+    {
+      "schema": "escen",
+      "table": "website_galleries",
+      "name": "status",
+      "type": "text",
+      "nullable": "NO",
+      "default": "'BROUILLON'::text",
+      "generated": "NEVER"
+    },
+    {
+      "schema": "escen",
+      "table": "website_galleries",
+      "name": "version",
+      "type": "int4",
+      "nullable": "NO",
+      "default": "1",
+      "generated": "NEVER"
+    },
+    {
+      "schema": "escen",
+      "table": "website_galleries",
+      "name": "published_at",
+      "type": "timestamptz",
+      "nullable": "YES",
+      "default": null,
+      "generated": "NEVER"
+    },
+    {
+      "schema": "escen",
+      "table": "website_galleries",
+      "name": "created_by",
+      "type": "uuid",
+      "nullable": "NO",
+      "default": null,
+      "generated": "NEVER"
+    },
+    {
+      "schema": "escen",
+      "table": "website_galleries",
+      "name": "updated_at",
+      "type": "timestamptz",
+      "nullable": "NO",
+      "default": "now()",
       "generated": "NEVER"
     },
     {
@@ -20929,6 +21060,181 @@
     },
     {
       "schema": "escen",
+      "table": "website_galleries",
+      "name": "website_galleries_academic_year_id_fkey",
+      "type": "f",
+      "definition": "FOREIGN KEY (academic_year_id) REFERENCES escen.academic_years(id) ON DELETE RESTRICT"
+    },
+    {
+      "schema": "escen",
+      "table": "website_galleries",
+      "name": "website_galleries_academic_year_id_not_null",
+      "type": "n",
+      "definition": "NOT NULL academic_year_id"
+    },
+    {
+      "schema": "escen",
+      "table": "website_galleries",
+      "name": "website_galleries_category_check",
+      "type": "c",
+      "definition": "CHECK (((length(btrim(category)) >= 2) AND (length(btrim(category)) <= 120)))"
+    },
+    {
+      "schema": "escen",
+      "table": "website_galleries",
+      "name": "website_galleries_category_not_null",
+      "type": "n",
+      "definition": "NOT NULL category"
+    },
+    {
+      "schema": "escen",
+      "table": "website_galleries",
+      "name": "website_galleries_check",
+      "type": "c",
+      "definition": "CHECK (((status <> 'PUBLIE'::text) OR (published_at IS NOT NULL)))"
+    },
+    {
+      "schema": "escen",
+      "table": "website_galleries",
+      "name": "website_galleries_cover_not_null",
+      "type": "n",
+      "definition": "NOT NULL cover"
+    },
+    {
+      "schema": "escen",
+      "table": "website_galleries",
+      "name": "website_galleries_created_by_fkey",
+      "type": "f",
+      "definition": "FOREIGN KEY (created_by) REFERENCES escen.accounts(id) ON DELETE RESTRICT"
+    },
+    {
+      "schema": "escen",
+      "table": "website_galleries",
+      "name": "website_galleries_created_by_not_null",
+      "type": "n",
+      "definition": "NOT NULL created_by"
+    },
+    {
+      "schema": "escen",
+      "table": "website_galleries",
+      "name": "website_galleries_id_not_null",
+      "type": "n",
+      "definition": "NOT NULL id"
+    },
+    {
+      "schema": "escen",
+      "table": "website_galleries",
+      "name": "website_galleries_location_check",
+      "type": "c",
+      "definition": "CHECK (((length(btrim(location)) >= 2) AND (length(btrim(location)) <= 160)))"
+    },
+    {
+      "schema": "escen",
+      "table": "website_galleries",
+      "name": "website_galleries_location_not_null",
+      "type": "n",
+      "definition": "NOT NULL location"
+    },
+    {
+      "schema": "escen",
+      "table": "website_galleries",
+      "name": "website_galleries_photos_check",
+      "type": "c",
+      "definition": "CHECK ((jsonb_typeof(photos) = 'array'::text))"
+    },
+    {
+      "schema": "escen",
+      "table": "website_galleries",
+      "name": "website_galleries_photos_not_null",
+      "type": "n",
+      "definition": "NOT NULL photos"
+    },
+    {
+      "schema": "escen",
+      "table": "website_galleries",
+      "name": "website_galleries_pkey",
+      "type": "p",
+      "definition": "PRIMARY KEY (id)"
+    },
+    {
+      "schema": "escen",
+      "table": "website_galleries",
+      "name": "website_galleries_slug_check",
+      "type": "c",
+      "definition": "CHECK (((slug ~ '^[a-z0-9]+(-[a-z0-9]+)*$'::text) AND (length(slug) <= 180)))"
+    },
+    {
+      "schema": "escen",
+      "table": "website_galleries",
+      "name": "website_galleries_slug_key",
+      "type": "u",
+      "definition": "UNIQUE (slug)"
+    },
+    {
+      "schema": "escen",
+      "table": "website_galleries",
+      "name": "website_galleries_slug_not_null",
+      "type": "n",
+      "definition": "NOT NULL slug"
+    },
+    {
+      "schema": "escen",
+      "table": "website_galleries",
+      "name": "website_galleries_status_check",
+      "type": "c",
+      "definition": "CHECK ((status = ANY (ARRAY['BROUILLON'::text, 'PUBLIE'::text, 'RETIRE'::text])))"
+    },
+    {
+      "schema": "escen",
+      "table": "website_galleries",
+      "name": "website_galleries_status_not_null",
+      "type": "n",
+      "definition": "NOT NULL status"
+    },
+    {
+      "schema": "escen",
+      "table": "website_galleries",
+      "name": "website_galleries_subtitle_check",
+      "type": "c",
+      "definition": "CHECK ((length(subtitle) <= 300))"
+    },
+    {
+      "schema": "escen",
+      "table": "website_galleries",
+      "name": "website_galleries_subtitle_not_null",
+      "type": "n",
+      "definition": "NOT NULL subtitle"
+    },
+    {
+      "schema": "escen",
+      "table": "website_galleries",
+      "name": "website_galleries_title_check",
+      "type": "c",
+      "definition": "CHECK (((length(btrim(title)) >= 3) AND (length(btrim(title)) <= 180)))"
+    },
+    {
+      "schema": "escen",
+      "table": "website_galleries",
+      "name": "website_galleries_title_not_null",
+      "type": "n",
+      "definition": "NOT NULL title"
+    },
+    {
+      "schema": "escen",
+      "table": "website_galleries",
+      "name": "website_galleries_updated_at_not_null",
+      "type": "n",
+      "definition": "NOT NULL updated_at"
+    },
+    {
+      "schema": "escen",
+      "table": "website_galleries",
+      "name": "website_galleries_version_not_null",
+      "type": "n",
+      "definition": "NOT NULL version"
+    },
+    {
+      "schema": "escen",
       "table": "website_intakes",
       "name": "website_intake_per_year",
       "type": "u",
@@ -25312,6 +25618,36 @@
       "table": "website_brochures",
       "name": "website_brochures_slug_key",
       "definition": "CREATE UNIQUE INDEX website_brochures_slug_key ON escen.website_brochures USING btree (slug)"
+    },
+    {
+      "schema": "escen",
+      "table": "website_galleries",
+      "name": "website_galleries_pkey",
+      "definition": "CREATE UNIQUE INDEX website_galleries_pkey ON escen.website_galleries USING btree (id)"
+    },
+    {
+      "schema": "escen",
+      "table": "website_galleries",
+      "name": "website_galleries_slug_key",
+      "definition": "CREATE UNIQUE INDEX website_galleries_slug_key ON escen.website_galleries USING btree (slug)"
+    },
+    {
+      "schema": "escen",
+      "table": "website_galleries",
+      "name": "website_gallery_author",
+      "definition": "CREATE INDEX website_gallery_author ON escen.website_galleries USING btree (created_by)"
+    },
+    {
+      "schema": "escen",
+      "table": "website_galleries",
+      "name": "website_gallery_status_published",
+      "definition": "CREATE INDEX website_gallery_status_published ON escen.website_galleries USING btree (status, published_at DESC)"
+    },
+    {
+      "schema": "escen",
+      "table": "website_galleries",
+      "name": "website_gallery_year",
+      "definition": "CREATE INDEX website_gallery_year ON escen.website_galleries USING btree (academic_year_id)"
     },
     {
       "schema": "escen",

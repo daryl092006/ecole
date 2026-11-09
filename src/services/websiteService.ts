@@ -119,6 +119,30 @@ export const articleSchema = z.object({
   image: z.union([z.literal(''), z.string().max(1_500_000).refine(isSafeArticleImageUrl, 'Image de couverture invalide.')]),
   status: z.enum(['BROUILLON', 'PUBLIE', 'RETIRE']),
 }).strict();
+export const GALLERY_CATEGORIES = [
+  'Vie étudiante',
+  'Cérémonies & Remises de diplômes',
+  'Conférences & Ateliers',
+  'Rentrée académique',
+  'Campus & Infrastructures',
+  'Entrepreneuriat & Projets',
+  'Sport & Culture',
+] as const;
+export const galleryPhotoSchema = z.object({
+  id: z.string().trim().min(1).max(80),
+  url: z.string().max(1_500_000).refine(isSafeArticleImageUrl, 'Photo de galerie invalide.'),
+  caption: z.string().trim().max(300).optional().default(''),
+}).strict();
+export const gallerySchema = z.object({
+  title: z.string().trim().min(3).max(180),
+  slug: z.string().regex(/^[a-z0-9]+(?:-[a-z0-9]+)*$/).max(180),
+  subtitle: z.string().trim().max(300).optional().default(''),
+  category: z.string().trim().min(2).max(120).optional().default('Vie étudiante'),
+  location: z.string().trim().min(2).max(160).optional().default('Campus principal'),
+  cover: z.union([z.literal(''), z.string().max(1_500_000).refine(isSafeArticleImageUrl, 'Photo de couverture invalide.')]).optional().default(''),
+  photos: z.array(galleryPhotoSchema).max(60).default([]),
+  status: z.enum(['BROUILLON', 'PUBLIE', 'RETIRE']),
+}).strict();
 export const intakeSchema = z.object({
   academic_year_id: z.uuid(), level_id: z.uuid(), program_id: z.uuid(), label: short.min(3), active: z.boolean(),
   required_documents: z.array(z.enum(Object.keys(DOCUMENT_LABELS) as [string, ...string[]])).max(8),

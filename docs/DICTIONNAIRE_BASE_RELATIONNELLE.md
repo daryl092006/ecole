@@ -2,7 +2,7 @@
 
 Généré avec `npm run db:describe` en exécutant les migrations dans PostgreSQL local (PGlite). Aucun accès à Supabase ou aux données de la sauvegarde.
 
-121 tables métier, 14 tables privées, 1097 colonnes, 308 clés étrangères, 258 CHECK de tables et 5 exclusions. Les domaines ajoutent les bornes des notes, des montants FCFA et des textes obligatoires.
+122 tables métier, 14 tables privées, 1111 colonnes, 310 clés étrangères, 266 CHECK de tables et 5 exclusions. Les domaines ajoutent les bornes des notes, des montants FCFA et des textes obligatoires.
 
 Toutes les tables ont RLS activée, sans accès applicatif permis à ce stade. Les noms techniques ne sont pas des libellés à afficher dans l’interface.
 
@@ -127,6 +127,7 @@ Toutes les tables ont RLS activée, sans accès applicatif permis à ce stade. L
 | escen | tracks | 7 | 1 | Oui |
 | escen | website_articles | 12 | 2 | Oui |
 | escen | website_brochures | 16 | 3 | Oui |
+| escen | website_galleries | 14 | 2 | Oui |
 | escen | website_intakes | 9 | 3 | Oui |
 | escen | website_level_document_rules | 7 | 2 | Oui |
 | escen_private | application_access | 3 | 1 | Oui |
@@ -4943,6 +4944,65 @@ CREATE INDEX website_brochure_year ON escen.website_brochures USING btree (acade
 CREATE UNIQUE INDEX website_brochures_object_path_key ON escen.website_brochures USING btree (object_path)
 CREATE UNIQUE INDEX website_brochures_pkey ON escen.website_brochures USING btree (id)
 CREATE UNIQUE INDEX website_brochures_slug_key ON escen.website_brochures USING btree (slug)
+```
+
+## escen.website_galleries
+
+| Attribut | Type | Nullable | Défaut | Généré |
+|---|---|---|---|---|
+| id | uuid | NO | gen_random_uuid() | NEVER |
+| academic_year_id | uuid | NO | — | NEVER |
+| title | text | NO | — | NEVER |
+| slug | text | NO | — | NEVER |
+| subtitle | text | NO | ''::text | NEVER |
+| category | text | NO | 'Vie étudiante'::text | NEVER |
+| location | text | NO | 'Campus principal'::text | NEVER |
+| cover | text | NO | ''::text | NEVER |
+| photos | jsonb | NO | '[]'::jsonb | NEVER |
+| status | text | NO | 'BROUILLON'::text | NEVER |
+| version | int4 | NO | 1 | NEVER |
+| published_at | timestamptz | YES | — | NEVER |
+| created_by | uuid | NO | — | NEVER |
+| updated_at | timestamptz | NO | now() | NEVER |
+
+Contraintes :
+
+```sql
+website_galleries_academic_year_id_fkey: FOREIGN KEY (academic_year_id) REFERENCES escen.academic_years(id) ON DELETE RESTRICT
+website_galleries_academic_year_id_not_null: NOT NULL academic_year_id
+website_galleries_category_check: CHECK (((length(btrim(category)) >= 2) AND (length(btrim(category)) <= 120)))
+website_galleries_category_not_null: NOT NULL category
+website_galleries_check: CHECK (((status <> 'PUBLIE'::text) OR (published_at IS NOT NULL)))
+website_galleries_cover_not_null: NOT NULL cover
+website_galleries_created_by_fkey: FOREIGN KEY (created_by) REFERENCES escen.accounts(id) ON DELETE RESTRICT
+website_galleries_created_by_not_null: NOT NULL created_by
+website_galleries_id_not_null: NOT NULL id
+website_galleries_location_check: CHECK (((length(btrim(location)) >= 2) AND (length(btrim(location)) <= 160)))
+website_galleries_location_not_null: NOT NULL location
+website_galleries_photos_check: CHECK ((jsonb_typeof(photos) = 'array'::text))
+website_galleries_photos_not_null: NOT NULL photos
+website_galleries_pkey: PRIMARY KEY (id)
+website_galleries_slug_check: CHECK (((slug ~ '^[a-z0-9]+(-[a-z0-9]+)*$'::text) AND (length(slug) <= 180)))
+website_galleries_slug_key: UNIQUE (slug)
+website_galleries_slug_not_null: NOT NULL slug
+website_galleries_status_check: CHECK ((status = ANY (ARRAY['BROUILLON'::text, 'PUBLIE'::text, 'RETIRE'::text])))
+website_galleries_status_not_null: NOT NULL status
+website_galleries_subtitle_check: CHECK ((length(subtitle) <= 300))
+website_galleries_subtitle_not_null: NOT NULL subtitle
+website_galleries_title_check: CHECK (((length(btrim(title)) >= 3) AND (length(btrim(title)) <= 180)))
+website_galleries_title_not_null: NOT NULL title
+website_galleries_updated_at_not_null: NOT NULL updated_at
+website_galleries_version_not_null: NOT NULL version
+```
+
+Index :
+
+```sql
+CREATE UNIQUE INDEX website_galleries_pkey ON escen.website_galleries USING btree (id)
+CREATE UNIQUE INDEX website_galleries_slug_key ON escen.website_galleries USING btree (slug)
+CREATE INDEX website_gallery_author ON escen.website_galleries USING btree (created_by)
+CREATE INDEX website_gallery_status_published ON escen.website_galleries USING btree (status, published_at DESC)
+CREATE INDEX website_gallery_year ON escen.website_galleries USING btree (academic_year_id)
 ```
 
 ## escen.website_intakes

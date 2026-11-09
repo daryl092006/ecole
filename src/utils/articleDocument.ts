@@ -232,3 +232,30 @@ export function removeArticleImageAt(value: string, blockIndex: number): string 
   }
   return ARTICLE_DOCUMENT_PREFIX + JSON.stringify({ blocks: nextBlocks });
 }
+
+export function updateArticleImageAltAt(value: string, blockIndex: number, nextAlt: string): string {
+  const doc = parseArticleDocument(value);
+  if (!doc) return value;
+  const trimmed = nextAlt.trim().slice(0, 500) || 'Photo de l’article';
+  const nextBlocks = doc.blocks.map((block, idx) =>
+    idx === blockIndex && block.type === 'image' ? { ...block, alt: trimmed } : block
+  );
+  return ARTICLE_DOCUMENT_PREFIX + JSON.stringify({ blocks: nextBlocks });
+}
+
+export function appendArticleImages(value: string, images: Array<{ src: string; alt: string }>): string {
+  const valid = images
+    .map(item => ({ src: item.src, alt: (item.alt || 'Photo de l’article').trim().slice(0, 500) || 'Photo de l’article' }))
+    .filter(item => isSafeArticleImageUrl(item.src));
+  if (valid.length === 0) return value;
+  const existing = parseArticleDocument(value);
+  const baseBlocks: ArticleDocument['blocks'] = existing
+    ? [...existing.blocks]
+    : value.trim() && !value.startsWith(ARTICLE_DOCUMENT_PREFIX)
+      ? value.split(/\n\s*\n/).filter(Boolean).map(p => ({ type: 'paragraph' as const, content: [{ text: p }] }))
+      : [];
+  for (const img of valid) {
+    baseBlocks.push({ type: 'image', src: img.src, alt: img.alt });
+  }
+  return ARTICLE_DOCUMENT_PREFIX + JSON.stringify({ blocks: baseBlocks.slice(0, 1000) });
+}

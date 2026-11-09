@@ -22,7 +22,7 @@ export const MODULE_JOURNEYS: Record<string, JourneyStage[]> = {
   marketing: [
     { title: 'Gérer les annonces', description: 'Préparer un brouillon, confirmer ses destinataires et publier ou retirer une annonce.', sections: ['comm_announcements'] },
   ],
-  website: [{ title: 'Gérer le site web', description: 'Configurer les pièces et suivre les demandes, articles et brochures.', sections: ['web_applications', 'web_documents', 'web_brochures', 'comm_news'] }],
+  website: [{ title: 'Gérer le site web', description: 'Configurer les pièces et suivre les demandes, articles, galeries photos et brochures.', sections: ['web_applications', 'web_documents', 'web_brochures', 'comm_news', 'web_galleries'] }],
   logistique: [
     { title: 'Référencer les fournisseurs', description: 'Renseigner les coordonnées pour identifier les interlocuteurs de l’établissement.', sections: ['log_suppliers'] },
     { title: 'Suivre les achats', description: 'Enregistrer une demande détaillée, sa décision et les livraisons reçues.', sections: ['log_purchases'] },

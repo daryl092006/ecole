@@ -96,6 +96,7 @@ export const ALL_TABS = [
       { id: 'web_documents', name: 'Formations et pièces' },
       { id: 'web_brochures', name: 'Brochures' },
       { id: 'comm_news', name: 'Articles' },
+      { id: 'web_galleries', name: 'Galeries photos' },
     ],
   },
   {
@@ -129,6 +130,7 @@ const SUBTAB_PERMISSIONS: Record<string, Permission[]> = {
   web_applications: ['application.view', 'student.view'],
   web_documents: ['student.view'],
   web_brochures: ['communication.view'],
+  web_galleries: ['communication.view'],
   staff_records: ['staff.view'],
   log_suppliers:['purchase.view'],
   sys_data: ['system.audit.view'],

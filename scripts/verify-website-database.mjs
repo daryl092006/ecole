@@ -202,4 +202,37 @@ export async function verifyWebsiteDatabase({ db, check, account, level, program
     assert.equal(await value('select public.escen_website_rate($1,1) as value', [key]), true);
     assert.equal(await value('select public.escen_website_rate($1,1) as value', [key]), false);
   });
+  await check('Galeries photos : brouillon privé, publication, retrait, concurrence et audit', async () => {
+    const galleryManage = (action, data = {}, role = 'IT') => value('select public.escen_galleries_manage($1,$2,$3,$4::jsonb) as value', [account.id, role, action, JSON.stringify({ academic_year_id: year.id, ...data })]);
+    const galleryPublic = (slug = null) => value('select public.escen_galleries_public($1) as value', [slug]);
+    const samplePhoto = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVQYV2P4z8DwHwAFgwJ/l7zR+QAAAABJRU5ErkJggg==';
+    const input = {
+      title: 'Journée Portes Ouvertes 2026',
+      slug: 'journee-portes-ouvertes-2026',
+      subtitle: 'Visite guidée des laboratoires numériques',
+      category: 'Événements',
+      location: 'Lomé',
+      cover: samplePhoto,
+      photos: [{ url: samplePhoto, caption: 'Accueil des visiteurs' }],
+      status: 'BROUILLON',
+    };
+    const created = await galleryManage('save', input);
+    assert.equal((await galleryPublic()).length, 0);
+    await assert.rejects(galleryManage('save', { ...input, id: created.id, version: 1 }, 'STUD'), /refusé|autorisé/i);
+    const live = await galleryManage('save', { ...input, id: created.id, version: 1, status: 'PUBLIE' });
+    assert.equal(live.version, 2);
+    const pubRows = await galleryPublic();
+    assert.equal(pubRows.length, 1);
+    assert.equal(pubRows[0].slug, input.slug);
+    assert.equal(pubRows[0].photos.length, 1);
+    assert.equal((await galleryManage('list')).length, 1);
+    await assert.rejects(galleryManage('save', { ...input, id: live.id, version: 1 }), /concurrente/i);
+    await galleryManage('save', { ...input, id: live.id, version: 2, status: 'RETIRE' });
+    assert.equal((await galleryPublic()).length, 0);
+    assert.equal((await value('select public.escen_backend_snapshot() as value')).tables.website_galleries, undefined);
+    const audit = (await db.query("select * from escen_private.audit_events where table_name='website_galleries' and entity_id=$1 and action='UPDATE' order by happened_at desc limit 1", [live.id])).rows[0];
+    assert.equal(audit.actor_id, account.id);
+    assert.equal(audit.new_value.status, 'RETIRE');
+    await assert.rejects(db.query('delete from escen.website_galleries where id=$1', [live.id]));
+  });
 }

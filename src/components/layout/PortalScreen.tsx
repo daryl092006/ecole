@@ -35,6 +35,7 @@ import OnlineAdmissionsPanel from '@/components/modules/website/OnlineAdmissions
 import AdmissionsWorkflowPanel from '@/components/modules/website/AdmissionsWorkflowPanel';
 import WebsiteBrochuresPanel from '@/components/modules/website/WebsiteBrochuresPanel';
 import WebsiteArticlesPanel from '@/components/modules/website/WebsiteArticlesPanel';
+import WebsiteGalleriesPanel from '@/components/modules/website/WebsiteGalleriesPanel';
 import ConnectedDomainWorkspace from '@/components/modules/ConnectedDomainWorkspace';
 import SupportWorkspace from '@/components/modules/SupportWorkspace';
 import CommunicationsWorkspace from '@/components/modules/CommunicationsWorkspace';
@@ -69,6 +70,7 @@ export default function PortalScreen({ section }: { tab: string; section: string
   if (state.session && section === 'web_applications') return <AdmissionsWorkflowPanel />;
   if (state.session && section === 'web_documents') return <OnlineAdmissionsPanel mode="configuration" />;
   if (state.session && section === 'web_brochures') return <WebsiteBrochuresPanel />;
+  if (state.session && section === 'web_galleries') return <WebsiteGalleriesPanel />;
   if (state.session && section === 'comm_news') return <WebsiteArticlesPanel />;
   if (state.session && (section === 'espace_dashboard' || section === 'dashboard_kpis' || section === 'dashboard_reports')) {
     return <WorkspaceHome mode={section === 'dashboard_kpis' ? 'overview' : section === 'dashboard_reports' ? 'reports' : 'home'} />;

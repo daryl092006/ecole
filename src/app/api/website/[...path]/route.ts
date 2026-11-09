@@ -3,9 +3,9 @@ import { createHash, randomBytes, randomUUID } from 'node:crypto';
 import { z } from 'zod';
 import { getSupabaseServerClient } from '@/lib/supabase/server';
 import { errorResponse, RequestError } from '@/server/auth';
-import { boundedRequest, hashWebsiteToken, isAllowedWebsiteOrigin, websiteRpc } from '@/server/website';
+import { boundedRequest, hashWebsiteToken, isAllowedWebsiteOrigin, listPublicWebsiteGalleries, websiteRpc } from '@/server/website';
 import { DOCUMENT_LABELS, diplomaSchema, escapeArticleContent, guardianSchema, identitySchema, sniffDocument } from '@/services/websiteService';
-import type { WebsiteArticle, WebsiteIntake } from '@/types/website';
+import type { WebsiteArticle, WebsiteGallery, WebsiteIntake } from '@/types/website';
 import { attemptApplicationEmails, portalOrigin } from '@/server/admissions';
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
@@ -30,6 +30,35 @@ const publicArticle = (article: WebsiteArticle) => ({
   date: article.published_at?.slice(0, 10), readTime: `${Math.max(1, Math.ceil(articlePlainText(article.content).trim().split(/\s+/).filter(Boolean).length / 200))} min`,
   comments: [], tags: [], is_event: false, featured: false,
 });
+function serveGalleryImage(request: Request, rawUrl: string | undefined) {
+  if (!rawUrl) throw new RequestError(404, 'Photo introuvable.');
+  if (rawUrl.startsWith('https://')) return cors(request, Response.redirect(rawUrl, 302));
+  const match = /^data:(image\/(?:jpeg|png|webp));base64,([A-Za-z0-9+/=]+)$/.exec(rawUrl);
+  if (!match) throw new RequestError(404, 'Format de photo non disponible.');
+  const bytes = Buffer.from(match[2], 'base64');
+  return cors(request, new Response(bytes, { headers: { 'Content-Type': match[1], 'Content-Length': String(bytes.byteLength) } }));
+}
+function mapPublicGallery(row: WebsiteGallery, origin: string) {
+  const photos = Array.isArray(row.photos) ? row.photos : [];
+  const rawCover = row.cover || photos[0]?.url || '';
+  const coverUrl = rawCover.startsWith('https://') ? rawCover : (rawCover ? `${origin}/api/website/public/galeries/${encodeURIComponent(row.slug)}/cover` : '');
+  return {
+    id: row.id,
+    slug: row.slug,
+    title: row.title,
+    subtitle: row.subtitle,
+    category: row.category,
+    location: row.location,
+    cover: coverUrl,
+    cover_url: coverUrl,
+    photoCount: photos.length,
+    published_at: row.published_at,
+    photos: photos.map((photo, index) => ({
+      url: photo.url?.startsWith('https://') ? photo.url : `${origin}/api/website/public/galeries/${encodeURIComponent(row.slug)}/photo/${index}`,
+      caption: photo.caption || row.title,
+    })),
+  };
+}
 async function handle(request: Request, context: RouteContext) {
   try {
     const { path } = await context.params;
@@ -53,6 +82,32 @@ async function handle(request: Request, context: RouteContext) {
         const file = await client.storage.from('escen-website-brochures').download(brochure.object_path);
         if (file.error || !file.data) throw new RequestError(503, 'Téléchargement indisponible.');
         return cors(request, new Response(file.data, { headers: { 'Content-Type': 'application/pdf', 'Content-Disposition': `attachment; filename="${slug}.pdf"` } }));
+      }
+      if (route === 'public/galeries' || route.startsWith('public/galeries/')) {
+        const client = getSupabaseServerClient();
+        const origin = portalOrigin(request);
+        const rows = await listPublicWebsiteGalleries(client, null);
+        if (route === 'public/galeries') {
+          return cors(request, Response.json({ success: true, data: rows.map(row => mapPublicGallery(row, origin)) }));
+        }
+        const slug = path[2];
+        const rawAlbum = rows.find(item => item.slug === slug || item.id === slug);
+        if (!rawAlbum) throw new RequestError(404, 'Album photo introuvable.');
+        if (path.length === 4 && path[3] === 'cover') {
+          return serveGalleryImage(request, rawAlbum.cover || rawAlbum.photos?.[0]?.url);
+        }
+        if (path.length === 5 && path[3] === 'photo') {
+          const photoIndex = Number(path[4]);
+          if (!Number.isInteger(photoIndex) || photoIndex < 0) throw new RequestError(404, 'Photo introuvable.');
+          return serveGalleryImage(request, rawAlbum.photos?.[photoIndex]?.url);
+        }
+        if (path.length === 3) {
+          const mapped = rows.map(row => mapPublicGallery(row, origin));
+          const album = mapped.find(item => item.slug === rawAlbum.slug)!;
+          const otherAlbums = mapped.filter(item => item.slug !== rawAlbum.slug).slice(0, 6);
+          return cors(request, Response.json({ success: true, data: { album, other_albums: otherAlbums } }));
+        }
+        throw new RequestError(404, 'Ressource de galerie introuvable.');
       }
       if (route === 'public/configurations') return cors(request, Response.json([]));
       if (route === 'public/candidature-config') return cors(request, Response.json({ academic_year: await rpc('year'), types_diplome: [], champs: [{ champ_key: 'tuteur_tel', label: 'Téléphone du tuteur', obligatoire: true }, { champ_key: 'tuteur_email', label: 'Email du tuteur', obligatoire: false }], moyens_connaissance: [], sigle: 'ESCEN' }));

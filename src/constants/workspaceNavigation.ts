@@ -19,7 +19,7 @@ export const WORKSPACE_NAVIGATION: NavigationGroup[] = [
   { id: 'staff', name: 'Personnel', icon: 'Users', category: 'Services de l’établissement', sections: ['staff_records'] },
   { id: 'communication', name: 'Communication', icon: 'Megaphone', category: 'Services de l’établissement', sections: ['comm_announcements'] },
   { id: 'logistics', name: 'Achats et matériel', icon: 'Package', category: 'Services de l’établissement', sections: ['log_suppliers', 'log_purchases', 'log_assets'] },
-  { id: 'website', name: 'Site web', icon: 'Globe', category: 'Administration', sections: ['web_documents', 'web_brochures', 'comm_news'] },
+  { id: 'website', name: 'Site web', icon: 'Globe', category: 'Administration', sections: ['web_documents', 'web_brochures', 'comm_news', 'web_galleries'] },
   { id: 'access', name: 'Comptes et droits d’accès', icon: 'Users', category: 'Administration', sections: ['stud_accounts', 'staff_list', 'staff_roles', 'staff_permissions'] },
   { id: 'system', name: 'Données et assistance', icon: 'Settings', category: 'Administration', sections: ['sys_data', 'sys_logs', 'sys_emails', 'sys_backups', 'sys_support'] },
 ];

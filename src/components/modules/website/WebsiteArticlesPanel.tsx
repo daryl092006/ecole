@@ -1,7 +1,7 @@
 'use client';
 import PageHeader from '@/components/ui/PageHeader';
 import Link from 'next/link';
-import { FileText, Pencil, Plus, Archive, BookOpen, ImagePlus, Trash2, Eye } from 'lucide-react';
+import { FileText, Pencil, Plus, Archive, BookOpen, ImagePlus, Images, Trash2, Eye } from 'lucide-react';
 import DrawerActions from '@/components/ui/DrawerActions';
 import IconButton from '@/components/ui/IconButton';
 import LoadingState from '@/components/ui/LoadingState';
@@ -111,8 +111,9 @@ export default function WebsiteArticlesPanel() {
     <PageHeader
       eyebrow="COMMUNICATION & SITE WEB"
       title="Articles du site"
-      description="Préparez vos actualités, intégrez vos photos et gérez leur publication sur le site ESCEN."
+      description="Préparez vos actualités, intégrez vos photos de couverture et de contenu, et gérez leur publication sur le site ESCEN."
     >
+      <Link className="btn btn-outline" href="/site-web/galeries"><Images size={16} aria-hidden="true" />Galeries photos</Link>
       <Link className="btn btn-outline" href="/site-web/brochures"><BookOpen size={16} aria-hidden="true" />Brochures PDF</Link>
       <button className="btn btn-outline" onClick={() => setArchives(true)}><Archive size={16} aria-hidden="true" />Consulter les archives</button>
       {canManage && <button className="btn btn-primary" aria-label="+ Rédiger un article" onClick={() => { setSuccess(''); setEditorError(''); setFullPreview(false); setEditing({ ...emptyArticle }); setSlugTouched(false); }}><Plus size={17} aria-hidden="true" />Rédiger un article</button>}
@@ -227,7 +228,46 @@ export default function WebsiteArticlesPanel() {
           }} /></label>
           <label className="form-group">Résumé<textarea className="input" rows={3} required minLength={3} maxLength={500} placeholder="Chapeau introductif affiché sur la liste des actualités (1 à 2 phrases)…" value={editing.excerpt} onChange={event => setEditing({ ...editing, excerpt: event.target.value })} /></label>
 
-          <ArticleEditor value={editing.content} disabled={busy} onValidityChange={setEditorError} onChange={content => setEditing({ ...editing, content })} />
+          <div
+            className="article-main-cover-box"
+            onDragOver={event => event.preventDefault()}
+            onDrop={event => {
+              event.preventDefault();
+              const file = Array.from(event.dataTransfer?.files || []).find(f => f.type.startsWith('image/'));
+              if (file) void handleCoverUpload(file);
+            }}
+          >
+            <div className="article-main-cover-header">
+              <div>
+                <strong>Photo de couverture de l’article</strong>
+                <span>Affichée en en-tête de l’article et sur la liste des actualités du site public.</span>
+              </div>
+              <div className="btn-group">
+                <button type="button" className="btn btn-outline btn-sm" disabled={busy || coverUploading} onClick={() => coverInputRef.current?.click()}>
+                  <ImagePlus size={15} aria-hidden="true" />{coverUploading ? 'Importation…' : editing.image ? 'Changer la couverture' : 'Choisir une photo de couverture'}
+                </button>
+                {editing.image && (
+                  <button type="button" className="btn btn-outline btn-sm" disabled={busy} onClick={() => setEditing({ ...editing, image: '' })}>
+                    <Trash2 size={14} aria-hidden="true" />Retirer
+                  </button>
+                )}
+              </div>
+            </div>
+            {editing.image && (
+              <div className="article-main-cover-preview">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src={editing.image} alt="Couverture de l’article" />
+              </div>
+            )}
+          </div>
+
+          <ArticleEditor
+            value={editing.content}
+            disabled={busy}
+            onValidityChange={setEditorError}
+            onSelectCover={src => setEditing(prev => (prev ? { ...prev, image: prev.image || src } : prev))}
+            onChange={content => setEditing(prev => (prev ? { ...prev, content } : prev))}
+          />
         </div>
 
         {fullPreview && (

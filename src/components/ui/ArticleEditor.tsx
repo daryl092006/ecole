@@ -1,9 +1,10 @@
 'use client';
 
 import { useEffect, useId, useMemo, useRef, useState } from 'react';
-import { Bold, Italic, Underline, List, ListOrdered, Quote, Link2, ImageIcon, Undo2, Redo2, RemoveFormatting, Upload, Trash2 } from 'lucide-react';
+import { Bold, Italic, Underline, List, ListOrdered, Quote, Link2, ImageIcon, Undo2, Redo2, RemoveFormatting, Upload, Trash2, Sparkles } from 'lucide-react';
 import {
   ARTICLE_DOCUMENT_PREFIX,
+  appendArticleImages,
   articleDocumentFromElement,
   articlePlainText,
   escapeArticleText,
@@ -12,6 +13,7 @@ import {
   readAndOptimizeArticleImage,
   removeArticleImageAt,
   renderArticleContent,
+  updateArticleImageAltAt,
 } from '@/utils/articleDocument';
 
 function suggestAltFromFilename(filename: string): string {
@@ -20,10 +22,23 @@ function suggestAltFromFilename(filename: string): string {
   return base.charAt(0).toUpperCase() + base.slice(1);
 }
 
-export default function ArticleEditor({ value, onChange, onValidityChange, disabled = false }: { value: string; onChange: (value: string) => void; onValidityChange?: (error: string) => void; disabled?: boolean }) {
+export default function ArticleEditor({
+  value,
+  onChange,
+  onValidityChange,
+  onSelectCover,
+  disabled = false,
+}: {
+  value: string;
+  onChange: (value: string) => void;
+  onValidityChange?: (error: string) => void;
+  onSelectCover?: (src: string) => void;
+  disabled?: boolean;
+}) {
   const id = useId();
   const editor = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const multiPhotoInputRef = useRef<HTMLInputElement>(null);
   const lastValue = useRef(value);
   const selection = useRef<Range | null>(null);
   const [insert, setInsert] = useState<'link' | 'image' | null>(null);
@@ -93,8 +108,42 @@ export default function ArticleEditor({ value, onChange, onValidityChange, disab
     }
   };
 
+  const handleDirectMultiplePhotos = async (fileList: FileList | File[] | null | undefined) => {
+    const files = Array.from(fileList || []).filter(f => f.type.startsWith('image/'));
+    if (files.length === 0) return;
+    setUploadingImage(true);
+    setError('');
+    try {
+      const prepared: Array<{ src: string; alt: string }> = [];
+      for (const file of files) {
+        const dataUrl = await readAndOptimizeArticleImage(file);
+        prepared.push({ src: dataUrl, alt: suggestAltFromFilename(file.name) });
+      }
+      const currentValue = editor.current
+        ? ARTICLE_DOCUMENT_PREFIX + JSON.stringify(articleDocumentFromElement(editor.current))
+        : value;
+      const next = appendArticleImages(currentValue, prepared);
+      lastValue.current = '';
+      onChange(next);
+      if (onSelectCover && prepared[0]) {
+        onSelectCover(prepared[0].src);
+      }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Impossible d’importer les photos sélectionnées.');
+    } finally {
+      setUploadingImage(false);
+      if (multiPhotoInputRef.current) multiPhotoInputRef.current.value = '';
+    }
+  };
+
   const removeInlineImage = (blockIndex: number) => {
     const next = removeArticleImageAt(value, blockIndex);
+    lastValue.current = '';
+    onChange(next);
+  };
+
+  const updateInlineImageAlt = (blockIndex: number, nextAlt: string) => {
+    const next = updateArticleImageAltAt(value, blockIndex, nextAlt);
     lastValue.current = '';
     onChange(next);
   };
@@ -118,15 +167,10 @@ export default function ArticleEditor({ value, onChange, onValidityChange, disab
           onClick={() => {
             capture();
             setError('');
-            setInsert('image');
-            setUploadedImage('');
-            setUploadedFileName('');
-            setUrl('');
-            setDescription('');
-            fileInputRef.current?.click();
+            multiPhotoInputRef.current?.click();
           }}
         >
-          <Upload size={15} aria-hidden="true" />Ajouter une photo
+          <Upload size={15} aria-hidden="true" />{uploadingImage ? 'Importation…' : 'Ajouter des photos au contenu'}
         </button>
         <button type="button" className="btn btn-outline btn-sm" onClick={() => setPreview(!preview)}>{preview ? 'Reprendre la rédaction' : 'Aperçu de l’article'}</button>
       </div>
@@ -137,6 +181,14 @@ export default function ArticleEditor({ value, onChange, onValidityChange, disab
       accept="image/jpeg,image/png,image/webp"
       hidden
       onChange={event => void handlePhotoFile(event.target.files?.[0])}
+    />
+    <input
+      ref={multiPhotoInputRef}
+      type="file"
+      accept="image/jpeg,image/png,image/webp"
+      multiple
+      hidden
+      onChange={event => void handleDirectMultiplePhotos(event.target.files)}
     />
     <div hidden={preview}>
       <div role="toolbar" aria-label="Mise en forme de l’article" className="article-editor-toolbar">
@@ -210,11 +262,10 @@ export default function ArticleEditor({ value, onChange, onValidityChange, disab
         onKeyUp={capture}
         onMouseUp={capture}
         onPaste={event => {
-          const files = Array.from(event.clipboardData?.files || []);
-          const imageFile = files.find(f => f.type.startsWith('image/'));
-          if (imageFile) {
+          const files = Array.from(event.clipboardData?.files || []).filter(f => f.type.startsWith('image/'));
+          if (files.length > 0) {
             event.preventDefault();
-            void handlePhotoFile(imageFile);
+            void handleDirectMultiplePhotos(files);
             return;
           }
           event.preventDefault();
@@ -223,22 +274,39 @@ export default function ArticleEditor({ value, onChange, onValidityChange, disab
         onDragOver={event => event.preventDefault()}
         onDrop={event => {
           event.preventDefault();
-          const files = Array.from(event.dataTransfer?.files || []);
-          const imageFile = files.find(f => f.type.startsWith('image/'));
-          if (imageFile) {
-            void handlePhotoFile(imageFile);
+          const files = Array.from(event.dataTransfer?.files || []).filter(f => f.type.startsWith('image/'));
+          if (files.length > 0) {
+            void handleDirectMultiplePhotos(files);
           }
         }}
       />
       {inlineImages.length > 0 && (
         <div className="article-inline-images-strip" aria-label="Photos intégrées dans l’article">
-          <span className="article-inline-images-title">Photos dans l’article ({inlineImages.length})</span>
+          <span className="article-inline-images-title">Photos intégrées dans le contenu ({inlineImages.length})</span>
           <div className="article-inline-images-list">
             {inlineImages.map((img, idx) => (
               <div className="article-inline-image-chip" key={`${img.blockIndex}-${idx}`}>
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img src={img.src} alt={img.alt} />
-                <span title={img.alt}>{img.alt}</span>
+                <input
+                  className="input article-inline-caption-input"
+                  aria-label={`Légende de la photo ${idx + 1}`}
+                  value={img.alt}
+                  disabled={disabled}
+                  placeholder="Légende de la photo…"
+                  onChange={event => updateInlineImageAlt(img.blockIndex, event.target.value)}
+                />
+                {onSelectCover && (
+                  <button
+                    type="button"
+                    className="btn btn-outline btn-sm"
+                    disabled={disabled}
+                    title="Utiliser cette photo comme couverture de l’article"
+                    onClick={() => onSelectCover(img.src)}
+                  >
+                    <Sparkles size={13} aria-hidden="true" />Couverture
+                  </button>
+                )}
                 <button
                   type="button"
                   className="btn btn-outline btn-sm"
