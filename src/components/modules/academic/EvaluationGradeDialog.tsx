@@ -24,13 +24,23 @@ import type { GradeWorkflowStatus } from '@/types/academic';
 import PersistentExamCopies from './PersistentExamCopies';
 
 const STEPS = [
-  { id: 'BROUILLON', label: 'Brouillon', owner: 'Enseignant correcteur' },
+  { id: 'BROUILLON', label: 'Programmée', owner: 'Enseignant / Administration' },
   { id: 'SAISIES', label: 'Saisie', owner: 'Enseignant correcteur' },
   { id: 'SOUMISES', label: 'Soumission', owner: 'Enseignant correcteur' },
   { id: 'A_CONTROLER', label: 'Contrôle', owner: 'Direction académique' },
   { id: 'VALIDEES', label: 'Validation', owner: 'Direction académique' },
   { id: 'PUBLIEES', label: 'Publication', owner: 'Résultats officiels' },
 ];
+
+function formatWorkflowStatusLabel(st: unknown): string {
+  if (st === 'BROUILLON') return 'Programmée / À saisir';
+  if (st === 'SAISIES') return 'Saisie en cours';
+  if (st === 'SOUMISES') return 'Notes soumises';
+  if (st === 'A_CONTROLER') return 'À contrôler';
+  if (st === 'VALIDEES') return 'Notes validées';
+  if (st === 'PUBLIEES') return 'Résultats publiés';
+  return String(st || '');
+}
 
 export default function EvaluationGradeDialog({
   evaluationId,
@@ -65,7 +75,7 @@ export default function EvaluationGradeDialog({
               const candCount = (portal.relationalSnapshot.tables.evaluation_candidates || []).filter(c => c.evaluation_id === id).length;
               return (
                 <option key={id} value={id}>
-                  {offLabel} ({candCount} candidat{candCount > 1 ? 's' : ''} · {String(ev?.status || '')})
+                  {offLabel} ({candCount} candidat{candCount > 1 ? 's' : ''} · {formatWorkflowStatusLabel(ev?.status)})
                 </option>
               );
             })}

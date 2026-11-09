@@ -8,6 +8,7 @@ import { usePortal } from '@/hooks/usePortal';
 import EvaluationGradeDialog from './EvaluationGradeDialog';
 import EvaluationCreateDialog from './EvaluationCreateDialog';
 import { evaluationGradeIsComplete, evaluationGradeValue } from '@/services/evaluationGradePolicy';
+import { assessmentProgress } from '@/services/assessmentDisplayService';
 import { formatSubjectCode } from '@/services/resaoCodeService';
 
 interface Props {
@@ -24,6 +25,22 @@ function evalTypeLabel(ev: DatabaseRow): string {
   if (ev.kind === 'PROJET') return 'Projet';
   if (ev.kind === 'SOUTENANCE') return 'Soutenance';
   return 'Examen';
+}
+
+function evalStatusDisplay(ev: DatabaseRow, snapshot: RelationalSnapshot): { label: string; pillClass: string } {
+  const deliveries = snapshot.tables.exam_deliveries || [];
+  const sessions = snapshot.tables.sessions || [];
+  const delivery = deliveries.find(d => d.evaluation_id === ev.id);
+  const session = delivery?.session_id ? sessions.find(s => s.id === delivery.session_id) : null;
+  const date = delivery?.access_opens_at || session?.starts_at;
+  const enriched = date ? { ...ev, access_opens_at: date } : ev;
+  const progress = assessmentProgress(enriched);
+  const label = progress === 'Brouillon' ? 'Brouillon (à programmer)' : progress;
+  let pillClass = 'pill-default';
+  if (['Résultats publiés', 'Notes validées'].includes(progress)) pillClass = 'pill-success';
+  else if (['Programmée', 'Notes saisies', 'Correction soumise'].includes(progress)) pillClass = 'pill-info';
+  else if (['Prévue aujourd’hui', 'En attente de correction', 'À contrôler'].includes(progress)) pillClass = 'pill-warning';
+  return { label, pillClass };
 }
 
 export default function GroupSubjectGradesPanel({ snapshot, canViewStudents, onSelectStudent }: Props) {
@@ -335,19 +352,22 @@ export default function GroupSubjectGradesPanel({ snapshot, canViewStudents, onS
                 <h4>Évaluations de la matière ({orderedSubjectEvals.length})</h4>
               </div>
               <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap' }}>
-                {orderedSubjectEvals.map(ev => (
-                  <div key={ev.id} className="card p-2" style={{ display: 'flex', alignItems: 'center', gap: '1rem', border: '1px solid var(--border)' }}>
-                    <div>
-                      <strong>{String(ev.name)}</strong>
-                      <div className="cell-sub">{evalTypeLabel(ev)} · État : <span className="pill pill-default">{String(ev.status)}</span></div>
+                {orderedSubjectEvals.map(ev => {
+                  const statusInfo = evalStatusDisplay(ev, snapshot);
+                  return (
+                    <div key={ev.id} className="card p-2" style={{ display: 'flex', alignItems: 'center', gap: '1rem', border: '1px solid var(--border)' }}>
+                      <div>
+                        <strong>{String(ev.name)}</strong>
+                        <div className="cell-sub">{evalTypeLabel(ev)} · État : <span className={`pill ${statusInfo.pillClass}`}>{statusInfo.label}</span></div>
+                      </div>
+                      {(portal.perms.permissions.includes('grade.enter') || portal.perms.permissions.includes('grade.review') || portal.perms.permissions.includes('grade.approve') || portal.perms.permissions.includes('grade.publish')) && (
+                        <button className="btn btn-sm btn-primary" onClick={() => setManagingEvalId(String(ev.id))}>
+                          Saisir / Gérer
+                        </button>
+                      )}
                     </div>
-                    {(portal.perms.permissions.includes('grade.enter') || portal.perms.permissions.includes('grade.review') || portal.perms.permissions.includes('grade.approve') || portal.perms.permissions.includes('grade.publish')) && (
-                      <button className="btn btn-sm btn-primary" onClick={() => setManagingEvalId(String(ev.id))}>
-                        Saisir / Gérer
-                      </button>
-                    )}
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             </div>
           )}

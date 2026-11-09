@@ -21,6 +21,7 @@ import {
   evaluationGradeNoteLabel,
   evaluationGradeValue,
 } from '@/services/evaluationGradePolicy';
+import { assessmentProgress } from '@/services/assessmentDisplayService';
 import type { Student } from '@/types/student';
 import { useEffect, useState } from 'react';
 
@@ -85,6 +86,16 @@ export default function StudentRecordPanel({ studentId, embedded = false, initia
     const complaint = (snapshot.tables.complaints || []).find(
       c => c.candidate_id === cand.id || (grade && c.grade_id === grade.id),
     );
+    const delivery = (snapshot.tables.exam_deliveries || []).find(d => d.evaluation_id === ev?.id);
+    const session = delivery?.session_id ? (snapshot.tables.sessions || []).find(s => s.id === delivery.session_id) : null;
+    const deliveryDate = delivery?.access_opens_at || session?.starts_at;
+    const progress = ev ? assessmentProgress(deliveryDate ? { ...ev, access_opens_at: deliveryDate } : ev) : '';
+    const progressLabel = progress === 'Brouillon' ? 'À programmer' : progress;
+    let progressPill = 'pill-default';
+    if (['Résultats publiés', 'Notes validées'].includes(progress)) progressPill = 'pill-success';
+    else if (['Programmée', 'Notes saisies', 'Correction soumise'].includes(progress)) progressPill = 'pill-info';
+    else if (['Prévue aujourd’hui', 'En attente de correction', 'À contrôler'].includes(progress)) progressPill = 'pill-warning';
+
     return {
       candidateId: String(cand.id),
       evaluationId: String(cand.evaluation_id || ''),
@@ -92,6 +103,8 @@ export default function StudentRecordPanel({ studentId, embedded = false, initia
       evaluationName: ev ? String(ev.name || '') : 'Évaluation',
       evaluationKind: ev ? String(ev.kind || '') : '',
       evaluationStatus: ev ? String(ev.status || '') : '',
+      progressLabel,
+      progressPill,
       gradeVal,
       noteLabel: evaluationGradeNoteLabel(grade, lastAttempt?.status),
       statusLabel: evaluationCandidateStatusLabel(grade, lastAttempt?.status),
@@ -204,8 +217,8 @@ export default function StudentRecordPanel({ studentId, embedded = false, initia
                           {item.evaluationKind && <div className="cell-sub">{item.evaluationKind}</div>}
                         </td>
                         <td>
-                          <span className="pill pill-default">
-                            {connectedRecordValue('evaluations', 'status', item.evaluationStatus, snapshot)}
+                          <span className={`pill ${item.progressPill}`}>
+                            {item.progressLabel || connectedRecordValue('evaluations', 'status', item.evaluationStatus, snapshot)}
                           </span>
                         </td>
                         <td><strong>{item.noteLabel}</strong></td>
