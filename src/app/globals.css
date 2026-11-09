@@ -5531,78 +5531,224 @@ form > .drawer-form-actions,
 
 
 /* ============================================================
-   Sobriété globale : toutes les pages, tableaux et cartes.
-   Principe : moins de bordures, moins d'ombres, moins de texte
-   secondaire, des chiffres clés en simple bandeau.
+   Sobriété et clarté globale : pleine largeur, typographie
+   lisible, chiffres clés en blocs nets et tables aérées.
    ============================================================ */
 
-/* Bruit visuel retiré partout */
-.page-eyebrow,
+/* Pleine largeur et respiration générale */
+.main-content {
+  width: 100% !important;
+  max-width: none !important;
+  padding: 22px 32px 48px !important;
+  box-sizing: border-box !important;
+}
+.workspace-stack,
+.domain-workspace {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  width: 100%;
+}
+.workspace-stack > *,
+.domain-workspace > * {
+  margin-top: 0 !important;
+  margin-bottom: 0 !important;
+}
+.workspace-location {
+  margin-bottom: 10px !important;
+  padding-bottom: 8px !important;
+  border-bottom: 1px solid #f1f5f9 !important;
+}
+.page-intro {
+  margin-bottom: 16px !important;
+}
+
+/* En-têtes, surtitres et descriptions lisibles */
+.page-eyebrow {
+  display: block !important;
+  font-size: 0.72rem !important;
+  font-weight: 600 !important;
+  letter-spacing: 0.06em !important;
+  text-transform: uppercase !important;
+  color: #2563eb !important;
+  margin-bottom: 4px !important;
+}
 .page-intro p,
 .module-header p,
-.home-section-heading p,
-.workspace-data-footer,
-.connected-data-bar,
-.card-header p.cell-sub,
-.card-header > div > p,
-.card > h2 + p.cell-sub { display: none !important; }
+.home-section-heading p {
+  display: block !important;
+  font-size: 0.84rem !important;
+  color: #64748b !important;
+  line-height: 1.5 !important;
+  margin-top: 4px !important;
+  max-width: 75ch;
+}
 
-/* Aucun effet de survol « flottant » */
-.card:hover,
-.kpi-card:hover,
-.home-metrics > div:hover,
-.home-destinations > a:hover,
-.metric-card:hover { transform: none !important; box-shadow: none !important; }
-
-/* Contenu : respiration nette, largeur maîtrisée, une seule logique d'espacement */
-.main-content { padding: 18px 24px 36px !important; max-width: 1440px !important; }
-.workspace-stack,
-.domain-workspace { display: flex; flex-direction: column; gap: 12px; }
-.workspace-stack > *,
-.domain-workspace > * { margin-top: 0 !important; margin-bottom: 0 !important; }
-.workspace-location { margin-bottom: 8px !important; padding-bottom: 6px !important; border-bottom: 1px solid #f1f5f9 !important; }
-.page-intro { margin-bottom: 12px !important; }
-
-/* Cartes épurées, jamais de cadre lourd imbriqué */
+/* Cartes nettes et aérées */
 .card {
   background: #ffffff !important;
   border: 1px solid #e2e8f0 !important;
   border-radius: 10px !important;
   box-shadow: 0 1px 2px rgba(0, 0, 0, 0.03) !important;
-  padding: 16px 20px !important;
+  padding: 18px 22px !important;
+  box-sizing: border-box !important;
 }
-.card .card,
-.card .table-wrap,
-.card .kpi-card { border: 0 !important; background: transparent !important; box-shadow: none !important; padding: 0 !important; }
-.card-header { border-bottom: 0 !important; margin-bottom: 8px !important; padding-bottom: 0 !important; }
+.card-header {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: space-between !important;
+  border-bottom: 1px solid #f1f5f9 !important;
+  margin-bottom: 14px !important;
+  padding-bottom: 10px !important;
+}
 .card-header h2,
-.card > h2 { font-size: 0.95rem !important; margin-bottom: 8px !important; }
+.card-header h3,
+.card > h2 {
+  font-size: 1.02rem !important;
+  font-weight: 600 !important;
+  color: #0f172a !important;
+  margin: 0 !important;
+  display: flex !important;
+  align-items: center !important;
+  gap: 8px !important;
+}
 
-/* Barres d'outils et sélecteurs de table : transparents, sans boîte grise */
+/* Grille d'accueil et chiffres clés lisibles */
+.home-bottom-grid {
+  display: grid !important;
+  grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  gap: 16px !important;
+  margin-bottom: 16px !important;
+}
+.home-metrics {
+  display: grid !important;
+  grid-template-columns: repeat(auto-fit, minmax(115px, 1fr)) !important;
+  gap: 10px !important;
+  margin-top: 10px !important;
+  padding: 0 !important;
+  border: 0 !important;
+  background: transparent !important;
+}
+.home-metrics > div {
+  display: flex !important;
+  flex-direction: column !important;
+  align-items: flex-start !important;
+  justify-content: center !important;
+  gap: 4px !important;
+  padding: 12px 14px !important;
+  background: #f8fafc !important;
+  border: 1px solid #e2e8f0 !important;
+  border-radius: 8px !important;
+  box-shadow: none !important;
+  min-width: 0 !important;
+}
+.home-metrics strong {
+  font-size: 1.35rem !important;
+  font-weight: 700 !important;
+  color: #0f172a !important;
+  line-height: 1.2 !important;
+  order: 1 !important;
+  margin: 0 !important;
+}
+.home-metrics span {
+  font-size: 0.76rem !important;
+  font-weight: 500 !important;
+  color: #64748b !important;
+  line-height: 1.3 !important;
+  order: 2 !important;
+  margin: 0 !important;
+}
+
+/* Chiffres clés KPI des modules */
+.kpi-grid {
+  display: grid !important;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)) !important;
+  gap: 14px !important;
+  margin: 0 0 16px !important;
+  padding: 0 !important;
+  border: 0 !important;
+  background: transparent !important;
+}
+.kpi-card {
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 4px !important;
+  padding: 14px 18px !important;
+  background: #ffffff !important;
+  border: 1px solid #e2e8f0 !important;
+  border-radius: 10px !important;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.03) !important;
+  min-width: 0 !important;
+}
+.kpi-value {
+  font-size: 1.45rem !important;
+  font-weight: 700 !important;
+  color: #0f172a !important;
+  line-height: 1.2 !important;
+  margin: 0 !important;
+}
+.kpi-label {
+  font-size: 0.78rem !important;
+  font-weight: 500 !important;
+  color: #64748b !important;
+  line-height: 1.3 !important;
+  margin: 0 !important;
+}
+
+/* Éléments à suivre */
+.home-record-counts {
+  display: grid !important;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 360px)) !important;
+  gap: 12px !important;
+  margin-top: 8px !important;
+}
+.home-record-counts > div {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: space-between !important;
+  padding: 12px 16px !important;
+  background: #f8fafc !important;
+  border: 1px solid #e2e8f0 !important;
+  border-radius: 8px !important;
+}
+.home-record-counts > div strong {
+  font-size: 1.15rem !important;
+  font-weight: 700 !important;
+  color: #2563eb !important;
+}
+
+/* Barres d'outils et sélecteurs */
 .browser-toolbar,
 .directory-toolbar,
 .app-wrapper :is(.browser-toolbar, .directory-toolbar) {
+  display: flex !important;
+  flex-wrap: wrap !important;
+  align-items: center !important;
+  justify-content: space-between !important;
   background: transparent !important;
   border: 0 !important;
-  padding: 0 0 8px 0 !important;
+  padding: 0 0 12px 0 !important;
   box-shadow: none !important;
-  gap: 10px !important;
+  gap: 12px !important;
 }
 .record-sections {
+  display: flex !important;
+  flex-wrap: wrap !important;
   background: transparent !important;
   border: 0 !important;
   padding: 0 !important;
-  gap: 6px !important;
-  margin: 4px 0 12px 0 !important;
+  gap: 8px !important;
+  margin: 4px 0 14px 0 !important;
 }
 .record-sections button {
   background: #f1f5f9 !important;
   color: #475569 !important;
   border: 1px solid transparent !important;
   border-radius: 6px !important;
-  padding: 5px 12px !important;
-  font-size: 0.78rem !important;
-  min-height: 30px !important;
+  padding: 6px 14px !important;
+  font-size: 0.8rem !important;
+  min-height: 32px !important;
+  cursor: pointer;
 }
 .record-sections button.selected {
   background: #eff6ff !important;
@@ -5611,87 +5757,123 @@ form > .drawer-form-actions,
   font-weight: 600 !important;
 }
 
-/* Chiffres clés : un seul bandeau discret au lieu de grosses tuiles */
-.kpi-grid,
-.kpi-stat-grid,
-.editorial-stats-grid,
-.home-metrics {
-  display: flex !important; flex-wrap: wrap; gap: 6px 22px !important;
-  margin: 0 0 4px !important; padding: 0 !important;
-  border: 0 !important; background: transparent !important;
+/* Tableaux lisibles et aérés */
+.table-wrap {
+  width: 100% !important;
+  max-width: 100% !important;
+  overflow-x: auto !important;
+  border: 1px solid #e2e8f0 !important;
+  border-radius: 8px !important;
+  background: #ffffff !important;
 }
-.kpi-card,
-.kpi-stat-tile,
-.editorial-stat-card,
-.home-metrics > div {
-  display: inline-flex !important; flex-direction: row !important; align-items: baseline; gap: 8px !important;
-  padding: 0 !important; border: 0 !important; border-radius: 0 !important;
-  background: transparent !important; box-shadow: none !important; min-width: 0;
+.data-table {
+  width: 100% !important;
+  border-collapse: collapse !important;
 }
-.kpi-card .cell-sub,
-.kpi-card svg,
-.kpi-stat-tile svg,
-.home-metrics svg { display: none !important; }
-.kpi-label,
-.editorial-stat-card > span,
-.home-metrics span { order: 2; font-size: 0.78rem !important; font-weight: 500 !important; text-transform: none !important; letter-spacing: 0 !important; color: #64748b !important; }
-.kpi-value,
-.editorial-stat-card strong,
-.home-metrics strong { order: 1; font-size: 1.05rem !important; font-weight: 600 !important; margin: 0 !important; color: #0f172a; }
-.articles-workspace .editorial-stats-grid { border: 0 !important; }
-.articles-workspace .editorial-stat-card { padding: 0 !important; border: 0 !important; }
-
-/* Tableaux : fond blanc pur, aucune zébrure, en-têtes discrets, séparateurs très doux */
-.table-wrap { border: 0 !important; border-radius: 0 !important; }
-.table-wrap:not(:has(> .mobile-record-table)) .data-table th:last-child,
-.table-wrap:not(:has(> .mobile-record-table)) .data-table td:last-child {
-  background: inherit !important;
-  box-shadow: none !important;
-}
-.app-wrapper .data-table tbody tr:nth-child(even) td,
-.data-table tbody tr:nth-child(even) td { background: transparent !important; }
 .data-table th {
-  background: #fafbfc !important;
-  color: #64748b !important;
-  font-size: 0.72rem !important;
+  background: #f8fafc !important;
+  color: #475569 !important;
+  font-size: 0.74rem !important;
   font-weight: 600 !important;
   text-transform: uppercase !important;
   letter-spacing: 0.04em !important;
-  padding: 8px 12px !important;
-  border-top: 1px solid #e8edf3 !important;
-  border-bottom: 1px solid #e8edf3 !important;
+  padding: 10px 14px !important;
+  border-bottom: 1px solid #e2e8f0 !important;
+  text-align: left;
 }
 .data-table td {
-  padding: 10px 12px !important;
-  border-bottom: 1px solid #f3f5f8 !important;
-  font-size: 0.82rem !important;
-  color: #1e293b;
+  padding: 11px 14px !important;
+  border-bottom: 1px solid #f1f5f9 !important;
+  font-size: 0.83rem !important;
+  color: #1e293b !important;
   vertical-align: middle;
 }
-.data-table tr:hover td { background: #fafbfd !important; }
-.data-table .cell-sub {
-  color: #64748b !important; font-size: 0.72rem !important; margin-top: 1px !important;
-  max-width: 280px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+.data-table tr:last-child td {
+  border-bottom: 0 !important;
 }
-.data-table td strong { font-weight: 600; color: #0f172a; }
+.data-table tr:hover td {
+  background: #f8fafc !important;
+}
+.data-table .cell-sub {
+  color: #64748b !important;
+  font-size: 0.74rem !important;
+  margin-top: 2px !important;
+}
+.data-table td strong {
+  font-weight: 600;
+  color: #0f172a;
+}
 
-/* Pastilles calmes : texte coloré, sans cadre ni fond criard */
-.pill { border-color: transparent !important; font-size: 0.7rem !important; padding: 2px 8px !important; font-weight: 500 !important; border-radius: 9999px !important; }
+/* Pastilles calmes */
+.pill {
+  border-color: transparent !important;
+  font-size: 0.72rem !important;
+  padding: 3px 9px !important;
+  font-weight: 500 !important;
+  border-radius: 9999px !important;
+}
 
-/* Boutons secondaires discrets, un seul bouton plein par zone */
-.btn-outline { border-color: #cbd5e1 !important; color: #334155 !important; background: #fff !important; }
-.btn-outline:hover { background: #f8fafc !important; }
-.data-table .btn-sm { min-height: 26px !important; padding: 2px 8px !important; }
+/* Boutons secondaires discrets */
+.btn-outline {
+  border-color: #cbd5e1 !important;
+  color: #334155 !important;
+  background: #fff !important;
+}
+.btn-outline:hover {
+  background: #f8fafc !important;
+}
+.data-table .btn-sm {
+  min-height: 28px !important;
+  padding: 3px 9px !important;
+}
 
-/* Formulaires et filtres plus serrés */
-.form-grid { gap: 10px !important; margin: 8px 0 !important; }
-.form-group { gap: 4px !important; font-size: 0.78rem; color: #64748b; }
-.input, .select-input { min-height: 34px !important; height: 34px !important; font-size: 0.82rem !important; border-color: #cbd5e1 !important; border-radius: 6px !important; }
-.input:focus, .select-input:focus { border-color: #3b82f6 !important; outline: none !important; box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.15) !important; }
-.section-tabs { gap: 4px !important; margin-bottom: 8px !important; }
-.info-box, .review-notice { margin: 6px 0 !important; }
+/* Formulaires et filtres confortables */
+.form-grid {
+  gap: 12px !important;
+  margin: 10px 0 !important;
+}
+.form-group {
+  gap: 5px !important;
+  font-size: 0.8rem;
+  color: #475569;
+}
+.input,
+.select-input {
+  min-height: 36px !important;
+  height: 36px !important;
+  font-size: 0.83rem !important;
+  border-color: #cbd5e1 !important;
+  border-radius: 6px !important;
+}
+.input:focus,
+.select-input:focus {
+  border-color: #3b82f6 !important;
+  outline: none !important;
+  box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.15) !important;
+}
+.section-tabs {
+  gap: 6px !important;
+  margin-bottom: 10px !important;
+}
+.info-box,
+.review-notice {
+  margin: 8px 0 !important;
+}
+
+@media (max-width: 1024px) {
+  .home-bottom-grid {
+    grid-template-columns: 1fr !important;
+  }
+}
 
 @media (max-width: 768px) {
-  .main-content { padding: 12px 12px 28px !important; }
-  .kpi-grid, .kpi-stat-grid, .editorial-stats-grid, .home-metrics { gap: 4px 14px !important; }
+  .main-content {
+    padding: 14px 14px 32px !important;
+  }
+  .home-bottom-grid {
+    grid-template-columns: 1fr !important;
+  }
+  .home-metrics {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  }
 }
