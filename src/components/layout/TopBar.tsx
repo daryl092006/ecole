@@ -103,7 +103,42 @@ export default function TopBar({ userName, userEmail, activeRole, availableRoles
     <div className="topbar-right">
       <div className="notification-control">
         <button className="notif-btn" aria-label={`Notifications : ${notificationCount}`} aria-expanded={panel === 'notifications'} onClick={() => { if (accountControl.current) accountControl.current.open = false; setPanel(current => current === 'notifications' ? null : 'notifications'); }}><Bell size={18} />{notificationCount > 0 && <span className="notif-badge">{notificationCount}</span>}</button>
-        {panel === 'notifications' && <section className="header-popover notification-panel" aria-label="Notifications"><div className="popover-heading">Notifications</div>{notificationCount ? <ul>{notifications.map(item => <li key={`session-${item.id}`}>{item.text}</li>)}{applicationNotices.notices.map(item => <li key={item.id}><Link href="/site-web/demandes">{item.message}</Link></li>)}</ul> : <div className="empty-state"><strong>Vous êtes à jour</strong><span>Aucune notification pour ce rôle.</span></div>}{applicationNotices.notices.length > 0 && <button className="btn btn-outline" onClick={() => { void applicationNotices.markRead().catch(() => undefined); }}>Marquer les notifications de candidature comme lues</button>}</section>}
+        {panel === 'notifications' && (
+          <section className="header-popover notification-panel" aria-label="Notifications">
+            <div className="popover-heading">Notifications</div>
+            {notificationCount ? (
+              <ul className="notification-list">
+                {notifications.map(item => (
+                  <li key={`session-${item.id}`} className="notification-item">{item.text}</li>
+                ))}
+                {applicationNotices.notices.map(item => (
+                  <li key={item.id} className="notification-item">
+                    <Link href="/site-web/demandes" className="notification-link" onClick={() => setPanel(null)}>
+                      <span>{item.message}</span>
+                      <ArrowUpRight size={14} aria-hidden="true" />
+                    </Link>
+                  </li>
+                ))}
+              </ul>
+            ) : (
+              <div className="empty-state">
+                <strong>Vous êtes à jour</strong>
+                <span>Aucune notification pour ce rôle.</span>
+              </div>
+            )}
+            {applicationNotices.notices.length > 0 && (
+              <div className="notification-panel-footer">
+                <button
+                  type="button"
+                  className="btn btn-outline notification-mark-read-btn"
+                  onClick={() => { void applicationNotices.markRead().catch(() => undefined); }}
+                >
+                  Marquer les notifications de candidature comme lues
+                </button>
+              </div>
+            )}
+          </section>
+        )}
       </div>
       <details className="account-control" ref={accountControl} onToggle={event => { if (event.currentTarget.open) setPanel(null); }}>
         <summary className="account-summary" aria-label="Mon compte et mon rôle">

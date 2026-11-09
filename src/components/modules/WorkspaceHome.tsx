@@ -338,7 +338,7 @@ export default function WorkspaceHome({ mode = 'home' }: { mode?: 'home' | 'over
       return [
         {
           title: 'Candidatures & Étudiants',
-          href: '/site-web/candidatures',
+          href: '/site-web/demandes',
           icon: Megaphone,
           items: [
             { label: 'Candidatures', value: `${count('online_applications')}` },
