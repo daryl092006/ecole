@@ -39,7 +39,7 @@ const emptyGallery = {
   location: 'Campus principal',
   cover: '',
   photos: [] as WebsiteGalleryPhoto[],
-  status: 'BROUILLON' as WebsiteGallery['status'],
+  status: 'PUBLIE' as WebsiteGallery['status'],
 };
 
 const statusLabels: Record<WebsiteGallery['status'], string> = {

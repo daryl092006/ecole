@@ -170,7 +170,7 @@ for (const width of [360, 390]) {
     await reducedViewport(page, dialog, dialog.getByLabel('Diffusion', { exact: true }), width);
     await dialog.getByRole('button', { name: 'Relire avant enregistrement', exact: true }).click(); expect(fixture.commands).toHaveLength(0);
     await visibleActions(page, dialog); await dialog.getByRole('button', { name: 'Confirmer l’enregistrement', exact: true }).click();
-    await expect(dialog).toHaveCount(0); await expect(page.getByRole('status').filter({ hasText: 'Brouillon de l’article enregistré.' })).toBeVisible();
+    await expect(dialog).toHaveCount(0); await expect(page.getByRole('status').filter({ hasText: 'Article enregistré et publié sur le site.' })).toBeVisible();
   });
 }
 
@@ -211,8 +211,8 @@ test('FormFeedback suit la dernière modale active et revient au parent après f
     for (const id of ['feedback-parent', 'feedback-child']) { const overlay = document.createElement('div'); overlay.className = 'detail-overlay'; overlay.id = id; overlay.innerHTML = '<div class="detail-drawer-feedback"></div>'; document.body.appendChild(overlay); }
     document.getElementById('feedback-parent')!.inert = true;
   });
-  await expect(page.locator('#feedback-child').getByRole('status')).toContainText('Brouillon de l’article enregistré.');
+  await expect(page.locator('#feedback-child').getByRole('status')).toContainText('Article enregistré et publié sur le site.');
   await expect(page.locator('#feedback-parent').getByRole('status')).toHaveCount(0);
   await page.evaluate(() => { document.getElementById('feedback-child')!.remove(); document.getElementById('feedback-parent')!.inert = false; });
-  await expect(page.locator('#feedback-parent').getByRole('status')).toContainText('Brouillon de l’article enregistré.');
+  await expect(page.locator('#feedback-parent').getByRole('status')).toContainText('Article enregistré et publié sur le site.');
 });

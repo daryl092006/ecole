@@ -12,7 +12,7 @@ import ErrorState from '@/components/ui/ErrorState';
 import WorkPage from '@/components/ui/WorkPage';
 import FormFeedback from '@/components/ui/FormFeedback';
 
-const empty = { title: '', slug: '', description: '', status: 'BROUILLON' as WebsiteBrochure['status'], program_id: null as string | null, cycle: null as WebsiteBrochure['cycle'] };
+const empty = { title: '', slug: '', description: '', status: 'PUBLIE' as WebsiteBrochure['status'], program_id: null as string | null, cycle: null as WebsiteBrochure['cycle'] };
 const labels = { BROUILLON: 'Brouillon', PUBLIE: 'Publiée', RETIRE: 'Retirée' };
 const cycleLabels: Record<string, string> = { LICENCE: 'Licence Pro', MASTER: 'Master Pro', EXECUTIVE: 'Executive Master' };
 const cycles = ['LICENCE', 'MASTER', 'EXECUTIVE', 'GENERAL'];

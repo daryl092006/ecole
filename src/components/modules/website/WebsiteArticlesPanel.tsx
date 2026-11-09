@@ -16,7 +16,7 @@ import { articlePlainText, extractArticleImages, readAndOptimizeArticleImage, re
 import FormFeedback from '@/components/ui/FormFeedback';
 import ConnectedDomainWorkspace from '@/components/modules/ConnectedDomainWorkspace';
 
-const emptyArticle = { title: '', slug: '', excerpt: '', content: '', image: '', status: 'BROUILLON' as WebsiteArticle['status'] };
+const emptyArticle = { title: '', slug: '', excerpt: '', content: '', image: '', status: 'PUBLIE' as WebsiteArticle['status'] };
 const statusLabels: Record<WebsiteArticle['status'], string> = {
   BROUILLON: 'Brouillon privé',
   PUBLIE: 'Publié sur le site',
