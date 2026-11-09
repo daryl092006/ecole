@@ -54,6 +54,7 @@ assert.equal(diplomaSchema.safeParse({ type_diplome_id: 'Master', annee_diplome:
 assert.equal(diplomaSchema.safeParse({ type_diplome_id: 'BAC', annee_bac: 2020, serie: 'D' }).success, true);
 const context = { role: ROLES.IT, permissions: ['student.view', 'student.lifecycle.manage', 'communication.view', 'communication.manage'], grants: [{ site_id: null, group_id: null, academic_year_id: null }] } as PersistentContext;
 assert.deepEqual(websiteAccess(context), { admissions: true, manageAdmissions: true, articles: true, manageArticles: true });
+assert.deepEqual(websiteAccess({ ...context, role: ROLES.MKT, permissions: ['student.view', 'communication.view', 'communication.manage'] } as PersistentContext), { admissions: true, manageAdmissions: true, articles: true, manageArticles: true });
 assert.equal(websiteAccess({ ...context, grants: [{ ...context.grants[0], site_id: 'SITE' }] }).admissions, false);
 assert.equal(websiteAccess({ ...context, role: ROLES.STUD }).admissions, false);
 assert.equal(websiteAccess({ ...context, permissions: ['communication.view'] }).manageArticles, false);

@@ -149,10 +149,10 @@ export const intakeSchema = z.object({
 }).strict();
 export function websiteAccess(context: PersistentContext) {
   const global = context.grants.some(grant => !grant.site_id && !grant.group_id && !grant.academic_year_id);
-  const admissions = global && [ROLES.DG, ROLES.DGA, ROLES.DA, ROLES.LOG, ROLES.RAF, ROLES.IT].includes(context.role as typeof ROLES.DG) && context.permissions.includes('student.view');
+  const admissions = global && [ROLES.DG, ROLES.DGA, ROLES.DA, ROLES.LOG, ROLES.RAF, ROLES.MKT, ROLES.CC, ROLES.IT].includes(context.role as typeof ROLES.DG) && context.permissions.includes('student.view');
   return {
     admissions,
-    manageAdmissions: admissions && context.permissions.includes('student.lifecycle.manage'),
+    manageAdmissions: admissions && (context.permissions.includes('student.lifecycle.manage') || context.permissions.includes('communication.manage')),
     articles: global && context.permissions.includes('communication.view'),
     manageArticles: global && context.permissions.includes('communication.manage'),
   };

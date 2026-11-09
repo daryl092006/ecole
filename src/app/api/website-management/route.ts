@@ -73,7 +73,9 @@ export async function POST(request: Request) {
         return Response.json(result, { status: 201, headers: { 'Cache-Control': 'no-store' } });
       }
       if (body.action === 'level-documents-save') {
-        requirePermission(context, 'student.lifecycle.manage');
+        if (!context.permissions.includes('student.lifecycle.manage') && !context.permissions.includes('communication.manage')) {
+          throw new RequestError(403, 'Permission insuffisante pour configurer les pièces du niveau.');
+        }
         if (body.academic_year_id !== year.selectedYearId) throw new RequestError(409, 'Choisissez la même année que la consultation pour les pièces du niveau.');
         const result = await websiteRpc(client, 'escen_website_level_documents', { p_actor_id: context.accountId, p_role_code: context.roleCode, p_academic_year_id: selectedYearId, p_level_id: body.level_id, p_required_documents: body.required_documents, p_expected_intakes: body.expected_intakes, p_expected_rule_version: body.expected_rule_version, p_reason: body.reason });
         return Response.json(result, { status: 201, headers: { 'Cache-Control': 'no-store' } });
