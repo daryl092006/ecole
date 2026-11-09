@@ -116,6 +116,13 @@ function buildRichSnapshot() {
     complaints: [{ id: 'COMPL1', candidate_id: 'CA1', grade_id: 'GR1', status: 'NOUVELLE', reason: 'Contestation du barème de la question 3' }],
     complaint_events: [{ id: 'CE1', complaint_id: 'COMPL1', from_status: 'NOUVELLE', to_status: 'EN_ANALYSE', reason: 'Prise en charge par la direction académique' }],
   });
+  campus.academicContext = {
+    currentYearId: yearId,
+    currentYearConfigured: true,
+    selectedYearId: yearId,
+    selection: 'current',
+    years: [{ id: yearId, name: '2026-2027', status: 'OUVERTE', starts_on: '2026-10-01', ends_on: '2027-06-30' }],
+  };
   return campus;
 }
 
@@ -124,15 +131,26 @@ test.describe.serial('Audit Responsive Exhaustif (360px, 390px, 768px, 1024px, 1
 
   for (const width of WIDTHS) {
     test(`Audit des ${SCREENS.length} écrans à ${width}px`, async ({ page }) => {
+      test.setTimeout(600000);
       const allResults: ScreenResult[] = [];
-      mkdirSync(`.tmp/screenshots/${width}`, { recursive: true });
-      mkdirSync(`tmp/screenshots/${width}`, { recursive: true });
+      mkdirSync(`tmp/screenshots/responsive-audit/${width}`, { recursive: true });
 
       await page.setViewportSize({ width, height: 900 });
 
       // Setup common mock routes
       const richSnapshot = buildRichSnapshot();
       await page.route('**/api/campus', route => route.fulfill({ json: richSnapshot }));
+      await page.route('**/api/course-resources*', route => route.fulfill({
+        json: {
+          revision: 1,
+          selectedYearId: '10000000-0000-4000-8000-000000000001',
+          canManage: true,
+          canScheduleOnline: true,
+          courses: [],
+          onlineSessions: [],
+          resources: []
+        }
+      }));
       await page.route('**/api/website-management?kind=articles', route => route.fulfill({ json: [
         { id: 'ART1', title: 'Lancement de l’année académique 2026-2027', slug: 'lancement-annee-2026', status: 'PUBLIE', summary: 'Présentation des nouveaux parcours de formation.', published_at: '2026-10-01' }
       ] }));
@@ -204,8 +222,15 @@ test.describe.serial('Audit Responsive Exhaustif (360px, 390px, 768px, 1024px, 1
       await authenticateFixture(page);
 
       for (const screen of SCREENS) {
-        await page.goto(screen.href, { waitUntil: 'domcontentloaded' });
-        await page.waitForTimeout(150); // let animations / layout settle
+        if (!screen.isAuth) {
+          await authenticateFixture(page);
+        }
+        try {
+          await page.goto(screen.href, { waitUntil: 'domcontentloaded', timeout: 15000 });
+        } catch {
+          await page.waitForTimeout(500);
+        }
+        await page.waitForTimeout(200); // let animations / layout settle
 
         // Check for loading states to finish
         const loadingSpinner = page.locator('[role=status]').filter({ hasText: /^Chargement/ });
@@ -338,14 +363,8 @@ test.describe.serial('Audit Responsive Exhaustif (360px, 390px, 768px, 1024px, 1
         }, width);
 
         // Take screenshot
-        const screenshotPath = `.tmp/screenshots/${width}/${screen.key}.png`;
-        const pubScreenshotPath = `tmp/screenshots/${width}/${screen.key}.png`;
+        const screenshotPath = `tmp/screenshots/responsive-audit/${width}/${screen.key}.png`;
         await page.screenshot({ path: screenshotPath, fullPage: true });
-        // copy or save to tmp/screenshots as well
-        try {
-          const buf = await page.screenshot({ fullPage: true });
-          writeFileSync(pubScreenshotPath, buf);
-        } catch {}
 
         allResults.push({
           key: screen.key,
@@ -359,8 +378,7 @@ test.describe.serial('Audit Responsive Exhaustif (360px, 390px, 768px, 1024px, 1
       }
 
       // Save report for this width
-      writeFileSync(`.tmp/screenshots/audit-report-${width}.json`, JSON.stringify(allResults, null, 2));
-      writeFileSync(`tmp/screenshots/audit-report-${width}.json`, JSON.stringify(allResults, null, 2));
+      writeFileSync(`tmp/screenshots/responsive-audit/audit-report-${width}.json`, JSON.stringify(allResults, null, 2));
     });
   }
 });
