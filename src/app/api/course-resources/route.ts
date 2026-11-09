@@ -134,7 +134,23 @@ function buildDirectory(
   };
 
   const sessions = rows('sessions').filter(s => !['ANNULE'].includes(String(s.status)));
+  const participations = rows('session_participations');
   const rawResources = (rows('course_resources') || []).filter(r => !r.archived_at);
+
+  const assignmentMeta = new Map(
+    allRows('teaching_assignments').map(a => {
+      const comp = componentsMap.get(String(a.component_id));
+      const off = allRows('academic_offerings').find(o => o.id === a.offering_id);
+      return [
+        String(a.id),
+        {
+          teacherId: String(a.teacher_id || ''),
+          subjectId: comp?.subjectId || '',
+          levelId: String(off?.level_id || ''),
+        },
+      ];
+    })
+  );
 
   const courses: CourseListEntry[] = rows('teaching_assignments')
     .filter(a => !a.archived_at)
@@ -153,9 +169,30 @@ function buildDirectory(
         ? `${levelsMap.get(String(offering.level_id)) || ''} ${progId ? programsMap.get(progId) || '' : ''}`.trim()
         : 'Formation';
       const tInfo = teacherInfo(String(a.teacher_id));
-      const courseSessions = sessions.filter(s => s.assignment_id === assignmentId);
+      const partSessionIds = new Set(
+        participations.filter(p => String(p.assignment_id) === assignmentId).map(p => String(p.session_id))
+      );
+      const directSessions = sessions.filter(s => s.assignment_id === assignmentId || partSessionIds.has(String(s.id)));
+      const courseSessions = directSessions.length > 0
+        ? directSessions
+        : sessions.filter(s => {
+            const meta = assignmentMeta.get(String(s.assignment_id));
+            return (
+              Boolean(meta) &&
+              meta?.teacherId === String(a.teacher_id) &&
+              Boolean(comp?.subjectId) &&
+              meta?.subjectId === comp?.subjectId &&
+              Boolean(offering?.level_id) &&
+              meta?.levelId === String(offering?.level_id)
+            );
+          });
       const onlineCount = courseSessions.filter(s => s.mode === 'EN_LIGNE').length;
-      const courseRes = rawResources.filter(r => r.assignment_id === assignmentId || (r.group_id === groupId && r.component_id === componentId));
+      const courseRes = rawResources.filter(
+        r =>
+          r.assignment_id === assignmentId ||
+          (r.group_id === groupId && r.component_id === componentId) ||
+          (Boolean(comp?.subjectId) && componentsMap.get(String(r.component_id))?.subjectId === comp?.subjectId && assignmentMeta.get(String(r.assignment_id))?.levelId === String(offering?.level_id))
+      );
       const recCount = courseRes.filter(r => r.kind === 'ENREGISTREMENT').length + courseSessions.filter(s => Boolean(s.recording_url)).length;
 
       return {

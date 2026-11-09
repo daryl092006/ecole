@@ -100,7 +100,7 @@ export default function Sidebar({
                   <Icon size={18} /><span>{group.name}</span>
                 </Link>
                 {isActive && group.pages.length > 1 && <div className="subnav-list">
-                  {group.pages.filter(page => page.id !== destination.id).map(page => <Link key={page.id} href={page.href}
+                  {group.pages.filter(page => page.name !== group.name).map(page => <Link key={page.id} href={page.href}
                     className={`subnav-item ${currentSection === page.id ? 'active' : ''}`}
                     aria-current={currentSection === page.id ? 'page' : undefined} onClick={onNavigate}>{page.name}</Link>)}
                 </div>}

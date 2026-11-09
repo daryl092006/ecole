@@ -249,7 +249,7 @@ export default function CourseResourcesWorkspace() {
       {success && <p className="attendance-success" role="status">{success}</p>}
 
       <section className="card">
-        <div className="btn-group mb-2">
+        <div className="btn-group courses-resources-tabs">
           <button
             type="button"
             className={`btn ${view === 'courses' ? 'btn-primary' : 'btn-outline'}`}
@@ -315,13 +315,13 @@ export default function CourseResourcesWorkspace() {
               <p className="cell-sub">Enseignements actifs de l’année sélectionnée et supports pédagogiques associés.</p>
             </div>
           </div>
-          <ResponsiveTable className="data-table">
+          <ResponsiveTable className="data-table courses-resources-table">
             <thead>
               <tr>
                 <th>Matière & Semestre</th>
                 <th>Classe / Formation</th>
                 <th>Enseignant</th>
-                <th>Crédits / Coef.</th>
+                <th>Crédits</th>
                 <th>Séances</th>
                 <th>Supports</th>
                 <th>Actions</th>
@@ -332,7 +332,7 @@ export default function CourseResourcesWorkspace() {
                 <tr key={course.assignmentId}>
                   <td>
                     <strong>{course.subjectName}</strong>
-                    <div className="cell-sub">{course.subjectCode ? `${course.subjectCode} · ` : ''}{course.semesterName}</div>
+                    <div className="cell-sub">{course.semesterName}</div>
                   </td>
                   <td>
                     <strong>{course.groupName}</strong>
@@ -340,25 +340,25 @@ export default function CourseResourcesWorkspace() {
                   </td>
                   <td>
                     <div>{course.teacherName}</div>
-                    {course.teacherEmail && <div className="cell-sub">{course.teacherEmail}</div>}
+                    {course.teacherEmail && <div className="cell-sub course-teacher-email">{course.teacherEmail}</div>}
                   </td>
-                  <td>
-                    {course.credits} cr. · coef. {course.coefficient}
+                  <td className="course-metric-cell">
+                    {course.credits} cr.
                   </td>
-                  <td>
-                    <div>{course.totalSessions} séance(s)</div>
+                  <td className="course-metric-cell">
+                    <div>{course.totalSessions} {course.totalSessions > 1 ? 'séances' : 'séance'}</div>
                     {course.onlineSessions > 0 && (
                       <span className="pill pill-info">{course.onlineSessions} en ligne</span>
                     )}
                   </td>
-                  <td>
-                    <div>{course.resourcesCount} support(s)</div>
+                  <td className="course-metric-cell">
+                    <div>{course.resourcesCount} {course.resourcesCount > 1 ? 'supports' : 'support'}</div>
                     {course.onlineSessions > 0 && course.recordingsCount > 0 && (
-                      <div className="cell-sub">{course.recordingsCount} enregistrement(s)</div>
+                      <div className="cell-sub">{course.recordingsCount} {course.recordingsCount > 1 ? 'enregistrements' : 'enregistrement'}</div>
                     )}
                   </td>
-                  <td>
-                    <div className="btn-group">
+                  <td className="course-actions-cell">
+                    <div className="btn-group course-actions-group">
                       <button
                         type="button"
                         className="btn btn-sm btn-outline"
