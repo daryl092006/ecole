@@ -51,7 +51,7 @@ const commandSchema = z.discriminatedUnion('action', [
 export async function POST(request: Request) {
   try {
     const { client, context } = await requireAccount(request); const access = websiteAccess(context);
-    const body = commandSchema.parse(await (await boundedRequest(request, 100000)).json());
+    const body = commandSchema.parse(await (await boundedRequest(request, 4 * 1024 * 1024)).json());
     if ('id' in body && body.id && !body.version) throw new RequestError(400, 'Version requise.');
     if (body.action === 'article-save' ? !access.manageArticles : !access.manageAdmissions) throw new RequestError(403, 'Modification non autorisée pour ce rôle.');
     const { action, ...data } = body;

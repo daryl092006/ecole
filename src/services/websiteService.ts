@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { ARTICLE_DOCUMENT_PREFIX, articlePlainText, parseArticleDocument, renderArticleContent } from '@/utils/articleDocument';
+import { ARTICLE_DOCUMENT_PREFIX, articlePlainText, isSafeArticleImageUrl, parseArticleDocument, renderArticleContent } from '@/utils/articleDocument';
 import { ROLES } from '@/types/permissions';
 import type { PersistentContext } from '@/types/persistence';
 
@@ -115,8 +115,8 @@ export const guardianSchema = z.object({
 }).strict();
 export const articleSchema = z.object({
   title: z.string().trim().min(3).max(180), slug: z.string().regex(/^[a-z0-9]+(?:-[a-z0-9]+)*$/).max(180),
-  excerpt: z.string().trim().min(3).max(500), content: z.string().trim().min(3).max(50000).refine(value => !value.startsWith(ARTICLE_DOCUMENT_PREFIX) || !!parseArticleDocument(value), 'Document d’article invalide.').refine(value => articlePlainText(value).trim().length >= 3, 'Le contenu de l’article est vide.'),
-  image: z.union([z.literal(''), z.url().refine(value => new URL(value).protocol === 'https:')]),
+  excerpt: z.string().trim().min(3).max(500), content: z.string().trim().min(3).max(3_000_000).refine(value => !value.startsWith(ARTICLE_DOCUMENT_PREFIX) || !!parseArticleDocument(value), 'Document d’article invalide.').refine(value => { const plain = articlePlainText(value).trim(); return plain.length >= 3 && plain.length <= 50000; }, 'Le contenu de l’article est invalide.'),
+  image: z.union([z.literal(''), z.string().max(1_500_000).refine(isSafeArticleImageUrl, 'Image de couverture invalide.')]),
   status: z.enum(['BROUILLON', 'PUBLIE', 'RETIRE']),
 }).strict();
 export const intakeSchema = z.object({

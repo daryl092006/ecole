@@ -35,6 +35,15 @@ assert.equal(sniffDocument(Buffer.from('%PDF-1.7')), 'application/pdf');
 assert.equal(sniffDocument(Buffer.from('<svg onload="alert(1)">')), undefined);
 assert.equal(articleSchema.safeParse({ title: 'Titre', slug: '../danger', excerpt: 'Résumé', content: 'Texte', image: '', status: 'PUBLIE' }).success, false);
 assert.equal(articleSchema.safeParse({ title: 'Titre', slug: 'titre', excerpt: 'Résumé', content: 'Texte', image: 'javascript:alert(1)', status: 'PUBLIE' }).success, false);
+const validPngDataUrl = `data:image/png;base64,${Buffer.from([137, 80, 78, 71, 13, 10, 26, 10, 0, 0, 0, 13, 73, 72, 68, 82]).toString('base64')}`;
+const fakePngDataUrl = `data:image/png;base64,${Buffer.from('<svg onload=alert(1)>').toString('base64')}`;
+assert.equal(articleSchema.safeParse({ ...articleInput, image: validPngDataUrl }).success, true);
+assert.equal(articleSchema.safeParse({ ...articleInput, image: fakePngDataUrl }).success, false);
+const inlinePhotoArticle = ARTICLE_DOCUMENT_PREFIX + JSON.stringify({ blocks: [
+  { type: 'paragraph', content: [{ text: 'Photo intégrée' }] },
+  { type: 'image', src: validPngDataUrl, alt: 'Photo du campus' },
+] });
+assert.equal(articleSchema.safeParse({ ...articleInput, content: inlinePhotoArticle }).success, true);
 assert.equal(identitySchema.safeParse({ nom: 'Test', prenom: 'Alice', genre: 'Féminin', date_naissance: '2000-01-01', lieu_naissance: 'Lomé', nationalite: 'Togolaise', email: 'alice@example.test', tel: '+22890000000', active: true }).success, false);
 assert.equal(guardianSchema.safeParse({ nom: 'Test', prenom: 'Parent', tel: '+22890000000', responsable_des_frais: '1' }).success, true);
 const masterDiploma = diplomaSchema.parse({ type_diplome_id: 'Master', annee_diplome: '2024', specialite_diplome: 'Finance' });
