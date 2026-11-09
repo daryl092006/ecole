@@ -30,8 +30,41 @@ type ModalOperation =
   | { kind: 'save_recording'; session: OnlineCourseSessionItem }
   | { kind: 'create_online_session'; preselectedAssignmentId?: string };
 
+const SESSION_STATUS_LABELS: Record<string, string> = {
+  PLANIFIE: 'Planifiée',
+  REALISE: 'Réalisée',
+  TERMINE: 'Terminée',
+  ANNULE: 'Annulée',
+  REPORTE: 'Reportée',
+};
+
 const formatDate = (value: string | null) =>
   value ? new Date(value).toLocaleString('fr-FR', { dateStyle: 'short', timeStyle: 'short', timeZone: 'Africa/Lome' }) : '—';
+
+const formatSessionWindow = (startsAt: string, endsAt: string) => {
+  const start = new Date(startsAt);
+  const end = new Date(endsAt);
+  if (Number.isNaN(start.getTime()) || Number.isNaN(end.getTime())) {
+    return { dateLabel: formatDate(startsAt), timeLabel: formatDate(endsAt) };
+  }
+  const dateFmt = new Intl.DateTimeFormat('fr-FR', {
+    day: '2-digit',
+    month: '2-digit',
+    year: 'numeric',
+    timeZone: 'Africa/Lome',
+  });
+  const timeFmt = new Intl.DateTimeFormat('fr-FR', {
+    hour: '2-digit',
+    minute: '2-digit',
+    timeZone: 'Africa/Lome',
+  });
+  const startDay = dateFmt.format(start);
+  const endDay = dateFmt.format(end);
+  return {
+    dateLabel: startDay === endDay ? startDay : `${startDay} → ${endDay}`,
+    timeLabel: `${timeFmt.format(start)} – ${timeFmt.format(end)}`,
+  };
+};
 
 const formatBytes = (bytes: number | null) => {
   if (bytes == null) return '';
@@ -413,13 +446,8 @@ export default function CourseResourcesWorkspace() {
               <h2>Supports de cours & Documents ({filteredResources.length})</h2>
               <p className="cell-sub">Documents pédagogiques, fiches de TD et enregistrements mis à la disposition des étudiants.</p>
             </div>
-            {directory.canManage && directory.courses.length > 0 && (
-              <button type="button" className="btn btn-primary" onClick={() => openCreateModal()}>
-                + Ajouter un support
-              </button>
-            )}
           </div>
-          <ResponsiveTable className="data-table">
+          <ResponsiveTable className="data-table courses-resources-table">
             <thead>
               <tr>
                 <th>Intitulé du support</th>
@@ -442,7 +470,7 @@ export default function CourseResourcesWorkspace() {
                       </div>
                     )}
                   </td>
-                  <td>
+                  <td className="course-metric-cell">
                     <span className="pill pill-default">{COURSE_RESOURCE_KIND_LABELS[res.kind] || res.kind}</span>
                   </td>
                   <td>
@@ -451,9 +479,9 @@ export default function CourseResourcesWorkspace() {
                     {res.sessionLabel && <div className="cell-sub">Séance du {res.sessionLabel}</div>}
                   </td>
                   <td>{res.uploadedByName}</td>
-                  <td>{formatDate(res.createdAt)}</td>
-                  <td>
-                    <div className="btn-group">
+                  <td className="course-metric-cell">{formatDate(res.createdAt)}</td>
+                  <td className="course-actions-cell">
+                    <div className="btn-group course-actions-group">
                       <button
                         type="button"
                         className="btn btn-sm btn-primary"
@@ -497,13 +525,8 @@ export default function CourseResourcesWorkspace() {
                 Accès direct aux salles virtuelles Microsoft Teams (@escen.university) et aux enregistrements vidéo (replays) pour les étudiants et l’équipe académique.
               </p>
             </div>
-            {directory.canScheduleOnline && directory.courses.length > 0 && (
-              <button type="button" className="btn btn-primary" onClick={() => openCreateOnlineSessionModal()}>
-                + Créer un cours en ligne (Teams auto)
-              </button>
-            )}
           </div>
-          <ResponsiveTable className="data-table">
+          <ResponsiveTable className="data-table courses-resources-table">
             <thead>
               <tr>
                 <th>Date & Horaires (Lomé)</th>
@@ -515,88 +538,92 @@ export default function CourseResourcesWorkspace() {
               </tr>
             </thead>
             <tbody>
-              {onlineOnlySessions.map(session => (
-                <tr key={session.id}>
-                  <td>
-                    <strong>{formatDate(session.startsAt)}</strong>
-                    <div className="cell-sub">→ {formatDate(session.endsAt)} · {session.status}</div>
-                  </td>
-                  <td>
-                    <strong>{session.subjectName}</strong>
-                    <div className="cell-sub">{session.groupName}</div>
-                  </td>
-                  <td>{session.teacherName}</td>
-                  <td>
-                    {session.meetingUrl ? (
-                      <a
-                        className="btn btn-sm btn-primary"
-                        href={session.meetingUrl}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                      >
-                        Rejoindre le cours Teams
-                      </a>
-                    ) : (
-                      <span className="cell-sub">Lien non encore généré</span>
-                    )}
-                  </td>
-                  <td>
-                    {session.recordingUrl ? (
-                      <a
-                        className="btn btn-sm btn-outline"
-                        href={session.recordingUrl}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                      >
-                        Accéder à l’enregistrement
-                      </a>
-                    ) : (
-                      <span className="cell-sub">En attente d’enregistrement</span>
-                    )}
-                  </td>
-                  <td>
-                    <div className="btn-group">
-                      {directory.canScheduleOnline && (
-                        <>
-                          <button
-                            type="button"
-                            className="btn btn-sm btn-outline"
-                            onClick={() => {
-                              setResourceUrl(session.meetingUrl || '');
-                              setReason('Création automatique du lien de cours en ligne Teams');
-                              setSaveError('');
-                              setOperation({ kind: 'generate_meeting_link', session });
-                            }}
-                          >
-                            {session.meetingUrl ? 'Lien Teams' : 'Créer lien Teams'}
-                          </button>
-                          <button
-                            type="button"
-                            className="btn btn-sm btn-outline"
-                            onClick={() => {
-                              setResourceUrl(session.recordingUrl || '');
-                              setReason('Mise à disposition de l’enregistrement du cours en ligne');
-                              setSaveError('');
-                              setOperation({ kind: 'save_recording', session });
-                            }}
-                          >
-                            {session.recordingUrl ? 'Modifier le replay' : 'Associer le replay'}
-                          </button>
-                        </>
-                      )}
-                      {directory.canManage && (
-                        <button
-                          type="button"
-                          className="btn btn-sm btn-outline"
-                          onClick={() => openCreateModal(session.assignmentId, session.id)}
+              {onlineOnlySessions.map(session => {
+                const win = formatSessionWindow(session.startsAt, session.endsAt);
+                const statusLabel = SESSION_STATUS_LABELS[session.status] || session.status;
+                return (
+                  <tr key={session.id}>
+                    <td className="course-metric-cell">
+                      <strong>{win.dateLabel}</strong>
+                      <div className="cell-sub">{win.timeLabel} · {statusLabel}</div>
+                    </td>
+                    <td>
+                      <strong>{session.subjectName}</strong>
+                      <div className="cell-sub">{session.groupName}</div>
+                    </td>
+                    <td>{session.teacherName}</td>
+                    <td className="course-metric-cell">
+                      {session.meetingUrl ? (
+                        <a
+                          className="btn btn-sm btn-primary"
+                          href={session.meetingUrl}
+                          target="_blank"
+                          rel="noopener noreferrer"
                         >
-                          + Support de séance
-                        </button>
+                          Rejoindre Teams
+                        </a>
+                      ) : (
+                        <span className="cell-sub">Lien non encore généré</span>
                       )}
-                    </div>
-                  </td>
-                </tr>
-              ))}
+                    </td>
+                    <td className="course-metric-cell">
+                      {session.recordingUrl ? (
+                        <a
+                          className="btn btn-sm btn-outline"
+                          href={session.recordingUrl}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                        >
+                          Voir l’enregistrement
+                        </a>
+                      ) : (
+                        <span className="cell-sub">En attente d’enregistrement</span>
+                      )}
+                    </td>
+                    <td className="course-actions-cell">
+                      <div className="btn-group course-actions-group">
+                        {directory.canScheduleOnline && (
+                          <>
+                            <button
+                              type="button"
+                              className="btn btn-sm btn-outline"
+                              onClick={() => {
+                                setResourceUrl(session.meetingUrl || '');
+                                setReason('Création automatique du lien de cours en ligne Teams');
+                                setSaveError('');
+                                setOperation({ kind: 'generate_meeting_link', session });
+                              }}
+                            >
+                              {session.meetingUrl ? 'Lien Teams' : 'Créer lien Teams'}
+                            </button>
+                            <button
+                              type="button"
+                              className="btn btn-sm btn-outline"
+                              onClick={() => {
+                                setResourceUrl(session.recordingUrl || '');
+                                setReason('Mise à disposition de l’enregistrement du cours en ligne');
+                                setSaveError('');
+                                setOperation({ kind: 'save_recording', session });
+                              }}
+                            >
+                              {session.recordingUrl ? 'Modifier replay' : 'Associer replay'}
+                            </button>
+                          </>
+                        )}
+                        {directory.canManage && (
+                          <button
+                            type="button"
+                            className="btn btn-sm btn-outline"
+                            onClick={() => openCreateModal(session.assignmentId, session.id)}
+                          >
+                            + Support
+                          </button>
+                        )}
+                      </div>
+                    </td>
+                  </tr>
+                );
+              })}
               {!onlineOnlySessions.length && (
                 <tr>
                   <td colSpan={6}>Aucune séance en ligne programmée pour ce filtre.</td>

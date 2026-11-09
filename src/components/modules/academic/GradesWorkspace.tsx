@@ -548,7 +548,7 @@ export default function GradesWorkspace() {
                       boxShadow: isActive ? '0 1px 3px rgba(37,99,235,0.15)' : 'none',
                     }}
                   >
-                    <span>{s.code ? `${s.code} · ` : ''}{s.name}</span>
+                    <span>{s.name}</span>
                     <span
                       style={{
                         fontSize: '11px',
@@ -575,7 +575,7 @@ export default function GradesWorkspace() {
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '14px', marginBottom: '14px' }}>
                 <div>
                   <h2 style={{ margin: 0, fontSize: '1.25rem', color: '#0f172a' }}>
-                    {activeSubject.code ? `${activeSubject.code} — ` : ''}{activeSubject.name}
+                    {activeSubject.name}
                   </h2>
                   <span className="cell-sub" style={{ fontSize: '13px' }}>
                     Enseignant référent : <strong>{subjectTeacherName}</strong> · {activeSubjectEvals.length} épreuve(s)

@@ -81,9 +81,7 @@ function OnlineExamEditor({ initial, onBack }: { initial: OnlineExamView; onBack
     const el = typeof document !== 'undefined' ? document.getElementById(`exam-q-${id}`) : null;
     if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' });
   };
-  const [isLockedOut, setIsLockedOut] = useState<boolean>(() => {
-    return initial.attempt.status === 'EN_COURS' && typeof document !== 'undefined' && !document.fullscreenElement;
-  });
+  const [isLockedOut, setIsLockedOut] = useState<boolean>(false);
 
   const recordAntiCheatIncident = useCallback((type: string, message: string) => {
     if (current.current.attempt.status !== 'EN_COURS') return;
@@ -621,7 +619,7 @@ function OnlineExamEditor({ initial, onBack }: { initial: OnlineExamView; onBack
           const isFlg = Boolean(flagged[question.id]);
           const isTrueFalse = question.presentation === 'TRUE_FALSE';
           const isShortText = question.presentation === 'SHORT_TEXT';
-          const isLongText = question.kind === 'TEXTE' || question.presentation === 'LONG_TEXT';
+          const isLongText = (question.kind === 'TEXTE' && !isShortText) || question.presentation === 'LONG_TEXT';
           const isQcmSimple = question.kind === 'QCM_SIMPLE' && !isTrueFalse;
           const isQcmMultiple = question.kind === 'QCM_MULTIPLE';
 
@@ -748,18 +746,19 @@ function OnlineExamEditor({ initial, onBack }: { initial: OnlineExamView; onBack
                   {question.requiresJustification && (
                     <div style={{ marginTop: '12px' }}>
                       <label style={{ display: 'block', fontSize: '13px', fontWeight: 600, color: '#334155', marginBottom: '6px' }}>
-                        Argumentaire / Justification de votre choix :
+                        Justifiez votre réponse
+                        <textarea
+                          aria-label="Justifiez votre réponse"
+                          className="input"
+                          disabled={locked}
+                          rows={3}
+                          maxLength={20000}
+                          value={answer.text}
+                          onChange={event => update(question.id, { ...answer, text: event.target.value })}
+                          placeholder="Expliquez rigoureusement pourquoi cette affirmation est vraie ou fausse…"
+                          style={{ width: '100%', resize: 'vertical', lineHeight: 1.5, marginTop: '6px' }}
+                        />
                       </label>
-                      <textarea
-                        className="input"
-                        disabled={locked}
-                        rows={3}
-                        maxLength={20000}
-                        value={answer.text}
-                        onChange={event => update(question.id, { ...answer, text: event.target.value })}
-                        placeholder="Expliquez rigoureusement pourquoi cette affirmation est vraie ou fausse…"
-                        style={{ width: '100%', resize: 'vertical', lineHeight: 1.5 }}
-                      />
                       <div style={{ display: 'flex', justifyContent: 'flex-end', fontSize: '11px', color: '#64748b', marginTop: '4px' }}>
                         {countWords(answer.text)} mot(s) · {answer.text.length} car.
                       </div>
@@ -791,6 +790,7 @@ function OnlineExamEditor({ initial, onBack }: { initial: OnlineExamView; onBack
                         >
                           <input
                             type="radio"
+                            aria-label={option.label}
                             name={`exam-radio-${question.id}`}
                             disabled={locked}
                             checked={selected}
@@ -803,7 +803,7 @@ function OnlineExamEditor({ initial, onBack }: { initial: OnlineExamView; onBack
                             style={{ width: '18px', height: '18px', accentColor: 'var(--primary, #2563eb)', cursor: locked ? 'not-allowed' : 'pointer' }}
                           />
                           <span style={{ fontSize: '14px', color: selected ? '#1e3a8a' : '#1e293b', fontWeight: selected ? 600 : 400 }}>
-                            <strong style={{ marginRight: '6px', color: '#64748b' }}>{String.fromCharCode(65 + optIdx)}.</strong>
+                            <strong aria-hidden="true" style={{ marginRight: '6px', color: '#64748b' }}>{String.fromCharCode(65 + optIdx)}.</strong>
                             {option.label}
                           </span>
                         </label>
@@ -813,18 +813,19 @@ function OnlineExamEditor({ initial, onBack }: { initial: OnlineExamView; onBack
                   {question.requiresJustification && (
                     <div style={{ marginTop: '12px' }}>
                       <label style={{ display: 'block', fontSize: '13px', fontWeight: 600, color: '#334155', marginBottom: '6px' }}>
-                        Justifiez votre choix :
+                        Justifiez votre réponse
+                        <textarea
+                          aria-label="Justifiez votre réponse"
+                          className="input"
+                          disabled={locked}
+                          rows={3}
+                          maxLength={20000}
+                          value={answer.text}
+                          onChange={event => update(question.id, { ...answer, text: event.target.value })}
+                          placeholder="Précisez votre raisonnement…"
+                          style={{ width: '100%', resize: 'vertical', marginTop: '6px' }}
+                        />
                       </label>
-                      <textarea
-                        className="input"
-                        disabled={locked}
-                        rows={3}
-                        maxLength={20000}
-                        value={answer.text}
-                        onChange={event => update(question.id, { ...answer, text: event.target.value })}
-                        placeholder="Précisez votre raisonnement…"
-                        style={{ width: '100%', resize: 'vertical' }}
-                      />
                     </div>
                   )}
                 </div>
@@ -856,6 +857,7 @@ function OnlineExamEditor({ initial, onBack }: { initial: OnlineExamView; onBack
                         >
                           <input
                             type="checkbox"
+                            aria-label={option.label}
                             disabled={locked}
                             checked={selected}
                             onChange={event => {
@@ -870,13 +872,31 @@ function OnlineExamEditor({ initial, onBack }: { initial: OnlineExamView; onBack
                             style={{ width: '18px', height: '18px', accentColor: 'var(--primary, #2563eb)', cursor: locked ? 'not-allowed' : 'pointer' }}
                           />
                           <span style={{ fontSize: '14px', color: selected ? '#1e3a8a' : '#1e293b', fontWeight: selected ? 600 : 400 }}>
-                            <strong style={{ marginRight: '6px', color: '#64748b' }}>{String.fromCharCode(65 + optIdx)}.</strong>
+                            <strong aria-hidden="true" style={{ marginRight: '6px', color: '#64748b' }}>{String.fromCharCode(65 + optIdx)}.</strong>
                             {option.label}
                           </span>
                         </label>
                       );
                     })}
                   </div>
+                  {question.requiresJustification && (
+                    <div style={{ marginTop: '12px' }}>
+                      <label style={{ display: 'block', fontSize: '13px', fontWeight: 600, color: '#334155', marginBottom: '6px' }}>
+                        Justifiez votre réponse
+                        <textarea
+                          aria-label="Justifiez votre réponse"
+                          className="input"
+                          disabled={locked}
+                          rows={3}
+                          maxLength={20000}
+                          value={answer.text}
+                          onChange={event => update(question.id, { ...answer, text: event.target.value })}
+                          placeholder="Précisez votre raisonnement…"
+                          style={{ width: '100%', resize: 'vertical', marginTop: '6px' }}
+                        />
+                      </label>
+                    </div>
+                  )}
                 </div>
               )}
 
@@ -887,6 +907,7 @@ function OnlineExamEditor({ initial, onBack }: { initial: OnlineExamView; onBack
                     Votre réponse concise :
                   </label>
                   <textarea
+                    aria-label="Votre réponse"
                     className="input"
                     disabled={locked}
                     rows={2}
@@ -914,16 +935,17 @@ function OnlineExamEditor({ initial, onBack }: { initial: OnlineExamView; onBack
                     </span>
                   </div>
                   <textarea
+                    aria-label="Votre réponse"
                     className="input"
                     disabled={locked}
-                    rows={8}
+                    rows={6}
                     maxLength={20000}
                     value={answer.text}
                     onChange={event => update(question.id, { text: event.target.value, option_ids: [] })}
                     placeholder="Rédigez votre analyse, argumentation ou développement structuré ici…"
                     style={{
                       width: '100%',
-                      minHeight: '180px',
+                      minHeight: '160px',
                       resize: 'vertical',
                       lineHeight: 1.6,
                       fontSize: '14px',
@@ -1002,7 +1024,7 @@ function OnlineExamEditor({ initial, onBack }: { initial: OnlineExamView; onBack
           reviewInitially
           busy={submitting}
           error={error}
-          confirmLabel="Confirmer la remise définitive de ma copie"
+          confirmLabel="Confirmer la remise de ma copie"
           fields={[
             { label: 'Réponses renseignées', value: `${examAnsweredCount(answers)} / ${questions.length}` },
             { label: 'Échéance limite', value: dateLabel(view.attempt.deadlineAt) },
@@ -1022,7 +1044,7 @@ function OnlineExamEditor({ initial, onBack }: { initial: OnlineExamView; onBack
     <div className="online-exam-actions">
       {!terminal && !review && (
         <button className="btn btn-primary" disabled={locked} onClick={() => setReview(true)}>
-          Vérifier et remettre ma copie
+          Remettre ma copie
         </button>
       )}
       {!terminal && (

@@ -257,8 +257,8 @@ export default function NativeAssessmentWorkspace({ category }: { category: Asse
                                   {item.statusLabel}
                                 </span>
                               </td>
-                              <td style={{ textAlign: 'right' }}>
-                                <div className="btn-group" style={{ justifyContent: 'flex-end' }}>
+                              <td style={{ textAlign: 'right', whiteSpace: 'nowrap' }}>
+                                <div className="btn-group" style={{ justifyContent: 'flex-end', flexWrap: 'nowrap' }}>
                                   <IconButton
                                     className="btn btn-sm btn-outline"
                                     label="Ouvrir le détail"

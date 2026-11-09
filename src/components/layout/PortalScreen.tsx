@@ -107,7 +107,17 @@ export default function PortalScreen({ section }: { tab: string; section: string
   if (state.session && (section === 'acad_groups' || section === 'stud_groups')) return <GroupsWorkspace />;
   if (state.session && section === 'acad_grades') return <GradesWorkspace />;
   if (state.session && section === 'acad_exams') return <ExamsWorkspace />;
-  if (state.history.enabled && !state.relationalSnapshot.tables.evaluations?.length && ['acad_exams', 'acad_resits', 'acad_assessments'].includes(section)) {
+  const isCurrentWorkingYear = Boolean(
+    state.academicYearContext?.currentYearId &&
+    state.academicYearContext.selectedYearId === state.academicYearContext.currentYearId
+  );
+  if (
+    state.history.enabled &&
+    !isCurrentWorkingYear &&
+    !state.relationalSnapshot.tables.evaluations?.length &&
+    !state.relationalSnapshot.tables.teaching_assignments?.length &&
+    ['acad_exams', 'acad_resits', 'acad_assessments'].includes(section)
+  ) {
     return <HistoricalExamsWorkspace key={section} category={section === 'acad_resits' ? 'resit' : section === 'acad_assessments' ? 'control' : 'exam'} />;
   }
   if (state.session && ['acad_exams', 'acad_resits', 'acad_assessments'].includes(section)) {

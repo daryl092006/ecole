@@ -13,7 +13,15 @@ export default function ExamsWorkspace() {
   const canControls = state.perms.permissions.some(permission => permission === 'academic.view' || permission === 'grade.view');
   const category = params.get('session') === 'controle' ? 'control' : params.get('session') === 'rattrapage' ? 'resit' : canExams ? 'exam' : 'control';
   const authorized = category === 'control' ? canControls : canExams;
-  const historic = state.history.enabled && !state.relationalSnapshot.tables.evaluations?.length;
+  const isCurrentWorkingYear = Boolean(
+    state.academicYearContext?.currentYearId &&
+    state.academicYearContext.selectedYearId === state.academicYearContext.currentYearId
+  );
+  const historic =
+    state.history.enabled &&
+    !isCurrentWorkingYear &&
+    !state.relationalSnapshot.tables.evaluations?.length &&
+    !state.relationalSnapshot.tables.teaching_assignments?.length;
   const href = (session: string) => {
     const query = new URLSearchParams(params.toString());
     query.delete('epreuve');
