@@ -191,63 +191,80 @@ export default function ArticleEditor({
       onChange={event => void handleDirectMultiplePhotos(event.target.files)}
     />
     <div hidden={preview}>
-      <div role="toolbar" aria-label="Mise en forme de l’article" className="article-editor-toolbar">
-        <select className="select-input" aria-label="Style du paragraphe" disabled={disabled} defaultValue="p" onChange={event => command('formatBlock', event.target.value)}><option value="p">Paragraphe</option><option value="h2">Titre de section</option><option value="h3">Sous-titre</option></select>
-        {buttons.map(([name, label, Icon]) => <button type="button" key={name} title={label} aria-label={label} aria-pressed={active[name] || false} disabled={disabled} onMouseDown={event => event.preventDefault()} onClick={() => command(name)}><Icon size={18} aria-hidden="true" /></button>)}
-        <button type="button" aria-label="Citation" title="Citation" disabled={disabled} onMouseDown={event => event.preventDefault()} onClick={() => command('formatBlock', 'blockquote')}><Quote size={18} aria-hidden="true" /></button>
-        {([['link', 'Insérer un lien', Link2], ['image', 'Insérer une image', ImageIcon]] as const).map(([kind, label, Icon]) => <button type="button" key={kind} title={label} aria-label={label} disabled={disabled} onMouseDown={event => event.preventDefault()} onClick={() => { capture(); setError(''); setInsert(kind); setUrl(''); setUploadedImage(''); setUploadedFileName(''); setDescription(kind === 'link' ? window.getSelection()?.toString() || '' : ''); }}><Icon size={18} aria-hidden="true" /></button>)}
-        <button type="button" className="btn btn-outline btn-sm" disabled={disabled} onMouseDown={event => event.preventDefault()} onClick={() => command('unlink')}>Retirer le lien</button>
-      </div>
-      {insert && <div className="article-editor-insert">
-        {insert === 'image' && (
-          <div className="article-photo-upload-box">
-            <div className="article-photo-upload-actions">
-              <button type="button" className="btn btn-outline btn-sm" disabled={disabled || uploadingImage} onClick={() => fileInputRef.current?.click()}>
-                <Upload size={15} aria-hidden="true" />{uploadingImage ? 'Chargement de la photo…' : 'Importer une photo depuis l’appareil (JPG, PNG, WebP)'}
-              </button>
-              {uploadedImage && (
-                <button type="button" className="btn btn-outline btn-sm" onClick={() => { setUploadedImage(''); setUploadedFileName(''); }}>
-                  Retirer la photo choisie
+      <div className="article-editor-sticky-wrapper">
+        <div role="toolbar" aria-label="Mise en forme de l’article" className="article-editor-toolbar">
+          <select className="select-input" aria-label="Style du paragraphe" disabled={disabled} defaultValue="p" onChange={event => command('formatBlock', event.target.value)}><option value="p">Paragraphe</option><option value="h2">Titre de section</option><option value="h3">Sous-titre</option></select>
+          {buttons.map(([name, label, Icon]) => <button type="button" key={name} title={label} aria-label={label} aria-pressed={active[name] || false} disabled={disabled} onMouseDown={event => event.preventDefault()} onClick={() => command(name)}><Icon size={18} aria-hidden="true" /></button>)}
+          <button type="button" aria-label="Citation" title="Citation" disabled={disabled} onMouseDown={event => event.preventDefault()} onClick={() => command('formatBlock', 'blockquote')}><Quote size={18} aria-hidden="true" /></button>
+          {([['link', 'Insérer un lien', Link2], ['image', 'Insérer une image', ImageIcon]] as const).map(([kind, label, Icon]) => <button type="button" key={kind} title={label} aria-label={label} disabled={disabled} onMouseDown={event => event.preventDefault()} onClick={() => { capture(); setError(''); setInsert(kind); setUrl(''); setUploadedImage(''); setUploadedFileName(''); setDescription(kind === 'link' ? window.getSelection()?.toString() || '' : ''); }}><Icon size={18} aria-hidden="true" /></button>)}
+          <button type="button" className="btn btn-outline btn-sm" disabled={disabled} onMouseDown={event => event.preventDefault()} onClick={() => command('unlink')}>Retirer le lien</button>
+          <div className="article-editor-toolbar-spacer" />
+          <button
+            type="button"
+            className="btn btn-primary btn-sm article-toolbar-add-photo-btn"
+            disabled={disabled || uploadingImage}
+            title="Ajouter une ou plusieurs photos à l’article"
+            onClick={() => {
+              capture();
+              setError('');
+              multiPhotoInputRef.current?.click();
+            }}
+          >
+            <Upload size={14} aria-hidden="true" />
+            <span>{uploadingImage ? 'Importation…' : '+ Photo'}</span>
+          </button>
+        </div>
+        {insert && <div className="article-editor-insert">
+          {insert === 'image' && (
+            <div className="article-photo-upload-box">
+              <div className="article-photo-upload-actions">
+                <button type="button" className="btn btn-outline btn-sm" disabled={disabled || uploadingImage} onClick={() => fileInputRef.current?.click()}>
+                  <Upload size={15} aria-hidden="true" />{uploadingImage ? 'Chargement de la photo…' : 'Importer une photo depuis l’appareil (JPG, PNG, WebP)'}
                 </button>
+                {uploadedImage && (
+                  <button type="button" className="btn btn-outline btn-sm" onClick={() => { setUploadedImage(''); setUploadedFileName(''); }}>
+                    Retirer la photo choisie
+                  </button>
+                )}
+              </div>
+              {uploadedImage && (
+                <div className="article-photo-upload-preview">
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img src={uploadedImage} alt={description || 'Aperçu de la photo'} />
+                  <span>{uploadedFileName || 'Photo prête à être insérée'}</span>
+                </div>
               )}
             </div>
-            {uploadedImage && (
-              <div className="article-photo-upload-preview">
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img src={uploadedImage} alt={description || 'Aperçu de la photo'} />
-                <span>{uploadedFileName || 'Photo prête à être insérée'}</span>
-              </div>
-            )}
-          </div>
-        )}
-        <label className="form-group">Adresse HTTPS<input className="input" type="url" placeholder={insert === 'image' ? 'https://... (ou importez une photo ci-dessus)' : 'https://...'} value={url} onChange={event => { setUrl(event.target.value); if (event.target.value) { setUploadedImage(''); setUploadedFileName(''); } }} /></label>
-        <label className="form-group">{insert === 'image' ? 'Description de l’image' : 'Texte du lien'}<input className="input" maxLength={500} placeholder={insert === 'image' ? 'Ex : Étudiants lors de l’atelier entrepreneuriat' : 'Ex : Consulter le programme'} value={description} onChange={event => setDescription(event.target.value)} /></label>
-        <div className="btn-group"><button type="button" className="btn btn-primary" disabled={disabled || uploadingImage} onClick={() => {
-          if (insert === 'image') {
-            const candidateSrc = uploadedImage || url.trim();
-            if (!isSafeArticleImageUrl(candidateSrc)) {
-              setError('Saisissez une adresse HTTPS complète ou importez une photo valide.');
+          )}
+          <label className="form-group">Adresse HTTPS<input className="input" type="url" placeholder={insert === 'image' ? 'https://... (ou importez une photo ci-dessus)' : 'https://...'} value={url} onChange={event => { setUrl(event.target.value); if (event.target.value) { setUploadedImage(''); setUploadedFileName(''); } }} /></label>
+          <label className="form-group">{insert === 'image' ? 'Description de l’image' : 'Texte du lien'}<input className="input" maxLength={500} placeholder={insert === 'image' ? 'Ex : Étudiants lors de l’atelier entrepreneuriat' : 'Ex : Consulter le programme'} value={description} onChange={event => setDescription(event.target.value)} /></label>
+          <div className="btn-group"><button type="button" className="btn btn-primary" disabled={disabled || uploadingImage} onClick={() => {
+            if (insert === 'image') {
+              const candidateSrc = uploadedImage || url.trim();
+              if (!isSafeArticleImageUrl(candidateSrc)) {
+                setError('Saisissez une adresse HTTPS complète ou importez une photo valide.');
+                return;
+              }
+              if (!description.trim()) {
+                setError('Décrivez l’image pour les lecteurs.');
+                return;
+              }
+              const normalizedSrc = candidateSrc.startsWith('data:image/') ? candidateSrc : new URL(candidateSrc).href;
+              command('insertHTML', `<figure><img src="${escapeArticleText(normalizedSrc)}" alt="${escapeArticleText(description.trim())}"></figure><p><br></p>`);
+              setInsert(null);
+              setUploadedImage('');
+              setUploadedFileName('');
+              setError('');
               return;
             }
-            if (!description.trim()) {
-              setError('Décrivez l’image pour les lecteurs.');
-              return;
-            }
-            const normalizedSrc = candidateSrc.startsWith('data:image/') ? candidateSrc : new URL(candidateSrc).href;
-            command('insertHTML', `<figure><img src="${escapeArticleText(normalizedSrc)}" alt="${escapeArticleText(description.trim())}"></figure><p><br></p>`);
+            let safe: URL; try { safe = new URL(url); if (safe.protocol !== 'https:') throw new Error(); } catch { setError('Saisissez une adresse HTTPS complète.'); return; }
+            if (!description.trim()) { setError('Indiquez le texte du lien.'); return; }
+            command('insertHTML', `<a href="${escapeArticleText(safe.href)}" target="_blank" rel="noopener noreferrer">${escapeArticleText(description)}</a>`);
             setInsert(null);
-            setUploadedImage('');
-            setUploadedFileName('');
             setError('');
-            return;
-          }
-          let safe: URL; try { safe = new URL(url); if (safe.protocol !== 'https:') throw new Error(); } catch { setError('Saisissez une adresse HTTPS complète.'); return; }
-          if (!description.trim()) { setError('Indiquez le texte du lien.'); return; }
-          command('insertHTML', `<a href="${escapeArticleText(safe.href)}" target="_blank" rel="noopener noreferrer">${escapeArticleText(description)}</a>`);
-          setInsert(null);
-          setError('');
-        }}>Insérer</button><button type="button" className="btn btn-outline" onClick={() => { setInsert(null); setUploadedImage(''); setUploadedFileName(''); }}>Annuler</button></div>
-      </div>}
+          }}>Insérer</button><button type="button" className="btn btn-outline" onClick={() => { setInsert(null); setUploadedImage(''); setUploadedFileName(''); }}>Annuler</button></div>
+        </div>}
+      </div>
       <div
         ref={editor}
         role="textbox"
@@ -280,6 +297,42 @@ export default function ArticleEditor({
           }
         }}
       />
+      <div className="article-editor-bottom-bar" aria-label="Actions rapides d’insertion de photos">
+        <button
+          type="button"
+          className="btn btn-outline btn-sm article-bottom-add-btn"
+          disabled={disabled || uploadingImage}
+          onClick={() => {
+            editor.current?.focus();
+            capture();
+            setError('');
+            multiPhotoInputRef.current?.click();
+          }}
+        >
+          <Upload size={14} aria-hidden="true" />
+          <span>+ Ajouter des photos ici</span>
+        </button>
+        <button
+          type="button"
+          className="btn btn-outline btn-sm"
+          disabled={disabled || uploadingImage}
+          onClick={() => {
+            capture();
+            setError('');
+            setInsert('image');
+            setUrl('');
+            setUploadedImage('');
+            setUploadedFileName('');
+            setDescription('');
+          }}
+        >
+          <ImageIcon size={14} aria-hidden="true" />
+          <span>Image par URL / Fichier</span>
+        </button>
+        <span className="article-bottom-bar-hint">
+          Glissez-déposez ou collez (Cmd+V / Ctrl+V) directement vos photos dans l’article.
+        </span>
+      </div>
       {inlineImages.length > 0 && (
         <div className="article-inline-images-strip" aria-label="Photos intégrées dans l’article">
           <span className="article-inline-images-title">Photos intégrées dans le contenu ({inlineImages.length})</span>
