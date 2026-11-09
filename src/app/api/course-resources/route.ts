@@ -134,7 +134,7 @@ function buildDirectory(
   };
 
   const sessions = rows('sessions').filter(s => !['ANNULE'].includes(String(s.status)));
-  const participations = rows('session_participations');
+  const participations = rows('session_participants');
   const rawResources = (rows('course_resources') || []).filter(r => !r.archived_at);
 
   const assignmentMeta = new Map(
@@ -359,7 +359,7 @@ export async function POST(request: Request) {
         const buffer = Buffer.from(body.fileContentBase64, 'base64');
         byteSize = buffer.byteLength;
         const safeName = body.fileName.replace(/[^a-zA-Z0-9._-]/g, '_');
-        storageBucket = 'student-documents';
+        storageBucket = 'escen-legacy-files';
         storagePath = `course-resources/${data.year.selectedYearId}/${assignment.group_id}/${crypto.randomUUID()}-${safeName}`;
         try {
           const uploadRes = await data.client.storage.from(storageBucket).upload(storagePath, buffer, {
