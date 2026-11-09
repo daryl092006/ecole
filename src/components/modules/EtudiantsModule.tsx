@@ -58,11 +58,6 @@ export default function EtudiantsModule({
     }
   };
 
-  const totalCount = students.length;
-  const activeCount = students.filter(s => ['Inscrit', 'Réinscrit', 'INSCRIT', 'REINSCRIT'].includes(s.status)).length;
-  const scholarshipCount = students.filter(s => s.bourse?.active).length;
-  const settledCount = students.filter(s => s.financials?.available !== false && s.financials?.remaining === 0).length;
-
   return (
     <div>
       {newEnrollment && <EnrollmentDialog kind="new" onClose={() => setNewEnrollment(false)} />}
@@ -86,36 +81,6 @@ export default function EtudiantsModule({
               </>
             )}
           </PageHeader>
-
-          {/* Grille de KPI standardisée */}
-          <div className="kpi-grid" style={{ marginBottom: '1.5rem' }}>
-            <div className="kpi-card">
-              <span className="kpi-label">Effectif total</span>
-              <strong className="kpi-value">{totalCount}</strong>
-              <span className="cell-sub">Dossiers répertoriés</span>
-            </div>
-            <div className="kpi-card">
-              <span className="kpi-label">Inscriptions actives</span>
-              <strong className="kpi-value" style={{ color: 'var(--success)' }}>
-                {activeCount}
-              </strong>
-              <span className="cell-sub">En scolarité régulière</span>
-            </div>
-            <div className="kpi-card">
-              <span className="kpi-label">Bourses attribuées</span>
-              <strong className="kpi-value" style={{ color: 'var(--purple, #7c3aed)' }}>
-                {scholarshipCount}
-              </strong>
-              <span className="cell-sub">Dossiers bénéficiaires</span>
-            </div>
-            <div className="kpi-card">
-              <span className="kpi-label">{canViewFinance ? 'Soldes à jour' : 'Filtres actifs'}</span>
-              <strong className="kpi-value" style={{ color: canViewFinance ? 'var(--accent)' : undefined }}>
-                {canViewFinance ? settledCount : filteredStudents.length}
-              </strong>
-              <span className="cell-sub">{canViewFinance ? 'Reste à payer soldé' : 'Dossiers affichés'}</span>
-            </div>
-          </div>
 
           {!persistent && perms.permissions.includes('student.group.assign') && (
             <StudentRegistrationForm groups={groups} onCreate={createStudent} />
@@ -208,11 +173,6 @@ export default function EtudiantsModule({
           <StudentFiltersPanel students={students} filters={filters} onChange={setFilters} role={activeRole} />
 
           <div className="card card-full">
-            <div className="card-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
-              <h2 style={{ margin: 0 }}>
-                Dossiers filtrés ({filteredStudents.length} / {students.length})
-              </h2>
-            </div>
             <div className="table-wrap">
               <ResponsiveTable className="data-table">
                 <thead>

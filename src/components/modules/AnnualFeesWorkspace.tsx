@@ -268,32 +268,6 @@ export default function AnnualFeesWorkspace() {
         </ActionResult>
       )}
 
-      {/* KPI Cards */}
-      <div className="kpi-grid" style={{ marginBottom: '1.5rem' }}>
-        <div className="kpi-card">
-          <span className="kpi-label">Contrats étudiants</span>
-          <strong className="kpi-value">{allStudents.length}</strong>
-          <span className="cell-sub">Pour {directory?.selectedYearCode || '2026-2027'}</span>
-        </div>
-        <div className="kpi-card">
-          <span className="kpi-label">Étudiants boursiers</span>
-          <strong className="kpi-value" style={{ color: 'var(--success, #16a34a)' }}>
-            {awardedCount}
-          </strong>
-          <span className="cell-sub">Bénéficiaires audités</span>
-        </div>
-        <div className="kpi-card">
-          <span className="kpi-label">Plein tarif</span>
-          <strong className="kpi-value">{standardCount}</strong>
-          <span className="cell-sub">Sans bourse appliquée</span>
-        </div>
-        <div className="kpi-card">
-          <span className="kpi-label">Grilles tarifaires</span>
-          <strong className="kpi-value">{directory?.feeSchedules.length || 0}</strong>
-          <span className="cell-sub">Tarifs configurés</span>
-        </div>
-      </div>
-
       {/* Navigation tabs */}
       <div className="section-tabs" role="tablist" style={{ marginBottom: '1.5rem' }}>
         <button

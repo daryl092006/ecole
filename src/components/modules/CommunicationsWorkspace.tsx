@@ -128,10 +128,6 @@ export default function CommunicationsWorkspace() {
     }
   }
 
-  const publishedCount = directory.announcements.filter(a => stateLabel(a) === 'Publiée').length;
-  const draftCount = directory.announcements.filter(a => stateLabel(a) === 'Brouillon').length;
-  const withdrawnCount = directory.announcements.filter(a => ['Retirée', 'Expirée'].includes(stateLabel(a))).length;
-
   const rows = directory.announcements
     .filter(row => `${row.title} ${row.content}`.toLocaleLowerCase('fr').includes(query.toLocaleLowerCase('fr')))
     .sort((a, b) => String(b.published_at || '').localeCompare(String(a.published_at || '')));
@@ -149,36 +145,6 @@ export default function CommunicationsWorkspace() {
           </button>
         )}
       </PageHeader>
-
-      {/* Grille de KPI harmonisée */}
-      <div className="kpi-grid" style={{ marginBottom: '1.5rem' }}>
-        <div className="kpi-card">
-          <span className="kpi-label">Total annonces</span>
-          <strong className="kpi-value">{directory.announcements.length}</strong>
-          <span className="cell-sub">Publications gérées</span>
-        </div>
-        <div className="kpi-card">
-          <span className="kpi-label">En ligne (actives)</span>
-          <strong className="kpi-value" style={{ color: 'var(--success)' }}>
-            {publishedCount}
-          </strong>
-          <span className="cell-sub">Visibles aux destinataires</span>
-        </div>
-        <div className="kpi-card">
-          <span className="kpi-label">Brouillons</span>
-          <strong className="kpi-value" style={{ color: 'var(--text-muted)' }}>
-            {draftCount}
-          </strong>
-          <span className="cell-sub">En attente de publication</span>
-        </div>
-        <div className="kpi-card">
-          <span className="kpi-label">Retirées / Expirées</span>
-          <strong className="kpi-value" style={{ color: withdrawnCount > 0 ? 'var(--warning)' : undefined }}>
-            {withdrawnCount}
-          </strong>
-          <span className="cell-sub">Archives conservées</span>
-        </div>
-      </div>
 
       {success && (
         <p role="status" className="info-box">

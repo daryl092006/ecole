@@ -1417,8 +1417,8 @@ form { scroll-margin-top: 1rem; }
 .workspace-heading { margin-bottom: 8px; }
 .connected-data-bar { display: flex; justify-content: space-between; align-items: center; gap: 12px; color: #64748b; margin-bottom: 22px; font-size: 11px; }
 .connected-data-bar .btn { padding: 5px 9px; min-height: 30px; font-size: 11px; }
-.page-intro { display: flex; justify-content: space-between; gap: 20px; align-items: center; margin-bottom: 24px; }
-.page-intro h1, .home-hero h1 { font-size: 24px; font-weight: 600; letter-spacing: -.02em; line-height: 1.25; margin: 6px 0 10px; color: #0f172a; }
+.page-intro { display: flex; justify-content: space-between; gap: 16px; align-items: center; margin-bottom: 14px; }
+.page-intro h1, .home-hero h1 { font-size: 22px; font-weight: 600; letter-spacing: -.02em; line-height: 1.25; margin: 0; color: #0f172a; }
 .page-intro p, .home-hero p { color: #475569; max-width: 650px; font-size: 13.5px; line-height: 1.6; }
 .page-eyebrow { font-size: 10px; font-weight: 500; color: #64748b; letter-spacing: .06em; text-transform: uppercase; }
 .home-hero { display: flex; justify-content: space-between; align-items: center; gap: 28px; padding: 8px 0 27px; }

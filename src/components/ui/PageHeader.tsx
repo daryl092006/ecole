@@ -7,16 +7,13 @@ interface PageHeaderProps {
   children?: ReactNode;
 }
 
-export default function PageHeader({ eyebrow, title, description, children }: PageHeaderProps) {
+export default function PageHeader({ title, children }: PageHeaderProps) {
   return (
     <header className="page-intro">
       <div>
-        {eyebrow && <span className="page-eyebrow">{eyebrow}</span>}
         <h1>{title}</h1>
-        {description && <p>{description}</p>}
       </div>
       {children && <div className="btn-group">{children}</div>}
     </header>
   );
 }
-

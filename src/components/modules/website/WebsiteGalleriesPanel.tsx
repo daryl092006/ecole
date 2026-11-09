@@ -1,15 +1,12 @@
 'use client';
 
 import { useEffect, useMemo, useRef, useState } from 'react';
-import Link from 'next/link';
 import {
   ArrowDown,
   ArrowUp,
-  BookOpen,
   ChevronLeft,
   ChevronRight,
   Eye,
-  FileText,
   ImagePlus,
   Images,
   MapPin,
@@ -296,12 +293,6 @@ export default function WebsiteGalleriesPanel() {
         title="Galeries photos"
         description="Créez vos albums photos d’événements, importez vos clichés par lot et publiez-les sur la galerie officielle du site ESCEN."
       >
-        <Link className="btn btn-outline" href="/site-web/articles">
-          <FileText size={16} aria-hidden="true" />Articles du site
-        </Link>
-        <Link className="btn btn-outline" href="/site-web/brochures">
-          <BookOpen size={16} aria-hidden="true" />Brochures PDF
-        </Link>
         {canManage && (
           <button
             className="btn btn-primary"
@@ -317,25 +308,6 @@ export default function WebsiteGalleriesPanel() {
           </button>
         )}
       </PageHeader>
-
-      <div className="editorial-stats-grid" aria-label="Synthèse de la galerie">
-        <div className="editorial-stat-card">
-          <span>Total des albums</span>
-          <strong>{counts.total}</strong>
-        </div>
-        <div className="editorial-stat-card">
-          <span>Publiés sur le site</span>
-          <strong>{counts.published}</strong>
-        </div>
-        <div className="editorial-stat-card">
-          <span>Brouillons en cours</span>
-          <strong>{counts.drafts}</strong>
-        </div>
-        <div className="editorial-stat-card">
-          <span>Total des photos</span>
-          <strong>{counts.photos}</strong>
-        </div>
-      </div>
 
       <div className="articles-library">
         <div className="editorial-toolbar">

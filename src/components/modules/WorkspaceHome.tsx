@@ -382,24 +382,14 @@ export default function WorkspaceHome({ mode = 'home' }: { mode?: 'home' | 'over
 
     if (state.perms.scope.ownDataOnly) {
       const me = state.students.find(student => student.matricule === state.session?.matricule);
-      const studentSessions = activeRows('sessions');
       return [
         {
-          title: 'Mon Parcours',
-          href: '/mon-espace/profil',
+          title: 'Mon Suivi',
+          href: '/mon-espace/documents',
           icon: GraduationCap,
           items: [
-            { label: 'Filière', value: me?.filiere && me.filiere !== 'Filière non renseignée' ? me.filiere : '—' },
             { label: 'Niveau', value: me?.niveau && me.niveau !== 'Niveau non renseigné' ? me.niveau : '—' },
             { label: 'Groupe', value: me?.groupe && me.groupe !== 'Non affecté' ? me.groupe : '—' },
-            { label: 'Séances', value: `${studentSessions.length}` },
-          ],
-        },
-        {
-          title: 'Ma Scolarité',
-          href: '/mon-espace/scolarite',
-          icon: Wallet,
-          items: [
             { label: 'Notes', value: `${count('grades')}` },
             { label: 'Payé', value: me?.financials?.available ? fmtCompactFcfa(me.financials.paid) : '—' },
             { label: 'Reste', value: me?.financials?.available ? fmtCompactFcfa(me.financials.remaining) : '—' },
@@ -573,9 +563,7 @@ export default function WorkspaceHome({ mode = 'home' }: { mode?: 'home' | 'over
     {error && <div className="review-notice" role="alert"><span>{error}</span><IconButton className="btn btn-outline" onClick={retry} label="Réessayer" /></div>}
 
     {mode === 'home' && <>
-      <p className="auth-form-description">Votre tableau de bord · {state.activeRole}. Les informations correspondent à votre périmètre et à l’année consultée.</p>
       {renderKpiCards()}
-      {renderPopulationBreakdown()}
       <section className="card" aria-label="Éléments à suivre">
         <div className="card-header"><h2>À suivre</h2></div>
         {followUps.length > 0 ? <div className="home-record-counts">{followUps.map(item => <div key={item.label}><Link href={item.href}>{item.label}</Link><strong>{item.count}</strong></div>)}</div>
@@ -587,8 +575,6 @@ export default function WorkspaceHome({ mode = 'home' }: { mode?: 'home' | 'over
           {quickActions.map(act => <Link key={act.label} href={act.href} className="quick-action-btn"><act.icon size={16} /><span>{act.label}</span><ArrowUpRight size={14} /></Link>)}
         </div>
       </div>}
-
-
     </>}
 
     {mode === 'overview' && <>

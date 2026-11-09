@@ -1,7 +1,6 @@
 'use client';
 import PageHeader from '@/components/ui/PageHeader';
-import Link from 'next/link';
-import { FileText, Pencil, Plus, Archive, BookOpen, ImagePlus, Images, Trash2, Eye } from 'lucide-react';
+import { FileText, Pencil, Plus, Archive, ImagePlus, Trash2, Eye } from 'lucide-react';
 import DrawerActions from '@/components/ui/DrawerActions';
 import IconButton from '@/components/ui/IconButton';
 import LoadingState from '@/components/ui/LoadingState';
@@ -113,18 +112,9 @@ export default function WebsiteArticlesPanel() {
       title="Articles du site"
       description="Préparez vos actualités, intégrez vos photos de couverture et de contenu, et gérez leur publication sur le site ESCEN."
     >
-      <Link className="btn btn-outline" href="/site-web/galeries"><Images size={16} aria-hidden="true" />Galeries photos</Link>
-      <Link className="btn btn-outline" href="/site-web/brochures"><BookOpen size={16} aria-hidden="true" />Brochures PDF</Link>
       <button className="btn btn-outline" onClick={() => setArchives(true)}><Archive size={16} aria-hidden="true" />Consulter les archives</button>
       {canManage && <button className="btn btn-primary" aria-label="+ Rédiger un article" onClick={() => { setSuccess(''); setEditorError(''); setFullPreview(false); setEditing({ ...emptyArticle }); setSlugTouched(false); }}><Plus size={17} aria-hidden="true" />Rédiger un article</button>}
     </PageHeader>
-
-    <div className="editorial-stats-grid" aria-label="Synthèse éditoriale">
-      <div className="editorial-stat-card"><span>Total des articles</span><strong>{counts.total}</strong></div>
-      <div className="editorial-stat-card"><span>Publiés sur le site</span><strong>{counts.published}</strong></div>
-      <div className="editorial-stat-card"><span>Brouillons en cours</span><strong>{counts.drafts}</strong></div>
-      <div className="editorial-stat-card"><span>Retirés / Archivés</span><strong>{counts.retired}</strong></div>
-    </div>
 
     <div className="articles-library">
     <div className="editorial-toolbar">

@@ -51,30 +51,18 @@ export default function StudentAttendancePanel({ matricule, embedded = false }: 
         />
       )}
 
-      <div className="kpi-grid" style={{ marginBottom: '1.25rem' }}>
-        <div className="kpi-card">
-          <span className="kpi-label">Taux d'assiduité</span>
-          <span className="kpi-value" style={{ color: attendanceRate >= 80 ? '#047857' : attendanceRate >= 60 ? '#b45309' : '#b91c1c' }}>
-            {attendanceRate}%
-          </span>
-          <span className="cell-sub">{records.length} séances pointées</span>
+      {records.length > 0 && (
+        <div className="btn-group mb-2">
+          <span className="pill pill-default">Assiduité : {attendanceRate}% ({records.length} séances)</span>
+          <span className="pill pill-success">{presentCount} présence(s)</span>
+          {lateCount > 0 && <span className="pill pill-warning">{lateCount} retard(s)</span>}
+          {absentCount > 0 && (
+            <span className="pill pill-danger">
+              {absentCount} absence(s){justifiedCount > 0 ? ` (${justifiedCount} justifiée(s))` : ''}
+            </span>
+          )}
         </div>
-        <div className="kpi-card">
-          <span className="kpi-label">Présences</span>
-          <span className="kpi-value" style={{ color: '#047857' }}>{presentCount}</span>
-          <span className="cell-sub">À l'heure</span>
-        </div>
-        <div className="kpi-card">
-          <span className="kpi-label">Retards</span>
-          <span className="kpi-value" style={{ color: '#b45309' }}>{lateCount}</span>
-          <span className="cell-sub">Pointés en cours</span>
-        </div>
-        <div className="kpi-card">
-          <span className="kpi-label">Absences</span>
-          <span className="kpi-value" style={{ color: absentCount > 0 ? '#b91c1c' : '#475569' }}>{absentCount}</span>
-          <span className="cell-sub">{justifiedCount > 0 ? `${justifiedCount} justifiée(s)` : 'Aucune justifiée'}</span>
-        </div>
-      </div>
+      )}
 
       {!records.length ? (
         <p className="cell-sub">Aucun pointage de présence enregistré pour le moment pour cette année universitaire.</p>

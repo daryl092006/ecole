@@ -1,7 +1,6 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import Link from 'next/link';
 import { usePortal } from '@/hooks/usePortal';
 import { roleHeaderValue } from '@/services/remoteCampusService';
 import { academicYearRequestHeaders } from '@/services/academicYearSelection';
@@ -267,46 +266,36 @@ export default function CourseResourcesWorkspace() {
             + Programmer un cours en ligne
           </button>
         )}
-        {portal.perms.permissions.includes('schedule.create') && (
-          <Link className="btn btn-outline" href="/academique/emploi-du-temps">
-            Emploi du temps →
-          </Link>
-        )}
-        {portal.perms.permissions.includes('attendance.view') && (
-          <Link className="btn btn-outline" href="/academique/presences">
-            Feuilles de présence →
-          </Link>
-        )}
       </PageHeader>
 
       {success && <p className="attendance-success" role="status">{success}</p>}
 
-      <section className="card">
+      <section className="card card-full">
         <div className="btn-group courses-resources-tabs">
           <button
             type="button"
             className={`btn ${view === 'courses' ? 'btn-primary' : 'btn-outline'}`}
             onClick={() => setView('courses')}
           >
-            Liste des cours ({filteredCourses.length})
+            Cours ({filteredCourses.length})
           </button>
           <button
             type="button"
             className={`btn ${view === 'resources' ? 'btn-primary' : 'btn-outline'}`}
             onClick={() => setView('resources')}
           >
-            Supports de cours & Documents ({filteredResources.length})
+            Supports & Documents ({filteredResources.length})
           </button>
           <button
             type="button"
             className={`btn ${view === 'online' ? 'btn-primary' : 'btn-outline'}`}
             onClick={() => setView('online')}
           >
-            Cours en ligne & Enregistrements ({onlineOnlySessions.length})
+            Séances en ligne ({onlineOnlySessions.length})
           </button>
         </div>
 
-        <div className="form-grid">
+        <div className="form-grid mb-2">
           <label className="form-group">
             Classe / Groupe
             <select className="select-input" value={groupFilter} onChange={e => setGroupFilter(e.target.value)}>
@@ -338,25 +327,15 @@ export default function CourseResourcesWorkspace() {
             />
           </label>
         </div>
-      </section>
 
-      {view === 'courses' && (
-        <section className="card card-full">
-          <div className="card-header">
-            <div>
-              <h2>Liste des cours ({filteredCourses.length})</h2>
-              <p className="cell-sub">Enseignements actifs de l’année sélectionnée et supports pédagogiques associés.</p>
-            </div>
-          </div>
+        {view === 'courses' && (
           <ResponsiveTable className="data-table courses-resources-table">
             <thead>
               <tr>
-                <th>Matière & Semestre</th>
-                <th>Classe / Formation</th>
+                <th>Matière</th>
+                <th>Classe</th>
                 <th>Enseignant</th>
-                <th>Crédits</th>
-                <th>Séances</th>
-                <th>Supports</th>
+                <th>Séances & Supports</th>
                 <th>Actions</th>
               </tr>
             </thead>
@@ -365,44 +344,38 @@ export default function CourseResourcesWorkspace() {
                 <tr key={course.assignmentId}>
                   <td>
                     <strong>{course.subjectName}</strong>
-                    <div className="cell-sub">{course.semesterName}</div>
+                    <div className="cell-sub">{course.semesterName} · {course.credits} cr.</div>
                   </td>
                   <td>
                     <strong>{course.groupName}</strong>
                     <div className="cell-sub">{course.offeringLabel}</div>
                   </td>
-                  <td>
-                    <div>{course.teacherName}</div>
-                    {course.teacherEmail && <div className="cell-sub course-teacher-email">{course.teacherEmail}</div>}
-                  </td>
+                  <td>{course.teacherName}</td>
                   <td className="course-metric-cell">
-                    {course.credits} cr.
-                  </td>
-                  <td className="course-metric-cell">
-                    <div>{course.totalSessions} {course.totalSessions > 1 ? 'séances' : 'séance'}</div>
+                    <div>
+                      {course.totalSessions} {course.totalSessions > 1 ? 'séances' : 'séance'} · {course.resourcesCount} {course.resourcesCount > 1 ? 'supports' : 'support'}
+                    </div>
                     {course.onlineSessions > 0 && (
-                      <span className="pill pill-info">{course.onlineSessions} en ligne</span>
-                    )}
-                  </td>
-                  <td className="course-metric-cell">
-                    <div>{course.resourcesCount} {course.resourcesCount > 1 ? 'supports' : 'support'}</div>
-                    {course.onlineSessions > 0 && course.recordingsCount > 0 && (
-                      <div className="cell-sub">{course.recordingsCount} {course.recordingsCount > 1 ? 'enregistrements' : 'enregistrement'}</div>
+                      <div className="cell-sub">
+                        {course.onlineSessions} en ligne{course.recordingsCount > 0 ? ` · ${course.recordingsCount} replay(s)` : ''}
+                      </div>
                     )}
                   </td>
                   <td className="course-actions-cell">
                     <div className="btn-group course-actions-group">
-                      <button
-                        type="button"
-                        className="btn btn-sm btn-outline"
-                        onClick={() => {
-                          setGroupFilter(course.groupId);
-                          setSearch(course.subjectName);
-                          setView('resources');
-                        }}
-                      >
-                        Supports ({course.resourcesCount})
-                      </button>
+                      {course.resourcesCount > 0 && (
+                        <button
+                          type="button"
+                          className="btn btn-sm btn-outline"
+                          onClick={() => {
+                            setGroupFilter(course.groupId);
+                            setSearch(course.subjectName);
+                            setView('resources');
+                          }}
+                        >
+                          Supports ({course.resourcesCount})
+                        </button>
+                      )}
                       {directory.canManage && (
                         <button
                           type="button"
@@ -422,7 +395,7 @@ export default function CourseResourcesWorkspace() {
                             setView('online');
                           }}
                         >
-                          Séances en ligne ({course.onlineSessions})
+                          En ligne ({course.onlineSessions})
                         </button>
                       )}
                     </div>
@@ -431,29 +404,20 @@ export default function CourseResourcesWorkspace() {
               ))}
               {!filteredCourses.length && (
                 <tr>
-                  <td colSpan={7}>Aucun cours ne correspond aux critères sélectionnés dans cette année scolaire.</td>
+                  <td colSpan={5}>Aucun cours ne correspond aux critères sélectionnés dans cette année scolaire.</td>
                 </tr>
               )}
             </tbody>
           </ResponsiveTable>
-        </section>
-      )}
+        )}
 
-      {view === 'resources' && (
-        <section className="card card-full">
-          <div className="card-header">
-            <div>
-              <h2>Supports de cours & Documents ({filteredResources.length})</h2>
-              <p className="cell-sub">Documents pédagogiques, fiches de TD et enregistrements mis à la disposition des étudiants.</p>
-            </div>
-          </div>
+        {view === 'resources' && (
           <ResponsiveTable className="data-table courses-resources-table">
             <thead>
               <tr>
                 <th>Intitulé du support</th>
                 <th>Type</th>
                 <th>Cours & Classe</th>
-                <th>Déposé par</th>
                 <th>Date</th>
                 <th>Actions</th>
               </tr>
@@ -466,7 +430,7 @@ export default function CourseResourcesWorkspace() {
                     {res.description && <div className="cell-sub">{res.description}</div>}
                     {res.fileName && (
                       <div className="cell-sub">
-                        Fichier : {res.fileName} {res.byteSize ? `(${formatBytes(res.byteSize)})` : ''}
+                        {res.fileName} {res.byteSize ? `(${formatBytes(res.byteSize)})` : ''}
                       </div>
                     )}
                   </td>
@@ -476,9 +440,7 @@ export default function CourseResourcesWorkspace() {
                   <td>
                     <strong>{res.subjectName}</strong>
                     <div className="cell-sub">{res.groupName} · {res.teacherName}</div>
-                    {res.sessionLabel && <div className="cell-sub">Séance du {res.sessionLabel}</div>}
                   </td>
-                  <td>{res.uploadedByName}</td>
                   <td className="course-metric-cell">{formatDate(res.createdAt)}</td>
                   <td className="course-actions-cell">
                     <div className="btn-group course-actions-group">
@@ -487,7 +449,7 @@ export default function CourseResourcesWorkspace() {
                         className="btn btn-sm btn-primary"
                         onClick={() => void handleOpenResource(res)}
                       >
-                        {res.kind === 'ENREGISTREMENT' ? 'Voir l’enregistrement' : res.hasStorageFile ? 'Télécharger' : 'Ouvrir le support'}
+                        {res.kind === 'ENREGISTREMENT' ? 'Voir l’enregistrement' : res.hasStorageFile ? 'Télécharger' : 'Ouvrir'}
                       </button>
                       {directory.canManage && (
                         <button
@@ -508,32 +470,21 @@ export default function CourseResourcesWorkspace() {
               ))}
               {!filteredResources.length && (
                 <tr>
-                  <td colSpan={6}>Aucun support de cours déposé pour cette sélection.</td>
+                  <td colSpan={5}>Aucun support de cours déposé pour cette sélection.</td>
                 </tr>
               )}
             </tbody>
           </ResponsiveTable>
-        </section>
-      )}
+        )}
 
-      {view === 'online' && (
-        <section className="card card-full">
-          <div className="card-header">
-            <div>
-              <h2>Séances de cours en ligne & Enregistrements ({onlineOnlySessions.length})</h2>
-              <p className="cell-sub">
-                Accès direct aux salles virtuelles Microsoft Teams (@escen.university) et aux enregistrements vidéo (replays) pour les étudiants et l’équipe académique.
-              </p>
-            </div>
-          </div>
+        {view === 'online' && (
           <ResponsiveTable className="data-table courses-resources-table">
             <thead>
               <tr>
                 <th>Date & Horaires (Lomé)</th>
                 <th>Matière & Classe</th>
                 <th>Enseignant</th>
-                <th>Lien du cours en ligne</th>
-                <th>Enregistrement (Replay)</th>
+                <th>Accès & Replay</th>
                 <th>Actions</th>
               </tr>
             </thead>
@@ -553,32 +504,30 @@ export default function CourseResourcesWorkspace() {
                     </td>
                     <td>{session.teacherName}</td>
                     <td className="course-metric-cell">
-                      {session.meetingUrl ? (
-                        <a
-                          className="btn btn-sm btn-primary"
-                          href={session.meetingUrl}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                        >
-                          Rejoindre Teams
-                        </a>
-                      ) : (
-                        <span className="cell-sub">Lien non encore généré</span>
-                      )}
-                    </td>
-                    <td className="course-metric-cell">
-                      {session.recordingUrl ? (
-                        <a
-                          className="btn btn-sm btn-outline"
-                          href={session.recordingUrl}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                        >
-                          Voir l’enregistrement
-                        </a>
-                      ) : (
-                        <span className="cell-sub">En attente d’enregistrement</span>
-                      )}
+                      <div className="btn-group course-actions-group">
+                        {session.meetingUrl ? (
+                          <a
+                            className="btn btn-sm btn-primary"
+                            href={session.meetingUrl}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                          >
+                            Rejoindre Teams
+                          </a>
+                        ) : (
+                          <span className="cell-sub">Lien non généré</span>
+                        )}
+                        {session.recordingUrl && (
+                          <a
+                            className="btn btn-sm btn-outline"
+                            href={session.recordingUrl}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                          >
+                            Voir le replay
+                          </a>
+                        )}
+                      </div>
                     </td>
                     <td className="course-actions-cell">
                       <div className="btn-group course-actions-group">
@@ -626,13 +575,13 @@ export default function CourseResourcesWorkspace() {
               })}
               {!onlineOnlySessions.length && (
                 <tr>
-                  <td colSpan={6}>Aucune séance en ligne programmée pour ce filtre.</td>
+                  <td colSpan={5}>Aucune séance en ligne programmée pour ce filtre.</td>
                 </tr>
               )}
             </tbody>
           </ResponsiveTable>
-        </section>
-      )}
+        )}
+      </section>
 
       {operation && (
         <WorkPage

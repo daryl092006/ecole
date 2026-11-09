@@ -112,12 +112,6 @@ export default function GroupsWorkspace() {
     );
   }, [activeGroup, studentSearch]);
 
-  const totalAssigned = useMemo(() => {
-    const assignedIds = new Set<string>();
-    groupsWithDetails.forEach(g => g.studentsList.forEach(s => assignedIds.add(s.matricule)));
-    return assignedIds.size;
-  }, [groupsWithDetails]);
-
   return (
     <div className="domain-workspace workspace-stack">
       {/* En-tête officiel */}
@@ -126,34 +120,6 @@ export default function GroupsWorkspace() {
         title="Classes et groupes d'étudiants"
         description={`Consultez la composition exacte de chaque classe, l'effectif des inscrits et les étudiants rattachés pour l'année ${currentYearName}.`}
       />
-
-      {/* Indicateurs clés synthétiques */}
-      <div className="kpi-grid">
-        <div className="kpi-card">
-          <span className="kpi-label">Classes actives</span>
-          <span className="kpi-value">{yearGroups.length}</span>
-          <span className="cell-sub">Groupes pédagogiques</span>
-        </div>
-        <div className="kpi-card">
-          <span className="kpi-label">Étudiants affectés</span>
-          <span className="kpi-value" style={{ color: '#047857' }}>{totalAssigned}</span>
-          <span className="cell-sub">Inscrits avec classe</span>
-        </div>
-        <div className="kpi-card">
-          <span className="kpi-label">Étudiants non affectés</span>
-          <span className="kpi-value" style={{ color: unassignedStudents.length > 0 ? '#b45309' : '#475569' }}>
-            {unassignedStudents.length}
-          </span>
-          <span className="cell-sub">
-            {unassignedStudents.length > 0 ? 'À répartir dans une classe' : 'Tous les inscrits sont affectés'}
-          </span>
-        </div>
-        <div className="kpi-card">
-          <span className="kpi-label">Filières</span>
-          <span className="kpi-value">{filieresList.length}</span>
-          <span className="cell-sub">Formations ouvertes</span>
-        </div>
-      </div>
 
       {/* CAS 1 : VUE DÉTAILLÉE D'UNE CLASSE SÉLECTIONNÉE (PLEINE LARGEUR) */}
       {activeGroup ? (
