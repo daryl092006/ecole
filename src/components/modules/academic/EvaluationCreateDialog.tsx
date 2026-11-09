@@ -159,7 +159,7 @@ export default function EvaluationCreateDialog({
           ...(kind === 'RATTRAPAGE' ? [{ label: 'Évaluation d’origine', value: String(parentOptions.find(row => row.id === parentEvaluationId)?.name || '') }] : []),
         ]}
         validate={validate}
-        consequence={scheduleNow ? 'L’évaluation, ses candidats et sa séance d’examen seront enregistrés ensemble. Le sujet sera immédiatement débloqué pour la rédaction.' : 'L’évaluation et ses candidats seront enregistrés en brouillon sans horaire fixé.'}>
+        consequence={scheduleNow ? (deliveryMode === 'PAPIER' ? 'L’épreuve sur table, la liste des candidats et le créneau en salle seront enregistrés. Le surveillant assurera l’émargement en salle et l’enseignant saisira le bordereau de notes une fois les copies physiques corrigées.' : 'L’évaluation, ses candidats et sa séance d’examen seront enregistrés ensemble. Le sujet sera immédiatement débloqué pour la rédaction.') : 'L’évaluation et ses candidats seront enregistrés en brouillon sans horaire fixé.'}>
         {error && <div className="restricted-box mb-2" role="alert">{error}</div>}
 
         <label className="form-group mb-2">Groupe concerné
@@ -329,7 +329,7 @@ export default function EvaluationCreateDialog({
               {deliveryMode === 'PAPIER' && (
                 <>
                   <p className="info-box mb-1">
-                    <strong>Épreuve en présentiel (sur table / papier) :</strong> cette épreuve ne se déroule pas en ligne sur la plateforme. Les étudiants composent en salle et le surveillant ou l’enseignant saisit directement leurs notes à l’issue de l’épreuve.
+                    <strong>Épreuve en présentiel (sur table / papier) :</strong> les étudiants composent sur papier en salle d’examen. Le surveillant effectue l’émargement en salle et ramasse les copies physiques. L’enseignant correcteur (ou le secrétariat d’examen) saisit ensuite les notes sur la plateforme à partir des copies corrigées.
                   </p>
                   <label className="form-group">
                     Salle d’examen

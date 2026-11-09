@@ -161,6 +161,8 @@ export default function NativeAssessmentWorkspace({ category }: { category: Asse
         .sort((a, b) => Number(b.version) - Number(a.version))[0];
       const selectedDelivery = (data.tables.exam_deliveries || []).find(row => row.evaluation_id === selected.id);
       const selectedSession = selectedDelivery && (data.tables.sessions || []).find(row => row.id === selectedDelivery.session_id);
+      const selectedRoom = selectedSession?.room_id ? (data.tables.rooms || []).find(row => row.id === selectedSession.room_id) : null;
+      const isPaper = selectedSession ? selectedSession.mode === 'PAPIER' : false;
       const compositionAvailable = !subjectExamIssue(subjectExams(data).find(exam => exam.id === selected.id));
       const today = new Intl.DateTimeFormat('en-CA', { timeZone: 'Africa/Lome', year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date());
       const preparationAvailable = selectedMembers.every(member =>
@@ -169,19 +171,37 @@ export default function NativeAssessmentWorkspace({ category }: { category: Asse
       const planningQuery = new URLSearchParams({ affectation: String(selected.assignment_id), mode: 'PAPIER', epreuve: String(selected.id), nature: category });
       return (
         <WorkPage title={String(selected.name)} onClose={() => setSelectedId('')}>
-          {preparationAvailable && <section className="exam-preparation" aria-label="Préparation de l’épreuve">
-            <h3>Mise en place de l’épreuve</h3>
-            <ol className="exam-preparation-steps">
-              <li><strong>1. Groupe et candidats</strong><span>{groupName(selected)} · {candidates.length} candidat(s)</span></li>
-              <li><strong>2. Date et salle</strong><span>{selectedSession ? new Intl.DateTimeFormat('fr-FR', { dateStyle: 'short', timeStyle: 'short', timeZone: 'Africa/Lome' }).format(new Date(String(selectedSession.starts_at))) : 'Séance à choisir dans la programmation'}</span></li>
-              <li><strong>3. Sujet et barème</strong><span>{selectedPaper ? selectedPaper.status === 'AUTORISE' ? 'Sujet autorisé' : 'Sujet en brouillon' : 'Sujet à composer après programmation'}</span></li>
-              <li><strong>4. Accès étudiant en ligne</strong><span>{selectedDelivery && selectedPaper?.status === 'AUTORISE' ? 'Sujet autorisé et fenêtre configurée' : 'Sujet autorisé et programmation nécessaires'}</span></li>
-            </ol>
-            <p>Pour une composition en ligne, les candidats éligibles accèdent au sujet autorisé pendant la fenêtre programmée. Les notes suivent leur propre circuit de validation.</p>
-          </section>}
+          {preparationAvailable && (
+            isPaper ? (
+              <section className="exam-preparation" aria-label="Déroulement de l’épreuve sur table">
+                <h3>Déroulement de l’épreuve sur table (Présentiel)</h3>
+                <ol className="exam-preparation-steps">
+                  <li><strong>1. Candidats convoqués</strong><span>{groupName(selected)} · {candidates.length} candidat(s)</span></li>
+                  <li><strong>2. Date et salle</strong><span>{selectedSession ? `${new Intl.DateTimeFormat('fr-FR', { dateStyle: 'short', timeStyle: 'short', timeZone: 'Africa/Lome' }).format(new Date(String(selectedSession.starts_at)))}${selectedRoom ? ` · Salle : ${selectedRoom.name}` : ''}` : 'Séance à planifier'}</span></li>
+                  <li><strong>3. Émargement surveillant</strong><span>Émargement en salle par le surveillant : appel et constat des absences.</span></li>
+                  <li><strong>4. Correction & Saisie</strong><span>Copies physiques remises à l’enseignant correcteur pour notation et saisie du bordereau.</span></li>
+                </ol>
+                <p className="cell-sub">
+                  Pour cette épreuve sur table, le surveillant fait l’appel en salle et ramasse les copies physiques. L’enseignant (ou le secrétariat d’examen) saisit ensuite les notes sur la plateforme à partir des copies corrigées.
+                </p>
+              </section>
+            ) : (
+              <section className="exam-preparation" aria-label="Préparation de l’épreuve">
+                <h3>Mise en place de l’épreuve en ligne</h3>
+                <ol className="exam-preparation-steps">
+                  <li><strong>1. Groupe et candidats</strong><span>{groupName(selected)} · {candidates.length} candidat(s)</span></li>
+                  <li><strong>2. Fenêtre d’accès</strong><span>{selectedSession ? new Intl.DateTimeFormat('fr-FR', { dateStyle: 'short', timeStyle: 'short', timeZone: 'Africa/Lome' }).format(new Date(String(selectedSession.starts_at))) : 'Séance à choisir dans la programmation'}</span></li>
+                  <li><strong>3. Sujet et barème</strong><span>{selectedPaper ? selectedPaper.status === 'AUTORISE' ? 'Sujet autorisé' : 'Sujet en brouillon' : 'Sujet à composer après programmation'}</span></li>
+                  <li><strong>4. Accès étudiant en ligne</strong><span>{selectedDelivery && selectedPaper?.status === 'AUTORISE' ? 'Sujet autorisé et fenêtre configurée' : 'Sujet autorisé et programmation nécessaires'}</span></li>
+                </ol>
+                <p className="cell-sub">Pour une composition en ligne, les candidats éligibles accèdent au sujet autorisé pendant la fenêtre programmée. Les notes suivent leur propre circuit de validation.</p>
+              </section>
+            )
+          )}
           <dl className="record-details-grid">
             <div><dt>Matière</dt><dd>{subjectName(selected)}</dd></div>
             <div><dt>Groupe</dt><dd>{groupName(selected)}</dd></div>
+            <div><dt>Mode de déroulement</dt><dd><span className={`pill ${isPaper ? 'pill-default' : 'pill-info'}`}>{isPaper ? 'Épreuve sur table (Papier)' : 'Composition en ligne'}</span>{selectedRoom ? ` · Salle : ${selectedRoom.name}` : ''}</dd></div>
             <div><dt>État des notes</dt><dd>{selectedStatusLabel || connectedRecordValue('evaluations', 'status', selected.status, data)}</dd></div>
             <div>
               <dt>Sujet d’examen</dt>
@@ -199,12 +219,16 @@ export default function NativeAssessmentWorkspace({ category }: { category: Asse
               </dd>
             </div>
             <div>
-              <dt>Diffusion en ligne</dt>
+              <dt>{isPaper ? 'Horaire en salle' : 'Diffusion en ligne'}</dt>
               <dd>
                 {selectedDelivery ? (
-                  <span>
-                    Du {new Intl.DateTimeFormat('fr-FR', { dateStyle: 'short', timeStyle: 'short', timeZone: 'Africa/Lome' }).format(new Date(String(selectedDelivery.access_opens_at)))} au {new Intl.DateTimeFormat('fr-FR', { dateStyle: 'short', timeStyle: 'short', timeZone: 'Africa/Lome' }).format(new Date(String(selectedDelivery.access_closes_at)))} ({String(selectedDelivery.duration_minutes)} min)
-                  </span>
+                  isPaper ? (
+                    <span>Le {new Intl.DateTimeFormat('fr-FR', { dateStyle: 'medium', timeStyle: 'short', timeZone: 'Africa/Lome' }).format(new Date(String(selectedDelivery.access_opens_at)))} ({String(selectedDelivery.duration_minutes)} min)</span>
+                  ) : (
+                    <span>
+                      Du {new Intl.DateTimeFormat('fr-FR', { dateStyle: 'short', timeStyle: 'short', timeZone: 'Africa/Lome' }).format(new Date(String(selectedDelivery.access_opens_at)))} au {new Intl.DateTimeFormat('fr-FR', { dateStyle: 'short', timeStyle: 'short', timeZone: 'Africa/Lome' }).format(new Date(String(selectedDelivery.access_closes_at)))} ({String(selectedDelivery.duration_minutes)} min)
+                    </span>
+                  )
                 ) : (
                   <span className="cell-sub">Non programmée</span>
                 )}
@@ -214,7 +238,30 @@ export default function NativeAssessmentWorkspace({ category }: { category: Asse
           <div className="btn-group mb-2">
             {(perms.permissions.includes('grade.enter') || perms.permissions.includes('grade.review') || perms.permissions.includes('grade.approve') || perms.permissions.includes('grade.publish')) && (
               <button className="btn btn-primary" onClick={() => setManagingEvalIds(selectedMembers.map(m => String(m.id)))}>
-                Saisir / Gérer les notes
+                {isPaper ? 'Saisir le bordereau de notes' : 'Saisir / Gérer les notes'}
+              </button>
+            )}
+            {isPaper && candidates.length > 0 && (
+              <button
+                type="button"
+                className="btn btn-outline"
+                onClick={() => {
+                  const csvRows = candidates.map((c, i) => {
+                    const enrollment = data.tables.enrollments?.find(e => e.id === c.enrollment_id);
+                    const stud = data.tables.students?.find(s => s.id === enrollment?.student_id);
+                    const studentName = connectedRecordName('enrollments', enrollment || { id: String(c.enrollment_id) }, data);
+                    return [
+                      String(i + 1),
+                      String(stud?.matricule || ''),
+                      studentName,
+                      '',
+                      '',
+                    ];
+                  });
+                  downloadCsv(`emargement-${String(selected.name || selected.id)}.csv`, ['N°', 'Matricule', 'Nom complet', 'Signature émargement', 'Observations surveillant'], csvRows);
+                }}
+              >
+                Exporter la feuille d’émargement (surveillant)
               </button>
             )}
             {preparationAvailable && compositionAvailable && perms.permissions.includes('evaluation.create') && (
@@ -225,10 +272,10 @@ export default function NativeAssessmentWorkspace({ category }: { category: Asse
             {preparationAvailable && perms.permissions.includes('schedule.create') && <Link className="btn btn-outline" href={`/academique/emploi-du-temps?${planningQuery}`}>Planifier la date et la salle</Link>}
             {preparationAvailable && perms.permissions.includes('evaluation.create') && (
               <button className="btn btn-outline" onClick={() => setSchedulingDelivery(selected)}>
-                {selectedDelivery ? 'Modifier la diffusion' : 'Programmer la diffusion'}
+                {selectedDelivery ? (isPaper ? 'Modifier la séance' : 'Modifier la diffusion') : (isPaper ? 'Programmer la séance' : 'Programmer la diffusion')}
               </button>
             )}
-            {perms.permissions.includes('grade.enter') && selectedDelivery && (
+            {perms.permissions.includes('grade.enter') && selectedDelivery && !isPaper && (
               <button className="btn btn-outline" onClick={() => setOnlineCopiesId(selected.id)}>
                 Copies en ligne
               </button>

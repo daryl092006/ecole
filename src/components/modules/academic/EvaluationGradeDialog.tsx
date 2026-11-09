@@ -24,12 +24,12 @@ import type { GradeWorkflowStatus } from '@/types/academic';
 import PersistentExamCopies from './PersistentExamCopies';
 
 const STEPS = [
-  { id: 'BROUILLON', label: 'Brouillon', owner: 'Enseignant' },
-  { id: 'SAISIES', label: 'Saisie', owner: 'Enseignant' },
-  { id: 'SOUMISES', label: 'Soumission', owner: 'Enseignant' },
+  { id: 'BROUILLON', label: 'Brouillon', owner: 'Enseignant correcteur' },
+  { id: 'SAISIES', label: 'Saisie', owner: 'Enseignant correcteur' },
+  { id: 'SOUMISES', label: 'Soumission', owner: 'Enseignant correcteur' },
   { id: 'A_CONTROLER', label: 'Contrôle', owner: 'Direction académique' },
   { id: 'VALIDEES', label: 'Validation', owner: 'Direction académique' },
-  { id: 'PUBLIEES', label: 'Publication', owner: 'Résultats publiés' },
+  { id: 'PUBLIEES', label: 'Publication', owner: 'Résultats officiels' },
 ];
 
 export default function EvaluationGradeDialog({
@@ -122,6 +122,9 @@ function EvaluationGrades({ evaluationId, busy, setBusy }: { evaluationId: strin
   const [copyCandidateId, setCopyCandidateId] = useState('');
   const [candidateSearch, setCandidateSearch] = useState('');
   const copyCandidateIds = new Set((snapshot.tables.exam_attempts || []).filter(attempt => attempt.evaluation_id === evaluationId).map(attempt => String(attempt.candidate_id)));
+  const delivery = (snapshot.tables.exam_deliveries || []).find(d => d.evaluation_id === evaluationId);
+  const session = delivery && (snapshot.tables.sessions || []).find(s => s.id === delivery.session_id);
+  const isPaper = session ? session.mode === 'PAPIER' : copyCandidateIds.size === 0;
 
   const status = evaluation.status as GradeWorkflowStatus;
   const canEnter = portal.perms.permissions.includes('grade.enter') && ['BROUILLON', 'SAISIES'].includes(status) && !evaluation.cancelled_at;
@@ -267,7 +270,7 @@ function EvaluationGrades({ evaluationId, busy, setBusy }: { evaluationId: strin
 
         <div className="kpi-grid kpi-grid-3 mb-2">
           <div className="kpi-card">
-            <span className="kpi-label">Copies corrigées (notées)</span>
+            <span className="kpi-label">{isPaper ? 'Copies papier notées' : 'Copies corrigées (notées)'}</span>
             <strong className="kpi-value">{numericGrades.length - unprocessedCount} / {candidates.length}</strong>
             {numericGrades.length > 0 && (
               <span className="cell-sub">
@@ -276,11 +279,11 @@ function EvaluationGrades({ evaluationId, busy, setBusy }: { evaluationId: strin
             )}
           </div>
           <div className="kpi-card">
-            <span className="kpi-label">En attente de correction</span>
+            <span className="kpi-label">{isPaper ? 'Copies en attente de note' : 'En attente de correction'}</span>
             <strong className="kpi-value">{pendingCorrectionCount + unprocessedCount}</strong>
           </div>
           <div className="kpi-card">
-            <span className="kpi-label">Absents (injustifiés / justifiés)</span>
+            <span className="kpi-label">{isPaper ? 'Absents à l’épreuve' : 'Absents (injustifiés / justifiés)'}</span>
             <strong className="kpi-value">{absenceCount}</strong>
           </div>
         </div>
@@ -293,10 +296,12 @@ function EvaluationGrades({ evaluationId, busy, setBusy }: { evaluationId: strin
         <div className="card mb-2">
           <div className="card-header">
             <div>
-              <h3>Candidats ({candidates.length})</h3>
+              <h3>{isPaper ? 'Bordereau de notes (épreuve sur table)' : 'Candidats'} ({candidates.length})</h3>
               <p className="cell-sub">
                 {canEnter
-                  ? 'Saisissez les notes (sur 20) pour les copies corrigées ou indiquez une absence. Une case vide sans motif d’absence correspond à une copie en attente de correction par l’enseignant (l’étudiant n’est pas compté absent).'
+                  ? isPaper
+                    ? 'Saisie des notes issues de la correction des copies papier (par l’enseignant ou le secrétariat). Saisissez la note sur 20 ou indiquez une absence (ABSENT / JUSTIFIÉ). Une case vide correspond à une copie en cours de correction. Enregistrez le brouillon au fur et à mesure, puis soumettez le bordereau à la direction académique.'
+                    : 'Saisissez les notes (sur 20) pour les copies corrigées ou indiquez une absence. Une case vide sans motif d’absence correspond à une copie en attente de correction par l’enseignant (l’étudiant n’est pas compté absent).'
                   : status === 'PUBLIEES'
                   ? 'Résultats officiels publiés. Les corrections nécessitent une décision motivée.'
                   : 'Notes en cours de contrôle ou validation.'}
@@ -453,12 +458,14 @@ function EvaluationGrades({ evaluationId, busy, setBusy }: { evaluationId: strin
                           <option value="">
                             {item.value.trim() !== ''
                               ? 'Présent · Copie corrigée (note chiffrée)'
+                              : isPaper
+                              ? 'Présent · En attente de saisie de note'
                               : hasSubmittedOnlineCopy
                               ? 'Présent · Copie remise — en attente de correction'
                               : 'Présent / En attente de correction par l’enseignant'}
                           </option>
-                          <option value="ABSENT">Absent injustifié</option>
-                          <option value="JUSTIFIE">Absent justifié</option>
+                          <option value="ABSENT">Absent à l’épreuve (injustifié)</option>
+                          <option value="JUSTIFIE">Absent excusé (justifié)</option>
                           <option value="NON_TRAITE">Copie non traitée — soumission bloquée</option>
                         </select>
                       ) : (
