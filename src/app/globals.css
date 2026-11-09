@@ -5382,6 +5382,9 @@ form > .drawer-form-actions,
 .article-editor-insert { padding: 1rem; border-bottom: 1px solid var(--border-color, #d9dee7); background: #ffffff; }
 .article-editor > .cell-sub, .article-editor > .auth-error { padding: 0 1rem; }
 .article-content { line-height: 1.8; overflow-wrap: anywhere; }
+.article-content strong, .article-content b { font-weight: 700; color: inherit; }
+.article-content em, .article-content i { font-style: italic; color: inherit; }
+.article-content u { text-decoration: underline; text-underline-offset: 3px; }
 .article-content h2 { font-size: 1.65rem; margin: 1.5rem 0 .75rem; }
 .article-content h3 { font-size: 1.3rem; margin: 1.25rem 0 .5rem; }
 .article-content p { margin: .75rem 0; }

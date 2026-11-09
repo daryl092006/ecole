@@ -322,12 +322,13 @@ begin
   from escen.website_intakes
   where academic_year_id = p_academic_year_id and level_id = p_level_id;
 
-  select coalesce(jsonb_agg(value order by value->>'id'), '[]')
+  select coalesce(jsonb_agg(jsonb_build_object('id', (value->>'id')::uuid,
+    'version', (value->>'version')::integer) order by (value->>'id')::uuid), '[]')
   into expected_intakes
   from jsonb_array_elements(p_expected_intakes);
 
   if current_intakes <> expected_intakes then
-    raise exception 'Lot de formations périmé' using errcode = 'PT409';
+    raise exception 'Les formations ont changé : actualisez le niveau' using errcode = '40001';
   end if;
 
   select * into previous_rule
@@ -335,50 +336,27 @@ begin
   where academic_year_id = p_academic_year_id and level_id = p_level_id
   for update;
 
-  if p_expected_rule_version is null and previous_rule.id is not null then
-    raise exception 'Règle concurrente créée' using errcode = 'PT409';
-  end if;
-
-  if p_expected_rule_version is not null and (previous_rule.id is null or previous_rule.version <> p_expected_rule_version) then
-    raise exception 'Règle concurrente modifiée' using errcode = 'PT409';
+  if previous_rule.version is distinct from p_expected_rule_version then
+    raise exception 'Les pièces du niveau ont changé' using errcode = '40001';
   end if;
 
   previous_actor := current_setting('escen.actor_id', true);
   perform set_config('escen.actor_id', p_actor_id::text, true);
 
-  update escen.website_intakes
-  set required_documents = documents,
-      version = version + 1,
-      reason = p_reason
-  where academic_year_id = p_academic_year_id and level_id = p_level_id;
-
-  get diagnostics changed = row_count;
-
-  if previous_rule.id is null then
-    insert into escen.website_level_document_rules(
-      academic_year_id, level_id, required_documents, reason, created_by
-    ) values (
-      p_academic_year_id, p_level_id, documents, p_reason, p_actor_id
-    ) returning * into result;
-  else
-    update escen.website_level_document_rules
-    set required_documents = documents,
-        version = version + 1,
-        reason = p_reason
-    where id = previous_rule.id
+  insert into escen.website_level_document_rules(academic_year_id, level_id, required_documents, reason)
+    values (p_academic_year_id, p_level_id, documents, btrim(p_reason))
+    on conflict (academic_year_id, level_id) do update set
+      required_documents = excluded.required_documents,
+      version = escen.website_level_document_rules.version + 1,
+      reason = excluded.reason, updated_at = now()
     returning * into result;
-  end if;
 
-  if previous_actor is null or previous_actor = '' then
-    perform set_config('escen.actor_id', '', true);
-  else
-    perform set_config('escen.actor_id', previous_actor, true);
-  end if;
-
-  return jsonb_build_object(
-    'rule', to_jsonb(result),
-    'updated_intakes', changed
-  );
+  update escen.website_intakes set required_documents = documents, version = version + 1, reason = btrim(p_reason)
+    where academic_year_id = p_academic_year_id and level_id = p_level_id;
+  get diagnostics changed = row_count;
+  perform set_config('escen.actor_id', coalesce(previous_actor, ''), true);
+  return jsonb_build_object('rule', to_jsonb(result), 'updated_intakes', changed);
 end $$;
 
 commit;
+

@@ -59,6 +59,25 @@ export default function ArticleEditor({
     }
   }, [value]);
 
+  useEffect(() => {
+    const handleSelectionChange = () => {
+      const current = window.getSelection();
+      if (current?.rangeCount && editor.current?.contains(current.anchorNode)) {
+        selection.current = current.getRangeAt(0).cloneRange();
+        setActive(
+          Object.fromEntries(
+            ['bold', 'italic', 'underline', 'insertUnorderedList', 'insertOrderedList'].map(cmd => [
+              cmd,
+              document.queryCommandState(cmd),
+            ])
+          )
+        );
+      }
+    };
+    document.addEventListener('selectionchange', handleSelectionChange);
+    return () => document.removeEventListener('selectionchange', handleSelectionChange);
+  }, []);
+
   const inlineImages = useMemo(() => extractArticleImages(value), [value]);
 
   const capture = () => {
@@ -82,11 +101,47 @@ export default function ArticleEditor({
 
   const command = (name: string, argument?: string) => {
     editor.current?.focus();
-    if (selection.current && editor.current?.contains(selection.current.commonAncestorContainer)) {
-      const current = window.getSelection(); current?.removeAllRanges(); current?.addRange(selection.current);
+    const current = window.getSelection();
+    const hasActiveSelectionInEditor =
+      Boolean(current && current.rangeCount > 0 && editor.current?.contains(current.anchorNode));
+    if (!hasActiveSelectionInEditor && selection.current && editor.current?.contains(selection.current.commonAncestorContainer)) {
+      current?.removeAllRanges();
+      current?.addRange(selection.current);
     }
     document.execCommand(name, false, argument);
     sync();
+  };
+
+  const handleKeyDown = (event: React.KeyboardEvent<HTMLDivElement>) => {
+    const isMeta = event.metaKey || event.ctrlKey;
+    if (isMeta && !event.shiftKey && !event.altKey) {
+      const key = event.key.toLowerCase();
+      if (key === 'b') {
+        event.preventDefault();
+        command('bold');
+        return;
+      }
+      if (key === 'i') {
+        event.preventDefault();
+        command('italic');
+        return;
+      }
+      if (key === 'u') {
+        event.preventDefault();
+        command('underline');
+        return;
+      }
+      if (key === 'z') {
+        event.preventDefault();
+        command('undo');
+        return;
+      }
+      if (key === 'y') {
+        event.preventDefault();
+        command('redo');
+        return;
+      }
+    }
   };
 
   const handlePhotoFile = async (file: File | undefined) => {
@@ -276,6 +331,8 @@ export default function ArticleEditor({
         suppressContentEditableWarning
         className="article-editor-canvas article-content"
         onInput={sync}
+        onKeyDown={handleKeyDown}
+        onSelect={capture}
         onKeyUp={capture}
         onMouseUp={capture}
         onPaste={event => {

@@ -179,11 +179,40 @@ export function articleDocumentFromElement(root: HTMLElement): ArticleDocument {
     if (!(node instanceof HTMLElement) || blocked.has(node.tagName)) return [];
     if (node.tagName === 'BR') return [{ text: '\n', ...marks }];
     const next = { ...marks };
-    if (['B', 'STRONG'].includes(node.tagName) || Number(node.style.fontWeight) >= 600) next.bold = true;
-    if (['I', 'EM'].includes(node.tagName) || node.style.fontStyle === 'italic') next.italic = true;
-    if (node.tagName === 'U' || node.style.textDecoration.includes('underline')) next.underline = true;
+    const fw = String(node.style?.fontWeight || '').trim().toLowerCase();
+    const isBold = ['B', 'STRONG'].includes(node.tagName) || fw === 'bold' || fw === 'bolder' || (!isNaN(Number(fw)) && Number(fw) >= 600);
+    if (isBold) next.bold = true;
+    else if (fw === 'normal' || fw === '400') delete next.bold;
+
+    const fs = String(node.style?.fontStyle || '').trim().toLowerCase();
+    const isItalic = ['I', 'EM'].includes(node.tagName) || fs === 'italic' || fs === 'oblique';
+    if (isItalic) next.italic = true;
+    else if (fs === 'normal') delete next.italic;
+
+    const td = String(node.style?.textDecoration || node.style?.textDecorationLine || '').trim().toLowerCase();
+    const isUnderline = ['U', 'INS'].includes(node.tagName) || td.includes('underline');
+    if (isUnderline) next.underline = true;
+    else if (td.includes('none')) delete next.underline;
+
     if (node.tagName === 'A') next.href = safeUrl(node.getAttribute('href'));
-    return Array.from(node.childNodes).flatMap(child => runs(child, next));
+    const raw = Array.from(node.childNodes).flatMap(child => runs(child, next));
+    const merged: ArticleInline[] = [];
+    for (const r of raw) {
+      if (!r.text) continue;
+      const last = merged[merged.length - 1];
+      if (
+        last &&
+        Boolean(last.bold) === Boolean(r.bold) &&
+        Boolean(last.italic) === Boolean(r.italic) &&
+        Boolean(last.underline) === Boolean(r.underline) &&
+        last.href === r.href
+      ) {
+        last.text += r.text;
+      } else {
+        merged.push({ ...r });
+      }
+    }
+    return merged;
   };
   const blocks: ArticleDocument['blocks'] = [];
   const blockTags = new Set(['P', 'DIV', 'H2', 'H3', 'UL', 'OL', 'BLOCKQUOTE', 'FIGURE', 'IMG']);
