@@ -5593,6 +5593,17 @@ form > .drawer-form-actions,
   padding: 18px 22px !important;
   box-sizing: border-box !important;
 }
+.card:has(> .table-wrap),
+.card:has(> div > .table-wrap) {
+  padding: 0 !important;
+  overflow: hidden !important;
+}
+.card:has(> .table-wrap) .card-header,
+.card:has(> div > .table-wrap) .card-header {
+  padding: 14px 18px !important;
+  margin-bottom: 0 !important;
+  border-bottom: 1px solid #e2e8f0 !important;
+}
 .card-header {
   display: flex !important;
   align-items: center !important;
@@ -5766,6 +5777,13 @@ form > .drawer-form-actions,
   border-radius: 8px !important;
   background: #ffffff !important;
 }
+.card > .table-wrap,
+.card-full > .table-wrap,
+.card-body > .table-wrap,
+.card > div > .table-wrap {
+  border: 0 !important;
+  border-radius: 0 !important;
+}
 .data-table {
   width: 100% !important;
   border-collapse: collapse !important;
@@ -5780,6 +5798,11 @@ form > .drawer-form-actions,
   padding: 10px 14px !important;
   border-bottom: 1px solid #e2e8f0 !important;
   text-align: left;
+}
+.data-table th:last-child,
+.data-table td:last-child {
+  text-align: right;
+  white-space: nowrap;
 }
 .data-table td {
   padding: 11px 14px !important;
