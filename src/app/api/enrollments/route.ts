@@ -6,6 +6,7 @@ import {previousAcademicYear} from '@/services/reenrollmentService';
 import {filterRelationalSnapshot} from '@/services/persistentPermissionsService';
 import {connectedRecordName} from '@/services/connectedRecordDisplayService';
 import {availableEnrollmentGroupLinks} from '@/services/enrollmentGroupReferenceService';
+import {calculateTuitionSchedule, type PaymentPlan} from '@/services/tuitionScheduleService';
 import type {RelationalSnapshot,PersistentChange} from '@/types/persistence';
 export const dynamic='force-dynamic';
 async function directory(request:Request){
@@ -41,7 +42,9 @@ export async function GET(request:Request){try{
 const schema=z.object({
   kind:z.enum(['new','reenroll']),
   doubleDegree:z.boolean().default(false),
-  fullPaymentDiscount:z.boolean().default(false),
+  paymentPlan:z.enum(['ANNUEL','TRIMESTRIEL','BIMESTRIEL']).optional(),
+  applyQuarterlyDiscount:z.boolean().default(false),
+  fullPaymentDiscount:z.boolean().optional(),
   studentId:z.uuid(),
   offeringId:z.uuid(),
   groupId:z.uuid().optional(),
@@ -121,9 +124,18 @@ export async function POST(request:Request){try{
   }
   changes.push({table:'contract_lines',operation:'insert',record:{id:lineId,contract_id:contractId,version_id:versionId,fee_type_id:type.id,description:`${fee.category} · ${target.name} · tarif ${fee.id}`,amount:fee.amount}});
  }
- if(body.fullPaymentDiscount && tuitionLineId && tuitionAmount>0){
-  const discountAmount=Math.round(tuitionAmount*0.15);
-  const scholarship15=tables.scholarships?.find(s=>s.code==='REMISE-15' && s.active);
+ const effectivePlan:PaymentPlan = body.paymentPlan || (body.fullPaymentDiscount ? 'ANNUEL' : 'TRIMESTRIEL');
+ const scheduleResult = calculateTuitionSchedule({
+  tuitionAmount,
+  registrationAmount,
+  paymentPlan: effectivePlan,
+  applyQuarterlyDiscount: body.applyQuarterlyDiscount,
+  enrolledOn,
+  yearStartsOn: target.starts_on,
+  yearEndsOn: target.ends_on,
+ });
+ if(scheduleResult.discountAmount>0 && tuitionLineId){
+  const scholarship = tables.scholarships?.find(s=>s.code===scheduleResult.scholarshipCode && s.active);
   changes.push({
    table:'contract_discounts',
    operation:'insert',
@@ -131,22 +143,25 @@ export async function POST(request:Request){try{
     id:crypto.randomUUID(),
     line_id:tuitionLineId,
     version_id:versionId,
-    scholarship_award_id:scholarship15?.id || null,
-    amount:discountAmount,
-    reason:'Réduction de 15 % pour paiement comptant intégral de la scolarité'
+    scholarship_award_id:scholarship?.id || null,
+    amount:scheduleResult.discountAmount,
+    reason:scheduleResult.discountPercent===15
+      ? 'Remise 15% paiement annuel comptant'
+      : 'Remise 10% paiement trimestriel',
    }
   });
-  const netContractTotal=(tuitionAmount-discountAmount)+registrationAmount;
+ }
+ for(const inst of scheduleResult.installments){
   changes.push({
    table:'installments',
    operation:'insert',
    record:{
     id:crypto.randomUUID(),
     version_id:versionId,
-    position:1,
-    due_on:enrolledOn,
-    amount:netContractTotal,
-    description:`Paiement comptant intégral (Remise 15 % déduite) · ${target.name}`
+    position:inst.position,
+    due_on:inst.dueOn,
+    amount:inst.amount,
+    description:`${inst.description} · ${target.name}`
    }
   });
  }

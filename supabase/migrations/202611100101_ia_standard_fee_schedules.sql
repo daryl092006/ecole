@@ -1,10 +1,11 @@
 -- Migration 202611100101_ia_standard_fee_schedules.sql
--- Grille des frais de scolarité normaux (sans double diplomation, tarif réduit de moitié)
+-- 1. Grille des frais de scolarité normaux (sans double diplomation, tarif réduit de moitié)
 -- pour la filière IA-GL 2026-2027 :
 -- L1 : 425 000 FCFA (soit 850 000 / 2)
 -- L2 : 487 500 FCFA (soit 975 000 / 2)
 -- L3 : 550 000 FCFA (soit 1 100 000 / 2)
 -- Inscription : 50 000 FCFA pour chaque niveau
+-- 2. Création de la remise trimestrielle de 10% dans le catalogue des bourses/remises
 
 do $$
 declare
@@ -21,9 +22,15 @@ begin
   from escen.programs
   where code = 'IA-GL' and archived_at is null;
 
-  -- Si l'année ou le programme n'existe pas encore (ex. base vierge), ne rien faire
+  -- 1. Insérer la remise trimestrielle 10% dans le catalogue des bourses
+  insert into escen.scholarships (code, name, kind, percent, active)
+  values ('REMISE-10', 'Remise paiement trimestriel 10%', 'POURCENTAGE', 10.00, true)
+  on conflict (code) do update set percent = 10.00, active = true;
+
+  -- Si l'année ou le programme n'existe pas encore (ex. base vierge), ne rien faire de plus
   if target_year is null or target_program is null then return; end if;
 
+  -- 2. Grilles tarifaires sans double diplomation pour L1, L2, L3 IA-GL
   for tariff in select * from (values
     ('L1', 425000), ('L2', 487500), ('L3', 550000)
   ) as prices(level_code, amount)
