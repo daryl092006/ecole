@@ -53,7 +53,8 @@ export default function OnlineAdmissionsPanel({
   const canManage =
     !readOnly &&
     (!state.academicYearContext || !!state.academicYearContext.selectedYearId) &&
-    state.perms.permissions.includes('student.lifecycle.manage') &&
+    (state.perms.permissions.includes('student.lifecycle.manage') ||
+      (mode === 'configuration' && state.perms.permissions.includes('communication.manage'))) &&
     state.session?.capabilities?.[role]?.globalAccess;
 
   const [intakeFilters, setIntakeFilters] = useState(EMPTY_INTAKE_FILTERS);
@@ -108,7 +109,11 @@ export default function OnlineAdmissionsPanel({
     setBusy(true);
     setMessage('');
     try {
-      await saveWebsiteData({ ...values, reason: reason?.trim() || 'Mise à jour de la configuration' }, role);
+      const resolvedReason =
+        reason?.trim() ||
+        (typeof values.reason === 'string' && values.reason.trim()) ||
+        'Mise à jour de la configuration';
+      await saveWebsiteData({ ...values, reason: resolvedReason }, role);
       setSelected(null);
       setIntake(null);
       setLevelGroup(null);
