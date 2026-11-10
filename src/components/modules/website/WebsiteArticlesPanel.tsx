@@ -16,7 +16,7 @@ import { articlePlainText, extractArticleImages, readAndOptimizeArticleImage, re
 import FormFeedback from '@/components/ui/FormFeedback';
 import ConnectedDomainWorkspace from '@/components/modules/ConnectedDomainWorkspace';
 
-const emptyArticle = { title: '', slug: '', excerpt: '', content: '', image: '', status: 'PUBLIE' as WebsiteArticle['status'] };
+const emptyArticle = { title: '', slug: '', excerpt: '', content: '', image: '', status: 'PUBLIE' as WebsiteArticle['status'], published_at: '' as string | null };
 const statusLabels: Record<WebsiteArticle['status'], string> = {
   BROUILLON: 'Brouillon privé',
   PUBLIE: 'Publié sur le site',
@@ -92,9 +92,9 @@ export default function WebsiteArticlesPanel() {
     if (!editing) return;
     setBusy(true); setMessage('');
     try {
-      const { id, version, title, slug, excerpt, content, image, status } = editing;
+      const { id, version, title, slug, excerpt, content, image, status, published_at } = editing;
       const finalSlug = slugifyWebsiteText(slug || title) || 'actualite-escen';
-      await saveWebsiteData({ action: 'article-save', ...(id ? { id, version } : {}), title, slug: finalSlug, excerpt, content, image, status }, role);
+      await saveWebsiteData({ action: 'article-save', ...(id ? { id, version } : {}), title, slug: finalSlug, excerpt, content, image, status, ...(published_at ? { published_at } : {}) }, role);
       setEditing(null); setFullPreview(false); setRevision(value => value + 1);
       setSuccess(status === 'PUBLIE' ? 'Article enregistré et publié sur le site.' : status === 'RETIRE' ? 'Article retiré du site. Son historique est conservé.' : 'Brouillon de l’article enregistré.');
       state.refreshCampus();
@@ -194,6 +194,7 @@ export default function WebsiteArticlesPanel() {
         { label: 'Adresse', value: `/blogs/${editing.slug}` },
         { label: 'Résumé', value: editing.excerpt },
         { label: 'Contenu', value: articlePlainText(editing.content) },
+        { label: 'Date de publication', value: editing.published_at ? editing.published_at.slice(0, 10) : 'Date du jour (automatique)' },
         { label: 'Image de couverture', value: editing.image.startsWith('data:image/') ? 'Photo importée depuis l’appareil' : editing.image },
         { label: 'Diffusion', value: statusLabels[editing.status], previous: editing.id ? statusLabels[articles.find(article => article.id === editing.id)?.status || 'BROUILLON'] : undefined },
       ]} consequence={editing.status === 'PUBLIE' ? 'Cet article sera visible publiquement sur le site.' : editing.status === 'RETIRE' ? 'Cet article sera retiré du site ; son historique sera conservé.' : 'Ce brouillon restera privé.'}
@@ -324,6 +325,7 @@ export default function WebsiteArticlesPanel() {
         </div><aside className="article-compose-settings" aria-label="Réglages de publication">
           <div className="article-compose-heading"><span className="page-eyebrow">PUBLICATION</span><h3>Réglages de l’article</h3></div>
           <label className="form-group">Diffusion<select aria-label="Diffusion" className="select-input" value={editing.status} onChange={event => setEditing({ ...editing, status: event.target.value as WebsiteArticle['status'] })}><option value="BROUILLON">Brouillon privé</option><option value="PUBLIE">Publié sur le site</option><option value="RETIRE">Retiré du site</option></select><span className="article-field-help">{editing.status === 'PUBLIE' ? 'Visible par tous après confirmation.' : editing.status === 'RETIRE' ? 'Masqué du site, conservé dans le portail.' : 'Visible uniquement dans le portail.'}</span></label>
+          <label className="form-group">Date de publication<input aria-label="Date de publication" className="input" type="date" value={editing.published_at ? editing.published_at.slice(0, 10) : ''} onChange={event => setEditing({ ...editing, published_at: event.target.value })} /><span className="article-field-help">Date affichée sur le site. Modifiable pour antidater l’article. Laissez vide pour aujourd’hui.</span></label>
         <label className="form-group">Adresse de l’article<input className="input" required pattern="[a-z0-9]+(-[a-z0-9]+)*" maxLength={180} placeholder="nouvelle-rentree-escen" value={editing.slug} onChange={event => {
           setSlugTouched(true);
           setEditing({ ...editing, slug: event.target.value });

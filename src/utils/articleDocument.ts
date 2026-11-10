@@ -56,6 +56,9 @@ export function sniffRasterImageBytes(bytes: Uint8Array): 'image/jpeg' | 'image/
 
 export function isSafeArticleImageUrl(value: string): boolean {
   if (!value || value.length > 1_500_000) return false;
+  if (value.startsWith('/') && !value.startsWith('//') && /^\/[a-zA-Z0-9_\-./]+$/.test(value)) {
+    return !value.includes('..') && !value.endsWith('/');
+  }
   const match = RASTER_DATA_URL_RE.exec(value);
   if (match) {
     const declaredSubtype = match[1];

@@ -44,6 +44,9 @@ const inlinePhotoArticle = ARTICLE_DOCUMENT_PREFIX + JSON.stringify({ blocks: [
   { type: 'image', src: validPngDataUrl, alt: 'Photo du campus' },
 ] });
 assert.equal(articleSchema.safeParse({ ...articleInput, content: inlinePhotoArticle }).success, true);
+assert.equal(articleSchema.safeParse({ ...articleInput, image: '/actualites/escen-partenariat-pmi-togo.jpg', published_at: '2025-09-29T10:00:00Z' }).success, true);
+assert.equal(articleSchema.safeParse({ ...articleInput, image: '/actualites/escen-audience-ministre-enseignement-superieur.jpg', published_at: '2025-03-25' }).success, true);
+assert.equal(articleSchema.safeParse({ ...articleInput, published_at: 'date-invalide' }).success, false);
 assert.equal(identitySchema.safeParse({ nom: 'Test', prenom: 'Alice', genre: 'Féminin', date_naissance: '2000-01-01', lieu_naissance: 'Lomé', nationalite: 'Togolaise', email: 'alice@example.test', tel: '+22890000000', active: true }).success, false);
 assert.equal(guardianSchema.safeParse({ nom: 'Test', prenom: 'Parent', tel: '+22890000000', responsable_des_frais: '1' }).success, true);
 const masterDiploma = diplomaSchema.parse({ type_diplome_id: 'Master', annee_diplome: '2024', specialite_diplome: 'Finance' });

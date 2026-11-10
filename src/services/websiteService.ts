@@ -118,6 +118,7 @@ export const articleSchema = z.object({
   excerpt: z.string().trim().min(3).max(500), content: z.string().trim().min(3).max(3_000_000).refine(value => !value.startsWith(ARTICLE_DOCUMENT_PREFIX) || !!parseArticleDocument(value), 'Document d’article invalide.').refine(value => { const plain = articlePlainText(value).trim(); return plain.length >= 3 && plain.length <= 50000; }, 'Le contenu de l’article est invalide.'),
   image: z.union([z.literal(''), z.string().max(1_500_000).refine(isSafeArticleImageUrl, 'Image de couverture invalide.')]),
   status: z.enum(['BROUILLON', 'PUBLIE', 'RETIRE']),
+  published_at: z.string().trim().regex(/^\d{4}-\d{2}-\d{2}(?:[T\s].*)?$/).optional().nullable(),
 }).strict();
 export const GALLERY_CATEGORIES = [
   'Vie étudiante',
