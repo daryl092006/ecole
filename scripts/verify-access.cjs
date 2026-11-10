@@ -43,7 +43,7 @@ assert.throws(() => queryDemoUsers([user], ROLES.DG, { search: '', role: '', sta
 assert.throws(() => toggleDemoUser(user, ' ', ROLES.DG));
 
 for (const role of Object.values(ROLES)) {
-  assert.equal(hasPermission(role, 'staff.manage'), [ROLES.DG, ROLES.RAF, ROLES.IT].includes(role));
+  assert.equal(hasPermission(role, 'staff.manage'), [ROLES.DG, ROLES.RAF, ROLES.IT, ROLES.LOG].includes(role));
   assert.equal(hasPermission(role, 'purchase.create'), (role === ROLES.ACHATS || role === ROLES.IT));
   assert.equal(hasPermission(role, 'purchase.approve'), [ROLES.DG, ROLES.RAF, ROLES.IT].includes(role));
   assert.equal(hasPermission(role, 'purchase.receive'), (role === ROLES.ACHATS || role === ROLES.IT));

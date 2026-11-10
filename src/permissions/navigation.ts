@@ -171,7 +171,7 @@ export function getAvailableTabs(role: RoleName, permissions?: Permission[], glo
   const rolePermissions = ROLE_PERMISSIONS[role];
   const roleAccess = ROLE_ACCESS[role];
   const canLogistics = [ROLES.DG, ROLES.DGA, ROLES.RAF, ROLES.ACHATS, ROLES.SITE, ROLES.IT].includes(role as typeof ROLES.DG);
-  const canStaff = [ROLES.DG, ROLES.DGA, ROLES.RAF, ROLES.IT].includes(role as typeof ROLES.DG);
+  const canStaff = [ROLES.DG, ROLES.DGA, ROLES.RAF, ROLES.IT, ROLES.LOG].includes(role as typeof ROLES.DG);
   return ALL_TABS
     .filter(tab => (tab.id === 'website' && globalAccess) || rolePermissions.allowedTabs.includes(tab.id) || (tab.id === 'logistique' && canLogistics) || (tab.id === 'personnel' && canStaff))
     .map(tab => ({
