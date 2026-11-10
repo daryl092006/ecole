@@ -24,9 +24,27 @@ function cors(request: Request, response: Response) {
   return response;
 }
 export async function OPTIONS(request: Request) { return cors(request, new Response(null, { status: 204 })); }
-const publicArticle = (article: WebsiteArticle) => ({
+function safePortalOrigin(request: Request): string {
+  try {
+    return portalOrigin(request);
+  } catch {
+    const url = new URL(request.url);
+    return url.origin;
+  }
+}
+function resolveArticleImage(rawImage: string | null | undefined, origin: string): string {
+  if (!rawImage) return '/valeurs/bg.jpg';
+  if (rawImage.startsWith('http://') || rawImage.startsWith('https://') || rawImage.startsWith('data:')) {
+    return rawImage;
+  }
+  if (rawImage.startsWith('/valeurs/')) {
+    return rawImage;
+  }
+  return `${origin}${rawImage.startsWith('/') ? '' : '/'}${rawImage}`;
+}
+const publicArticle = (article: WebsiteArticle, origin: string) => ({
   id: article.id, title: article.title, slug: article.slug, excerpt: article.excerpt,
-  content: escapeArticleContent(article.content), image: article.image || '/valeurs/bg.jpg', author: 'ESCEN',
+  content: escapeArticleContent(article.content), image: resolveArticleImage(article.image, origin), author: 'ESCEN',
   date: article.published_at?.slice(0, 10), readTime: `${Math.max(1, Math.ceil(articlePlainText(article.content).trim().split(/\s+/).filter(Boolean).length / 200))} min`,
   comments: [], tags: [], is_event: false, featured: false,
 });
@@ -66,7 +84,8 @@ async function handle(request: Request, context: RouteContext) {
     const rpc = (action: string, token: string | null = null, data: unknown = {}) => websiteRpc(getSupabaseServerClient(), 'escen_website_public', { p_action: action, p_token_hash: token ? hashWebsiteToken(token) : null, p_data: data });
     if (request.method === 'GET') {
       if (route === 'public/blogs' || route.startsWith('public/blogs/')) {
-        const articles = (await rpc('articles') as WebsiteArticle[]).map(publicArticle);
+        const origin = safePortalOrigin(request);
+        const articles = (await rpc('articles') as WebsiteArticle[]).map(item => publicArticle(item, origin));
         if (route === 'public/blogs') return cors(request, Response.json(articles));
         const article = articles.find(item => item.slug === path[2] || item.id === path[2]);
         if (!article) throw new RequestError(404, 'Article introuvable.');
