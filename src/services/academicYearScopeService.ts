@@ -42,6 +42,9 @@ export function accessibleAcademicYears(snapshot: RelationalSnapshot, context: P
       for (const year of rows('academic_years')) if (!year.archived_at && year.status === 'OUVERTE') allowed.add(year.id);
     }
   }
+  if (teacher && !allowed.size && context.grants.some(grant => !grant.academic_year_id && !grant.group_id && !grant.site_id)) {
+    for (const year of rows('academic_years')) if (!year.archived_at && year.status === 'OUVERTE') allowed.add(year.id);
+  }
   if (!personal && !teacher && !supervisor) for (const group of rows('groups')) if (context.grants.some(grant => (!grant.site_id || grant.site_id === group.site_id) && (!grant.group_id || grant.group_id === group.id) && (!grant.academic_year_id || grant.academic_year_id === group.academic_year_id))) allowed.add(id(group, 'academic_year_id'));
   if (!personal && !teacher && !supervisor) for (const grant of context.grants) if (grant.academic_year_id) allowed.add(grant.academic_year_id);
   return rows('academic_years').filter(row => !row.archived_at && (global || allowed.has(row.id))).map(row => ({ id: row.id, name: String(row.name), status: row.status as AcademicYearOption['status'], starts_on: String(row.starts_on), ends_on: String(row.ends_on) })).sort((a, b) => b.starts_on.localeCompare(a.starts_on));

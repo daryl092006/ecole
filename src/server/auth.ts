@@ -83,7 +83,8 @@ export async function requireAccount(request: Request) {
   const available = profile.grants.filter(item => knownRoles[item.role_code] === item.role_name);
   if (!available.length) throw new RequestError(403, 'Aucun rôle actif ne vous est attribué.');
   const requested = request.headers.get('x-escen-role');
-  const selected = requested ? available.find(item => matchesRequestedRole(item, requested)) : available[0];
+  const defaultGrant = profile.student ? (available.find(item => item.role_code === 'STUD') || available[0]) : available[0];
+  const selected = requested ? available.find(item => matchesRequestedRole(item, requested)) : defaultGrant;
   if (!selected) throw new RequestError(403, 'Ce rôle ne vous est pas attribué.');
   const role = knownRoles[selected.role_code];
   if ((role === ROLES.STUD || role === ROLES.DEL) && !profile.student || role === ROLES.ENS && !profile.teacher) throw new RequestError(403, 'Votre profil métier doit être complété par ESCEN.');
