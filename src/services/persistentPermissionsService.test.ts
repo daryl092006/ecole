@@ -81,7 +81,7 @@ const ccFiltered = filterRelationalSnapshot(snapshot,context(ROLES.CC,{ roleCode
 assert.deepEqual(ccFiltered.students.map(row => row.id),['s1','s2']);
 assert.deepEqual(ccFiltered.academic_offerings.map(row => row.id),['o1']);
 assert.deepEqual(ccFiltered.groups.map(row => row.id),['g1','g2']);
-assert.equal(ccFiltered.payments,undefined);
+assert.deepEqual(ccFiltered.payments.map(row => row.id),['payment1','payment2']);
 for (const role of [ROLES.ACHATS]) {
   const filtered = filterRelationalSnapshot(snapshot,context(role)).tables;
   assert.deepEqual(filtered.people.map(row => row.id),['pm']);

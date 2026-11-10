@@ -347,6 +347,18 @@ export default function WorkspaceHome({ mode = 'home' }: { mode?: 'home' | 'over
             { label: 'Groupes', value: `${count('groups')}` },
           ],
         },
+        {
+          title: 'Scolarité & Recouvrement',
+          href: '/finance/versements',
+          icon: Wallet,
+          items: [
+            { label: 'Encaissé', value: fmtCompactFcfa(collectedAmount) },
+            { label: 'Reste à payer', value: knownFinancialStudents.length ? fmtCompactFcfa(remainingAmount) : 'Non établi' },
+            { label: 'Recouvrement', value: expectedAmount > 0 ? `${Math.round(recoveryRate)} %` : 'Non établi' },
+            { label: 'Règlements', value: `${confirmedPayments.length}` },
+            { label: 'En attente', value: `${pendingPayments.length}` },
+          ],
+        },
       ];
     }
 
@@ -408,7 +420,7 @@ export default function WorkspaceHome({ mode = 'home' }: { mode?: 'home' | 'over
     [ROLES.DG]: ['dashboard_kpis', 'stud_list', 'fin_kpis', 'acad_grades', 'comm_announcements'],
     [ROLES.DGA]: ['dashboard_kpis', 'stud_list', 'fin_kpis', 'acad_grades', 'comm_announcements'],
     [ROLES.DA]: ['acad_exams', 'acad_grades', 'acad_schedule', 'stud_list', 'acad_reference'],
-    [ROLES.CC]: ['web_applications', 'stud_list'],
+    [ROLES.CC]: ['web_applications', 'stud_list', 'fin_payments', 'fin_contracts'],
     [ROLES.LOG]: ['acad_schedule', 'acad_attendance', 'staff_teachers', 'acad_program'],
     [ROLES.ENS]: ['acad_schedule', 'acad_subjects', 'acad_grades', 'acad_complaints'],
     [ROLES.SURV]: ['acad_exams', 'acad_attendance', 'acad_schedule'],
