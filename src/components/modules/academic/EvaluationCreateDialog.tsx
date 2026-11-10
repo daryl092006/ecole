@@ -45,7 +45,7 @@ export default function EvaluationCreateDialog({
   const [name, setName] = useState('');
   const [kind, setKind] = useState<'DEVOIR' | 'EXAMEN' | 'INTERROGATION' | 'TP' | 'EXPOSE' | 'PROJET' | 'RATTRAPAGE'>(category === 'exam' ? 'EXAMEN' : category === 'resit' ? 'RATTRAPAGE' : 'DEVOIR');
   const [parentEvaluationId, setParentEvaluationId] = useState('');
-  const [scheduleNow, setScheduleNow] = useState(true);
+  const [scheduleNow, setScheduleNow] = useState(category === 'exam' || category === 'resit');
   const [startsAt, setStartsAt] = useState('');
   const [endsAt, setEndsAt] = useState('');
   const [durationMinutes, setDurationMinutes] = useState(120);
@@ -287,8 +287,8 @@ export default function EvaluationCreateDialog({
           </label>
           <p className="cell-sub" style={{ margin: '4px 0 0 0' }}>
             {scheduleNow
-              ? 'Fixez la date, l’heure et le mode pour inscrire l’épreuve à l’emploi du temps et dans la liste des examens programmés.'
-              : 'Si décoché, l’épreuve sera créée sans créneau et devra être planifiée ultérieurement.'}
+              ? 'Fixez la date, l’heure et la salle pour inscrire une nouvelle séance d’examen à l’emploi du temps.'
+              : 'Pour un contrôle continu (devoir, interrogation, TP) réalisé pendant un cours existant ou déjà passé, laissez cette case décochée : l’évaluation sera créée directement pour la saisie des notes sans conflit d’emploi du temps.'}
           </p>
 
           {scheduleNow && (
@@ -408,7 +408,7 @@ export default function EvaluationCreateDialog({
             className="btn btn-primary"
             disabled={busy || !assignmentId || !candidateCount}
           >
-            {scheduleNow ? 'Confirmer et programmer l’épreuve' : 'Enregistrer l’épreuve (sans créneau)'}
+            {scheduleNow ? 'Confirmer et programmer l’épreuve' : 'Enregistrer l’évaluation (saisie directe des notes)'}
           </button>
         </DrawerActions>
       </ReviewedForm>
