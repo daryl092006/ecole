@@ -417,14 +417,14 @@ export default function WorkspaceHome({ mode = 'home' }: { mode?: 'home' | 'over
     [ROLES.ACHATS]: ['log_purchases', 'log_suppliers', 'log_assets'],
     [ROLES.SITE]: ['web_applications', 'web_documents', 'web_brochures', 'comm_news', 'web_galleries'],
     [ROLES.IT]: ['staff_list', 'stud_accounts', 'sys_support', 'acad_reference', 'sys_logs'],
-    [ROLES.STUD]: ['acad_schedule', 'acad_program', 'espace_attendance', 'espace_exams', 'espace_documents', 'espace_finance', 'espace_announcements', 'espace_support'],
-    [ROLES.DEL]: ['acad_attendance', 'acad_program', 'espace_attendance', 'espace_exams', 'espace_documents', 'espace_finance', 'acad_complaints', 'espace_support'],
+    [ROLES.STUD]: ['acad_resources', 'acad_schedule', 'acad_program', 'espace_attendance', 'espace_exams', 'espace_documents', 'espace_finance', 'espace_announcements', 'espace_support'],
+    [ROLES.DEL]: ['acad_resources', 'acad_attendance', 'acad_program', 'espace_attendance', 'espace_exams', 'espace_documents', 'espace_finance', 'acad_complaints', 'espace_support'],
     [ROLES.STG]: ['stud_list', 'acad_schedule', 'espace_announcements', 'espace_support'],
   };
   const taskIcons: Record<string, typeof Award> = {
     dashboard_kpis: TrendingUp, stud_list: GraduationCap, fin_kpis: Wallet, fin_payments: Wallet,
     fin_contracts: Wallet, fin_reports: TrendingUp, acad_exams: ClipboardCheck, acad_subjects: ClipboardCheck,
-    acad_grades: BookOpen, acad_schedule: CalendarDays, acad_attendance: ClipboardCheck,
+    acad_grades: BookOpen, acad_resources: BookOpen, acad_schedule: CalendarDays, acad_attendance: ClipboardCheck,
     staff_teachers: Users, staff_list: Users, stud_accounts: Users, acad_reference: CalendarDays,
     acad_program: BookOpen, log_purchases: Package, log_suppliers: Package, log_assets: Package,
     espace_attendance: ClipboardCheck, espace_exams: ClipboardCheck, espace_documents: GraduationCap, espace_finance: Wallet,

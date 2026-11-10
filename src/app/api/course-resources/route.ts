@@ -420,7 +420,7 @@ export async function POST(request: Request) {
       requirePermission(data.context, 'course_resource.manage');
       const existing = (data.scoped.tables.course_resources || []).find(r => r.id === body.resourceId && !r.archived_at);
       if (!existing) throw new RequestError(404, 'Support de cours introuvable.');
-      if (data.context.role === ROLES.ENS && existing.uploaded_by !== data.context.accountId) {
+      if ((data.context.role === ROLES.ENS || data.context.role === ROLES.DEL) && existing.uploaded_by !== data.context.accountId) {
         throw new RequestError(403, 'Vous ne pouvez archiver que les supports que vous avez déposés.');
       }
       changes.push({
