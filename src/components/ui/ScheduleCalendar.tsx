@@ -75,10 +75,11 @@ export default function ScheduleCalendar({
   const clampMonth = (m: string) => (lower && m < lower ? lower : upper && m > upper ? upper : m);
 
   // Week-view state
-  // Initial date for week: first session date if exists, or today if in period, or period starts_on
+  // Initial date for week: today if in period, otherwise first session date if exists, or period starts_on
   const defaultDateStr =
-    dated[0]?.start.slice(0, 10) ||
-    (inPeriod(todayStr) ? todayStr : period?.starts_on || todayStr);
+    inPeriod(todayStr)
+      ? todayStr
+      : dated[0]?.start.slice(0, 10) || period?.starts_on || todayStr;
 
   const [currentWeekMondayStr, setCurrentWeekMondayStr] = useState<string>(() => {
     return formatIsoDate(getMonday(parseIsoDate(defaultDateStr)));

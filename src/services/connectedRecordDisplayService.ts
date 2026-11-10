@@ -5,6 +5,21 @@ const references: Record<string, Record<string, string>> = referenceMap;
 export const connectedFieldLabel = (key: string) => NATIVE_FIELD_LABELS[key] || ({ candidate_id: 'Candidat à l’évaluation', component_id: 'Composante pédagogique', version_id: 'Version du contrat', offering_semester_id: 'Semestre de l’offre', file_id: 'Pièce jointe', body: 'Message', currency: 'Devise', paid_on: 'Date du versement', payer_name: 'Payeur', terms_snapshot: 'Conditions de la bourse', happened_at: 'Date de l’opération', reversed_at: 'Date d’annulation', old_status: 'État précédent', new_status: 'Nouvel état', unit_amount: 'Montant unitaire FCFA', average: 'Moyenne', held_at: 'Date du jury', minutes: 'Compte rendu', absence_status: 'Présence et état de correction', comment: 'Commentaire', recorded_at: 'Enregistré le', arrived_at: 'Arrivée', left_at: 'Départ', withdrawn_at: 'Retiré le', expires_at: 'Expire le', withdrawal_reason: 'Motif du retrait' } as Record<string, string>)[key] || key.replace(/_/g, ' ');
 
 export function connectedRecordName(table: string, row: DatabaseRow, snapshot: RelationalSnapshot, depth = 0): string {
+  if (table === 'sessions') {
+    if (row.title || row.name) return String(row.title || row.name);
+    if (row.type === 'BLOCAGE') return row.reason ? `Période bloquée : ${row.reason}` : 'Période bloquée';
+    const delivery = snapshot.tables.exam_deliveries?.find(item => item.session_id === row.id);
+    const evaluation = delivery && snapshot.tables.evaluations?.find(item => item.id === delivery.evaluation_id);
+    const assignment = snapshot.tables.teaching_assignments?.find(item => item.id === row.assignment_id);
+    const component = assignment && snapshot.tables.curriculum_components?.find(item => item.id === assignment.component_id);
+    const subject = component && snapshot.tables.subjects?.find(item => item.id === component.subject_id);
+    const subjName = subject?.name ? `${String(subject.name)}${subject.code ? ` (${String(subject.code)})` : ''}` : '';
+    if (subjName && evaluation?.name) return `${subjName} · ${String(evaluation.name)}`;
+    if (subjName) return subjName;
+    if (evaluation?.name) return String(evaluation.name);
+    if (row.reason) return String(row.reason);
+    return `Séance ${row.id}`;
+  }
   if (table === 'evaluation_candidates' && depth < 4) {
     const enrollment = snapshot.tables.enrollments?.find(item => item.id === row.enrollment_id);
     const evaluation = snapshot.tables.evaluations?.find(item => item.id === row.evaluation_id);

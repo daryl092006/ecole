@@ -18,10 +18,21 @@ export function participantGranted(snapshot: RelationalSnapshot, context: Persis
 
 export function enrollmentParticipates(snapshot: RelationalSnapshot, session: DatabaseRow, participant: DatabaseRow, enrollmentId: string) {
   const day = String(session.starts_at).slice(0, 10);
-  return (snapshot.tables.enrollment_groups || []).some(link => link.enrollment_id === enrollmentId
-    && link.group_id === participant.group_id && link.offering_id === participant.offering_id
-    && String(link.valid_from) <= day && (!link.valid_until || String(link.valid_until) > day))
-    && (snapshot.tables.enrollments || []).some(row => row.id === enrollmentId && row.offering_id === participant.offering_id);
+  const links = (snapshot.tables.enrollment_groups || []).filter(link => link.enrollment_id === enrollmentId
+    && link.group_id === participant.group_id && link.offering_id === participant.offering_id);
+  if (!links.length) return false;
+  if (links.some(link => String(link.valid_from) <= day && (!link.valid_until || String(link.valid_until) > day))) return true;
+  // If the enrollment only has a single group membership with no prior groups,
+  // administrative enrollment/regularization date should not hide courses in the current academic year:
+  const allStudentLinks = (snapshot.tables.enrollment_groups || []).filter(link => link.enrollment_id === enrollmentId && link.offering_id === participant.offering_id);
+  if (allStudentLinks.length === 1 && !links[0].valid_until) {
+    const offering = (snapshot.tables.academic_offerings || []).find(o => o.id === participant.offering_id);
+    const year = offering && (snapshot.tables.academic_years || []).find(y => y.id === offering.academic_year_id);
+    if (year && year.starts_on && day >= String(year.starts_on) && (!year.ends_on || day <= String(year.ends_on))) {
+      return true;
+    }
+  }
+  return false;
 }
 
 export function visibleSessionParticipants(snapshot: RelationalSnapshot, context: PersistentContext, session: DatabaseRow,
