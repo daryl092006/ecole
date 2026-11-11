@@ -59,10 +59,15 @@ export default function EvaluationCreateDialog({
   const selectedComponent = selectedAssignment ? components.find(c => c.id === selectedAssignment.component_id) : null;
   const selectedSubject = selectedComponent ? subjects.find(s => s.id === selectedComponent.subject_id) : null;
 
-  // Calcul du nombre d'étudiants rattachés
+  // Calcul du nombre d'étudiants rattachés (aligné sur le trigger SQL guard_candidate)
+  const today = new Date().toISOString().slice(0, 10);
   const groupEnrollmentIds = new Set(
     enrollmentGroups
-      .filter(eg => eg.group_id === selectedAssignment?.group_id && (!eg.valid_until || new Date(String(eg.valid_until)).getTime() >= Date.now()))
+      .filter(eg =>
+        eg.group_id === selectedAssignment?.group_id &&
+        (!eg.valid_from || String(eg.valid_from).slice(0, 10) <= today) &&
+        (!eg.valid_until || String(eg.valid_until).slice(0, 10) > today)
+      )
       .map(eg => String(eg.enrollment_id))
   );
   const candidateCount = enrollments.filter(e => groupEnrollmentIds.has(String(e.id)) && e.offering_id === selectedAssignment?.offering_id && isEvaluationEnrollmentStatus(e.status)).length;
@@ -100,13 +105,14 @@ export default function EvaluationCreateDialog({
     setBusy(true);
     setError('');
     try {
+      const currentRevision = portal.relationalSnapshot.revision;
       const res = await manageEvaluation(portal.activeRole, {
         action: 'create',
         assignmentId,
         name: name.trim(),
         kind,
         parentEvaluationId: kind === 'RATTRAPAGE' ? parentEvaluationId : null,
-        revision: snapshot.revision,
+        revision: currentRevision,
       });
 
       if (res.id && scheduleNow && startsAt && endsAt) {
@@ -125,7 +131,7 @@ export default function EvaluationCreateDialog({
           accessClosesAt: iso(endsAt),
           durationMinutes: Number(durationMinutes),
           reason: 'Programmation lors de la création de l’épreuve',
-          revision: Number(res.revision) || snapshot.revision,
+          revision: Number(res.revision) || currentRevision,
         });
       }
 
@@ -136,6 +142,7 @@ export default function EvaluationCreateDialog({
         onClose();
       }
     } catch (err) {
+      void portal.refreshCampus();
       setError(err instanceof Error ? err.message : 'Erreur lors de la création de l’évaluation.');
     } finally {
       setBusy(false);

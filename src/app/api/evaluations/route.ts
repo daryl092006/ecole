@@ -124,8 +124,13 @@ export async function POST(request: Request) {
         throw new RequestError(400, 'Un rattrapage doit être rattaché à une évaluation parente.');
       }
 
-      // Candidats : étudiants inscrits dans le groupe de l'affectation
-      const groupLinks = (data.scoped.tables.enrollment_groups || []).filter(eg => eg.group_id === assignment.group_id && (!eg.valid_until || new Date(String(eg.valid_until)).getTime() >= Date.now()));
+      // Candidats : étudiants inscrits dans le groupe de l'affectation (aligné sur guard_candidate SQL)
+      const today = new Date().toISOString().slice(0, 10);
+      const groupLinks = (data.scoped.tables.enrollment_groups || []).filter(eg =>
+        eg.group_id === assignment.group_id &&
+        (!eg.valid_from || String(eg.valid_from).slice(0, 10) <= today) &&
+        (!eg.valid_until || String(eg.valid_until).slice(0, 10) > today)
+      );
       const groupEnrollmentIds = new Set(groupLinks.map(eg => eg.enrollment_id));
       const eligibleEnrollments = (data.scoped.tables.enrollments || []).filter(e => groupEnrollmentIds.has(e.id) && e.offering_id === assignment.offering_id && isEvaluationEnrollmentStatus(e.status));
 
@@ -171,7 +176,13 @@ export async function POST(request: Request) {
       });
 
       if (saved.error) {
-        throw new RequestError(409, 'Création de l’évaluation refusée. Aucun lot partiel n’est conservé : l’évaluation et tous ses candidats sont enregistrés ensemble. Actualisez les données puis réessayez.');
+        console.error('[API evaluations:create] Transaction failed:', saved.error);
+        const detail = saved.error.message || saved.error.details || '';
+        const isConflict = saved.error.code === '40001' || detail.includes('CONCURRENT_UPDATE');
+        const reasonMsg = isConflict
+          ? 'Une mise à jour concurrente est survenue (données actualisées).'
+          : detail ? `Détail : ${detail}.` : '';
+        throw new RequestError(409, `Création de l’évaluation refusée. ${reasonMsg} Aucun lot partiel n’est conservé : l’évaluation et tous ses candidats sont enregistrés ensemble. Actualisez les données puis réessayez.`);
       }
       return Response.json({ ok: true, id: evalId, revision: saved.data }, { status: 201 });
     }
@@ -257,7 +268,13 @@ export async function POST(request: Request) {
       });
 
       if (saved.error) {
-        throw new RequestError(409, 'Enregistrement des notes refusé. Aucun lot partiel n’est conservé : toutes les notes sont enregistrées ensemble. Actualisez les données et vérifiez les saisies.');
+        console.error('[API evaluations:enter_grades] Transaction failed:', saved.error);
+        const detail = saved.error.message || saved.error.details || '';
+        const isConflict = saved.error.code === '40001' || detail.includes('CONCURRENT_UPDATE');
+        const reasonMsg = isConflict
+          ? 'Une mise à jour concurrente est survenue (données actualisées).'
+          : detail ? `Détail : ${detail}.` : '';
+        throw new RequestError(409, `Enregistrement des notes refusé. ${reasonMsg} Aucun lot partiel n’est conservé : toutes les notes sont enregistrées ensemble. Actualisez les données et vérifiez les saisies.`);
       }
       return Response.json({ ok: true, revision: saved.data });
     }
@@ -505,7 +522,9 @@ export async function POST(request: Request) {
       });
 
       if (saved.error) {
-        throw new RequestError(409, 'Programmation refusée : vérifiez les dates, la séance et le motif.');
+        console.error('[API evaluations:schedule_delivery] Transaction failed:', saved.error);
+        const detail = saved.error.message || saved.error.details || '';
+        throw new RequestError(409, `Programmation refusée${detail ? ` (${detail})` : ''} : vérifiez les dates, la séance et le motif.`);
       }
       return Response.json({ ok: true, revision: saved.data });
     }
