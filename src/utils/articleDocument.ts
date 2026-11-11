@@ -76,14 +76,15 @@ export function isSafeArticleImageUrl(value: string): boolean {
 }
 
 const safeImageSrc = z.string().max(1_500_000).refine(isSafeArticleImageUrl, 'Image d’article invalide.');
+const alignEnum = z.enum(['left', 'center', 'right', 'justify']);
 const inlineSchema = z.object({ text: z.string().max(50000), bold: z.boolean().optional(), italic: z.boolean().optional(), underline: z.boolean().optional(), href: httpsUrl.optional() }).strict();
-const textBlock = { content: z.array(inlineSchema).max(5000) };
+const textBlock = { content: z.array(inlineSchema).max(5000), align: alignEnum.optional() };
 export const articleDocumentSchema = z.object({ blocks: z.array(z.discriminatedUnion('type', [
   z.object({ type: z.literal('paragraph'), ...textBlock }).strict(),
   z.object({ type: z.literal('heading'), level: z.union([z.literal(2), z.literal(3)]), ...textBlock }).strict(),
   z.object({ type: z.literal('quote'), ...textBlock }).strict(),
   z.object({ type: z.literal('list'), ordered: z.boolean(), items: z.array(z.array(inlineSchema).max(5000)).max(500) }).strict(),
-  z.object({ type: z.literal('image'), src: safeImageSrc, alt: z.string().trim().min(1).max(500) }).strict(),
+  z.object({ type: z.literal('image'), src: safeImageSrc, alt: z.string().trim().min(1).max(500), align: alignEnum.optional() }).strict(),
 ])).max(1000) }).strict();
 export type ArticleDocument = z.infer<typeof articleDocumentSchema>;
 export type ArticleInline = z.infer<typeof inlineSchema>;
@@ -162,10 +163,14 @@ export function renderArticleContent(value: string): string {
     return html;
   }).join('');
   return document.blocks.map(block => {
-    if (block.type === 'image') return `<figure><img src="${escapeArticleText(block.src)}" alt="${escapeArticleText(block.alt)}" loading="lazy"></figure>`;
+    if (block.type === 'image') {
+      const figureStyle = block.align ? ` style="text-align: ${block.align};"` : '';
+      return `<figure${figureStyle}><img src="${escapeArticleText(block.src)}" alt="${escapeArticleText(block.alt)}" loading="lazy"></figure>`;
+    }
     if (block.type === 'list') { const tag = block.ordered ? 'ol' : 'ul'; return `<${tag}>${block.items.map(item => `<li>${inline(item)}</li>`).join('')}</${tag}>`; }
     const tag = block.type === 'heading' ? `h${block.level}` : block.type === 'quote' ? 'blockquote' : 'p';
-    return `<${tag}>${inline(block.content)}</${tag}>`;
+    const alignAttr = block.align ? ` style="text-align: ${block.align};"` : '';
+    return `<${tag}${alignAttr}>${inline(block.content)}</${tag}>`;
   }).join('');
 }
 
@@ -176,6 +181,14 @@ export function articleDocumentFromElement(root: HTMLElement): ArticleDocument {
   const safeImageUrl = (value: string | null) => {
     if (!value || !isSafeArticleImageUrl(value)) return undefined;
     return value.startsWith('data:image/') ? value : safeUrl(value);
+  };
+  const getAlign = (el: HTMLElement): 'left' | 'center' | 'right' | 'justify' | undefined => {
+    const raw = (el.style?.textAlign || el.getAttribute('align') || (el.tagName === 'CENTER' ? 'center' : '')).toLowerCase().trim();
+    if (raw === 'center') return 'center';
+    if (raw === 'right') return 'right';
+    if (raw === 'justify') return 'justify';
+    if (raw === 'left') return 'left';
+    return undefined;
   };
   const runs = (node: Node, marks: Omit<ArticleInline, 'text'> = {}): ArticleInline[] => {
     if (node.nodeType === Node.TEXT_NODE) return [{ text: node.textContent || '', ...marks }];
@@ -218,26 +231,70 @@ export function articleDocumentFromElement(root: HTMLElement): ArticleDocument {
     return merged;
   };
   const blocks: ArticleDocument['blocks'] = [];
-  const blockTags = new Set(['P', 'DIV', 'H2', 'H3', 'UL', 'OL', 'BLOCKQUOTE', 'FIGURE', 'IMG']);
+  const blockTags = new Set(['P', 'DIV', 'H2', 'H3', 'UL', 'OL', 'BLOCKQUOTE', 'FIGURE', 'IMG', 'CENTER']);
   const visitChildren = (parent: HTMLElement) => {
     let pending: ArticleInline[] = [];
-    const flush = () => { if (pending.some(run => run.text.trim())) blocks.push({ type: 'paragraph', content: pending }); pending = []; };
+    const parentAlign = getAlign(parent);
+    const flush = () => {
+      if (pending.some(run => run.text.trim())) {
+        blocks.push({ type: 'paragraph', content: pending, ...(parentAlign ? { align: parentAlign } : {}) });
+      }
+      pending = [];
+    };
     parent.childNodes.forEach(child => {
-      if (child instanceof HTMLElement && blockTags.has(child.tagName)) { flush(); visit(child); }
-      else pending.push(...runs(child));
+      if (child instanceof HTMLElement && blockTags.has(child.tagName)) {
+        flush();
+        visit(child);
+      } else {
+        pending.push(...runs(child));
+      }
     });
     flush();
   };
   const visit = (node: Node) => {
-    if (node.nodeType === Node.TEXT_NODE) { if (node.textContent) blocks.push({ type: 'paragraph', content: runs(node) }); return; }
+    if (node.nodeType === Node.TEXT_NODE) {
+      if (node.textContent) blocks.push({ type: 'paragraph', content: runs(node) });
+      return;
+    }
     if (!(node instanceof HTMLElement) || blocked.has(node.tagName)) return;
     const tag = node.tagName;
-    if (tag === 'IMG') { const src = safeImageUrl(node.getAttribute('src')); const alt = node.getAttribute('alt')?.trim(); if (src && alt) blocks.push({ type: 'image', src, alt }); return; }
-    if (['UL', 'OL'].includes(tag)) { blocks.push({ type: 'list', ordered: tag === 'OL', items: Array.from(node.children).filter(item => item.tagName === 'LI').map(item => runs(item)) }); return; }
-    if (tag === 'H2' || tag === 'H3') { blocks.push({ type: 'heading', level: tag === 'H2' ? 2 : 3, content: runs(node) }); return; }
-    if (tag === 'BLOCKQUOTE') { blocks.push({ type: 'quote', content: runs(node) }); return; }
-    if (Array.from(node.children).some(child => blockTags.has(child.tagName))) { visitChildren(node); return; }
-    blocks.push({ type: 'paragraph', content: runs(node) });
+    const align = getAlign(node);
+    if (tag === 'IMG') {
+      const src = safeImageUrl(node.getAttribute('src'));
+      const alt = node.getAttribute('alt')?.trim();
+      if (src && alt) blocks.push({ type: 'image', src, alt, ...(align ? { align } : {}) });
+      return;
+    }
+    if (tag === 'FIGURE') {
+      const img = node.querySelector('img');
+      const src = safeImageUrl(img?.getAttribute('src') || null);
+      const alt = img?.getAttribute('alt')?.trim();
+      if (src && alt) {
+        blocks.push({ type: 'image', src, alt, ...(align ? { align } : {}) });
+        return;
+      }
+    }
+    if (['UL', 'OL'].includes(tag)) {
+      blocks.push({
+        type: 'list',
+        ordered: tag === 'OL',
+        items: Array.from(node.children).filter(item => item.tagName === 'LI').map(item => runs(item)),
+      });
+      return;
+    }
+    if (tag === 'H2' || tag === 'H3') {
+      blocks.push({ type: 'heading', level: tag === 'H2' ? 2 : 3, content: runs(node), ...(align ? { align } : {}) });
+      return;
+    }
+    if (tag === 'BLOCKQUOTE') {
+      blocks.push({ type: 'quote', content: runs(node), ...(align ? { align } : {}) });
+      return;
+    }
+    if (Array.from(node.children).some(child => blockTags.has(child.tagName))) {
+      visitChildren(node);
+      return;
+    }
+    blocks.push({ type: 'paragraph', content: runs(node), ...(align ? { align } : {}) });
   };
   visitChildren(root);
   return articleDocumentSchema.parse({ blocks });
