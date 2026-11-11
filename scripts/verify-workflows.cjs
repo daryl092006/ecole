@@ -248,3 +248,4 @@ require('../src/services/studentProvisioningDocuments.test.ts');
 
 require('../src/services/scholarshipEffectService.test.ts');
 require('../src/services/tuitionScheduleService.test.ts');
+require('../src/services/gradeCalculationService.test.ts');

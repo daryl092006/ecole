@@ -17,6 +17,7 @@ import PersistentExamCopies from './PersistentExamCopies';
 import PageHeader from '@/components/ui/PageHeader';
 import { downloadCsv } from '@/utils/csv';
 import { formatSubjectCode } from '@/services/resaoCodeService';
+import { computeSubjectAverage } from '@/services/gradeCalculationService';
 import {
   Search,
   ArrowLeft,
@@ -237,10 +238,14 @@ export default function GradesWorkspace() {
         return { evalId: String(ev.id), candidate: true, complete, value: val, absenceStatus, attemptStatus, noteLabel };
       });
 
-      const numericValues = evalCells.map(c => c.value).filter((v): v is number => v !== null);
-      const studentSubjectAverage = numericValues.length > 0
-        ? Math.round((numericValues.reduce((sum, v) => sum + v, 0) / numericValues.length) * 100) / 100
-        : null;
+      const gradeInputs = evalCells.map(c => {
+        const ev = activeSubjectEvals.find(e => String(e.id) === c.evalId);
+        return { kind: String(ev?.kind || ''), value: c.value };
+      });
+      const computedResult = computeSubjectAverage(gradeInputs);
+      const studentSubjectAverage = computedResult.average;
+      const devoirAverage = computedResult.devoirAverage;
+      const examFinalNote = computedResult.examFinalNote;
 
       const completedCount = evalCells.filter(c => c.candidate && c.complete).length;
       const candidateCount = evalCells.filter(c => c.candidate).length;
@@ -252,6 +257,8 @@ export default function GradesWorkspace() {
         filiere,
         evalCells,
         studentSubjectAverage,
+        devoirAverage,
+        examFinalNote,
         completedCount,
         candidateCount,
         hasAllGrades: candidateCount > 0 && completedCount === candidateCount,
@@ -489,6 +496,9 @@ export default function GradesWorkspace() {
                 </div>
               </div>
 
+              <div className="cell-sub mb-2" style={{ fontSize: '12px' }}>
+                ⚖️ Barème officiel ESCEN : <strong>Devoir (40%)</strong> + <strong>Examen (60%)</strong> = Note finale de la matière
+              </div>
               <div className="table-wrap">
                 <ResponsiveTable className="data-table">
                   <thead>
@@ -501,7 +511,10 @@ export default function GradesWorkspace() {
                           <div className="cell-sub" style={{ fontSize: '11px' }}>{String(ev.name)}</div>
                         </th>
                       ))}
-                      <th style={{ textAlign: 'center' }}>Moyenne / 20</th>
+                      <th style={{ textAlign: 'center' }}>
+                        <div>Moyenne finale</div>
+                        <div className="cell-sub" style={{ fontSize: '10px' }}>40% Dev. + 60% Exam.</div>
+                      </th>
                       <th style={{ textAlign: 'center' }}>Décision</th>
                       <th style={{ textAlign: 'right' }}>Dossier</th>
                     </tr>

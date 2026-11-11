@@ -43,7 +43,7 @@ export default function EvaluationCreateDialog({
   const [assignmentId, setAssignmentId] = useState(preselectedAssignmentId || filteredAssignments[0]?.id || '');
   const [groupId, setGroupId] = useState(() => String(filteredAssignments.find(row => row.id === preselectedAssignmentId)?.group_id || filteredAssignments[0]?.group_id || ''));
   const [name, setName] = useState('');
-  const [kind, setKind] = useState<'DEVOIR' | 'EXAMEN' | 'INTERROGATION' | 'TP' | 'EXPOSE' | 'PROJET' | 'RATTRAPAGE'>(category === 'exam' ? 'EXAMEN' : category === 'resit' ? 'RATTRAPAGE' : 'DEVOIR');
+  const [kind, setKind] = useState<'DEVOIR' | 'EXAMEN' | 'RATTRAPAGE'>(category === 'exam' ? 'EXAMEN' : category === 'resit' ? 'RATTRAPAGE' : 'DEVOIR');
   const [parentEvaluationId, setParentEvaluationId] = useState('');
   const [scheduleNow, setScheduleNow] = useState(category === 'exam' || category === 'resit');
   const [startsAt, setStartsAt] = useState('');
@@ -155,7 +155,7 @@ export default function EvaluationCreateDialog({
         confirmLabel={scheduleNow ? 'Confirmer la création et la programmation' : 'Confirmer la création de l’évaluation'}
         fields={[
           { label: 'Évaluation', value: name.trim() },
-          { label: 'Nature', value: kind },
+          { label: 'Nature', value: kind === 'DEVOIR' ? 'Devoir (Contrôle continu · 40%)' : kind === 'EXAMEN' ? 'Examen sur table (60%)' : 'Session de rattrapage' },
           { label: 'Matière', value: String(selectedSubject?.name || selectedSubject?.code || '') },
           { label: 'Groupe', value: String(selectedGroup?.name || '') },
           { label: 'Candidats', value: `${candidateCount} étudiant(s)` },
@@ -234,14 +234,13 @@ export default function EvaluationCreateDialog({
                 value={kind}
                 onChange={e => setKind(e.target.value as typeof kind)}
               >
-                <option value="EXAMEN">Examen sur table (Partiel / Final)</option>
-                <option value="DEVOIR">Contrôle continu (Devoir sur table)</option>
-                <option value="INTERROGATION">Interrogation écrite / orale</option>
-                <option value="TP">Travaux Pratiques (TP)</option>
-                <option value="PROJET">Projet / Étude de cas</option>
-                <option value="EXPOSE">Exposé / Présentation</option>
-                <option value="RATTRAPAGE">Session de rattrapage</option>
+                <option value="DEVOIR">Devoir (Contrôle continu · compte pour 40%)</option>
+                <option value="EXAMEN">Examen sur table (compte pour 60%)</option>
+                {category === 'resit' && <option value="RATTRAPAGE">Session de rattrapage (se substitue à l’examen)</option>}
               </select>
+              <span className="cell-sub" style={{ marginTop: '4px', display: 'block' }}>
+                ⚖️ Barème officiel ESCEN : Devoir (40%) + Examen (60%) = Note finale de la matière
+              </span>
             </label>
 
             <label className="form-group">

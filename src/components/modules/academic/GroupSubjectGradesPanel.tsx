@@ -10,6 +10,7 @@ import EvaluationCreateDialog from './EvaluationCreateDialog';
 import { evaluationGradeIsComplete, evaluationGradeValue } from '@/services/evaluationGradePolicy';
 import { assessmentProgress } from '@/services/assessmentDisplayService';
 import { formatSubjectCode } from '@/services/resaoCodeService';
+import { computeSubjectAverage } from '@/services/gradeCalculationService';
 
 interface Props {
   snapshot: RelationalSnapshot;
@@ -206,6 +207,12 @@ export default function GroupSubjectGradesPanel({ snapshot, canViewStudents, onS
     const candidateCells = evalCells.filter(cell => cell.candidate);
     const completedCells = candidateCells.filter(cell => cell.complete);
 
+    const gradeInputs = evalCells.map(c => {
+      const ev = orderedSubjectEvals.find(e => String(e.id) === c.evalId);
+      return { kind: String(ev?.kind || ''), value: c.value };
+    });
+    const computedResult = computeSubjectAverage(gradeInputs);
+
     return [{
       enrollmentId,
       matricule,
@@ -215,6 +222,9 @@ export default function GroupSubjectGradesPanel({ snapshot, canViewStudents, onS
       candidateCount: candidateCells.length,
       completedCount: completedCells.length,
       hasAnyGrade: completedCells.length > 0,
+      subjectAverage: computedResult.average,
+      devoirAverage: computedResult.devoirAverage,
+      examFinalNote: computedResult.examFinalNote,
     }];
   }).filter(row => {
     if (!search.trim()) return true;
@@ -375,6 +385,9 @@ export default function GroupSubjectGradesPanel({ snapshot, canViewStudents, onS
           <h3>
             Notes de {activeSubjectSummary.name} — {activeGroup.name} ({studentRows.filter(r => r.hasAnyGrade).length} traité(s) sur {studentRows.length})
           </h3>
+          <p className="cell-sub mb-2">
+            ⚖️ Barème officiel ESCEN : <strong>Devoir (40%)</strong> + <strong>Examen (60%)</strong> = Note finale de la matière
+          </p>
           <div className="table-wrap">
             <ResponsiveTable className="data-table">
               <thead>
@@ -387,6 +400,10 @@ export default function GroupSubjectGradesPanel({ snapshot, canViewStudents, onS
                       <div className="cell-sub">{String(ev.name)}</div>
                     </th>
                   ))}
+                  <th style={{ textAlign: 'center' }}>
+                    <div>Moyenne finale</div>
+                    <div className="cell-sub" style={{ fontSize: '10px' }}>40% Dev. + 60% Exam.</div>
+                  </th>
                   <th>Avancement des corrections</th>
                   {canViewStudents && <th>Dossier</th>}
                 </tr>
@@ -418,6 +435,15 @@ export default function GroupSubjectGradesPanel({ snapshot, canViewStudents, onS
                         )}
                       </td>
                     ))}
+                    <td style={{ textAlign: 'center' }}>
+                      {row.subjectAverage !== null ? (
+                        <strong style={{ color: row.subjectAverage >= 10 ? '#166534' : '#991b1b' }}>
+                          {row.subjectAverage.toFixed(2)} / 20
+                        </strong>
+                      ) : (
+                        <span style={{ color: '#94a3b8' }}>—</span>
+                      )}
+                    </td>
                     <td>
                       {row.candidateCount === 0 ? (
                         <span className="pill pill-default">Non inscrit à l&apos;épreuve</span>
