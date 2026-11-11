@@ -3,6 +3,7 @@
  * - Deux types d'évaluations : Devoir et Examen
  * - Le Devoir compte pour 40% (coefficient 0.40)
  * - L'Examen compte pour 60% (coefficient 0.60)
+ * - Le devoir n'est pas obligatoire : s'il n'y a pas de devoir (uniquement l'examen), l'examen compte pour 100%.
  * - En cas de session de rattrapage, la note de rattrapage se substitue à la note d'examen si elle lui est supérieure.
  */
 
@@ -45,28 +46,38 @@ export function computeSubjectAverage(grades: SubjectGradeInput[]): ComputedSubj
     examFinalNote = initialExam !== null ? Math.max(initialExam, resitExam) : resitExam;
   }
 
-  const hasDevoir = devoirAverage !== null;
-  const hasExam = examFinalNote !== null;
-
-  if (hasDevoir && hasExam) {
-    const weighted = DEVOIR_WEIGHT * devoirAverage! + EXAM_WEIGHT * examFinalNote!;
-    return {
-      average: Math.round(weighted * 100) / 100,
-      devoirAverage: Math.round(devoirAverage! * 100) / 100,
-      examFinalNote: Math.round(examFinalNote! * 100) / 100,
-      isComplete: true,
-      hasDevoir: true,
-      hasExam: true,
-    };
+  if (examFinalNote !== null) {
+    if (devoirAverage !== null) {
+      // Devoir (40%) + Examen (60%)
+      const weighted = DEVOIR_WEIGHT * devoirAverage + EXAM_WEIGHT * examFinalNote;
+      return {
+        average: Math.round(weighted * 100) / 100,
+        devoirAverage: Math.round(devoirAverage * 100) / 100,
+        examFinalNote: Math.round(examFinalNote * 100) / 100,
+        isComplete: true,
+        hasDevoir: true,
+        hasExam: true,
+      };
+    } else {
+      // Pas de devoir : l'examen compte à 100%
+      return {
+        average: Math.round(examFinalNote * 100) / 100,
+        devoirAverage: null,
+        examFinalNote: Math.round(examFinalNote * 100) / 100,
+        isComplete: true,
+        hasDevoir: false,
+        hasExam: true,
+      };
+    }
   }
 
   return {
     average: null,
     devoirAverage: devoirAverage !== null ? Math.round(devoirAverage * 100) / 100 : null,
-    examFinalNote: examFinalNote !== null ? Math.round(examFinalNote * 100) / 100 : null,
+    examFinalNote: null,
     isComplete: false,
-    hasDevoir,
-    hasExam,
+    hasDevoir: devoirAverage !== null,
+    hasExam: false,
   };
 }
 

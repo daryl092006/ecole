@@ -386,7 +386,7 @@ export default function GroupSubjectGradesPanel({ snapshot, canViewStudents, onS
             Notes de {activeSubjectSummary.name} — {activeGroup.name} ({studentRows.filter(r => r.hasAnyGrade).length} traité(s) sur {studentRows.length})
           </h3>
           <p className="cell-sub mb-2">
-            ⚖️ Barème officiel ESCEN : <strong>Devoir (40%)</strong> + <strong>Examen (60%)</strong> = Note finale de la matière
+            ⚖️ Barème officiel ESCEN : <strong>Devoir (40%)</strong> + <strong>Examen (60%)</strong> (ou <strong>100% Examen</strong> si pas de devoir)
           </p>
           <div className="table-wrap">
             <ResponsiveTable className="data-table">
@@ -402,7 +402,7 @@ export default function GroupSubjectGradesPanel({ snapshot, canViewStudents, onS
                   ))}
                   <th style={{ textAlign: 'center' }}>
                     <div>Moyenne finale</div>
-                    <div className="cell-sub" style={{ fontSize: '10px' }}>40% Dev. + 60% Exam.</div>
+                    <div className="cell-sub" style={{ fontSize: '10px' }}>40/60 ou 100% Ex.</div>
                   </th>
                   <th>Avancement des corrections</th>
                   {canViewStudents && <th>Dossier</th>}

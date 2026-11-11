@@ -155,7 +155,7 @@ export default function EvaluationCreateDialog({
         confirmLabel={scheduleNow ? 'Confirmer la création et la programmation' : 'Confirmer la création de l’évaluation'}
         fields={[
           { label: 'Évaluation', value: name.trim() },
-          { label: 'Nature', value: kind === 'DEVOIR' ? 'Devoir (Contrôle continu · 40%)' : kind === 'EXAMEN' ? 'Examen sur table (60%)' : 'Session de rattrapage' },
+          { label: 'Nature', value: kind === 'DEVOIR' ? 'Devoir (Contrôle continu · 40% si examen)' : kind === 'EXAMEN' ? 'Examen sur table (60% ou 100% si aucun devoir)' : 'Session de rattrapage' },
           { label: 'Matière', value: String(selectedSubject?.name || selectedSubject?.code || '') },
           { label: 'Groupe', value: String(selectedGroup?.name || '') },
           { label: 'Candidats', value: `${candidateCount} étudiant(s)` },
@@ -234,12 +234,12 @@ export default function EvaluationCreateDialog({
                 value={kind}
                 onChange={e => setKind(e.target.value as typeof kind)}
               >
-                <option value="DEVOIR">Devoir (Contrôle continu · compte pour 40%)</option>
-                <option value="EXAMEN">Examen sur table (compte pour 60%)</option>
+                <option value="DEVOIR">Devoir (Contrôle continu · optionnel, compte pour 40%)</option>
+                <option value="EXAMEN">Examen sur table (compte pour 60% ou 100% si pas de devoir)</option>
                 {category === 'resit' && <option value="RATTRAPAGE">Session de rattrapage (se substitue à l’examen)</option>}
               </select>
               <span className="cell-sub" style={{ marginTop: '4px', display: 'block' }}>
-                ⚖️ Barème officiel ESCEN : Devoir (40%) + Examen (60%) = Note finale de la matière
+                ⚖️ Barème officiel ESCEN : Devoir (40%) + Examen (60%) ou 100% Examen si pas de devoir = Note finale
               </span>
             </label>
 

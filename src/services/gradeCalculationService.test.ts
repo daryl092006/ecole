@@ -52,13 +52,27 @@ const result4 = computeSubjectAverage([
 assert.equal(result4.examFinalNote, 12);
 assert.equal(result4.average, 11.2);
 
-// Test 6 : Moyenne incomplète quand le devoir ou l'examen manque
+// Test 6 : Uniquement l'examen (pas de devoir) -> compte pour 100% de la note
+const onlyExam = computeSubjectAverage([{ kind: 'EXAMEN', value: 15 }]);
+assert.equal(onlyExam.isComplete, true);
+assert.equal(onlyExam.hasDevoir, false);
+assert.equal(onlyExam.hasExam, true);
+assert.equal(onlyExam.devoirAverage, null);
+assert.equal(onlyExam.examFinalNote, 15);
+assert.equal(onlyExam.average, 15);
+
+// Test 7 : Uniquement examen initial (8) et rattrapage (14) sans devoir -> compte pour 100% avec le rattrapage
+const onlyExamAndResit = computeSubjectAverage([
+  { kind: 'EXAMEN', value: 8 },
+  { kind: 'RATTRAPAGE', value: 14 },
+]);
+assert.equal(onlyExamAndResit.isComplete, true);
+assert.equal(onlyExamAndResit.average, 14);
+
+// Test 8 : Uniquement le devoir (pas encore d'examen) -> moyenne non clôturée
 const onlyDevoir = computeSubjectAverage([{ kind: 'DEVOIR', value: 14 }]);
 assert.equal(onlyDevoir.isComplete, false);
+assert.equal(onlyDevoir.hasDevoir, true);
+assert.equal(onlyDevoir.hasExam, false);
 assert.equal(onlyDevoir.average, null);
 assert.equal(onlyDevoir.devoirAverage, 14);
-
-const onlyExam = computeSubjectAverage([{ kind: 'EXAMEN', value: 15 }]);
-assert.equal(onlyExam.isComplete, false);
-assert.equal(onlyExam.average, null);
-assert.equal(onlyExam.examFinalNote, 15);

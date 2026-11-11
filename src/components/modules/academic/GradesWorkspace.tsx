@@ -497,7 +497,7 @@ export default function GradesWorkspace() {
               </div>
 
               <div className="cell-sub mb-2" style={{ fontSize: '12px' }}>
-                ⚖️ Barème officiel ESCEN : <strong>Devoir (40%)</strong> + <strong>Examen (60%)</strong> = Note finale de la matière
+                ⚖️ Barème officiel ESCEN : <strong>Devoir (40%)</strong> + <strong>Examen (60%)</strong> (ou <strong>100% Examen</strong> si pas de devoir)
               </div>
               <div className="table-wrap">
                 <ResponsiveTable className="data-table">
@@ -513,7 +513,7 @@ export default function GradesWorkspace() {
                       ))}
                       <th style={{ textAlign: 'center' }}>
                         <div>Moyenne finale</div>
-                        <div className="cell-sub" style={{ fontSize: '10px' }}>40% Dev. + 60% Exam.</div>
+                        <div className="cell-sub" style={{ fontSize: '10px' }}>40/60 ou 100% Ex.</div>
                       </th>
                       <th style={{ textAlign: 'center' }}>Décision</th>
                       <th style={{ textAlign: 'right' }}>Dossier</th>
