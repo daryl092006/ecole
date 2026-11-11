@@ -69,38 +69,32 @@ for (const width of [390, 1440]) {
     await dialog.getByRole('textbox', { name: 'Prénom', exact: true }).fill('Dina');
     await dialog.getByRole('textbox', { name: 'Nom', exact: true }).fill('Pédagogie');
     await dialog.getByRole('textbox', { name: 'Matricule enseignant (facultatif)', exact: true }).fill('ENS-RECETTE');
-    await dialog.getByRole('textbox', { name: 'Spécialité enseignante', exact: true }).fill('Statistiques');
+    await expect(dialog.getByRole('textbox', { name: 'Spécialité enseignante', exact: true })).toHaveCount(0);
     await dialog.getByRole('button', { name: 'Vérifier les informations', exact: true }).click();
     await expect(dialog.locator('.action-review')).toContainText('Enseignant');
-    await expect(dialog.locator('.action-review')).toContainText('Statistiques');
+    await expect(dialog.locator('.action-review')).not.toContainText('Spécialité');
     expect(fixture.transactions).toEqual([]);
     await dialog.getByRole('button', { name: 'Confirmer la création', exact: true }).click();
     await expect(dialog).not.toBeVisible();
     await expect(page.getByRole('row').filter({ hasText: 'ENS-RECETTE' })).toContainText('Dina Pédagogie');
     expect(fixture.transactions[0].map(change => change.table)).toEqual(['people', 'staff', 'teachers']);
-    expect(fixture.transactions[0][2].record).toMatchObject({ specialty: 'Statistiques', active: true });
+    expect(fixture.transactions[0][2].record).toMatchObject({ specialty: null, active: true });
     await expect.poll(fixture.campusReads).toBeGreaterThan(1);
   });
 
-  test(`Profils : créer, modifier, désactiver et réactiver avec motif à ${width}px`, async ({ page }) => {
+  test(`Profils : créer, désactiver et réactiver avec motif à ${width}px`, async ({ page }) => {
     const fixture = await connectedTeachers(page);
     await page.setViewportSize({ width, height: 900 });
     await page.goto('/personnel/enseignants');
     await page.getByRole('button', { name: 'Créer un profil enseignant', exact: true }).click();
     let dialog = page.getByRole('dialog');
     await dialog.getByRole('combobox', { name: 'Membre du personnel', exact: true }).selectOption(uuid(912));
-    await dialog.getByRole('textbox', { name: 'Spécialité', exact: true }).fill('Communication');
+    await expect(dialog.getByRole('textbox', { name: 'Spécialité', exact: true })).toHaveCount(0);
     await dialog.getByRole('textbox', { name: 'Motif', exact: true }).fill('Qualification pédagogique vérifiée');
     await confirm(dialog);
     let row = page.getByRole('row').filter({ hasText: 'Claire Enseignant' });
-    await expect(row).toContainText('Communication');
-    await row.getByRole('button', { name: 'Modifier le profil', exact: true }).click();
-    dialog = page.getByRole('dialog');
-    await dialog.getByRole('textbox', { name: 'Spécialité', exact: true }).fill('Communication numérique');
-    await dialog.getByRole('textbox', { name: 'Motif', exact: true }).fill('Spécialité actualisée');
-    await confirm(dialog);
-    row = page.getByRole('row').filter({ hasText: 'Claire Enseignant' });
-    await expect(row).toContainText('Communication numérique');
+    await expect(row).toContainText('Aucune matière affectée');
+    await expect(row.getByRole('button', { name: 'Modifier le profil', exact: true })).toHaveCount(0);
     for (const label of ['Désactiver', 'Activer']) {
       await row.getByRole('button', { name: label, exact: true }).click();
       dialog = page.getByRole('dialog');
@@ -109,7 +103,7 @@ for (const width of [390, 1440]) {
       row = page.getByRole('row').filter({ hasText: 'Claire Enseignant' });
       await expect(row.getByRole('cell', { name: label === 'Désactiver' ? /^(Statut )?Inactif$/ : /^(Statut )?Actif$/ })).toBeVisible();
     }
-    expect(fixture.transactions).toHaveLength(4);
+    expect(fixture.transactions).toHaveLength(3);
     expect(fixture.transactions.every(changes => changes[0].record.reason)).toBe(true);
   });
 }
@@ -167,16 +161,16 @@ test('Pendant la sauvegarde les champs sont verrouillés ; un refus reste dans l
   await expect(dialog.getByRole('textbox', { name: 'Motif', exact: true })).toHaveValue('Demande de désactivation');
 });
 
-test('Annuler une modification demande confirmation et conserve la saisie si refusée', async ({ page }) => {
+test('Annuler une saisie demande confirmation et conserve la saisie si refusée', async ({ page }) => {
   const fixture = await connectedTeachers(page);
   await page.goto('/personnel/enseignants');
-  await page.getByRole('row').filter({ hasText: 'Alice Enseignant' }).getByRole('button', { name: 'Modifier le profil', exact: true }).click();
+  await page.getByRole('row').filter({ hasText: 'Alice Enseignant' }).getByRole('button', { name: 'Désactiver', exact: true }).click();
   const dialog = page.getByRole('dialog');
-  await dialog.getByRole('textbox', { name: 'Spécialité', exact: true }).fill('Analyse modifiée');
+  await dialog.getByRole('textbox', { name: 'Motif', exact: true }).fill('Motif en cours de saisie');
   await dialog.getByRole('button', { name: 'Annuler', exact: true }).click();
   await expect(dialog.getByRole('heading', { name: 'Quitter sans enregistrer ?', exact: true })).toBeVisible();
   await dialog.getByRole('button', { name: 'Continuer la saisie', exact: true }).click();
-  await expect(dialog.getByRole('textbox', { name: 'Spécialité', exact: true })).toHaveValue('Analyse modifiée');
+  await expect(dialog.getByRole('textbox', { name: 'Motif', exact: true })).toHaveValue('Motif en cours de saisie');
   await page.keyboard.press('Escape');
   await dialog.getByRole('button', { name: 'Abandonner les modifications', exact: true }).click();
   await expect(dialog).not.toBeVisible();

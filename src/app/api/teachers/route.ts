@@ -8,7 +8,7 @@ import { deliverEmail, emailConfiguration } from '@/server/emailTransport';
 
 export const dynamic = 'force-dynamic';
 const common = { revision: z.number().int().nonnegative(), reason: z.string().trim().min(3).max(1000) };
-const specialty = z.string().trim().max(160);
+const specialty = z.string().trim().max(160).default('');
 const commandSchema = z.discriminatedUnion('action', [
   z.object({ ...common, action: z.literal('create_profile'), staffId: z.uuid(), specialty }).strict(),
   z.object({ ...common, action: z.literal('update_profile'), teacherId: z.uuid(), specialty }).strict(),

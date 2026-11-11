@@ -10,7 +10,8 @@ test('Les profils et affectations sont accessibles avec leurs permissions distin
   expect((await personnel.get()).status).toBe(200);
   expect((await personnel.post({ action: 'create_profile', staffId: uuid(912), specialty: 'Gestion' })).status).toBe(201);
   expect((await personnel.post(assignment)).status).toBe(403);
-  const planning = teacherFixture(securityContext(ROLES.LOG));
+  const logContext = securityContext(ROLES.LOG);
+  const planning = teacherFixture({ ...logContext, permissions: logContext.permissions.filter(permission => permission !== 'staff.manage') });
   expect((await planning.post({ action: 'update_profile', teacherId: id.teacher, specialty: 'Gestion' })).status).toBe(403);
   expect((await planning.post(assignment)).status).toBe(201);
 });

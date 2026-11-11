@@ -15,9 +15,9 @@ import ReviewedForm, { type ReviewField } from '@/components/ui/ReviewedForm';
 import DrawerActions from '@/components/ui/DrawerActions';
 import { DrawerCloseButton } from '@/components/ui/DetailDrawer';
 
-type Operation = { kind: 'create_profile' } | { kind: 'update_profile' | 'set_active'; teacher: TeacherProfile }
+type Operation = { kind: 'create_profile' } | { kind: 'set_active'; teacher: TeacherProfile }
   | { kind: 'create_assignment' } | { kind: 'end_assignment'; assignment: TeachingAssignmentRecord };
-const blank = () => ({ staffId: '', specialty: '', teacherId: '', offeringId: '', groupId: '', componentId: '',
+const blank = () => ({ staffId: '', teacherId: '', offeringId: '', groupId: '', componentId: '',
   validFrom: new Date().toISOString().slice(0, 10), validUntil: '', endOn: '', reason: '' });
 
 export default function TeachersWorkspace() {
@@ -44,7 +44,7 @@ export default function TeachersWorkspace() {
   }, [activeRole, academicYearSelection, reload]);
   const open = (next: Operation, teacherId = '') => {
     setOperation(next); setSaveError('');
-    setForm({ ...blank(), teacherId, ...('teacher' in next ? { specialty: next.teacher.specialty } : {}),
+    setForm({ ...blank(), teacherId,
       ...(next.kind === 'end_assignment' ? { endOn: next.assignment.validUntil || new Date().toISOString().slice(0, 10) } : {}) });
   };
   if (loading) return <LoadingState label="Chargement des enseignants et affectations…" variant="table" />;
@@ -60,18 +60,15 @@ export default function TeachersWorkspace() {
     : operation?.kind === 'create_assignment'
       ? 'Affectation pédagogique de l’enseignant'
       : '');
-  const title = operation?.kind === 'create_profile' ? 'Créer un profil enseignant' : operation?.kind === 'update_profile' ? 'Modifier le profil enseignant'
+  const title = operation?.kind === 'create_profile' ? 'Créer un profil enseignant'
     : operation?.kind === 'set_active' ? `${operation.teacher.active ? 'Désactiver' : 'Activer'} l’enseignant`
     : operation?.kind === 'end_assignment' ? 'Terminer l’affectation' : 'Nouvelle affectation';
-  const consequence = operation?.kind === 'create_profile' ? 'Le profil enseignant sera lié au dossier du personnel existant et une notification sera envoyée si son e-mail est renseigné.'
-    : operation?.kind === 'update_profile' ? 'La spécialité sera mise à jour. L’identité et le matricule se modifient dans les dossiers du personnel.'
-      : operation?.kind === 'set_active' ? 'Le statut pédagogique sera modifié avec son motif. La désactivation est bloquée si des séances restent à assurer ; aucune séance ni aucun compte ne sera modifié automatiquement.'
-        : operation?.kind === 'end_assignment' ? 'La date de fin sera enregistrée avec son motif. Les séances et l’historique restent conservés ; toute séance non annulée doit rester comprise dans les dates de l’affectation.'
-          : 'L’enseignant sera affecté à ce groupe, cette formation et cette matière pour les dates indiquées, et recevra un e-mail de notification si son adresse est renseignée.';
+  const consequence = operation?.kind === 'create_profile' ? 'Le profil enseignant sera lié au dossier du personnel existant et une notification sera envoyée si son e-mail est renseigné. Ses matières se définissent ensuite par les affectations.'
+    : operation?.kind === 'set_active' ? 'Le statut pédagogique sera modifié avec son motif. La désactivation est bloquée si des séances restent à assurer ; aucune séance ni aucun compte ne sera modifié automatiquement.'
+      : operation?.kind === 'end_assignment' ? 'La date de fin sera enregistrée avec son motif. Les séances et l’historique restent conservés ; toute séance non annulée doit rester comprise dans les dates de l’affectation.'
+        : 'L’enseignant sera affecté à ce groupe, cette formation et cette matière pour les dates indiquées, et recevra un e-mail de notification si son adresse est renseignée.';
   const fields: ReviewField[] = operation?.kind === 'create_profile' ? [
-    { label: 'Membre du personnel', value: directory.staff.find(row => row.id === form.staffId)?.name || '' }, { label: 'Spécialité', value: form.specialty },
-  ] : operation?.kind === 'update_profile' ? [
-    { label: 'Enseignant', value: operation.teacher.name }, { label: 'Spécialité', value: form.specialty, previous: operation.teacher.specialty },
+    { label: 'Membre du personnel', value: directory.staff.find(row => row.id === form.staffId)?.name || '' },
   ] : operation?.kind === 'set_active' ? [
     { label: 'Enseignant', value: operation.teacher.name }, { label: 'Statut', value: operation.teacher.active ? 'Inactif' : 'Actif', previous: operation.teacher.active ? 'Actif' : 'Inactif' },
   ] : operation?.kind === 'end_assignment' ? [
@@ -82,7 +79,10 @@ export default function TeachersWorkspace() {
     { label: 'Groupe', value: groupName(form.groupId) }, { label: 'Matière du programme', value: componentName(form.componentId) },
     { label: 'Début', value: form.validFrom }, { label: 'Fin', value: form.validUntil || 'Sans date de fin' },
   ];
-  const filtered = directory.teachers.filter(teacher => `${teacher.name} ${teacher.employeeNumber} ${teacher.specialty}`.toLocaleLowerCase('fr').includes(query.toLocaleLowerCase('fr')));
+  const teacherSubjects = (teacherId: string) => [...new Set(directory.assignments
+    .filter(assignment => assignment.teacherId === teacherId)
+    .map(assignment => componentName(assignment.componentId)))];
+  const filtered = directory.teachers.filter(teacher => `${teacher.name} ${teacher.employeeNumber} ${teacherSubjects(teacher.id).join(' ')}`.toLocaleLowerCase('fr').includes(query.toLocaleLowerCase('fr')));
   return <div className="domain-workspace workspace-stack">
     <PageHeader
       eyebrow="RESSOURCES HUMAINES"
@@ -96,7 +96,7 @@ export default function TeachersWorkspace() {
     {!directory.selectedYearId && <p className="restricted-box">Choisissez une année scolaire précise pour consulter et gérer ses affectations.</p>}
     <nav className="record-sections" aria-label="Données enseignants"><button className={section === 'teachers' ? 'selected' : ''} aria-pressed={section === 'teachers'} onClick={() => setSection('teachers')}>Enseignants ({directory.teachers.length})</button><button className={section === 'assignments' ? 'selected' : ''} aria-pressed={section === 'assignments'} onClick={() => setSection('assignments')}>Affectations ({directory.assignments.length})</button></nav>
     {section === 'teachers' ? <section className="card card-full"><label className="form-group">Rechercher un enseignant<input className="input" type="search" value={query} onChange={event => setQuery(event.target.value)} /></label>
-      <ResponsiveTable className="data-table"><thead><tr><th>Enseignant</th><th>Spécialité</th><th>Statut</th><th>Actions</th></tr></thead><tbody>{filtered.map(teacher => {
+      <ResponsiveTable className="data-table"><thead><tr><th>Enseignant</th><th>Matières enseignées</th><th>Statut</th><th>Actions</th></tr></thead><tbody>{filtered.map(teacher => {
         const teacherAssignments = directory.assignments.filter(a => a.teacherId === teacher.id);
         const teacherAssignmentIds = new Set(teacherAssignments.map(a => a.id));
         const sessionCount = (portal.relationalSnapshot.tables.sessions || []).filter(
@@ -142,8 +142,8 @@ export default function TeachersWorkspace() {
               )}
               {pendingCandidates.length > pendingCopiesCount && <span>{pendingCandidates.length - pendingCopiesCount} résultat(s) à renseigner</span>}
             </div>
-          </td><td>{teacher.specialty || 'Non renseignée'}</td><td>{teacher.active ? 'Actif' : 'Inactif'}</td><td><div className="btn-group">
-            {directory.canManageProfiles && <><button className="btn btn-sm btn-outline" onClick={() => open({ kind: 'update_profile', teacher })}>Modifier le profil</button><button className="btn btn-sm btn-outline" onClick={() => open({ kind: 'set_active', teacher })}>{teacher.active ? 'Désactiver' : 'Activer'}</button></>}
+          </td><td>{teacherSubjects(teacher.id).join(', ') || 'Aucune matière affectée'}</td><td>{teacher.active ? 'Actif' : 'Inactif'}</td><td><div className="btn-group">
+            {directory.canManageProfiles && <button className="btn btn-sm btn-outline" onClick={() => open({ kind: 'set_active', teacher })}>{teacher.active ? 'Désactiver' : 'Activer'}</button>}
             {directory.canManageAssignments && teacher.active && <button className="btn btn-sm btn-outline" onClick={() => open({ kind: 'create_assignment' }, teacher.id)}>Affecter</button>}
           </div></td></tr>;
       })}{!filtered.length && <tr><td colSpan={4}>Aucun enseignant pour cette recherche.</td></tr>}</tbody></ResponsiveTable>
@@ -178,9 +178,8 @@ export default function TeachersWorkspace() {
       onConfirm={event => {
         event.preventDefault(); setSaving(true); setSaveError('');
         const common = { revision: directory.revision, reason: effectiveReason };
-        const command: TeacherCommand = operation.kind === 'create_profile' ? { ...common, action: 'create_profile', staffId: form.staffId, specialty: form.specialty }
-          : operation.kind === 'update_profile' ? { ...common, action: 'update_profile', teacherId: operation.teacher.id, specialty: form.specialty }
-            : operation.kind === 'set_active' ? { ...common, action: 'set_active', teacherId: operation.teacher.id, active: !operation.teacher.active }
+        const command: TeacherCommand = operation.kind === 'create_profile' ? { ...common, action: 'create_profile', staffId: form.staffId, specialty: '' }
+          : operation.kind === 'set_active' ? { ...common, action: 'set_active', teacherId: operation.teacher.id, active: !operation.teacher.active }
               : operation.kind === 'end_assignment' ? { ...common, action: 'end_assignment', assignmentId: operation.assignment.id, endOn: form.endOn }
                 : { ...common, action: 'create_assignment', teacherId: form.teacherId, offeringId: form.offeringId, groupId: form.groupId, componentId: form.componentId, validFrom: form.validFrom, validUntil: form.validUntil || null };
         void manageTeacher(activeRole, command).then(() => {
@@ -193,7 +192,6 @@ export default function TeachersWorkspace() {
         }).catch(cause => setSaveError(cause instanceof Error ? cause.message : 'Enregistrement impossible.')).finally(() => setSaving(false));
       }}>
       {operation.kind === 'create_profile' && <label className="form-group">Membre du personnel<select className="select-input" required value={form.staffId} onChange={event => setForm({ ...form, staffId: event.target.value })}><option value="">Choisir un dossier existant</option>{directory.staff.map(member => <option key={member.id} value={member.id}>{member.name} · {member.employeeNumber}</option>)}</select></label>}
-      {(operation.kind === 'create_profile' || operation.kind === 'update_profile') && <label className="form-group">Spécialité<input className="input" maxLength={160} value={form.specialty} onChange={event => setForm({ ...form, specialty: event.target.value })} /></label>}
       {operation.kind === 'set_active' && <p>{operation.teacher.name} : {operation.teacher.active ? 'Actif → Inactif' : 'Inactif → Actif'}</p>}
       {operation.kind === 'create_assignment' && <div className="form-grid">
         <label className="form-group">Enseignant<select className="select-input" required value={form.teacherId} onChange={event => setForm({ ...form, teacherId: event.target.value })}><option value="">Choisir un enseignant actif</option>{directory.teachers.filter(teacher => teacher.active).map(teacher => <option key={teacher.id} value={teacher.id}>{teacher.name}</option>)}</select></label>

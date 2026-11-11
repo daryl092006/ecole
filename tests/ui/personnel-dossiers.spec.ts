@@ -53,7 +53,7 @@ for (const width of [390, 1440]) test(`Personnel : création, historique et ense
   await page.getByRole('button', { name: 'Nouvel enseignant', exact: true }).click();
   await dialog.getByLabel('Prénom', { exact: true }).fill('Paul');
   await dialog.getByLabel('Nom', { exact: true }).fill('Professeur');
-  await dialog.getByLabel('Spécialité enseignante').fill('Gestion');
+  await expect(dialog.getByLabel('Spécialité enseignante')).toHaveCount(0);
   await dialog.getByRole('button', { name: 'Vérifier les informations', exact: true }).click();
   await expect(dialog.locator('.action-consequence')).toContainText('Aucun compte de connexion ni affectation');
   await dialog.getByRole('button', { name: 'Confirmer la création', exact: true }).click();
