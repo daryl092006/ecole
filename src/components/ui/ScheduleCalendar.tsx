@@ -447,8 +447,12 @@ export default function ScheduleCalendar({
       )}
 
       {/* VIEW 3: VUE LISTE */}
-      {viewMode === 'list' && (
-        <div className="schedule-calendar-list" style={{ display: 'grid' }} role="region" aria-label="Liste des cours">
+      {(viewMode === 'list' || viewMode === 'month') && (
+        <div
+          className={`schedule-calendar-list${viewMode === 'list' ? ' is-active' : ''}`}
+          role="region"
+          aria-label="Liste des cours"
+        >
           {Array.from({ length: daysInMonth }, (_, index) => `${selectedMonth}-${String(index + 1).padStart(2, '0')}`)
             .filter(date => dated.some(row => row.start.slice(0, 10) === date))
             .map(date => (

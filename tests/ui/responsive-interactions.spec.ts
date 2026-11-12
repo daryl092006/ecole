@@ -32,7 +32,7 @@ for (const width of [360, 390, 768]) {
     await page.keyboard.press('Escape');
     await expect(toggle).toBeFocused();
     await toggle.click();
-    await page.setViewportSize({ width: 1024, height: 844 });
+    await page.setViewportSize({ width: 1280, height: 844 });
     await expect(page.locator('.topbar')).not.toHaveAttribute('inert', '');
     await expect(page.locator('main')).not.toHaveAttribute('inert', '');
     await expect(page.locator('.sidebar')).not.toHaveAttribute('role', 'dialog');

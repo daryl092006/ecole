@@ -87,7 +87,7 @@ for (const width of [360, 390]) {
   test(`Encaisser : actions mobiles et dossier conservé après sauvegarde à ${width}px`, async ({ page }) => {
     await page.setViewportSize({ width, height: 844 }); const fixture = await prepare(page);
     await page.goto('/etudiants');
-    await page.getByRole('button', { name: 'Fiche & Dossier', exact: true }).click();
+    await page.getByRole('button', { name: 'Dossier complet →', exact: true }).click();
     const dossier = page.getByRole('dialog', { name: `Dossier étudiant · ${matricule}`, exact: true });
     await dossier.evaluate(element => element.setAttribute('data-preserved-window', 'true'));
     await dossier.getByRole('button', { name: 'Frais et versements', exact: true }).click();
@@ -168,7 +168,7 @@ for (const width of [360, 390]) {
     await dialog.getByLabel('Contenu de l’article', { exact: true }).fill('Contenu de l’article.\n'.repeat(80));
     await expect(dialog.getByLabel(/Motif/)).toHaveCount(0);
     await reducedViewport(page, dialog, dialog.getByLabel('Diffusion', { exact: true }), width);
-    await dialog.getByRole('button', { name: 'Relire avant enregistrement', exact: true }).click(); expect(fixture.commands).toHaveLength(0);
+    await dialog.getByRole('button', { name: 'Relire avant publication sur le site', exact: true }).click(); expect(fixture.commands).toHaveLength(0);
     await visibleActions(page, dialog); await dialog.getByRole('button', { name: 'Confirmer l’enregistrement', exact: true }).click();
     await expect(dialog).toHaveCount(0); await expect(page.getByRole('status').filter({ hasText: 'Article enregistré et publié sur le site.' })).toBeVisible();
   });
@@ -205,7 +205,7 @@ test('FormFeedback suit la dernière modale active et revient au parent après f
   const dialog = page.getByRole('dialog');
   await dialog.getByLabel('Titre', { exact: true }).fill('Article enregistré'); await dialog.getByLabel('Adresse de l’article', { exact: true }).fill('article-enregistre');
   await dialog.getByLabel('Résumé', { exact: true }).fill('Résumé du test'); await dialog.getByLabel('Contenu de l’article', { exact: true }).fill('Contenu du test');
-  await dialog.getByRole('button', { name: 'Relire avant enregistrement', exact: true }).click(); await dialog.getByRole('button', { name: 'Confirmer l’enregistrement', exact: true }).click();
+  await dialog.getByRole('button', { name: 'Relire avant publication sur le site', exact: true }).click(); await dialog.getByRole('button', { name: 'Confirmer l’enregistrement', exact: true }).click();
   await expect(dialog).toHaveCount(0);
   await page.evaluate(() => {
     for (const id of ['feedback-parent', 'feedback-child']) { const overlay = document.createElement('div'); overlay.className = 'detail-overlay'; overlay.id = id; overlay.innerHTML = '<div class="detail-drawer-feedback"></div>'; document.body.appendChild(overlay); }

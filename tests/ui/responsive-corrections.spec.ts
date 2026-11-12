@@ -62,8 +62,7 @@ for (const { route, account } of [
       return { before, after: wrapper.scrollLeft, overflow: getComputedStyle(wrapper).overflowX, content: wrapper.scrollWidth, available: wrapper.clientWidth };
     });
     expect(scroll.overflow).toBe('auto');
-    if (route.startsWith('/academique/filieres') && scroll.content <= scroll.available) {
-      // The current semester table has five columns and can fit without scrolling.
+    if (scroll.content <= scroll.available) {
       expect(scroll.content).toBeLessThanOrEqual(scroll.available);
     } else {
       expect(scroll.after).toBeGreaterThan(scroll.before);
@@ -76,15 +75,17 @@ for (const { route, account } of [
   });
 }
 
-for (const width of [768, 769]) {
+for (const width of [768, 769, 1025]) {
   test(`Tableaux et calendrier suivent la navigation à ${width}px`, async ({ page }) => {
     await open(page, '/academique/filieres?collection=curriculum_components', width);
     const mobile = width <= 768;
-    await expect(page.locator('.sidebar')).toBeVisible({ visible: !mobile });
+    const tabletOrMobile = width <= 1024;
+    await expect(page.locator('.sidebar')).toBeVisible({ visible: !tabletOrMobile });
     const row = page.locator('.mobile-record-row').first();
     await expect(row).toHaveCSS('display', mobile ? 'block' : 'table-row');
     await page.goto('/academique/emploi-du-temps');
     await expect(page.locator('main .loading-state:visible')).toHaveCount(0);
+    await page.getByRole('radio', { name: 'Mois', exact: true }).click();
     await expect(page.locator('.schedule-calendar-scroll')).toBeVisible({ visible: !mobile });
     await expect(page.locator('.schedule-calendar-list')).toBeVisible({ visible: mobile });
     await expectPageFits(page);
