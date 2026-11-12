@@ -107,6 +107,18 @@ export async function installResponsiveAudit(page: Page, account: AuditAccount) 
     try {
       let json: unknown;
       if (url.pathname === '/api/session') json = account === 'anonymous' ? null : { capabilities: fixtureCapabilities, accountId: context.accountId, name: student ? 'Élise Étudiante' : 'Jean Technique', email: 'audit@example.test', role: context.role, availableRoles: [context.role], studentId: context.studentId, teacherId: null, matricule: student ? 'ESCEN-TEST-001' : null, mustChangePassword: account === 'password' };
+      else if (url.pathname === '/api/session/profile') {
+        const studentRow = student ? tables.students.find(row => row.id === context.studentId) : undefined;
+        const person = tables.people.find(row => row.id === (studentRow?.person_id || context.personId));
+        json = { profile: {
+          personId: person?.id || context.personId,
+          firstname: person?.firstname || (student ? 'Élise' : 'Jean'), lastname: person?.lastname || (student ? 'Étudiante' : 'Technique'),
+          loginEmail: studentRow?.m365_email || 'audit@example.test', personalEmail: person?.email || 'audit@example.test',
+          phone: person?.phone || '', birthDate: person?.birth_date || '', gender: person?.gender || '', nationality: person?.nationality || '',
+          nif: person?.nif || '', address: person?.address || '', city: person?.city || '', country: person?.country || '',
+          matricule: studentRow?.matricule || null, institutionalEmail: studentRow?.m365_email || null, isStudent: student, isTeacher: false,
+        } };
+      }
       else if (url.pathname === '/api/campus') json = { ...filterSnapshotForAcademicYear(filterRelationalSnapshot(campus, context), id.year), academicContext: { currentYearId: id.year, currentYearConfigured: true, selectedYearId: id.year, selection: 'current', years: tables.academic_years } };
       else if (url.pathname === '/api/support') {
         const scoped = filterSnapshotForAcademicYear(filterRelationalSnapshot(campus, context), id.year);
