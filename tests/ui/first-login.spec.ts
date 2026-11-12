@@ -5,10 +5,11 @@ import { authenticateFixture, fixtureCapabilities, ACCOUNT_IDS, snapshot as camp
 import { ROLES } from '../../src/types/permissions';
 
 const profile = { firstname: 'Alice', lastname: 'Exemple', email: 'alice@example.test', personalEmail: 'alice@example.test', phone: '+22890000000', address: 'Quartier Test, Lomé', birthDate: '2000-01-01', programName: null };
-function fixture(options: { required?: boolean; failAuth?: boolean; failTicket?: boolean; otherCurrentYear?: boolean; emptyPerson?: boolean } = {}) {
+function fixture(options: { required?: boolean; failAuth?: boolean; failTicket?: boolean; otherCurrentYear?: boolean; emptyPerson?: boolean; isTeacher?: boolean; nationality?: string | null; nif?: string | null } = {}) {
   const context = securityContext();
   const writes: Record<string, unknown>[] = []; let transactions = 0;
-  const personData = options.emptyPerson ? { firstname: 'Alice', lastname: 'Exemple', email: null, phone: null, address: null, birth_date: null } : { firstname: 'Alice', lastname: 'Exemple', email: profile.email, phone: profile.phone, address: profile.address, birth_date: profile.birthDate };
+  const basePerson = options.emptyPerson ? { firstname: 'Alice', lastname: 'Exemple', email: null, phone: null, address: null, birth_date: null } : { firstname: 'Alice', lastname: 'Exemple', email: profile.email, phone: profile.phone, address: profile.address, birth_date: profile.birthDate };
+  const personData = { ...basePerson, ...(options.nationality !== undefined ? { nationality: options.nationality } : {}), ...(options.nif !== undefined ? { nif: options.nif } : {}) };
   const tables: Record<string, Record<string, unknown>[]> = { academic_years: [{ id: securityIds.year, name: '2026-2027', status: 'OUVERTE', starts_on: '2026-09-01', ends_on: '2027-08-31' }], support_tickets: [], people: [] };
   let failAuth = !!options.failAuth;
   const client = { rpc: async (name: string, args?: Record<string, unknown>) => {
@@ -30,7 +31,7 @@ function fixture(options: { required?: boolean; failAuth?: boolean; failTicket?:
     return { data: { user: { id } } };
   } } } };
   const route = loadSecurityApi('app/api/session/first-login/route.ts', client, context, undefined, {
-    mustVerifyProfile: options.required !== false, profile: { person: personData }, email: profile.email,
+    mustVerifyProfile: options.required !== false, profile: { person: personData, ...(options.isTeacher ? { teacher: { id: uuid(20) } } : {}) }, email: profile.email,
     user: { app_metadata: { provider: 'email', escen_first_login: { version: 1, password_changed_at: '2026-10-28T10:00:00Z' } } },
   }) as { GET: (request: Request) => Promise<Response>; POST: (request: Request) => Promise<Response> };
   const get = (query = '') => route.GET(new Request(`http://local.test/api/session/first-login${query}`));
@@ -99,6 +100,18 @@ test('Première connexion : correction directe du nom, des prénoms et de la dat
   expect(f.transactions()).toBe(1);
   expect(f.tables.people[0]).toMatchObject({ id: uuid(901), firstname: 'Alice Marie', lastname: 'Exemple corrigé', birth_date: '2001-02-03' });
   expect(f.tables.support_tickets).toHaveLength(0);
+});
+
+test('Première connexion enseignant togolais : NIF obligatoire et enregistré dans people', async () => {
+  const f = fixture({ isTeacher: true, nationality: 'Togolaise', nif: null });
+  const { snapshot, profile: loadedProfile } = await (await f.get()).json();
+  expect(loadedProfile).toMatchObject({ isTeacher: true, nationality: 'Togolaise', nif: '' });
+  expect((await f.post({ decision: 'CONFIRM', snapshot, nationality: 'Togolaise', nif: '' })).status).toBe(400);
+  expect(f.transactions()).toBe(0);
+  const ok = await f.post({ decision: 'CONFIRM', snapshot, nationality: 'Togolaise', nif: '1000234567' });
+  expect(ok.status).toBe(200);
+  expect(f.transactions()).toBe(1);
+  expect(f.tables.people[0]).toMatchObject({ id: uuid(901), nationality: 'Togolaise', nif: '1000234567' });
 });
 
 test('Correction personnelle : noms vides, date impossible et changement de propriétaire refusés', async () => {

@@ -47,6 +47,7 @@ export async function GET(request: Request) {
         city: String(person.city || ''),
         country: String(person.country || ''),
         nationality: String(person.nationality || ''),
+        nif: String(person.nif || ''),
         gender: String(person.gender || ''),
         employeeNumber: displayedEmployeeNumber(member?.employee_number),
         isTeacher: !!member && teacherStaffIds.has(member.id),

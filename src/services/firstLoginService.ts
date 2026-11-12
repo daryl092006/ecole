@@ -1,4 +1,9 @@
 type Metadata = Record<string, unknown>;
+export function isTogoleseNationality(nationality: string | null | undefined): boolean {
+  const norm = String(nationality || '').trim().toLowerCase();
+  return norm === 'togolaise' || norm === 'togolais' || norm === 'togo' || norm === 'tg';
+}
+
 export function firstLoginState(metadata: Metadata = {}, enabled = false) {
   const record = metadata.escen_first_login as Metadata | undefined;
   const current = record?.version === 1;

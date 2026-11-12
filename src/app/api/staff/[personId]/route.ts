@@ -3,7 +3,7 @@ import { requireAccount, requirePermission, errorResponse, RequestError } from '
 import { filterRelationalSnapshot } from '@/services/persistentPermissionsService';
 import { identityArchiveChanges } from '@/services/identityCrudService';
 import type { RelationalSnapshot, PersistentChange } from '@/types/persistence';
-import { internalStaffReference, isInternalStaffReference } from '@/utils/staffReference';
+import { internalStaffReference } from '@/utils/staffReference';
 export const dynamic='force-dynamic';
 type Context={params:Promise<{personId:string}>};
 async function getStaff(request:Request,params:Context['params']) {
@@ -20,11 +20,11 @@ async function getStaff(request:Request,params:Context['params']) {
 export async function PATCH(request:Request,{params}:Context) {
   try {
     const {client,context,snapshot,person,member}=await getStaff(request,params);
-    const body=z.object({revision:z.number().int().nonnegative(),firstname:z.string().trim().min(1).max(160),lastname:z.string().trim().min(1).max(160),email:z.union([z.email(),z.literal('')]),phone:z.string().trim().max(80),employeeNumber:z.string().trim().max(160),position:z.string().trim().max(160).optional().default(''),contractType:z.enum(['PERMANENT','VACATAIRE','STAGIAIRE']).optional().default('PERMANENT'),reason:z.string().trim().min(3).max(1000)}).strict().parse(await request.json());
+    const body=z.object({revision:z.number().int().nonnegative(),firstname:z.string().trim().min(1).max(160),lastname:z.string().trim().min(1).max(160),email:z.union([z.email(),z.literal('')]),phone:z.string().trim().max(80),employeeNumber:z.string().trim().max(160).optional().default(''),position:z.string().trim().max(160).optional().default(''),contractType:z.enum(['PERMANENT','VACATAIRE','STAGIAIRE']).optional().default('PERMANENT'),reason:z.string().trim().min(3).max(1000)}).strict().parse(await request.json());
     if(body.revision!==snapshot.revision)throw new RequestError(409,'Ces données ont changé. Actualisez avant de réessayer.');
     const changes:PersistentChange[]=[{table:'people',operation:'update',record:{id:person.id,firstname:body.firstname,lastname:body.lastname,email:body.email || null,phone:body.phone || null}}];
-    // Sans matricule saisi, on conserve la référence interne existante (ou on en crée une) : le personnel administratif n'a pas de matricule.
-    const employeeNumber=body.employeeNumber || (member && isInternalStaffReference(member.employee_number)?String(member.employee_number):internalStaffReference());
+    // Sans matricule saisi, on conserve la référence interne existante (ou on en crée une) : le personnel administratif et les enseignants n'ont pas de matricule saisi manuellement.
+    const employeeNumber=body.employeeNumber || (member?.employee_number?String(member.employee_number):internalStaffReference());
     const staffId=String(member?.id || crypto.randomUUID());
     changes.push({table:'staff',operation:member?'update':'insert',record:{id:staffId,person_id:person.id,employee_number:employeeNumber,reason:body.reason}});
     const contracts=(filterRelationalSnapshot(snapshot,context).tables.staff_contracts || []).filter(row=>row.staff_id===staffId && !row.ends_on);

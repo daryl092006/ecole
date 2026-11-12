@@ -5,9 +5,11 @@ import { useRouter } from 'next/navigation';
 import { usePortal } from '@/hooks/usePortal';
 import { getSupabaseBrowserClient } from '@/lib/supabase/client';
 import type { FirstLoginPage, FirstLoginSupportContext } from '@/types/firstLogin';
+import { isTogoleseNationality } from '@/services/firstLoginService';
 import { displayedPhoneNumber, isPhoneNumber } from '@/services/phoneNumberService';
 import LoadingState from '@/components/ui/LoadingState';
 import PhoneInput from '@/components/ui/PhoneInput';
+import CountrySelect from '@/components/ui/CountrySelect';
 import ReviewedForm from '@/components/ui/ReviewedForm';
 import SessionRecovery from './SessionRecovery';
 
@@ -21,6 +23,8 @@ export default function FirstLoginForm() {
   const [personalEmail, setPersonalEmail] = useState('');
   const [phone, setPhone] = useState('');
   const [birthDate, setBirthDate] = useState('');
+  const [nationality, setNationality] = useState('');
+  const [nif, setNif] = useState('');
   const [details, setDetails] = useState(''); const [error, setError] = useState(''); const [busy, setBusy] = useState(false);
   const [retry, setRetry] = useState(0);
   const [finishing, setFinishing] = useState(false);
@@ -62,6 +66,8 @@ export default function FirstLoginForm() {
         setPersonalEmail(profile.profile.personalEmail || '');
         setPhone(displayedPhoneNumber(profile.profile.phone));
         setBirthDate(profile.profile.birthDate || '');
+        setNationality(profile.profile.nationality || '');
+        setNif(profile.profile.nif || '');
       }
     })().catch(cause => { if (!controller.signal.aborted) setError(cause instanceof Error ? cause.message : 'Chargement impossible.'); });
     return () => controller.abort();
@@ -82,6 +88,10 @@ export default function FirstLoginForm() {
     { label: 'Date de naissance', previous: data.profile.birthDate ? new Date(data.profile.birthDate + 'T00:00:00').toLocaleDateString('fr-FR') : 'Non renseignée', value: decision === 'CONFIRM' ? displayBirthDate : (data.profile.birthDate ? new Date(data.profile.birthDate + 'T00:00:00').toLocaleDateString('fr-FR') : 'Non renseignée') },
     { label: 'Email de connexion', value: data.profile.email },
     ...(decision === 'CONFIRM' ? [
+      ...(data.profile.isTeacher ? [
+        { label: 'Nationalité', value: nationality || 'Non renseignée' },
+        ...(isTogoleseNationality(nationality) || nif.trim() ? [{ label: 'NIF', value: nif.trim() || 'Non renseigné' }] : []),
+      ] : []),
       { label: 'Numéro de téléphone', value: displayedPhoneNumber(phone) || 'Non renseigné' },
       { label: 'Email personnel', value: personalEmail || 'Non renseigné' },
       { label: 'Adresse géographique', value: address || 'Non renseignée' },
@@ -107,6 +117,10 @@ export default function FirstLoginForm() {
         if (decision === 'CONFIRM') {
           if (!firstname.trim() || !lastname.trim()) return 'Veuillez renseigner votre nom et vos prénoms.';
           if (!birthDate) return 'Veuillez renseigner votre date de naissance.';
+          if (data.profile.isTeacher) {
+            if (!nationality.trim()) return 'Veuillez renseigner votre nationalité.';
+            if (isTogoleseNationality(nationality) && !nif.trim()) return 'Veuillez renseigner votre Numéro d’Identification Fiscale (NIF).';
+          }
           if (!displayedPhoneNumber(phone) || !isPhoneNumber(phone)) return 'Veuillez renseigner un numéro de téléphone valide avec son indicatif.';
           if (!personalEmail.trim() || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(personalEmail.trim())) return 'Veuillez renseigner une adresse email personnelle valide.';
           if (personalEmail.trim().toLowerCase().endsWith('@escen.university')) return 'L’adresse institutionnelle @escen.university est votre identifiant de connexion. Renseignez votre adresse personnelle externe (ex. Gmail, Yahoo).';
@@ -136,6 +150,10 @@ export default function FirstLoginForm() {
                 personalEmail: personalEmail.trim(),
                 phone: displayedPhoneNumber(phone).trim(),
                 birthDate,
+                ...(data.profile.isTeacher ? {
+                  nationality: nationality.trim(),
+                  nif: nif.trim(),
+                } : {}),
               } : { details, yearId }),
             }),
           });
@@ -194,6 +212,31 @@ export default function FirstLoginForm() {
               Date de naissance
               <input className="input" type="date" required max={new Date().toISOString().slice(0, 10)} value={birthDate} onChange={e => setBirthDate(e.target.value)} />
             </label>
+          )}
+          {data.profile.isTeacher && (
+            <>
+              <CountrySelect
+                label="Nationalité"
+                kind="nationality"
+                required
+                value={nationality}
+                onChange={setNationality}
+              />
+              {isTogoleseNationality(nationality) && (
+                <label className="form-group">
+                  Numéro d’Identification Fiscale (NIF)
+                  <input
+                    className="input"
+                    type="text"
+                    required
+                    maxLength={80}
+                    placeholder="Ex : 1000123456"
+                    value={nif}
+                    onChange={e => setNif(e.target.value)}
+                  />
+                </label>
+              )}
+            </>
           )}
           <PhoneInput
             label="Numéro de téléphone"

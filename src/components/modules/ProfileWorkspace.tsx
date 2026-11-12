@@ -11,6 +11,7 @@ import StudentIdCardBadge from '@/components/modules/student/StudentIdCardBadge'
 import PageHeader from '@/components/ui/PageHeader';
 import LoadingState from '@/components/ui/LoadingState';
 import { loadOwnProfile, saveOwnProfile, type OwnProfileData } from '@/services/remoteCampusService';
+import { isTogoleseNationality } from '@/services/firstLoginService';
 import { displayedPhoneNumber } from '@/services/phoneNumberService';
 import { ROLE_COLORS } from '@/hooks/useAppState';
 import { Mail, Shield, KeyRound, AlertCircle, CheckCircle2 } from 'lucide-react';
@@ -21,6 +22,7 @@ const FIELD_LABELS = {
   birthDate: 'Date de naissance',
   gender: 'Genre',
   nationality: 'Nationalité',
+  nif: 'NIF',
   address: 'Adresse de résidence',
   city: 'Ville',
   country: 'Pays de résidence',
@@ -72,12 +74,14 @@ export default function ProfileWorkspace() {
           birthDate: matched?.birth_date ? String(matched.birth_date) : '',
           gender: matched?.gender ? String(matched.gender) : '',
           nationality: matched?.nationality ? String(matched.nationality) : '',
+          nif: matched?.nif ? String(matched.nif) : '',
           address: matched?.address ? String(matched.address) : '',
           city: matched?.city ? String(matched.city) : '',
           country: matched?.country ? String(matched.country) : '',
           matricule: session?.matricule || null,
           institutionalEmail: studentInstEmail,
           isStudent: isStud,
+          isTeacher: Boolean(session?.teacherId || activeRole === 'Enseignant'),
         });
       })
       .finally(() => {
@@ -91,6 +95,7 @@ export default function ProfileWorkspace() {
   }, [activeRole, session, relationalSnapshot.tables]);
 
   const isStudent = Boolean(profile?.isStudent || session?.studentId || session?.matricule || activeRole === 'Étudiant' || activeRole === 'Délégué');
+  const isTeacher = Boolean(profile?.isTeacher || session?.teacherId || activeRole === 'Enseignant');
 
   const studentDossier = useMemo(() => {
     const matricule = profile?.matricule || session?.matricule;
@@ -107,6 +112,7 @@ export default function ProfileWorkspace() {
     birthDate: profile?.birthDate || '',
     gender: profile?.gender || '',
     nationality: profile?.nationality || '',
+    nif: profile?.nif || '',
     address: profile?.address || '',
     city: profile?.city || '',
     country: profile?.country || '',
@@ -281,6 +287,9 @@ export default function ProfileWorkspace() {
             if (isStudent && form.personalEmail.trim().toLowerCase().endsWith('@escen.university')) {
               return 'L’adresse institutionnelle @escen.university est attribuée par ESCEN et sert d’identifiant officiel de connexion. Elle ne peut en aucun cas être modifiée par l’étudiant. Renseignez uniquement votre adresse personnelle externe de contact (ex. Gmail, Yahoo).';
             }
+            if (isTeacher && isTogoleseNationality(form.nationality) && !form.nif.trim()) {
+              return 'Veuillez renseigner votre Numéro d’Identification Fiscale (NIF).';
+            }
             return null;
           }}
           onConfirm={event => {
@@ -376,6 +385,20 @@ export default function ProfileWorkspace() {
               value={form.nationality}
               onChange={nationality => setForm(prev => ({ ...prev, nationality }))}
             />
+            {isTeacher && (isTogoleseNationality(form.nationality) || Boolean(form.nif)) && (
+              <label className="form-group">
+                Numéro d’Identification Fiscale (NIF)
+                <input
+                  className="input"
+                  type="text"
+                  required={isTogoleseNationality(form.nationality)}
+                  maxLength={80}
+                  placeholder="Ex. 1000123456"
+                  value={form.nif}
+                  onChange={event => setForm(prev => ({ ...prev, nif: event.target.value }))}
+                />
+              </label>
+            )}
             <CountrySelect
               label="Pays de résidence"
               kind="country"

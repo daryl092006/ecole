@@ -4,6 +4,8 @@ import { requireAccount, RequestError, errorResponse } from '@/server/auth';
 import { resolveAcademicYear } from '@/server/academicYearContext';
 import { invalidateAuthCache } from '@/lib/supabase/server';
 import { planSupportCommand } from '@/services/persistentSupportService';
+import { isTogoleseNationality } from '@/services/firstLoginService';
+import { ROLES } from '@/types/permissions';
 import type { RelationalSnapshot } from '@/types/persistence';
 import type { FirstLoginProfile } from '@/types/firstLogin';
 
@@ -21,6 +23,7 @@ const reviewSchema = z.discriminatedUnion('decision', [
     city: z.string().trim().max(160).optional(),
     country: z.string().trim().max(160).optional(),
     nationality: z.string().trim().max(160).optional(),
+    nif: z.string().trim().max(80).optional(),
     gender: z.string().trim().max(40).optional(),
   }).strict(),
   z.object({
@@ -54,6 +57,7 @@ async function ownProfile(auth: Awaited<ReturnType<typeof requireAccount>>) {
     }
   }
 
+  const isTeacher = Boolean(auth.profile.teacher) || Boolean(auth.availableRoles?.includes(ROLES.ENS));
   const profile: FirstLoginProfile = {
     firstname: person.firstname,
     lastname: person.lastname,
@@ -63,6 +67,11 @@ async function ownProfile(auth: Awaited<ReturnType<typeof requireAccount>>) {
     address: person.address || '',
     birthDate: person.birth_date || null,
     programName,
+    ...(isTeacher ? {
+      nationality: person.nationality || '',
+      nif: person.nif || '',
+      isTeacher: true,
+    } : {}),
   };
   const snapshot = createHash('sha256').update(JSON.stringify([auth.context.accountId, profile])).digest('hex');
   return { profile, snapshot };
@@ -113,6 +122,7 @@ export async function POST(request: Request) {
           throw new RequestError(400, 'L’adresse institutionnelle @escen.university est attribuée par ESCEN et sert d’identifiant de connexion. Renseignez votre adresse personnelle externe de contact (ex. Gmail, Yahoo).');
         }
       }
+      const isTeacher = Boolean(auth.profile.teacher) || Boolean(auth.availableRoles?.includes(ROLES.ENS));
       const nextFirstname = body.firstname ?? person.firstname;
       const nextLastname = body.lastname ?? person.lastname;
       const nextAddress = body.address !== undefined ? body.address.trim() : (person.address || '');
@@ -122,7 +132,12 @@ export async function POST(request: Request) {
       const nextCity = body.city !== undefined ? body.city.trim() : (person.city || '');
       const nextCountry = body.country !== undefined ? body.country.trim() : (person.country || '');
       const nextNationality = body.nationality !== undefined ? body.nationality.trim() : (person.nationality || '');
+      const nextNif = body.nif !== undefined ? body.nif.trim() : (person.nif || '');
       const nextGender = body.gender !== undefined ? body.gender.trim() : (person.gender || '');
+
+      if (isTeacher && isTogoleseNationality(nextNationality) && !nextNif) {
+        throw new RequestError(400, 'Le Numéro d’Identification Fiscale (NIF) est obligatoire pour les enseignants de nationalité togolaise.');
+      }
 
       const hasPersonChanges = (
         nextFirstname !== person.firstname || nextLastname !== person.lastname ||
@@ -133,6 +148,7 @@ export async function POST(request: Request) {
         nextCity !== (person.city || '') ||
         nextCountry !== (person.country || '') ||
         nextNationality !== (person.nationality || '') ||
+        nextNif !== (person.nif || '') ||
         nextGender !== (person.gender || '')
       );
 
@@ -152,6 +168,7 @@ export async function POST(request: Request) {
         if (body.city !== undefined) updateRecord.city = nextCity || null;
         if (body.country !== undefined) updateRecord.country = nextCountry || null;
         if (body.nationality !== undefined) updateRecord.nationality = nextNationality || null;
+        if (body.nif !== undefined) updateRecord.nif = nextNif || null;
         if (body.gender !== undefined) updateRecord.gender = nextGender || null;
         const saved = await auth.client.rpc('escen_backend_transaction', {
           p_actor_id: auth.context.accountId,

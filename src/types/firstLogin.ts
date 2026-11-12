@@ -7,6 +7,9 @@ export interface FirstLoginProfile {
   personalEmail?: string;
   birthDate?: string | null;
   programName?: string | null;
+  nationality?: string;
+  nif?: string;
+  isTeacher?: boolean;
 }
 export interface FirstLoginPage { profile: FirstLoginProfile; snapshot: string; }
 export interface FirstLoginSupportContext { years: { id: string; name: string }[]; currentYearId: string | null; }

@@ -261,12 +261,14 @@ export interface OwnProfileData {
   birthDate: string;
   gender: string;
   nationality: string;
+  nif?: string;
   address: string;
   city: string;
   country: string;
   matricule: string | null;
   institutionalEmail: string | null;
   isStudent: boolean;
+  isTeacher?: boolean;
 }
 
 export async function loadOwnProfile(role: RoleName, signal?: AbortSignal): Promise<OwnProfileData> {
@@ -284,6 +286,7 @@ export interface OwnProfileUpdateInput {
   birthDate: string;
   gender: string;
   nationality: string;
+  nif?: string;
   address: string;
   city: string;
   country: string;

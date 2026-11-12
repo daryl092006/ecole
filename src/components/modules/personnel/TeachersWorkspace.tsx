@@ -130,7 +130,6 @@ export default function TeachersWorkspace() {
         return <tr key={teacher.id}>
           <td>
             <strong>{teacher.name}</strong>
-            <div className="cell-sub">{teacher.employeeNumber}</div>
             <div className="cell-sub" style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginTop: 4 }}>
               <span>{teacherAssignments.length} affectation{teacherAssignments.length > 1 ? 's' : ''}</span>
               <span>· {sessionCount} séance{sessionCount > 1 ? 's' : ''}</span>
@@ -191,7 +190,7 @@ export default function TeachersWorkspace() {
           portal.refreshCampus();
         }).catch(cause => setSaveError(cause instanceof Error ? cause.message : 'Enregistrement impossible.')).finally(() => setSaving(false));
       }}>
-      {operation.kind === 'create_profile' && <label className="form-group">Membre du personnel<select className="select-input" required value={form.staffId} onChange={event => setForm({ ...form, staffId: event.target.value })}><option value="">Choisir un dossier existant</option>{directory.staff.map(member => <option key={member.id} value={member.id}>{member.name} · {member.employeeNumber}</option>)}</select></label>}
+      {operation.kind === 'create_profile' && <label className="form-group">Membre du personnel<select className="select-input" required value={form.staffId} onChange={event => setForm({ ...form, staffId: event.target.value })}><option value="">Choisir un dossier existant</option>{directory.staff.map(member => <option key={member.id} value={member.id}>{member.name}</option>)}</select></label>}
       {operation.kind === 'set_active' && <p>{operation.teacher.name} : {operation.teacher.active ? 'Actif → Inactif' : 'Inactif → Actif'}</p>}
       {operation.kind === 'create_assignment' && <div className="form-grid">
         <label className="form-group">Enseignant<select className="select-input" required value={form.teacherId} onChange={event => setForm({ ...form, teacherId: event.target.value })}><option value="">Choisir un enseignant actif</option>{directory.teachers.filter(teacher => teacher.active).map(teacher => <option key={teacher.id} value={teacher.id}>{teacher.name}</option>)}</select></label>

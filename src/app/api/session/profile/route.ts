@@ -1,6 +1,8 @@
 import { z } from 'zod';
 import { requireAccount, RequestError, errorResponse } from '@/server/auth';
 import { invalidateAuthCache } from '@/lib/supabase/server';
+import { isTogoleseNationality } from '@/services/firstLoginService';
+import { ROLES } from '@/types/permissions';
 import type { RelationalSnapshot } from '@/types/persistence';
 
 export const dynamic = 'force-dynamic';
@@ -11,6 +13,7 @@ const profileUpdateSchema = z.object({
   birthDate: z.union([z.iso.date(), z.literal('')]).optional().default(''),
   gender: z.string().trim().max(40).optional().default(''),
   nationality: z.string().trim().max(160).optional().default(''),
+  nif: z.string().trim().max(80).optional().default(''),
   address: z.string().trim().max(1000).optional().default(''),
   city: z.string().trim().max(160).optional().default(''),
   country: z.string().trim().max(160).optional().default(''),
@@ -23,6 +26,7 @@ export async function GET(request: Request) {
     const auth = await requireAccount(request);
     const person = auth.profile.person;
     const student = auth.profile.student;
+    const isTeacher = Boolean(auth.profile.teacher) || auth.availableRoles.includes(ROLES.ENS);
     const studentInstEmail = student ? (student.m365_email || `${student.matricule.toLowerCase()}@escen.university`) : null;
     const rawEmail = person.email || '';
     const cleanPersonalEmail = (rawEmail.toLowerCase().endsWith('@escen.university') && student) ? '' : rawEmail;
@@ -37,12 +41,14 @@ export async function GET(request: Request) {
         birthDate: person.birth_date || '',
         gender: person.gender || '',
         nationality: person.nationality || '',
+        nif: person.nif || '',
         address: person.address || '',
         city: person.city || '',
         country: person.country || '',
         matricule: student?.matricule || null,
         institutionalEmail: studentInstEmail,
         isStudent: Boolean(student),
+        isTeacher,
       },
     }, { headers: { 'Cache-Control': 'no-store' } });
   } catch (error) {
@@ -66,12 +72,19 @@ export async function POST(request: Request) {
       }
     }
 
+    const person = auth.profile.person;
+    const isTeacher = Boolean(auth.profile.teacher) || auth.availableRoles.includes(ROLES.ENS);
+    const nextNationality = body.nationality || person.nationality || '';
+    const nextNif = body.nif || person.nif || '';
+    if (isTeacher && isTogoleseNationality(nextNationality) && !nextNif) {
+      throw new RequestError(400, 'Le Numéro d’Identification Fiscale (NIF) est obligatoire pour les enseignants de nationalité togolaise.');
+    }
+
     const result = await auth.client.rpc('escen_backend_snapshot');
     if (result.error || !result.data) {
       throw new RequestError(503, 'L’enregistrement du profil est temporairement indisponible.');
     }
     const snapshot = result.data as RelationalSnapshot;
-    const person = auth.profile.person;
     const updateRecord: Record<string, unknown> = {
       id: auth.context.personId,
       phone: body.phone || null,
@@ -79,6 +92,7 @@ export async function POST(request: Request) {
       birth_date: body.birthDate || person.birth_date || null,
       gender: body.gender || null,
       nationality: body.nationality || null,
+      nif: body.nif || person.nif || null,
       address: body.address || null,
       city: body.city || null,
       country: body.country || null,

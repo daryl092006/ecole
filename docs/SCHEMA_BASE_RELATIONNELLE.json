@@ -2,9 +2,9 @@
   "stats": {
     "businessTables": 122,
     "privateTables": 14,
-    "columns": 1111,
+    "columns": 1112,
     "foreignKeys": 310,
-    "checks": 266,
+    "checks": 267,
     "exclusions": 5
   },
   "tables": [
@@ -6970,6 +6970,15 @@
       "type": "timestamptz",
       "nullable": "NO",
       "default": "now()",
+      "generated": "NEVER"
+    },
+    {
+      "schema": "escen",
+      "table": "people",
+      "name": "nif",
+      "type": "text",
+      "nullable": "YES",
+      "default": null,
       "generated": "NEVER"
     },
     {
@@ -18075,6 +18084,13 @@
       "name": "people_lastname_not_null",
       "type": "n",
       "definition": "NOT NULL lastname"
+    },
+    {
+      "schema": "escen",
+      "table": "people",
+      "name": "people_nif_length_check",
+      "type": "c",
+      "definition": "CHECK (((nif IS NULL) OR ((char_length(btrim(nif)) >= 1) AND (char_length(btrim(nif)) <= 80))))"
     },
     {
       "schema": "escen",

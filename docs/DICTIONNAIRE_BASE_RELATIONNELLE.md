@@ -2,7 +2,7 @@
 
 Généré avec `npm run db:describe` en exécutant les migrations dans PostgreSQL local (PGlite). Aucun accès à Supabase ou aux données de la sauvegarde.
 
-122 tables métier, 14 tables privées, 1111 colonnes, 310 clés étrangères, 266 CHECK de tables et 5 exclusions. Les domaines ajoutent les bornes des notes, des montants FCFA et des textes obligatoires.
+122 tables métier, 14 tables privées, 1112 colonnes, 310 clés étrangères, 267 CHECK de tables et 5 exclusions. Les domaines ajoutent les bornes des notes, des montants FCFA et des textes obligatoires.
 
 Toutes les tables ont RLS activée, sans accès applicatif permis à ce stade. Les noms techniques ne sont pas des libellés à afficher dans l’interface.
 
@@ -89,7 +89,7 @@ Toutes les tables ont RLS activée, sans accès applicatif permis à ce stade. L
 | escen | payment_documents | 3 | 2 | Oui |
 | escen | payment_reversals | 5 | 2 | Oui |
 | escen | payments | 15 | 4 | Oui |
-| escen | people | 15 | 0 | Oui |
+| escen | people | 16 | 0 | Oui |
 | escen | permissions | 3 | 0 | Oui |
 | escen | programs | 8 | 0 | Oui |
 | escen | purchase_lines | 5 | 1 | Oui |
@@ -3495,6 +3495,7 @@ CREATE UNIQUE INDEX payments_provider_reference_key ON escen.payments USING btre
 | country | text | YES | — | NEVER |
 | archived_at | timestamptz | YES | — | NEVER |
 | created_at | timestamptz | NO | now() | NEVER |
+| nif | text | YES | — | NEVER |
 
 Contraintes :
 
@@ -3503,6 +3504,7 @@ people_created_at_not_null: NOT NULL created_at
 people_firstname_not_null: NOT NULL firstname
 people_id_not_null: NOT NULL id
 people_lastname_not_null: NOT NULL lastname
+people_nif_length_check: CHECK (((nif IS NULL) OR ((char_length(btrim(nif)) >= 1) AND (char_length(btrim(nif)) <= 80))))
 people_pkey: PRIMARY KEY (id)
 ```
 

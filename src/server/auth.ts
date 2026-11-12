@@ -20,6 +20,7 @@ const profileSchema = z.object({
     gender: z.string().nullable().optional(),
     birth_date: z.string().nullable().optional(),
     nationality: z.string().nullable().optional(),
+    nif: z.string().nullable().optional(),
     address: z.string().nullable().optional(),
     city: z.string().nullable().optional(),
     country: z.string().nullable().optional(),
