@@ -10,6 +10,7 @@ import type { HistoryDomain } from '@/types/history';
 import { netPaymentTotal } from '@/services/financialProjectionService';
 import { effectivePayments } from '@/services/paymentAllocationService';
 import StudentHome from '@/components/modules/student/StudentHome';
+import WorkspaceActions from '@/components/ui/WorkspaceActions';
 
 function fmtCompactFcfa(amount: number): string {
   if (amount >= 1_000_000) return `${(amount / 1_000_000).toFixed(1).replace('.0', '').replace('.', ',')} M FCFA`;
@@ -31,7 +32,23 @@ export default function WorkspaceHome({ mode = 'home' }: { mode?: 'home' | 'over
   const count = (table: string) => activeRows(table).length;
   const flagged = catalog?.datasets.reduce((sum, item) => sum + item.flagged, 0) ?? 0;
   const reports = state.availableTabs.flatMap(tab => tab.subTabs || []).filter(section => ['fin_reports', 'sys_backups', 'sys_data'].includes(section.id));
-  const title = mode === 'overview' ? 'Vue d’ensemble' : mode === 'reports' ? 'Rapports de pilotage' : state.perms.scope.ownDataOnly ? 'Mon espace étudiant' : 'Mon espace ESCEN';
+  const firstName = state.session?.name?.split(/\s+/)[0] || '';
+  const title = mode === 'overview' ? 'Vue d’ensemble' : mode === 'reports' ? 'Rapports de pilotage' : `Bonjour${firstName ? ` ${firstName}` : ''}.`;
+  const roleDescriptions: Partial<Record<RoleName, string>> = {
+    [ROLES.DG]: 'Retrouvez le suivi de l’établissement, les dossiers étudiants et la situation financière.',
+    [ROLES.DGA]: 'Retrouvez le suivi des activités, les dossiers étudiants et les indicateurs de l’établissement.',
+    [ROLES.DA]: 'Retrouvez les enseignements, les évaluations et les résultats académiques.',
+    [ROLES.LOG]: 'Retrouvez la planification des cours, les groupes et le suivi des présences.',
+    [ROLES.CC]: 'Retrouvez les candidatures, les dossiers étudiants et les règlements de scolarité.',
+    [ROLES.ENS]: 'Retrouvez vos cours, vos évaluations et les résultats de vos étudiants.',
+    [ROLES.SURV]: 'Retrouvez les séances, les épreuves et les feuilles de présence de votre périmètre.',
+    [ROLES.RAF]: 'Retrouvez les contrats, les versements, les reçus et le suivi financier.',
+    [ROLES.MKT]: 'Retrouvez les communications, les publications et le suivi des candidatures.',
+    [ROLES.ACHATS]: 'Retrouvez les demandes d’achat, les fournisseurs et les équipements.',
+    [ROLES.SITE]: 'Retrouvez les candidatures, les formations et les publications du site.',
+    [ROLES.IT]: 'Retrouvez les comptes, les accès, le support et le suivi du système.',
+    [ROLES.STG]: 'Retrouvez les dossiers, les activités et les annonces accessibles à votre rôle.',
+  };
 
   const canViewStudents = state.perms.permissions.includes('student.view');
 
@@ -276,7 +293,7 @@ export default function WorkspaceHome({ mode = 'home' }: { mode?: 'home' | 'over
         },
         {
           title: 'Mes Évaluations',
-          href: '/academique/evaluations',
+          href: '/academique/examens',
           icon: Award,
           items: [
             { label: 'Épreuves', value: `${activeEvals.length}` },
@@ -382,7 +399,7 @@ export default function WorkspaceHome({ mode = 'home' }: { mode?: 'home' | 'over
         },
         ...(role === ROLES.MKT ? [{
           title: 'Étudiants & Cours',
-          href: '/etudiants/liste',
+          href: '/etudiants',
           icon: GraduationCap,
           items: [
             { label: 'Étudiants', value: `${totalStudents}` },
@@ -445,9 +462,27 @@ export default function WorkspaceHome({ mode = 'home' }: { mode?: 'home' | 'over
     sys_logs: ShieldCheck, sys_support: Server,
   };
   const authorizedPages = state.availableTabs.flatMap(tab => tab.subTabs || []);
+  const activityDescriptions: Record<string, string> = {
+    dashboard_kpis: 'Consulter les indicateurs de l’année', stud_list: 'Retrouver un dossier et son parcours',
+    fin_kpis: 'Consulter la situation financière', fin_payments: 'Retrouver les règlements et les reçus',
+    fin_contracts: 'Consulter les frais et les contrats', fin_reports: 'Consulter les états financiers',
+    acad_exams: 'Retrouver les épreuves planifiées', acad_subjects: 'Retrouver les sujets et les questions',
+    acad_grades: 'Consulter les notes et les résultats', acad_complaints: 'Retrouver les demandes de vérification',
+    acad_resources: 'Retrouver les supports pédagogiques', acad_schedule: 'Consulter les séances et les horaires',
+    acad_attendance: 'Retrouver les séances à émarger', staff_teachers: 'Consulter les profils et les affectations',
+    staff_list: 'Retrouver les comptes du personnel', stud_accounts: 'Retrouver les accès étudiants',
+    acad_reference: 'Consulter la configuration de l’année', acad_program: 'Consulter les maquettes et les matières',
+    web_applications: 'Retrouver les dossiers de candidature', web_documents: 'Consulter les formations et les pièces demandées',
+    comm_news: 'Retrouver les articles du site', web_galleries: 'Retrouver les galeries de photos',
+    web_brochures: 'Retrouver les brochures des formations', comm_announcements: 'Retrouver les annonces du campus',
+    log_purchases: 'Suivre les demandes et les réceptions', log_suppliers: 'Consulter les coordonnées des fournisseurs',
+    log_assets: 'Consulter le matériel enregistré', sys_support: 'Suivre les demandes d’assistance',
+    sys_logs: 'Consulter les opérations enregistrées', espace_support: 'Retrouver vos demandes d’assistance',
+    espace_announcements: 'Consulter les informations du campus',
+  };
   const quickActions = tasksByRole[state.activeRole].flatMap(id => {
     const page = authorizedPages.find(item => item.id === id);
-    return page ? [{ label: page.name, href: page.href, icon: taskIcons[id] || Megaphone }] : [];
+    return page ? [{ label: page.name, href: page.href, icon: taskIcons[id] || Megaphone, description: activityDescriptions[id] || 'Ouvrir cet espace de travail' }] : [];
   });
   const allowedDestination = (href: string) => state.availableTabs.some(tab => tab.href === href || tab.subTabs?.some(page => page.href === href));
   const followUps = [
@@ -566,29 +601,24 @@ export default function WorkspaceHome({ mode = 'home' }: { mode?: 'home' | 'over
   return (
     <div className="workspace-home">
       <PageHeader
-        eyebrow={state.perms.scope.ownDataOnly ? 'ESPACE PERSONNEL' : 'TABLEAU DE BORD'}
+        eyebrow={mode === 'home' ? state.activeRole : 'TABLEAU DE BORD'}
         title={title}
         description={
-          state.perms.scope.ownDataOnly
-            ? 'Bienvenue sur votre portail universitaire. Retrouvez vos cours, notes, présences et démarches administratives.'
-            : 'Vue d’ensemble des activités, effectifs et opérations du campus pour l’année sélectionnée.'
+          mode === 'home' ? roleDescriptions[state.activeRole] : 'Vue d’ensemble des activités, effectifs et opérations du campus pour l’année sélectionnée.'
         }
-      />
+      >
+        {mode === 'home' && authorizedPages.some(page => page.id === 'espace_profile') && <Link className="btn btn-outline" href={authorizedPages.find(page => page.id === 'espace_profile')!.href}>Mon profil</Link>}
+      </PageHeader>
     {error && <div className="review-notice" role="alert"><span>{error}</span><IconButton className="btn btn-outline" onClick={retry} label="Réessayer" /></div>}
 
     {mode === 'home' && <>
-      {renderKpiCards()}
+      <WorkspaceActions actions={quickActions} />
       <section className="card" aria-label="Éléments à suivre">
         <div className="card-header"><h2>À suivre</h2></div>
         {followUps.length > 0 ? <div className="home-record-counts">{followUps.map(item => <div key={item.label}><Link href={item.href}>{item.label}</Link><strong>{item.count}</strong></div>)}</div>
           : <p>Aucun élément en attente dans votre périmètre.</p>}
       </section>
-      {quickActions.length > 0 && <div className="home-quick-actions" style={{ marginBottom: '1.25rem' }}>
-        <div className="home-section-heading"><div><h2>Que souhaitez-vous faire ?</h2></div></div>
-        <div className="quick-actions-bar">
-          {quickActions.map(act => <Link key={act.label} href={act.href} className="quick-action-btn"><act.icon size={16} /><span>{act.label}</span><ArrowUpRight size={14} /></Link>)}
-        </div>
-      </div>}
+      {renderKpiCards()}
     </>}
 
     {mode === 'overview' && <>

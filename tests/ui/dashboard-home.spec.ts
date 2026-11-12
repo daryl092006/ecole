@@ -7,7 +7,7 @@ for (const width of [390, 1440]) test(`Accueil : tableau de bord IT et raccourci
   await page.goto('/mon-espace');
   await expect(page.getByRole('region', { name: 'Système & Comptes', exact: true })).toBeVisible();
   await expect(page.getByRole('heading', { name: 'À suivre', exact: true })).toBeVisible();
-  await expect(page.getByRole('heading', { name: 'Que souhaitez-vous faire ?', exact: true })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Accès rapides', exact: true })).toBeVisible();
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
   await page.screenshot({ path: `tmp/screenshots/dashboard-home/${width}.png`, fullPage: true });
 });
@@ -18,6 +18,7 @@ for (const width of [360, 390, 768, 1024, 1440]) test(`Accueil étudiant : cours
   await installResponsiveAudit(page, 'student');
   await page.goto('/mon-espace');
   await expect(page.getByRole('heading', { name: 'Bonjour Élise.', exact: true })).toBeVisible();
+  if (width <= 768) expect((await page.locator('main .page-intro').boundingBox())!.height).toBeLessThan(240);
   await expect(page.getByRole('region', { name: 'Mes prochains cours', exact: true })).toContainText('08:00');
   await expect(page.locator('.student-agenda li').first()).toContainText('Prochaine séance');
   await expect(page.getByRole('navigation', { name: 'Mes accès rapides' }).getByRole('link')).toHaveCount(4);
@@ -37,12 +38,7 @@ for (const width of [360, 390, 768, 1024, 1440]) test(`Accueil étudiant : cours
   await page.goto('/mon-espace');
   await page.getByRole('navigation', { name: 'Mes accès rapides' }).getByRole('link', { name: /Mes notes et résultats/ }).click();
   await expect(page).toHaveURL(/\/academique\/notes$/);
-  if (width <= 768) {
-    const mobile = page.getByRole('navigation', { name: 'Navigation étudiante', exact: true });
-    await expect(mobile.getByRole('link', { name: 'Résultats', exact: true })).toHaveAttribute('aria-current', 'page');
-    await mobile.getByRole('link', { name: 'Accueil', exact: true }).click();
-    await expect(page.getByRole('heading', { name: 'Bonjour Élise.' })).toBeVisible();
-  }
+  await expect(page.getByRole('navigation', { name: 'Navigation étudiante', exact: true })).toHaveCount(0);
 });
 
 test('Accueil étudiant : séances annulées, autre groupe et données absentes', async ({ page }) => {

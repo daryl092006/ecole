@@ -6,6 +6,8 @@ import { ArrowRight, BookOpen, CalendarDays, ChevronRight, ClipboardCheck, FileT
 import { usePortal } from '@/hooks/usePortal';
 import { enrollmentParticipates } from '@/services/sessionParticipantsService';
 import type { DatabaseRow } from '@/types/persistence';
+import PageHeader from '@/components/ui/PageHeader';
+import WorkspaceActions from '@/components/ui/WorkspaceActions';
 
 const money = (amount: number) => `${Math.round(amount).toLocaleString('fr-FR')} FCFA`;
 const date = (value: string) => new Date(value).toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' });
@@ -66,23 +68,18 @@ export default function StudentHome() {
   }).sort((a, b) => Date.parse(String(b.published_at)) - Date.parse(String(a.published_at))).slice(0, 2);
 
   return <div className="student-home">
-    <header className="student-welcome">
-      <div className="student-welcome-copy">
-        <span className="student-eyebrow">MON ESPACE ÉTUDIANT{year ? ` · ${year.name}` : ''}</span>
-        <h1>Bonjour{firstName ? ` ${firstName}` : ''}.</h1>
-        <p>Votre journée, vos cours et vos démarches, au même endroit.</p>
-        <div className="student-identity">
+    <PageHeader title={`Bonjour${firstName ? ` ${firstName}` : ''}.`} eyebrow={`MON ESPACE ÉTUDIANT${year ? ` · ${year.name}` : ''}`} description="Votre journée, vos cours et vos démarches, au même endroit.">
+      {page('espace_profile') && <Link href={page('espace_profile')!.href} className="btn btn-outline">Mon profil<ArrowRight size={16} aria-hidden="true" /></Link>}
+    </PageHeader>
+    {!!me && <div className="workspace-context">
           {me?.filiere && <span><GraduationCap size={16} aria-hidden="true" />{me.filiere}</span>}
           {me?.niveau && <span>{me.niveau}</span>}
           {me?.groupe && <span>{me.groupe}</span>}
-        </div>
-      </div>
-      {page('espace_profile') && <Link href={page('espace_profile')!.href} className="student-profile-link">Mon profil<ArrowRight size={16} aria-hidden="true" /></Link>}
-    </header>
+    </div>}
 
     <div className="student-home-grid">
       <div className="student-home-main">
-        {schedulePage && <section className="student-panel" aria-labelledby="student-agenda-title">
+        {schedulePage && <section className="card student-panel" aria-labelledby="student-agenda-title">
           <div className="student-panel-heading"><div><span className="student-eyebrow">MON PLANNING</span><h2 id="student-agenda-title">Mes prochains cours</h2></div><Link href={schedulePage.href}>Tout le planning<ArrowRight size={16} aria-hidden="true" /></Link></div>
           {now === null ? <p role="status" className="student-empty">Chargement du planning…</p> : !next ? <div className="student-empty"><CalendarDays size={30} aria-hidden="true" /><h3>Aucune séance à venir</h3><p>{enrollments.length ? 'Les prochaines séances apparaîtront ici dès leur planification.' : 'Votre planning apparaîtra lorsque votre inscription et votre groupe seront confirmés pour cette année.'}</p><Link href={schedulePage.href}>Consulter mon emploi du temps<ArrowRight size={16} aria-hidden="true" /></Link></div> : <ol className="student-agenda">
             {sessions.slice(0, 3).map((session, index) => <li key={session.id} className={index === 0 ? 'student-agenda-next' : undefined}>
@@ -93,21 +90,19 @@ export default function StudentHome() {
           </ol>}
         </section>}
 
-        <nav className="student-shortcuts" aria-label="Mes accès rapides">
-          {shortcuts.map(item => <Link href={item.href} key={item.id} className="student-shortcut"><span className="student-shortcut-icon"><item.icon size={22} aria-hidden="true" /></span><strong>{item.title}</strong><span>{item.detail}</span><ArrowRight className="student-shortcut-arrow" size={17} aria-hidden="true" /></Link>)}
-        </nav>
+        <WorkspaceActions label="Mes accès rapides" actions={shortcuts.map(item => ({ label: item.title, href: item.href, icon: item.icon, description: item.detail }))} />
 
-        {newsPage && <section className="student-panel" aria-labelledby="student-news-title"><div className="student-panel-heading"><div><span className="student-eyebrow">VIE DU CAMPUS</span><h2 id="student-news-title">Les dernières annonces</h2></div><Link href={newsPage.href}>Toutes les annonces<ArrowRight size={16} aria-hidden="true" /></Link></div>
+        {newsPage && <section className="card student-panel" aria-labelledby="student-news-title"><div className="student-panel-heading"><div><span className="student-eyebrow">VIE DU CAMPUS</span><h2 id="student-news-title">Les dernières annonces</h2></div><Link href={newsPage.href}>Toutes les annonces<ArrowRight size={16} aria-hidden="true" /></Link></div>
           {announcements.length ? <div className="student-news">{announcements.map(item => <Link href={newsPage.href} key={item.id}><span className="student-news-icon"><Megaphone size={18} aria-hidden="true" /></span><div><span className="student-course-date">{date(String(item.published_at))}</span><h3>{String(item.title)}</h3></div><ChevronRight size={18} aria-hidden="true" /></Link>)}</div> : <p className="student-empty">Aucune annonce publiée pour vous pour le moment.</p>}
         </section>}
       </div>
 
       <div className="student-home-side">
-        {page('espace_finance') && <section className="student-panel student-finance" aria-labelledby="student-finance-title"><span className="student-shortcut-icon"><Wallet size={21} aria-hidden="true" /></span><h2 id="student-finance-title">Mes frais et paiements</h2>
+        {page('espace_finance') && <section className="card student-panel student-finance" aria-labelledby="student-finance-title"><span className="workspace-action-icon"><Wallet size={21} aria-hidden="true" /></span><h2 id="student-finance-title">Mes frais et paiements</h2>
           {hasFinance ? <><span className="student-finance-label">Reste à régler</span><strong className="student-finance-amount">{money(financials.remaining)}</strong><p>{financials.remaining > 0 ? 'Retrouvez le détail de vos frais, échéances et règlements.' : 'Les frais enregistrés pour cette année sont soldés.'}</p><dl className="student-finance-paid"><dt>Déjà réglé</dt><dd>{money(financials.paid)}</dd></dl></> : <p>Votre situation financière n’est pas encore disponible pour cette année.</p>}
           <Link className="btn btn-outline" href={page('espace_finance')!.href}>Voir ma situation<ArrowRight size={16} aria-hidden="true" /></Link>
         </section>}
-        {!!services.length && <section className="student-panel" aria-labelledby="student-services-title"><div className="student-panel-heading"><h2 id="student-services-title">Mes démarches</h2></div><div className="student-services">{services.map(item => <Link key={item.id} href={item.href}><item.icon size={20} aria-hidden="true" /><div><strong>{item.title}</strong><span>{item.detail}</span></div><ChevronRight size={17} aria-hidden="true" /></Link>)}</div></section>}
+        {!!services.length && <section className="card student-panel" aria-labelledby="student-services-title"><div className="student-panel-heading"><h2 id="student-services-title">Mes démarches</h2></div><div className="student-services">{services.map(item => <Link key={item.id} href={item.href}><item.icon size={20} aria-hidden="true" /><div><strong>{item.title}</strong><span>{item.detail}</span></div><ChevronRight size={17} aria-hidden="true" /></Link>)}</div></section>}
       </div>
     </div>
   </div>;

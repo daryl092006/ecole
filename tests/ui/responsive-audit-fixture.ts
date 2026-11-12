@@ -6,7 +6,7 @@ import { scheduleFixture } from './schedule-management-fixture';
 import { loadSecurityApi, securityContext, securityIds as id, uuid } from './security-fixture';
 import { filterRelationalSnapshot } from '../../src/services/persistentPermissionsService';
 import { filterSnapshotForAcademicYear } from '../../src/services/academicYearScopeService';
-import { ROLES } from '../../src/types/permissions';
+import { ROLES, type RoleName } from '../../src/types/permissions';
 
 const journalRecords = Array.from({ length: 51 }, (_, index) => ({
   id: uuid(7970 + index), date: '2026-10-19T08:00:00Z', actorId: uuid(900), actorName: 'Jean Technique', roles: ['IT'],
@@ -15,14 +15,14 @@ const journalRecords = Array.from({ length: 51 }, (_, index) => ({
 }));
 
 export type AuditAccount = 'staff' | 'student' | 'delegate' | 'anonymous' | 'password';
-export async function installResponsiveAudit(page: Page, account: AuditAccount) {
+export async function installResponsiveAudit(page: Page, account: AuditAccount, staffRole?: RoleName) {
   // Exercise real read handlers with isolated transport; never call a remote API or write data.
   const student = account === 'student' || account === 'delegate';
-  const role = account === 'delegate' ? ROLES.DEL : student ? ROLES.STUD : ROLES.IT;
-  const roleCode = account === 'delegate' ? 'DEL' : student ? 'STUD' : 'IT';
+  const role = account === 'delegate' ? ROLES.DEL : student ? ROLES.STUD : staffRole || ROLES.IT;
+  const roleCode = Object.entries(ROLES).find(([, name]) => name === role)![0];
   const context = securityContext(role, {
     roleCode, studentId: student ? uuid(600) : null,
-    teacherId: null,
+    teacherId: role === ROLES.ENS ? id.teacher : null,
     grants: [{ role_code: roleCode, role_name: role, site_id: null, group_id: null, academic_year_id: null }],
   });
   const campus = attendanceFixture().snapshot;
