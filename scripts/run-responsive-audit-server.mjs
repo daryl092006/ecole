@@ -1,6 +1,8 @@
 import { spawn } from 'node:child_process';
 
 let child;
+const port = Number(process.env.ESCEN_AUDIT_PORT || 3117);
+if (!Number.isInteger(port) || port < 1024 || port > 65535) throw new Error('Port d’audit invalide.');
 for (const signal of ['SIGINT', 'SIGTERM']) process.on(signal, () => child?.kill(signal));
 function run(args) {
   return new Promise((resolve, reject) => {
@@ -10,4 +12,4 @@ function run(args) {
   });
 }
 await run(['build']);
-await run(['start', '--port', '3117']);
+await run(['start', '--port', String(port)]);

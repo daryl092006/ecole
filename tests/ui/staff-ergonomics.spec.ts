@@ -25,6 +25,7 @@ for (const [code, role] of staffRoles) for (const width of [390, 1440]) {
       await expect(page.getByRole('navigation', { name: 'Navigation étudiante', exact: true })).toHaveCount(0);
       const actions = page.getByRole('navigation', { name: 'Accès rapides', exact: true });
       await expect(actions).toBeVisible();
+      await expect(page.locator('main .kpi-chart').first()).toBeVisible();
       for (const href of await actions.getByRole('link').evaluateAll(links => links.map(link => link.getAttribute('href')))) {
         expect(pages.some(destination => destination.href === href), `${code} : destination ${href}`).toBe(true);
       }

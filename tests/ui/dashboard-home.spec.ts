@@ -60,8 +60,8 @@ test('Accueil étudiant : séances annulées, autre groupe et données absentes'
   snapshot.tables.installments = [];
   await page.reload();
   await expect(page.getByRole('heading', { name: 'Aucune séance à venir' })).toBeVisible();
-  await expect(page.getByRole('region', { name: 'Mes frais et paiements' })).toContainText('Votre situation financière n’est pas encore disponible');
-  await expect(page.locator('.student-finance-amount')).toHaveCount(0);
+  await expect(page.getByRole('region', { name: 'Mes frais et paiements' })).toContainText('Données non disponibles pour cette sélection.');
+  await expect(page.getByRole('region', { name: 'Mes frais et paiements' }).locator('.kpi-chart-ring')).toHaveCount(0);
 });
 
 test('Accueil délégué : accès personnels conservés et présence du groupe accessible', async ({ page }) => {

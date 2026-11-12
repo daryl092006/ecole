@@ -30,6 +30,7 @@ const screens: Screen[] = [
 ];
 const widths = process.env.ESCEN_AUDIT_WIDTHS ? process.env.ESCEN_AUDIT_WIDTHS.split(',').map(Number) : [360, 390, 768, 1024, 1440];
 const artifactRoot = process.env.ESCEN_AUDIT_ARTIFACT_ROOT || 'tmp/screenshots/responsive-audit';
+const auditBaseURL = `http://127.0.0.1:${Number(process.env.ESCEN_AUDIT_PORT || 3117)}`;
 const stage = process.env.ESCEN_RESPONSIVE_STAGE || 'before';
 if (!['before', 'after'].includes(stage)) throw new Error('Étape responsive invalide.');
 const selectedScreens = screens.filter(screen => !process.env.ESCEN_AUDIT_SCREEN || new RegExp(process.env.ESCEN_AUDIT_SCREEN).test(screen.key));
@@ -89,7 +90,7 @@ for (const width of widths.filter(value => !process.env.ESCEN_AUDIT_WIDTH || Str
         }
         const { page, problems, errors } = sessions.get(screen.account)!;
         problems.length = 0; errors.length = 0;
-        const response = await page.goto(`http://127.0.0.1:3117${screen.href}`, { waitUntil: 'domcontentloaded', timeout: 45000 });
+        const response = await page.goto(`${auditBaseURL}${screen.href}`, { waitUntil: 'domcontentloaded', timeout: 45000 });
         if (screen.destination) await page.waitForURL(url => url.pathname === screen.destination, { timeout: 15000 });
         if (screen.readyHeading) await expect(page.getByRole('heading', { name: screen.readyHeading, exact: true })).toBeVisible();
         await expect(page.locator('main')).toBeVisible();

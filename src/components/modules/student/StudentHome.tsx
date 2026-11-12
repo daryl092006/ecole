@@ -2,14 +2,14 @@
 
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
-import { ArrowRight, BookOpen, CalendarDays, ChevronRight, ClipboardCheck, FileText, GraduationCap, HelpCircle, MapPin, Megaphone, Wallet } from 'lucide-react';
+import { ArrowRight, BookOpen, CalendarDays, ChevronRight, ClipboardCheck, FileText, GraduationCap, HelpCircle, MapPin, Megaphone } from 'lucide-react';
 import { usePortal } from '@/hooks/usePortal';
 import { enrollmentParticipates } from '@/services/sessionParticipantsService';
 import type { DatabaseRow } from '@/types/persistence';
 import PageHeader from '@/components/ui/PageHeader';
 import WorkspaceActions from '@/components/ui/WorkspaceActions';
+import KpiChart from '@/components/ui/KpiChart';
 
-const money = (amount: number) => `${Math.round(amount).toLocaleString('fr-FR')} FCFA`;
 const date = (value: string) => new Date(value).toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' });
 const time = (value: unknown) => new Date(String(value)).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
 
@@ -98,10 +98,9 @@ export default function StudentHome() {
       </div>
 
       <div className="student-home-side">
-        {page('espace_finance') && <section className="card student-panel student-finance" aria-labelledby="student-finance-title"><span className="workspace-action-icon"><Wallet size={21} aria-hidden="true" /></span><h2 id="student-finance-title">Mes frais et paiements</h2>
-          {hasFinance ? <><span className="student-finance-label">Reste à régler</span><strong className="student-finance-amount">{money(financials.remaining)}</strong><p>{financials.remaining > 0 ? 'Retrouvez le détail de vos frais, échéances et règlements.' : 'Les frais enregistrés pour cette année sont soldés.'}</p><dl className="student-finance-paid"><dt>Déjà réglé</dt><dd>{money(financials.paid)}</dd></dl></> : <p>Votre situation financière n’est pas encore disponible pour cette année.</p>}
+        {page('espace_finance') && <KpiChart title="Mes frais et paiements" description="Répartition des frais réglés et du solde restant pour l’année consultée." kind="donut" format="currency" available={hasFinance} series={[{ label: 'Frais', values: [{ label: 'Réglé', value: financials?.paid ?? 0 }, { label: 'Reste à régler', value: financials?.remaining ?? 0 }] }]}>
           <Link className="btn btn-outline" href={page('espace_finance')!.href}>Voir ma situation<ArrowRight size={16} aria-hidden="true" /></Link>
-        </section>}
+        </KpiChart>}
         {!!services.length && <section className="card student-panel" aria-labelledby="student-services-title"><div className="student-panel-heading"><h2 id="student-services-title">Mes démarches</h2></div><div className="student-services">{services.map(item => <Link key={item.id} href={item.href}><item.icon size={20} aria-hidden="true" /><div><strong>{item.title}</strong><span>{item.detail}</span></div><ChevronRight size={17} aria-hidden="true" /></Link>)}</div></section>}
       </div>
     </div>

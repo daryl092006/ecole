@@ -8,6 +8,7 @@ import ResponsiveTable from '@/components/ui/ResponsiveTable';
 import IconButton from '@/components/ui/IconButton';
 import PageHeader from '@/components/ui/PageHeader';
 import { downloadCsv } from '@/utils/csv';
+import KpiChart from '@/components/ui/KpiChart';
 
 const money = (amount: number) => `${amount.toLocaleString('fr-FR')} FCFA`;
 
@@ -89,7 +90,7 @@ export default function FinanceOverview() {
         <div className="kpi-card">
           <span className="kpi-label">Reste à recouvrer</span>
           <strong className="kpi-value" style={{ color: totalRemaining > 0 ? 'var(--warning)' : 'var(--text-muted)' }}>
-            {known.length ? money(totalRemaining) : '0 FCFA'}
+            {known.length ? money(totalRemaining) : 'Non établi'}
           </strong>
           <span className="cell-sub">Échéances en cours</span>
         </div>
@@ -98,8 +99,13 @@ export default function FinanceOverview() {
           <strong className="kpi-value" style={{ color: missing === 0 ? 'var(--success)' : undefined }}>
             {known.length} / {rows.length}
           </strong>
-          <span className="cell-sub">{missing > 0 ? `${missing} dossier(s) sans contrat` : '100% contrats établis'}</span>
+          <span className="cell-sub">{!rows.length ? 'Aucun dossier pour cette sélection' : missing > 0 ? `${missing} dossier(s) sans contrat` : 'Tous les dossiers sont renseignés'}</span>
         </div>
+      </div>
+
+      <div className="home-bottom-grid">
+        <KpiChart title="Répartition des frais" description="Montants des situations financières correspondant aux filtres ci-dessous. Les paiements en attente sont exclus." kind="donut" format="currency" available={known.length > 0} series={[{ label: 'Frais', values: [{ label: 'Réglé', value: totalPaid }, { label: 'Reste à régler', value: totalRemaining }] }]} />
+        <KpiChart title="Couverture des situations financières" description="Situations visibles selon la présence des données contractuelles ; les dossiers sans contrat restent identifiés." kind="donut" series={[{ label: 'Situations', values: [{ label: 'Renseignées', value: known.length }, { label: 'Sans contrat', value: missing }] }]} />
       </div>
 
       <section className="card card-full">
