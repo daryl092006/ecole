@@ -96,7 +96,7 @@ export async function requireAccount(request: Request) {
     studentId: profile.student?.id ?? null, teacherId: profile.teacher?.id ?? null,
     grants: available.filter(item => item.role_code === selected.role_code) as AccountGrant[],
   };
-  const studentInstEmail = profile.student ? (profile.student.m365_email || `${profile.student.matricule.toLowerCase()}@escen.university`) : null;
+  const studentInstEmail = profile.student ? (profile.student.m365_email || null) : null;
   const loginEmail = (profile.student ? studentInstEmail : authenticated.data.user.email) || profile.person.email || '';
   return { client, context, profile, user: authenticated.data.user, mustChangePassword, mustVerifyProfile, firstLoginRequired, availableRoles: [...new Set(available.map(item => item.role_name))], email: loginEmail };
 }

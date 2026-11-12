@@ -61,7 +61,9 @@ export default function ProfileWorkspace() {
           || null;
 
         const isStud = Boolean(session?.studentId || session?.matricule || activeRole === 'Étudiant' || activeRole === 'Délégué');
-        const studentInstEmail = session?.matricule ? `${session.matricule.toLowerCase()}@escen.university` : null;
+        const realM365 = String(studentRow?.m365_email || '').trim();
+        const sessionEmail = String(session?.email || '');
+        const studentInstEmail = realM365 || (sessionEmail.toLowerCase().endsWith('@escen.university') ? sessionEmail : '') || null;
 
         const matchedEmail = matched?.email ? String(matched.email) : '';
         setProfile({
@@ -103,8 +105,7 @@ export default function ProfileWorkspace() {
     return portal.students.find(s => s.matricule === matricule) || null;
   }, [portal.students, profile?.matricule, session?.matricule]);
 
-  const studentProEmail = profile?.institutionalEmail
-    || (session?.matricule ? `${session.matricule.toLowerCase()}@escen.university` : '');
+  const studentProEmail = profile?.institutionalEmail || '';
 
   const initialForm = useMemo(() => ({
     phone: displayedPhoneNumber(profile?.phone || ''),

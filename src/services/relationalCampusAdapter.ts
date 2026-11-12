@@ -71,12 +71,8 @@ export function projectRelationalCampus(snapshot: RelationalSnapshot, now = new 
     const curriculum = offering && curricula.get(text(offering, 'curriculum_id'));
     const group = enrollment && groups.get(text(membership(enrollment.id), 'group_id'));
     const m365 = text(row, 'm365_email');
-    const pFirst = text(person, 'firstname') || '';
-    const pLast = text(person, 'lastname') || '';
-    const cleanFirst = pFirst.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().replace(/[^a-z0-9]/g, '');
-    const cleanLast = pLast.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().replace(/[^a-z0-9]/g, '');
-    const autoInstEmail = cleanLast && cleanFirst ? `${cleanLast[0]}.${cleanFirst}.etudiant@escen.university` : '';
-    const institutionalEmail = m365 || autoInstEmail;
+    // Adresse Microsoft 365 réelle uniquement : ne jamais en fabriquer une.
+    const institutionalEmail = m365;
     return [{ matricule: text(row, 'matricule'), firstname: text(person, 'firstname'), lastname: text(person, 'lastname'), email: text(person, 'email'), institutionalEmail, phone: text(person, 'phone'), gender: text(person, 'gender'), birthDate: text(person, 'birth_date'), nationality: text(person, 'nationality'), address: text(person, 'address'), city: text(person, 'city'), country: text(person, 'country'),
       filiere: text(programs.get(text(curriculum, 'program_id')), 'name') || 'Filière non renseignée', niveau: text(levels.get(text(offering, 'level_id')), 'name') || 'Niveau non renseigné', groupe: text(group, 'name') || 'Non affecté', groupId: group?.id || '', academicYearId: text(offering, 'academic_year_id'),
       status: enrollment ? statuses[text(enrollment, 'status')] || 'Statut à vérifier' : 'Sans inscription annuelle',

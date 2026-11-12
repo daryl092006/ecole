@@ -89,7 +89,7 @@ export default function StudentProfilePanel({ student, compact = false, onSaved 
                 <span className="pill pill-info" style={{ fontSize: '10px', padding: '1px 6px', fontWeight: 600 }}>M365</span>
               </div>
               <span style={{ fontSize: '14.5px', fontWeight: 600, color: 'var(--primary, #0369a1)' }}>
-                {student.institutionalEmail || `${student.matricule.toLowerCase()}@escen.university`}
+                {student.institutionalEmail || 'Compte Microsoft 365 non lié'}
               </span>
             </div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>

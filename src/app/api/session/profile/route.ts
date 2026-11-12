@@ -27,7 +27,7 @@ export async function GET(request: Request) {
     const person = auth.profile.person;
     const student = auth.profile.student;
     const isTeacher = Boolean(auth.profile.teacher) || auth.availableRoles.includes(ROLES.ENS);
-    const studentInstEmail = student ? (student.m365_email || `${student.matricule.toLowerCase()}@escen.university`) : null;
+    const studentInstEmail = student ? (student.m365_email || null) : null;
     const rawEmail = person.email || '';
     const cleanPersonalEmail = (rawEmail.toLowerCase().endsWith('@escen.university') && student) ? '' : rawEmail;
     return Response.json({
