@@ -9,15 +9,25 @@ import { manageEvaluation } from '@/services/remoteCampusService';
 import { ROLES } from '@/types/permissions';
 import { isEvaluationEnrollmentStatus } from '@/services/evaluationCandidateService';
 
+const localTime = (value: string) => (value ? new Date(value).toISOString().slice(0, 16) : '');
+const displayTime = (value: string) =>
+  new Intl.DateTimeFormat('fr-FR', {
+    dateStyle: 'short',
+    timeStyle: 'short',
+    timeZone: 'Africa/Lome',
+  }).format(new Date(value));
+
 export default function EvaluationCreateDialog({
   onClose,
   onCreated,
   preselectedAssignmentId,
+  preselectedSessionId,
   category = 'control',
 }: {
   onClose: () => void;
   onCreated: (evalId: string) => void;
   preselectedAssignmentId?: string;
+  preselectedSessionId?: string;
   category?: 'control' | 'exam' | 'resit';
 }) {
   const portal = usePortal();
@@ -30,6 +40,9 @@ export default function EvaluationCreateDialog({
   const enrollments = snapshot.tables.enrollments || [];
   const evaluations = snapshot.tables.evaluations || [];
   const rooms = snapshot.tables.rooms || [];
+  const allSessions = snapshot.tables.sessions || [];
+  const allDeliveries = snapshot.tables.exam_deliveries || [];
+  const allParticipants = snapshot.tables.session_participants || [];
   const availableRooms = rooms.filter(r => !r.archived_at && r.available !== false);
 
   // Filtrer les affectations accessibles pour l'utilisateur
@@ -40,17 +53,44 @@ export default function EvaluationCreateDialog({
     return true;
   });
 
-  const [assignmentId, setAssignmentId] = useState(preselectedAssignmentId || filteredAssignments[0]?.id || '');
-  const [groupId, setGroupId] = useState(() => String(filteredAssignments.find(row => row.id === preselectedAssignmentId)?.group_id || filteredAssignments[0]?.group_id || ''));
+  const initialPreselectedSession = preselectedSessionId
+    ? allSessions.find(s => String(s.id) === preselectedSessionId)
+    : undefined;
+
+  const [assignmentId, setAssignmentId] = useState(
+    preselectedAssignmentId || (initialPreselectedSession ? String(initialPreselectedSession.assignment_id) : '') || filteredAssignments[0]?.id || ''
+  );
+  const [groupId, setGroupId] = useState(() =>
+    String(
+      filteredAssignments.find(row => row.id === (preselectedAssignmentId || initialPreselectedSession?.assignment_id))?.group_id ||
+      filteredAssignments[0]?.group_id ||
+      ''
+    )
+  );
   const [name, setName] = useState('');
   const [kind, setKind] = useState<'DEVOIR' | 'EXAMEN' | 'RATTRAPAGE'>(category === 'exam' ? 'EXAMEN' : category === 'resit' ? 'RATTRAPAGE' : 'DEVOIR');
   const [parentEvaluationId, setParentEvaluationId] = useState('');
-  const [scheduleNow, setScheduleNow] = useState(category === 'exam' || category === 'resit');
-  const [startsAt, setStartsAt] = useState('');
-  const [endsAt, setEndsAt] = useState('');
-  const [durationMinutes, setDurationMinutes] = useState(120);
-  const [deliveryMode, setDeliveryMode] = useState<'EN_LIGNE' | 'PAPIER'>(portal.activeRole === ROLES.SURV ? 'PAPIER' : 'EN_LIGNE');
-  const [roomId, setRoomId] = useState(availableRooms[0]?.id ? String(availableRooms[0].id) : '');
+  const [scheduleNow, setScheduleNow] = useState(Boolean(preselectedSessionId) || category === 'exam' || category === 'resit');
+  const [selectedSessionId, setSelectedSessionId] = useState<string>(initialPreselectedSession ? String(initialPreselectedSession.id) : '__new__');
+  const [startsAt, setStartsAt] = useState(initialPreselectedSession ? localTime(String(initialPreselectedSession.starts_at)) : '');
+  const [endsAt, setEndsAt] = useState(initialPreselectedSession ? localTime(String(initialPreselectedSession.ends_at)) : '');
+  const [durationMinutes, setDurationMinutes] = useState(() => {
+    if (initialPreselectedSession) {
+      const diffMins = Math.round((Date.parse(String(initialPreselectedSession.ends_at)) - Date.parse(String(initialPreselectedSession.starts_at))) / 60000);
+      if (diffMins > 0) return Math.min(120, diffMins);
+    }
+    return 120;
+  });
+  const [deliveryMode, setDeliveryMode] = useState<'EN_LIGNE' | 'PAPIER'>(
+    initialPreselectedSession?.mode === 'PAPIER' ? 'PAPIER' : portal.activeRole === ROLES.SURV ? 'PAPIER' : 'EN_LIGNE'
+  );
+  const [roomId, setRoomId] = useState(
+    initialPreselectedSession?.room_id
+      ? String(initialPreselectedSession.room_id)
+      : availableRooms[0]?.id
+      ? String(availableRooms[0].id)
+      : ''
+  );
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
 
@@ -58,6 +98,41 @@ export default function EvaluationCreateDialog({
   const selectedGroup = selectedAssignment ? groups.find(g => g.id === selectedAssignment.group_id) : null;
   const selectedComponent = selectedAssignment ? components.find(c => c.id === selectedAssignment.component_id) : null;
   const selectedSubject = selectedComponent ? subjects.find(s => s.id === selectedComponent.subject_id) : null;
+
+  // Séances déjà programmées pour cet enseignement (cours réguliers non partagés ou séances d'examen libres)
+  const existingCourseSessions = allSessions
+    .filter(s => {
+      if (s.assignment_id !== assignmentId || s.cancelled_at || s.archived_at) return false;
+      if (['ANNULE', 'ANNULEE', 'REPORTE'].includes(String(s.status))) return false;
+      if (allDeliveries.some(d => d.session_id === s.id)) return false;
+      const otherParticipants = allParticipants.filter(
+        p => p.session_id === s.id && p.assignment_id !== s.assignment_id && p.active !== false
+      );
+      if (otherParticipants.length > 0) return false;
+      return true;
+    })
+    .sort((a, b) => Date.parse(String(a.starts_at)) - Date.parse(String(b.starts_at)));
+
+  const handleSelectCourseSession = (nextSessionId: string) => {
+    setSelectedSessionId(nextSessionId);
+    if (nextSessionId === '__new__') return;
+    const target = existingCourseSessions.find(s => String(s.id) === nextSessionId);
+    if (target) {
+      const sStart = localTime(String(target.starts_at));
+      const sEnd = localTime(String(target.ends_at));
+      setStartsAt(sStart);
+      setEndsAt(sEnd);
+      const diffMins = Math.round((Date.parse(String(target.ends_at)) - Date.parse(String(target.starts_at))) / 60000);
+      if (diffMins > 0) {
+        setDurationMinutes(Math.min(durationMinutes, diffMins));
+      }
+      if (target.mode === 'EN_LIGNE') {
+        setDeliveryMode('EN_LIGNE');
+      } else if (target.room_id) {
+        setRoomId(String(target.room_id));
+      }
+    }
+  };
 
   // Calcul du nombre d'étudiants rattachés (aligné sur le trigger SQL guard_candidate)
   const today = new Date().toISOString().slice(0, 10);
@@ -117,16 +192,25 @@ export default function EvaluationCreateDialog({
 
       if (res.id && scheduleNow && startsAt && endsAt) {
         const iso = (v: string) => new Date(`${v}:00Z`).toISOString();
+        const isExistingSession = selectedSessionId !== '__new__' && existingCourseSessions.some(s => String(s.id) === selectedSessionId);
         await manageEvaluation(portal.activeRole, {
           action: 'schedule_delivery',
           evaluationId: res.id,
-          sessionId: null,
-          newSession: {
-            mode: deliveryMode,
-            roomId: deliveryMode === 'PAPIER' ? roomId : null,
-            startsAt: iso(startsAt),
-            endsAt: iso(endsAt),
-          },
+          ...(isExistingSession
+            ? {
+                sessionId: selectedSessionId,
+                sessionMode: deliveryMode,
+                roomId: deliveryMode === 'PAPIER' ? roomId : null,
+              }
+            : {
+                sessionId: null,
+                newSession: {
+                  mode: deliveryMode,
+                  roomId: deliveryMode === 'PAPIER' ? roomId : null,
+                  startsAt: iso(startsAt),
+                  endsAt: iso(endsAt),
+                },
+              }),
           accessOpensAt: iso(startsAt),
           accessClosesAt: iso(endsAt),
           durationMinutes: Number(durationMinutes),
@@ -191,6 +275,7 @@ export default function EvaluationCreateDialog({
                 setGroupId(id);
                 setAssignmentId(filteredAssignments.find(row => row.group_id === id)?.id || '');
                 setParentEvaluationId('');
+                setSelectedSessionId('__new__');
               }}>
                 {!groupId && <option value="">Choisir un groupe</option>}
                 {groups.filter(group => filteredAssignments.some(row => row.group_id === group.id)).map(group => (
@@ -208,6 +293,7 @@ export default function EvaluationCreateDialog({
                 onChange={e => {
                   setAssignmentId(e.target.value);
                   setParentEvaluationId('');
+                  setSelectedSessionId('__new__');
                 }}
               >
                 {filteredAssignments.filter(row => !groupId || row.group_id === groupId).map(a => {
@@ -289,16 +375,38 @@ export default function EvaluationCreateDialog({
               checked={scheduleNow}
               onChange={e => setScheduleNow(e.target.checked)}
             />
-            <strong>Programmer immédiatement la séance d’examen (date, heure et salle)</strong>
+            <strong>Programmer la séance d’évaluation (pendant un cours existant ou sur un nouveau créneau)</strong>
           </label>
           <p className="cell-sub" style={{ margin: '4px 0 0 0' }}>
             {scheduleNow
-              ? 'Fixez la date, l’heure et la salle pour inscrire une nouvelle séance d’examen à l’emploi du temps.'
-              : 'Pour un contrôle continu (devoir, interrogation, TP) réalisé pendant un cours existant ou déjà passé, laissez cette case décochée : l’évaluation sera créée directement pour la saisie des notes sans conflit d’emploi du temps.'}
+              ? 'Choisissez une séance de cours déjà programmée pour cette matière (l’examen aura lieu pendant ce cours) ou définissez un nouveau créneau horaire.'
+              : 'Pour un contrôle continu ou devoir dont vous souhaitez uniquement saisir les notes immédiatement, laissez cette case décochée.'}
           </p>
 
           {scheduleNow && (
             <div style={{ marginTop: '14px', display: 'flex', flexDirection: 'column', gap: '12px' }}>
+              {existingCourseSessions.length > 0 && (
+                <label className="form-group">
+                  Créneau de l’épreuve (pendant un cours déjà programmé ou nouvelle date)
+                  <select
+                    className="select-input"
+                    value={selectedSessionId}
+                    onChange={e => handleSelectCourseSession(e.target.value)}
+                  >
+                    <option value="__new__">+ Programmer sur un nouveau créneau (ou saisir une date manuellement)</option>
+                    {existingCourseSessions.map(s => {
+                      const sRoom = s.room_id ? rooms.find(r => r.id === s.room_id) : null;
+                      const modeLabel = s.mode === 'COURS' ? 'Séance de cours programmée' : s.mode === 'EN_LIGNE' ? 'Séance en ligne' : 'Séance sur table';
+                      return (
+                        <option key={String(s.id)} value={String(s.id)}>
+                          Pendant le cours du {displayTime(String(s.starts_at))} → {displayTime(String(s.ends_at))} ({modeLabel}{sRoom ? ` · ${String(sRoom.name)}` : ''})
+                        </option>
+                      );
+                    })}
+                  </select>
+                </label>
+              )}
+
               <div className="form-grid">
                 <label className="form-group">
                   Début de l’épreuve (Date et heure)
@@ -306,6 +414,7 @@ export default function EvaluationCreateDialog({
                     type="datetime-local"
                     className="input"
                     required={scheduleNow}
+                    disabled={selectedSessionId !== '__new__'}
                     value={startsAt}
                     onChange={e => {
                       setStartsAt(e.target.value);
@@ -325,6 +434,7 @@ export default function EvaluationCreateDialog({
                     type="datetime-local"
                     className="input"
                     required={scheduleNow}
+                    disabled={selectedSessionId !== '__new__'}
                     value={endsAt}
                     onChange={e => setEndsAt(e.target.value)}
                   />

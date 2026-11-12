@@ -19,6 +19,7 @@ import { DrawerCloseButton } from '@/components/ui/DetailDrawer';
 import { useSearchParams } from 'next/navigation';
 import ScheduleCourseSelector from './ScheduleCourseSelector';
 import CourseAssignmentDialog from './CourseAssignmentDialog';
+import EvaluationCreateDialog from './EvaluationCreateDialog';
 import PageHeader from '@/components/ui/PageHeader';
 
 type Action = ScheduleCommand['action'];
@@ -67,6 +68,7 @@ function ScheduleManager() {
   const requestedAssignment = params.get('affectation') || '';
   const openedRequest = useRef('');
   const [assigning, setAssigning] = useState<{ groupId: string; offeringId: string; componentId: string } | null>(null);
+  const [creatingExamSession, setCreatingExamSession] = useState<ManagedSession | null>(null);
   const { activeRole, academicYearSelection } = portal;
   const [directory, setDirectory] = useState<ScheduleDirectory | null>(null);
   const [loading, setLoading] = useState(true), [error, setError] = useState(''), [success, setSuccess] = useState('');
@@ -277,6 +279,18 @@ function ScheduleManager() {
       {detail.exam && <section className="card"><h2>{detail.exam.name}</h2><p>Accès (Lomé) : {displayTime(detail.exam.opensAt)} → {displayTime(detail.exam.closesAt)}</p>{(detail.exam.hasCopies || detail.exam.hasResults) && <p className="restricted-box">Cette épreuve possède une copie ou un résultat : ses horaires ne peuvent plus être déplacés.</p>}</section>}
       {detail.hasAttendance && <p className="restricted-box">Séance déjà émargée : ses horaires, son affectation et son annulation sont protégés.</p>}
       {directory.canUpdate && detail.canUpdate && !['ANNULE', 'REPORTE'].includes(detail.status) && <div className="btn-group">
+        {!detail.shared && !detail.exam && portal.perms.permissions.includes('evaluation.create') && (
+          <button
+            className="btn btn-primary"
+            onClick={() => {
+              const target = detail;
+              setDetail(null);
+              setCreatingExamSession(target);
+            }}
+          >
+            Programmer une évaluation sur cette séance
+          </button>
+        )}
         {!detail.shared && <button className="btn btn-outline" onClick={() => open('update_session', detail)}>Modifier la séance</button>}
         {detail.mode === 'EN_LIGNE' && (
           <>
@@ -443,5 +457,19 @@ function ScheduleManager() {
     {assigning && <CourseAssignmentDialog {...assigning} onClose={() => setAssigning(null)} onSaved={async id => {
       const updated = await loadSchedule(activeRole); setDirectory(updated); setForm(value => ({ ...value, assignmentId: id, roomId: '' })); setAssigning(null);
     }} />}
+    {creatingExamSession && (
+      <EvaluationCreateDialog
+        preselectedAssignmentId={creatingExamSession.assignmentId}
+        preselectedSessionId={creatingExamSession.id}
+        category="exam"
+        onClose={() => setCreatingExamSession(null)}
+        onCreated={() => {
+          setCreatingExamSession(null);
+          setSuccess('Épreuve créée et programmée sur cette séance de cours.');
+          setReload(value => value + 1);
+          portal.refreshCampus();
+        }}
+      />
+    )}
   </div>;
 }

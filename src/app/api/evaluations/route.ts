@@ -59,6 +59,8 @@ const scheduleDeliverySchema = z.object({
   action: z.literal('schedule_delivery'),
   evaluationId: z.string().uuid(),
   sessionId: z.string().uuid().nullable().optional(),
+  sessionMode: z.enum(['EN_LIGNE', 'PAPIER']).optional(),
+  roomId: z.string().uuid().nullable().optional(),
   newSession: z.object({
     mode: z.enum(['EN_LIGNE', 'PAPIER']),
     roomId: z.string().uuid().nullable(),
@@ -68,7 +70,7 @@ const scheduleDeliverySchema = z.object({
   accessOpensAt: z.string().datetime(),
   accessClosesAt: z.string().datetime(),
   durationMinutes: z.number().int().min(1).max(1440),
-  reason: z.string().trim().min(3).max(1000),
+  reason: z.string().trim().min(3).max(1000).optional(),
 }).strict();
 
 const requestSchema = z.discriminatedUnion('action', [
@@ -410,11 +412,33 @@ export async function POST(request: Request) {
         throw new RequestError(400, 'La fenêtre d’accès est invalide : l’ouverture doit précéder la fermeture.');
       }
 
+      const effectiveReason = body.reason?.trim() || 'Programmation de la séance d’évaluation';
+      const existingDelivery = (data.scoped.tables.exam_deliveries || []).find(d => d.evaluation_id === body.evaluationId);
       let targetSessionId = body.sessionId || null;
       let sessionStart = 0;
       let sessionEnd = 0;
 
-      if (body.newSession) {
+      // Si une nouvelle séance est demandée mais qu'une séance active de CE MÊME cours existe déjà sur ce créneau,
+      // on rattache automatiquement l'examen à cette séance de cours au lieu de lever un faux conflit d'horaire.
+      if (body.newSession && !targetSessionId) {
+        const overlappingOwnCourse = (data.scoped.tables.sessions || []).find(row =>
+          row.assignment_id === assignment.id &&
+          !row.cancelled_at &&
+          !row.archived_at &&
+          !['ANNULE', 'REPORTE'].includes(String(row.status)) &&
+          overlaps(body.newSession!.startsAt, body.newSession!.endsAt, row) &&
+          !(data.scoped.tables.exam_deliveries || []).some(d => d.session_id === row.id && d.evaluation_id !== body.evaluationId)
+        );
+        if (overlappingOwnCourse) {
+          const cStart = new Date(String(overlappingOwnCourse.starts_at)).getTime();
+          const cEnd = new Date(String(overlappingOwnCourse.ends_at)).getTime();
+          if (opens >= cStart && closes <= cEnd) {
+            targetSessionId = String(overlappingOwnCourse.id);
+          }
+        }
+      }
+
+      if (body.newSession && !targetSessionId) {
         const newSession = body.newSession;
         requirePermission(data.context, 'schedule.create');
         const sStart = new Date(newSession.startsAt).getTime();
@@ -455,7 +479,7 @@ export async function POST(request: Request) {
           room_id: newSession.roomId,
           mode: newSession.mode,
           status: 'PLANIFIE',
-          reason: body.reason.trim(),
+          reason: effectiveReason,
         };
         const conflict = scheduleConflict(data.snapshot, proposedSession);
         if (conflict) throw new RequestError(409, conflict);
@@ -474,8 +498,38 @@ export async function POST(request: Request) {
         if (session.assignment_id !== assignment.id) {
           throw new RequestError(400, 'La séance choisie ne correspond pas à l’enseignement de l’épreuve.');
         }
-        if (session.mode === 'COURS') {
-          throw new RequestError(400, 'Une diffusion d’épreuve ne peut pas être programmée sur une séance ordinaire de cours.');
+        const otherDelivery = (data.scoped.tables.exam_deliveries || []).find(
+          d => d.session_id === targetSessionId && d.evaluation_id !== body.evaluationId
+        );
+        if (otherDelivery) {
+          throw new RequestError(409, 'Une autre épreuve est déjà programmée sur cette séance.');
+        }
+
+        const desiredMode = body.sessionMode || body.newSession?.mode || (session.mode === 'COURS' ? (session.room_id ? 'PAPIER' : 'EN_LIGNE') : (session.mode as 'EN_LIGNE' | 'PAPIER'));
+        const desiredRoomId = desiredMode === 'EN_LIGNE'
+          ? null
+          : (body.roomId !== undefined ? body.roomId : body.newSession?.roomId !== undefined ? body.newSession.roomId : (session.room_id ? String(session.room_id) : null));
+
+        if (session.mode === 'COURS' || session.mode !== desiredMode || (desiredMode === 'PAPIER' && String(session.room_id || '') !== String(desiredRoomId || ''))) {
+          const sharedParticipants = (data.snapshot.tables.session_participants || []).filter(
+            p => p.session_id === session.id && p.assignment_id !== session.assignment_id && p.active !== false
+          );
+          if (sharedParticipants.length > 0) {
+            throw new RequestError(409, 'Cette séance est un cours commun multi-groupes : programmez une séance dédiée par groupe ou utilisez la saisie directe des notes.');
+          }
+          if (desiredMode === 'PAPIER' && !desiredRoomId) {
+            throw new RequestError(400, 'Choisissez une salle pour convertir cette séance en épreuve sur papier.');
+          }
+          changes.push({
+            table: 'sessions',
+            operation: 'update',
+            record: {
+              id: session.id,
+              mode: desiredMode,
+              room_id: desiredMode === 'EN_LIGNE' ? null : desiredRoomId,
+              reason: effectiveReason,
+            },
+          });
         }
         sessionStart = new Date(String(session.starts_at)).getTime();
         sessionEnd = new Date(String(session.ends_at)).getTime();
@@ -485,7 +539,6 @@ export async function POST(request: Request) {
         throw new RequestError(400, 'La fenêtre d’accès à l’épreuve doit être comprise dans les limites de la séance.');
       }
 
-      const existingDelivery = (data.scoped.tables.exam_deliveries || []).find(d => d.evaluation_id === body.evaluationId);
       if (existingDelivery) {
         changes.push({
           table: 'exam_deliveries',
@@ -496,7 +549,7 @@ export async function POST(request: Request) {
             access_opens_at: body.accessOpensAt,
             access_closes_at: body.accessClosesAt,
             duration_minutes: body.durationMinutes,
-            reason: body.reason.trim(),
+            reason: effectiveReason,
           },
         });
       } else {
@@ -510,7 +563,7 @@ export async function POST(request: Request) {
             access_opens_at: body.accessOpensAt,
             access_closes_at: body.accessClosesAt,
             duration_minutes: body.durationMinutes,
-            reason: body.reason.trim(),
+            reason: effectiveReason,
           },
         });
       }

@@ -28,12 +28,23 @@ export default function ExamDeliveryScheduleDialog({
 }) {
   const portal = usePortal();
   const snapshot = portal.relationalSnapshot;
-  const sessions = (snapshot.tables.sessions || []).filter(
-    s => s.assignment_id === evaluation.assignment_id && s.mode !== 'COURS' && !s.cancelled_at && !s.archived_at && !['ANNULE', 'ANNULEE'].includes(String(s.status))
-  );
-  const existingDelivery = (snapshot.tables.exam_deliveries || []).find(
+  const allDeliveries = snapshot.tables.exam_deliveries || [];
+  const allParticipants = snapshot.tables.session_participants || [];
+  const existingDelivery = allDeliveries.find(
     d => d.evaluation_id === evaluation.id
   );
+  const sessions = (snapshot.tables.sessions || []).filter(s => {
+    if (s.assignment_id !== evaluation.assignment_id || s.cancelled_at || s.archived_at) return false;
+    if (['ANNULE', 'ANNULEE', 'REPORTE'].includes(String(s.status))) return false;
+    if (allDeliveries.some(d => d.session_id === s.id && d.evaluation_id !== evaluation.id)) return false;
+    if (s.mode === 'COURS') {
+      const otherParticipants = allParticipants.filter(
+        p => p.session_id === s.id && p.assignment_id !== s.assignment_id && p.active !== false
+      );
+      if (otherParticipants.length > 0) return false;
+    }
+    return true;
+  });
   const authorizedPaper = (snapshot.tables.exam_papers || []).find(
     p => p.evaluation_id === evaluation.id && p.status === 'AUTORISE' && !p.archived_at
   );
@@ -52,8 +63,16 @@ export default function ExamDeliveryScheduleDialog({
   const [sessionId, setSessionId] = useState<string>(
     initialSession ? String(initialSession.id) : canCreateSchedule ? '__new__' : ''
   );
-  const [newSessionMode, setNewSessionMode] = useState<'EN_LIGNE' | 'PAPIER'>('EN_LIGNE');
-  const [newRoomId, setNewRoomId] = useState<string>(availableRooms[0] ? String(availableRooms[0].id) : '');
+  const [newSessionMode, setNewSessionMode] = useState<'EN_LIGNE' | 'PAPIER'>(
+    initialSession?.mode === 'PAPIER' ? 'PAPIER' : 'EN_LIGNE'
+  );
+  const [newRoomId, setNewRoomId] = useState<string>(
+    initialSession?.room_id
+      ? String(initialSession.room_id)
+      : availableRooms[0]
+      ? String(availableRooms[0].id)
+      : ''
+  );
   const [accessOpensAt, setAccessOpensAt] = useState<string>(
     existingDelivery
       ? localTime(String(existingDelivery.access_opens_at))
@@ -91,6 +110,14 @@ export default function ExamDeliveryScheduleDialog({
     if (target) {
       setAccessOpensAt(localTime(String(target.starts_at)));
       setAccessClosesAt(localTime(String(target.ends_at)));
+      if (target.mode === 'PAPIER') {
+        setNewSessionMode('PAPIER');
+      } else if (target.mode === 'EN_LIGNE') {
+        setNewSessionMode('EN_LIGNE');
+      }
+      if (target.room_id) {
+        setNewRoomId(String(target.room_id));
+      }
     }
   };
 
@@ -102,11 +129,10 @@ export default function ExamDeliveryScheduleDialog({
     if (isNaN(opens) || isNaN(closes) || opens >= closes) {
       return 'L’ouverture de l’accès doit être antérieure à la fermeture.';
     }
-    if (isCreatingSession) {
-      if (newSessionMode === 'PAPIER' && !newRoomId) {
-        return 'Veuillez sélectionner une salle pour la séance d’examen sur papier.';
-      }
-    } else if (selectedSession) {
+    if (newSessionMode === 'PAPIER' && !newRoomId) {
+      return 'Veuillez sélectionner une salle pour la séance d’examen sur papier.';
+    }
+    if (!isCreatingSession && selectedSession) {
       const sStart = new Date(String(selectedSession.starts_at)).getTime();
       const sEnd = new Date(String(selectedSession.ends_at)).getTime();
       if (opens < sStart || closes > sEnd) {
@@ -153,7 +179,7 @@ export default function ExamDeliveryScheduleDialog({
               value: isCreatingSession
                 ? `Nouvelle séance (${newSessionMode === 'EN_LIGNE' ? 'En ligne' : `Papier · ${availableRooms.find(r => r.id === newRoomId)?.name || 'Salle'}`})`
                 : selectedSession
-                ? `${displayTime(String(selectedSession.starts_at))} → ${displayTime(String(selectedSession.ends_at))} (${selectedSession.mode})`
+                ? `${displayTime(String(selectedSession.starts_at))} → ${displayTime(String(selectedSession.ends_at))} (${newSessionMode === 'EN_LIGNE' ? 'En ligne' : `Sur papier · ${availableRooms.find(r => r.id === newRoomId)?.name || 'Salle'}`})`
                 : 'Non sélectionnée',
             },
             { label: 'Ouverture de l’accès', value: accessOpensAt ? displayTime(iso(accessOpensAt)) : '' },
@@ -165,6 +191,8 @@ export default function ExamDeliveryScheduleDialog({
               ? 'Les horaires de diffusion de l’épreuve seront mis à jour. Les étudiants admissibles composeront selon cette nouvelle fenêtre.'
               : isCreatingSession
               ? 'La séance d’examen et la fenêtre de diffusion seront créées ensemble dans la même transaction. Vous pourrez immédiatement composer ou autoriser le sujet.'
+              : selectedSession?.mode === 'COURS'
+              ? 'La séance de cours choisie accueillera l’épreuve et sera convertie en séance d’évaluation. Vous pourrez immédiatement composer le sujet ou saisir les notes.'
               : 'L’épreuve sera programmée sur la séance choisie. Dès l’ouverture, les étudiants admissibles pourront démarrer leur copie en ligne.'
           }
           onConfirm={async event => {
@@ -190,7 +218,11 @@ export default function ExamDeliveryScheduleDialog({
                         endsAt: iso(accessClosesAt),
                       },
                     }
-                  : { sessionId }),
+                  : {
+                      sessionId,
+                      sessionMode: newSessionMode,
+                      roomId: newSessionMode === 'PAPIER' ? newRoomId : null,
+                    }),
                 accessOpensAt: iso(accessOpensAt),
                 accessClosesAt: iso(accessClosesAt),
                 durationMinutes,
@@ -223,7 +255,7 @@ export default function ExamDeliveryScheduleDialog({
             </div>
 
             <label className="form-group">
-              Séance d’examen planifiée
+              Séance (cours existant ou nouvelle séance d’examen)
               <select
                 className="select-input"
                 required
@@ -235,45 +267,44 @@ export default function ExamDeliveryScheduleDialog({
                 )}
                 {sessions.map(s => (
                   <option key={s.id} value={String(s.id)}>
-                    {displayTime(String(s.starts_at))} → {displayTime(String(s.ends_at))} ({String(s.mode)})
+                    {s.mode === 'COURS' ? 'Pendant le cours du ' : 'Séance d’examen du '}
+                    {displayTime(String(s.starts_at))} → {displayTime(String(s.ends_at))} ({s.mode === 'COURS' ? 'Cours programmé' : String(s.mode)})
                   </option>
                 ))}
               </select>
             </label>
 
-            {isCreatingSession && (
-              <div className="form-grid">
+            <div className="form-grid">
+              <label className="form-group">
+                Mode de passage de l’épreuve
+                <select
+                  className="select-input"
+                  value={newSessionMode}
+                  onChange={event => setNewSessionMode(event.target.value as 'EN_LIGNE' | 'PAPIER')}
+                >
+                  <option value="EN_LIGNE">Épreuve en ligne (sur le portail)</option>
+                  <option value="PAPIER">Épreuve sur papier (en salle)</option>
+                </select>
+              </label>
+              {newSessionMode === 'PAPIER' && (
                 <label className="form-group">
-                  Mode de la séance d’examen
+                  Salle d’examen
                   <select
                     className="select-input"
-                    value={newSessionMode}
-                    onChange={event => setNewSessionMode(event.target.value as 'EN_LIGNE' | 'PAPIER')}
+                    required
+                    value={newRoomId}
+                    onChange={event => setNewRoomId(event.target.value)}
                   >
-                    <option value="EN_LIGNE">Épreuve en ligne (sans salle)</option>
-                    <option value="PAPIER">Épreuve sur papier (en salle)</option>
+                    <option value="">Choisir une salle disponible</option>
+                    {availableRooms.map(room => (
+                      <option key={room.id} value={String(room.id)}>
+                        {String(room.name || room.code || 'Salle')}
+                      </option>
+                    ))}
                   </select>
                 </label>
-                {newSessionMode === 'PAPIER' && (
-                  <label className="form-group">
-                    Salle d’examen
-                    <select
-                      className="select-input"
-                      required
-                      value={newRoomId}
-                      onChange={event => setNewRoomId(event.target.value)}
-                    >
-                      <option value="">Choisir une salle disponible</option>
-                      {availableRooms.map(room => (
-                        <option key={room.id} value={String(room.id)}>
-                          {String(room.name || room.code || 'Salle')}
-                        </option>
-                      ))}
-                    </select>
-                  </label>
-                )}
-              </div>
-            )}
+              )}
+            </div>
 
             <div className="form-grid">
               <label className="form-group">
