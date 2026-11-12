@@ -26,12 +26,22 @@ export const WORKSPACE_NAVIGATION: NavigationGroup[] = [
 
 interface AuthorizedTab { id: string; subTabs?: { id: string; name: string; href: string }[]; }
 
-export function getWorkspaceNavigation(tabs: AuthorizedTab[], options?: { hideStudentPersonalPages?: boolean }) {
+const STUDENT_NAVIGATION: NavigationGroup[] = [
+  { id: 'home', name: 'Mon quotidien', icon: 'Home', category: 'Mon espace étudiant', sections: ['espace_dashboard', 'espace_profile'] },
+  { id: 'student_courses', name: 'Mes cours', icon: 'BookOpen', category: 'Mes études', sections: ['acad_schedule', 'acad_resources', 'acad_program'] },
+  { id: 'student_results', name: 'Mes résultats et examens', icon: 'ClipboardCheck', category: 'Mes études', sections: ['acad_grades', 'espace_exams', 'acad_exams', 'acad_complaints'] },
+  { id: 'student_attendance', name: 'Mon assiduité', icon: 'ClipboardCheck', category: 'Mes études', sections: ['espace_attendance'] },
+  { id: 'student_admin', name: 'Mes démarches', icon: 'CreditCard', category: 'Ma vie étudiante', sections: ['espace_finance', 'espace_documents'] },
+  { id: 'student_news', name: 'Annonces et assistance', icon: 'Megaphone', category: 'Ma vie étudiante', sections: ['espace_announcements', 'espace_support'] },
+  { id: 'student_delegate', name: 'Mon rôle de délégué', icon: 'Users', category: 'Ma vie étudiante', sections: ['acad_attendance'] },
+];
+
+export function getWorkspaceNavigation(tabs: AuthorizedTab[], options?: { hideStudentPersonalPages?: boolean; studentView?: boolean; delegateView?: boolean }) {
   const pages = tabs.flatMap(tab => (tab.subTabs || []).map(page => ({ ...page, tab: tab.id })));
   const pageIds = new Set(pages.map(p => p.id));
   const isStudentOnly = !tabs.some(tab => tab.id !== 'espace');
-  const shouldDeduplicateStaffHome = Boolean(options?.hideStudentPersonalPages) && !isStudentOnly;
-  return WORKSPACE_NAVIGATION.map(group => ({
+  const shouldDeduplicateStaffHome = Boolean(options?.hideStudentPersonalPages) && !isStudentOnly && !options?.studentView;
+  return (options?.studentView ? STUDENT_NAVIGATION.filter(group => group.id !== 'student_delegate' || options.delegateView) : WORKSPACE_NAVIGATION).map(group => ({
     ...group,
     pages: group.sections
       .filter(id => {

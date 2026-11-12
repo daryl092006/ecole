@@ -9,6 +9,7 @@ import { ROLES, type RoleName } from '@/types/permissions';
 import type { HistoryDomain } from '@/types/history';
 import { netPaymentTotal } from '@/services/financialProjectionService';
 import { effectivePayments } from '@/services/paymentAllocationService';
+import StudentHome from '@/components/modules/student/StudentHome';
 
 function fmtCompactFcfa(amount: number): string {
   if (amount >= 1_000_000) return `${(amount / 1_000_000).toFixed(1).replace('.0', '').replace('.', ',')} M FCFA`;
@@ -24,6 +25,7 @@ interface RoleKpiCard {
 
 export default function WorkspaceHome({ mode = 'home' }: { mode?: 'home' | 'overview' | 'reports' }) {
   const state = usePortal(); const { catalog, error, retry } = state.history;
+  if (mode === 'home' && (state.activeRole === ROLES.STUD || state.activeRole === ROLES.DEL)) return <StudentHome />;
   const tables = state.relationalSnapshot.tables;
   const activeRows = (table: string) => (tables[table] || []).filter(row => !row.archived_at);
   const count = (table: string) => activeRows(table).length;

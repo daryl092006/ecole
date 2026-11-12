@@ -17,7 +17,7 @@ import {
   HelpCircle,
   type LucideIcon,
 } from 'lucide-react';
-import { type RoleName } from '@/types/permissions';
+import { ROLES, type RoleName } from '@/types/permissions';
 
 const ICONS: Record<string, LucideIcon> = {
   Globe,
@@ -60,10 +60,11 @@ interface SidebarProps {
 export default function Sidebar({
   availableTabs,
   currentSubTab,
+  activeRole,
   onNavigate,
   menuOpen,
 }: SidebarProps) {
-  const groups = getWorkspaceNavigation(availableTabs, { hideStudentPersonalPages: true });
+  const groups = getWorkspaceNavigation(availableTabs, { hideStudentPersonalPages: true, studentView: activeRole === ROLES.STUD || activeRole === ROLES.DEL, delegateView: activeRole === ROLES.DEL });
   const currentSection = ['acad_resits', 'acad_assessments'].includes(currentSubTab) ? 'acad_exams' : currentSubTab;
   const activeGroup = groups.find(group => group.sections.includes(currentSection))?.id || '';
 

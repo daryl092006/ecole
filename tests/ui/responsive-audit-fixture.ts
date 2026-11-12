@@ -14,14 +14,16 @@ const journalRecords = Array.from({ length: 51 }, (_, index) => ({
   oldValue: { status: 'PENDING', amount: 400 }, newValue: { status: 'POSTED', amount: 400 }, batchId: null, sourceId: null,
 }));
 
-export type AuditAccount = 'staff' | 'student' | 'anonymous' | 'password';
+export type AuditAccount = 'staff' | 'student' | 'delegate' | 'anonymous' | 'password';
 export async function installResponsiveAudit(page: Page, account: AuditAccount) {
   // Exercise real read handlers with isolated transport; never call a remote API or write data.
-  const student = account === 'student';
-  const context = securityContext(student ? ROLES.STUD : ROLES.IT, {
-    roleCode: student ? 'STUD' : 'IT', studentId: student ? uuid(600) : null,
+  const student = account === 'student' || account === 'delegate';
+  const role = account === 'delegate' ? ROLES.DEL : student ? ROLES.STUD : ROLES.IT;
+  const roleCode = account === 'delegate' ? 'DEL' : student ? 'STUD' : 'IT';
+  const context = securityContext(role, {
+    roleCode, studentId: student ? uuid(600) : null,
     teacherId: null,
-    grants: [{ role_code: student ? 'STUD' : 'IT', role_name: student ? ROLES.STUD : ROLES.IT, site_id: null, group_id: null, academic_year_id: null }],
+    grants: [{ role_code: roleCode, role_name: role, site_id: null, group_id: null, academic_year_id: null }],
   });
   const campus = attendanceFixture().snapshot;
   const tables = campus.tables;
@@ -158,5 +160,5 @@ export async function installResponsiveAudit(page: Page, account: AuditAccount) 
       return route.fulfill({ status: 500, json: { error: 'Fixture de capture incomplète.' } });
     }
   });
-  return { problems };
+  return { problems, snapshot: campus };
 }

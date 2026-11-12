@@ -16,17 +16,29 @@ import Sidebar from '@/components/layout/Sidebar';
 import SchoolLogo from '@/components/ui/SchoolLogo';
 import ActionResult from '@/components/ui/ActionResult';
 import { YEAR_STATUS_LABELS } from '@/types/academicYearContext';
+import { ROLES } from '@/types/permissions';
+import { BookOpen, CalendarDays, FileText, Home } from 'lucide-react';
 
 export default function PortalShell({ children }: { children: ReactNode }) {
   const state = usePortal(); const router = useRouter();
   const { activeRole, perms, availableTabs, currentTab, currentSubTab, pathname } = state;
+  const studentView = activeRole === ROLES.STUD || activeRole === ROLES.DEL;
+  const studentDestinations = studentView ? [
+    { id: 'espace_dashboard', label: 'Accueil', icon: Home },
+    { id: 'acad_schedule', label: 'Planning', icon: CalendarDays },
+    { id: 'acad_grades', label: 'Résultats', icon: BookOpen },
+    { id: 'espace_documents', label: 'Documents', icon: FileText },
+  ].flatMap(item => {
+    const page = availableTabs.flatMap(tab => tab.subTabs || []).find(page => page.id === item.id);
+    return page ? [{ ...item, href: page.href }] : [];
+  }) : [];
   const context = state.academicYearContext;
   const currentYear = context?.years.find(y => y.id === context.currentYearId);
   const selectedYear = context?.years.find(y => y.id === context.selectedYearId);
   const [menuOpen, setMenuOpen] = useState(false); const mainRef = useRef<HTMLElement>(null);
   const route = getPortalRoute(pathname);
   const tab = availableTabs.find(item => item.id === currentTab);
-  const navigationGroups = getWorkspaceNavigation(availableTabs, { hideStudentPersonalPages: true });
+  const navigationGroups = getWorkspaceNavigation(availableTabs, { hideStudentPersonalPages: true, studentView: activeRole === ROLES.STUD || activeRole === ROLES.DEL, delegateView: activeRole === ROLES.DEL });
   const navigationGroup = navigationGroups.find(group => group.sections.includes(['acad_resits', 'acad_assessments'].includes(currentSubTab) ? 'acad_exams' : currentSubTab));
   const routeTitle = route?.title || tab?.name || 'Mon espace';
   const aliasAllowed = !!tab && MODULE_PATHS[tab.id] === pathname;
@@ -93,7 +105,7 @@ export default function PortalShell({ children }: { children: ReactNode }) {
       </div>
     );
   }
-  return <><a href="#main-content" className="skip-link">Aller au contenu</a><div className={`app-wrapper ${menuOpen ? 'navigation-open' : ''}`}>
+  return <><a href="#main-content" className="skip-link">Aller au contenu</a><div className={`app-wrapper ${menuOpen ? 'navigation-open' : ''} ${studentView ? 'student-portal' : ''}`}>
     <TopBar userName={state.session.name} userEmail={state.session.email} destinations={destinations} onDestination={openDestination} menuOpen={menuOpen} onToggleMenu={() => setMenuOpen(open => !open)} activeRole={activeRole} availableRoles={state.session.availableRoles} searchQuery={state.searchQuery} onSearchChange={state.setSearchQuery} onRoleChange={state.handleRoleChange} notifications={state.notifications} onLogout={state.logout} />
     <div className="app-body">{menuOpen && <button className="navigation-backdrop" aria-label="Fermer la navigation" onClick={() => setMenuOpen(false)} />}
       <Sidebar availableTabs={availableTabs} currentTab={currentTab} currentSubTab={currentSubTab} activeRole={activeRole} menuOpen={menuOpen} onNavigate={() => setMenuOpen(false)} />
@@ -137,5 +149,8 @@ export default function PortalShell({ children }: { children: ReactNode }) {
         </>}
       </main>
     </div>
+    {!!studentDestinations.length && <nav className="student-mobile-nav" aria-label="Navigation étudiante" inert={menuOpen}>
+      {studentDestinations.map(item => <Link key={item.id} href={item.href} aria-current={currentSubTab === item.id ? 'page' : undefined}><item.icon size={20} aria-hidden="true" /><span>{item.label}</span></Link>)}
+    </nav>}
   </div></>;
 }
