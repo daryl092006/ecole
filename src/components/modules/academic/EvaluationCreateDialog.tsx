@@ -77,7 +77,7 @@ export default function EvaluationCreateDialog({
   const [durationMinutes, setDurationMinutes] = useState(() => {
     if (initialPreselectedSession) {
       const diffMins = Math.round((Date.parse(String(initialPreselectedSession.ends_at)) - Date.parse(String(initialPreselectedSession.starts_at))) / 60000);
-      if (diffMins > 0) return Math.min(120, diffMins);
+      if (diffMins > 0) return diffMins;
     }
     return 120;
   });
@@ -124,7 +124,7 @@ export default function EvaluationCreateDialog({
       setEndsAt(sEnd);
       const diffMins = Math.round((Date.parse(String(target.ends_at)) - Date.parse(String(target.starts_at))) / 60000);
       if (diffMins > 0) {
-        setDurationMinutes(Math.min(durationMinutes, diffMins));
+        setDurationMinutes(diffMins);
       }
       if (target.mode === 'EN_LIGNE') {
         setDeliveryMode('EN_LIGNE');
@@ -417,13 +417,20 @@ export default function EvaluationCreateDialog({
                     disabled={selectedSessionId !== '__new__'}
                     value={startsAt}
                     onChange={e => {
-                      setStartsAt(e.target.value);
-                      if (e.target.value && !endsAt) {
-                        const d = new Date(`${e.target.value}:00Z`);
+                      const nextStart = e.target.value;
+                      setStartsAt(nextStart);
+                      let nextEnd = endsAt;
+                      if (nextStart && !nextEnd) {
+                        const d = new Date(`${nextStart}:00Z`);
                         if (!isNaN(d.getTime())) {
                           d.setUTCHours(d.getUTCHours() + 2);
-                          setEndsAt(d.toISOString().slice(0, 16));
+                          nextEnd = d.toISOString().slice(0, 16);
+                          setEndsAt(nextEnd);
                         }
+                      }
+                      if (nextStart && nextEnd) {
+                        const diff = Math.round((new Date(`${nextEnd}:00Z`).getTime() - new Date(`${nextStart}:00Z`).getTime()) / 60000);
+                        if (diff > 0) setDurationMinutes(diff);
                       }
                     }}
                   />
@@ -436,7 +443,14 @@ export default function EvaluationCreateDialog({
                     required={scheduleNow}
                     disabled={selectedSessionId !== '__new__'}
                     value={endsAt}
-                    onChange={e => setEndsAt(e.target.value)}
+                    onChange={e => {
+                      const nextEnd = e.target.value;
+                      setEndsAt(nextEnd);
+                      if (startsAt && nextEnd) {
+                        const diff = Math.round((new Date(`${nextEnd}:00Z`).getTime() - new Date(`${startsAt}:00Z`).getTime()) / 60000);
+                        if (diff > 0) setDurationMinutes(diff);
+                      }
+                    }}
                   />
                 </label>
               </div>

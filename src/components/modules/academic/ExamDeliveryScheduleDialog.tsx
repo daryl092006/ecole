@@ -87,13 +87,15 @@ export default function ExamDeliveryScheduleDialog({
       ? localTime(String(initialSession.ends_at))
       : ''
   );
-  const [durationMinutes, setDurationMinutes] = useState<number>(
-    existingDelivery
-      ? Number(existingDelivery.duration_minutes) || 60
-      : authorizedPaper
-      ? Number(authorizedPaper.duration_minutes) || 60
-      : 60
-  );
+  const [durationMinutes, setDurationMinutes] = useState<number>(() => {
+    if (existingDelivery) return Number(existingDelivery.duration_minutes) || 60;
+    if (authorizedPaper) return Number(authorizedPaper.duration_minutes) || 60;
+    if (initialSession) {
+      const diff = Math.round((Date.parse(String(initialSession.ends_at)) - Date.parse(String(initialSession.starts_at))) / 60000);
+      if (diff > 0) return diff;
+    }
+    return 60;
+  });
   const [reason] = useState<string>(
     existingDelivery?.reason ? String(existingDelivery.reason) : ''
   );
@@ -110,6 +112,10 @@ export default function ExamDeliveryScheduleDialog({
     if (target) {
       setAccessOpensAt(localTime(String(target.starts_at)));
       setAccessClosesAt(localTime(String(target.ends_at)));
+      const diff = Math.round((Date.parse(String(target.ends_at)) - Date.parse(String(target.starts_at))) / 60000);
+      if (diff > 0 && !authorizedPaper) {
+        setDurationMinutes(diff);
+      }
       if (target.mode === 'PAPIER') {
         setNewSessionMode('PAPIER');
       } else if (target.mode === 'EN_LIGNE') {
@@ -314,7 +320,23 @@ export default function ExamDeliveryScheduleDialog({
                   type="datetime-local"
                   required
                   value={accessOpensAt}
-                  onChange={event => setAccessOpensAt(event.target.value)}
+                  onChange={event => {
+                    const nextOpen = event.target.value;
+                    setAccessOpensAt(nextOpen);
+                    let nextClose = accessClosesAt;
+                    if (nextOpen && !nextClose) {
+                      const d = new Date(`${nextOpen}:00Z`);
+                      if (!isNaN(d.getTime())) {
+                        d.setUTCHours(d.getUTCHours() + 2);
+                        nextClose = d.toISOString().slice(0, 16);
+                        setAccessClosesAt(nextClose);
+                      }
+                    }
+                    if (nextOpen && nextClose && !authorizedPaper) {
+                      const diff = Math.round((new Date(`${nextClose}:00Z`).getTime() - new Date(`${nextOpen}:00Z`).getTime()) / 60000);
+                      if (diff > 0) setDurationMinutes(diff);
+                    }
+                  }}
                 />
               </label>
               <label className="form-group">
@@ -325,7 +347,14 @@ export default function ExamDeliveryScheduleDialog({
                   required
                   min={accessOpensAt || undefined}
                   value={accessClosesAt}
-                  onChange={event => setAccessClosesAt(event.target.value)}
+                  onChange={event => {
+                    const nextClose = event.target.value;
+                    setAccessClosesAt(nextClose);
+                    if (accessOpensAt && nextClose && !authorizedPaper) {
+                      const diff = Math.round((new Date(`${nextClose}:00Z`).getTime() - new Date(`${accessOpensAt}:00Z`).getTime()) / 60000);
+                      if (diff > 0) setDurationMinutes(diff);
+                    }
+                  }}
                 />
               </label>
             </div>
