@@ -3,6 +3,8 @@ import { randomUUID } from 'node:crypto';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { provisionM365Account } from './microsoftGraphService';
 
+export const STUDENT_PORTAL_DEFAULT_PASSWORD = 'password';
+
 export interface StudentProvisionParams {
   applicationId?: string | null;
   studentId: string;
@@ -448,6 +450,7 @@ export async function provisionStudentComplete(
   // 3. Création du compte Supabase Auth & portail
   let accountCreated = false;
   let authUserId: string | null = null;
+  let authAccountCreated = false;
 
   if (m365Email) {
     try {
@@ -462,8 +465,9 @@ export async function provisionStudentComplete(
       } else {
         const createAuth = await client.auth.admin.createUser({
           email: m365Email,
-          password: temporaryPassword || 'EscenEtudiant2026!',
+          password: STUDENT_PORTAL_DEFAULT_PASSWORD,
           email_confirm: true,
+          app_metadata: { must_change_password: true },
           user_metadata: {
             firstname: params.firstname,
             lastname: params.lastname,
@@ -472,6 +476,7 @@ export async function provisionStudentComplete(
         });
         if (createAuth.data?.user) {
           authUserId = createAuth.data.user.id;
+          authAccountCreated = true;
         }
       }
     } catch {
@@ -617,7 +622,8 @@ export async function provisionStudentComplete(
   let emailQueued = false;
   if (params.personalEmail && m365Email && params.applicationId) {
     const subject = 'Bienvenue à l’ESCEN — Vos identifiants officiels d’accès';
-    const pwdDisplay = temporaryPassword || 'EscenEtudiant2026! (à modifier dès votre première connexion)';
+    const pwdDisplay = temporaryPassword || 'Attribué lors de l’admission (contactez l’administration si besoin)';
+    const portalPwdDisplay = authAccountCreated ? STUDENT_PORTAL_DEFAULT_PASSWORD : 'Votre mot de passe actuel (contactez l’administration si besoin)';
     const textBody = `Bonjour ${params.firstname} ${params.lastname},
 
 Félicitations ! Votre admission à l’ESCEN est désormais officielle.
@@ -625,7 +631,8 @@ Félicitations ! Votre admission à l’ESCEN est désormais officielle.
 Vos accès informatiques officiels et votre compte étudiant ont été activés :
 • Matricule étudiant officiel : ${matricule}
 • Email institutionnel Microsoft 365 : ${m365Email}
-• Mot de passe initial temporaire : ${pwdDisplay}
+• Mot de passe initial Microsoft 365 : ${pwdDisplay}
+• Mot de passe du Portail Étudiant : ${portalPwdDisplay}
 
 Comment accéder à vos services :
 1. Votre Portail Étudiant ESCEN : https://portail.escen.university/
@@ -645,7 +652,8 @@ La Direction et toute l’équipe de l’ESCEN vous souhaitent une excellente re
   <ul style="margin: 0; padding-left: 20px;">
     <li><strong>Matricule étudiant :</strong> ${matricule}</li>
     <li><strong>Email institutionnel Microsoft 365 :</strong> <code>${m365Email}</code></li>
-    <li><strong>Mot de passe initial temporaire :</strong> <code>${pwdDisplay}</code></li>
+    <li><strong>Mot de passe initial Microsoft 365 :</strong> <code>${pwdDisplay}</code></li>
+    <li><strong>Mot de passe du Portail Étudiant :</strong> <code>${portalPwdDisplay}</code></li>
   </ul>
 </div>
 <p><strong>Vos accès directs :</strong></p>

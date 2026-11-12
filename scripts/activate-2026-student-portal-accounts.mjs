@@ -47,7 +47,7 @@ order by s.matricule;
     const { data: listData } = await supabase.auth.admin.listUsers();
     const existingAuth = listData?.users?.find(u => u.email?.toLowerCase() === s.m365_email.toLowerCase());
 
-    const defaultPassword = 'Escen2026#' + Math.floor(1000 + Math.random() * 9000);
+    const defaultPassword = 'password';
 
     if (existingAuth) {
       authUserId = existingAuth.id;
@@ -57,6 +57,7 @@ order by s.matricule;
         email: s.m365_email,
         password: defaultPassword,
         email_confirm: true,
+        app_metadata: { must_change_password: true },
         user_metadata: {
           firstname: s.firstname,
           lastname: s.lastname,

@@ -65,17 +65,18 @@ Félicitations pour votre inscription à l’ESCEN en Licence 1 !
 Vos comptes et accès officiels aux outils numériques de l'ESCEN sont désormais actifs :
 • Matricule étudiant : ${student.matricule}
 • Identifiant officiel (Microsoft 365 & Portail) : ${student.m365_email}
-• Mot de passe initial temporaire : ${tempPassword}
+• Mot de passe initial Microsoft 365 : ${tempPassword}
+• Mot de passe initial du Portail Étudiant : password
 
 Comment vous connecter dès maintenant :
 
 1. Votre Portail Étudiant ESCEN :
    👉 https://portail.escen.university/
-   (Utilisez votre adresse email institutionnelle ${student.m365_email} et votre mot de passe temporaire)
+   (Utilisez votre adresse email institutionnelle ${student.m365_email} et le mot de passe initial password)
 
 2. Vos outils Microsoft 365 (Word, Excel, PowerPoint, Teams, OneDrive) :
    👉 https://office.com
-   (Connectez-vous avec ${student.m365_email} et le même mot de passe temporaire)
+   (Connectez-vous avec ${student.m365_email} et le mot de passe temporaire Microsoft 365 indiqué ci-dessus)
 
 Lors de votre première connexion sur Microsoft 365, il vous sera demandé de configurer votre mot de passe personnel définitif.
 
@@ -121,7 +122,7 @@ La Direction et l'équipe pédagogique de l'ESCEN vous souhaitent une excellente
             <td style="padding: 6px 0; font-family: monospace; font-size: 14px; font-weight: 700; color: #0f4c81;">${student.m365_email}</td>
           </tr>
           <tr>
-            <td style="padding: 6px 0; color: #64748b;">Mot de passe temporaire :</td>
+            <td style="padding: 6px 0; color: #64748b;">Mot de passe Microsoft 365 :</td>
             <td style="padding: 6px 0; font-family: monospace; font-size: 15px; font-weight: 700; color: #047857; background: #e6f4ea; padding: 4px 8px; border-radius: 4px; display: inline-block;">${tempPassword}</td>
           </tr>
         </table>
@@ -132,7 +133,7 @@ La Direction et l'équipe pédagogique de l'ESCEN vous souhaitent une excellente
         
         <div style="margin-bottom: 16px; padding: 16px; border: 1px solid #e2e8f0; border-radius: 8px;">
           <strong style="color: #0f4c81; font-size: 15px;">1. Portail Étudiant ESCEN</strong>
-          <p style="margin: 4px 0 12px 0; font-size: 13px; color: #64748b;">Consultation de vos cours, planning, notes, présences et attestations.</p>
+          <p style="margin: 4px 0 12px 0; font-size: 13px; color: #64748b;">Consultation de vos cours, planning, notes, présences et attestations. Mot de passe initial du portail : <code>password</code>, à changer à la première connexion.</p>
           <a href="https://portail.escen.university/" style="display: inline-block; background: #0f4c81; color: #ffffff; text-decoration: none; font-size: 14px; font-weight: 600; padding: 8px 16px; border-radius: 6px;">Ouvrir le Portail Étudiant &rarr;</a>
         </div>
 
@@ -285,10 +286,11 @@ order by s.matricule;
     const authUser = authList?.users?.find(u => u.email?.toLowerCase() === s.m365_email.toLowerCase());
     if (authUser) {
       const { error: authErr } = await supabase.auth.admin.updateUserById(authUser.id, {
-        password: tempPassword,
+        password: 'password',
+        app_metadata: { ...authUser.app_metadata, must_change_password: true },
       });
       if (authErr) console.error(`  ✗ Erreur Supabase Auth: ${authErr.message}`);
-      else console.log(`  ✓ Mot de passe synchronisé sur le Portail Étudiant ESCEN`);
+      else console.log(`  ✓ Mot de passe initial du Portail Étudiant ESCEN défini`);
     }
 
     // 3. Envoyer l'email officiel à l'adresse personnelle de l'étudiant
