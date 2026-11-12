@@ -12,7 +12,7 @@ for(const width of [390,1440])test(`Paiement relu et enregistré une seule fois 
  await page.goto('/etudiants/ESCEN-TEST-001');
  await page.getByRole('navigation',{name:'Sections du dossier étudiant'}).getByRole('button',{name:'Frais et versements',exact:true}).click();
  await page.getByRole('button',{name:'Enregistrer un paiement',exact:true}).click();
- await page.getByLabel('Montant FCFA',{exact:true}).fill('50000');await page.getByLabel('Payeur',{exact:true}).fill('Parent de recette');await page.getByLabel('Référence du versement').fill('RECETTE-001');await page.getByLabel('Organisme ou caisse').fill('Caisse ESCEN');await page.getByLabel('Date du paiement').fill('2026-10-15');await page.getByLabel('Motif',{exact:true}).fill('Versement contrôlé de recette');
+ await page.getByLabel('Montant FCFA',{exact:true}).fill('50000');await page.getByLabel('Payeur',{exact:true}).fill('Parent de recette');await page.getByLabel('Référence du versement').fill('RECETTE-001');await page.getByLabel('Organisme ou caisse').fill('Caisse ESCEN');await page.getByLabel('Date du paiement').fill('2026-10-15');
  await page.getByRole('button',{name:'Vérifier l’opération'}).click();expect(operations).toHaveLength(0);
  await page.getByRole('button',{name:'Confirmer le paiement',exact:true}).click();
  await expect(page.getByText('Paiement et reçu enregistrés.',{exact:true})).toBeVisible();expect(operations).toHaveLength(1);expect(operations[0]).toMatchObject({action:'payment',amount:50000,reference:'RECETTE-001'});
@@ -33,7 +33,7 @@ test('Contrat en brouillon : approbation et continuité dans Frais et versements
  await expect(page.getByRole('heading',{name:'Versements'})).toBeVisible();
  await expect(page.locator('.availability-details')).toHaveCount(0);
  await page.getByRole('button',{name:'Approuver le contrat',exact:true}).click();
- await page.getByLabel('Motif',{exact:true}).fill('Contrat vérifié et validé');
+ 
  await page.getByRole('button',{name:'Vérifier l’opération'}).click();expect(operations).toHaveLength(0);
  await page.getByRole('button',{name:'Confirmer l’approbation du contrat',exact:true}).click();
  await expect(page.getByText('Contrat approuvé et situation financière établie.',{exact:true})).toBeVisible();
@@ -58,7 +58,7 @@ for (const width of [390, 1440]) test(`Approbation : contrat et échéance corre
  await expect(enrollment.locator(`option[value="${withoutDraft}"]`)).toHaveCount(0);
  await enrollment.selectOption(second);
  await expect(dialog.getByLabel('Date d’échéance contractuelle',{exact:true})).toHaveValue('2026-10-20');
- await dialog.getByLabel('Motif',{exact:true}).fill('Approbation du second contrat vérifiée');
+ 
  await dialog.getByRole('button',{name:'Vérifier l’opération'}).click();
  const review=dialog.getByRole('region',{name:'Vérification avant enregistrement'});
  await expect(review).toContainText('CON-002');
@@ -82,7 +82,7 @@ test('Changement de groupe relu et enregistré une seule fois',async({page})=>{
  await page.getByRole('navigation',{name:'Sections du dossier étudiant'}).getByRole('button',{name:'Années et groupes',exact:true}).click();
  await page.getByRole('button',{name:'Changer de groupe',exact:true}).click();
  await page.getByLabel('Date d’effet',{exact:true}).fill('2026-11-02');
- await page.getByLabel('Motif',{exact:true}).fill('Rééquilibrage des effectifs');
+ 
  await page.getByRole('button',{name:'Vérifier l’opération'}).click();expect(operations).toHaveLength(0);
  await page.getByRole('button',{name:'Confirmer le changement de groupe',exact:true}).click();
  await expect(page.getByText('Changement de groupe enregistré.',{exact:true})).toBeVisible();

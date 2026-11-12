@@ -44,7 +44,7 @@ export default function PaymentAdjustmentsPanel({ matricule, revision, directory
     if (!selection || !target) return;
     setBusy(true); setError('');
     try {
-      await studentOperations(matricule, portal.activeRole, { revision, enrollmentId: target.enrollmentId, action: selection.action, reason,
+      await studentOperations(matricule, portal.activeRole, { revision, enrollmentId: target.enrollmentId, action: selection.action, reason: reason.trim() || `${operation} financière sur ${label}`,
         ...(selection.action === 'credit_note' ? { lineId: selection.line.id, amount: Number(amount) } : { paymentId: selection.payment.id, ...(selection.action === 'refund_payment' ? { amount: Number(amount), reference } : {}) }) });
       setSelection(null); portal.refreshCampus();
       onSaved(cancelling ? 'Paiement annulé. Le reçu est marqué annulé.' : crediting ? 'Avoir enregistré.' : 'Remboursement enregistré et affectations ajustées.');
@@ -71,14 +71,13 @@ export default function PaymentAdjustmentsPanel({ matricule, revision, directory
     </div>)}
     {selection && target && <WorkPage title={`${operation} · ${label}`} busy={busy} onClose={() => setSelection(null)}>
       <ReviewedForm busy={busy} error={error} danger={cancelling} confirmLabel={cancelling ? 'Confirmer l’annulation' : crediting ? 'Confirmer l’avoir' : 'Confirmer le remboursement'}
-        fields={[{ label: 'Dossier', value: matricule }, { label: 'Opération', value: operation }, { label: 'Référence', value: label }, ...(cancelling ? [{ label: 'État du paiement', previous: selection.action === 'cancel_payment' && selection.payment.pending ? 'En attente' : 'Enregistré', value: 'Annulé' }, { label: 'État du reçu', previous: 'Valide', value: 'Annulé' }] : [{ label: 'Montant FCFA', value: amount }, { label: crediting ? 'Solde disponible de la ligne' : 'Paiement net disponible', previous: money(maximum), value: money(after) }, ...(!crediting ? [{ label: 'Référence du remboursement', value: reference }] : [])]), { label: 'Motif', value: reason }]}
-        consequence={cancelling ? 'Une contre-opération motivée sera enregistrée. Les affectations du paiement cesseront de compter et son reçu sera marqué annulé.' : crediting ? 'L’avoir réduira le montant attendu du contrat. Son montant est limité au solde de la ligne après remises, avoirs précédents et affectations actives.' : 'Le remboursement sera enregistré avec son motif. Si nécessaire, les affectations seront libérées depuis les échéances les plus récentes et les reliquats seront conservés.'}
+        fields={[{ label: 'Dossier', value: matricule }, { label: 'Opération', value: operation }, { label: 'Référence', value: label }, ...(cancelling ? [{ label: 'État du paiement', previous: selection.action === 'cancel_payment' && selection.payment.pending ? 'En attente' : 'Enregistré', value: 'Annulé' }, { label: 'État du reçu', previous: 'Valide', value: 'Annulé' }] : [{ label: 'Montant FCFA', value: amount }, { label: crediting ? 'Solde disponible de la ligne' : 'Paiement net disponible', previous: money(maximum), value: money(after) }, ...(!crediting ? [{ label: 'Référence du remboursement', value: reference }] : [])])]}
+        consequence={cancelling ? 'Une contre-opération sera enregistrée. Les affectations du paiement cesseront de compter et son reçu sera marqué annulé.' : crediting ? 'L’avoir réduira le montant attendu du contrat. Son montant est limité au solde de la ligne après remises, avoirs précédents et affectations actives.' : 'Le remboursement sera enregistré. Si nécessaire, les affectations seront libérées depuis les échéances les plus récentes et les reliquats seront conservés.'}
         validate={() => !cancelling && (!Number.isSafeInteger(Number(amount)) || Number(amount) <= 0 || Number(amount) > maximum) ? 'Saisissez un montant entier positif dans la limite disponible.' : null}
         onConfirm={save}>
         <p>{label}</p>
         {!cancelling && <><p>Montant disponible : {money(maximum)}</p><label className="form-group">Montant FCFA<input className="input" required type="number" min="1" max={maximum} step="1" value={amount} onChange={event => setAmount(event.target.value)} /></label></>}
         {selection.action === 'refund_payment' && <label className="form-group">Référence du remboursement<input className="input" required minLength={2} maxLength={160} value={reference} onChange={event => setReference(event.target.value)} /></label>}
-        <label className="form-group">Motif de l’opération<textarea className="input" required minLength={3} maxLength={1000} value={reason} onChange={event => setReason(event.target.value)} /></label>
         <DrawerActions><DrawerCloseButton className="btn btn-outline">Fermer</DrawerCloseButton><button className="btn btn-primary">Vérifier l’opération financière</button></DrawerActions>
       </ReviewedForm>
     </WorkPage>}

@@ -324,7 +324,6 @@ export default function AcademicYearLifecycle({
             confirmLabel="Confirmer le changement d’année"
             fields={[
               { label: 'Opération', value: closureCommand.title },
-              { label: 'Motif', value: closureReason },
             ]}
             consequence={
               closureCommand.status === 'CLOTUREE'
@@ -340,7 +339,7 @@ export default function AcademicYearLifecycle({
                   yearId: closureCommand.yearId,
                   status: closureCommand.status,
                   revision: closureCommand.revision,
-                  reason: closureReason,
+                  reason: closureReason.trim() || `Transition vers ${closureCommand.status}`,
                 },
                 portal.activeRole
               )
@@ -353,18 +352,6 @@ export default function AcademicYearLifecycle({
                 .finally(() => setBusy(false));
             }}
           >
-            <label className="form-group">
-              Motif du changement
-              <textarea
-                aria-label="Motif du changement"
-                className="input"
-                required
-                minLength={3}
-                maxLength={1000}
-                value={closureReason}
-                onChange={event => setClosureReason(event.target.value)}
-              />
-            </label>
             <button className="btn btn-primary" disabled={busy}>
               Vérifier les conséquences
             </button>

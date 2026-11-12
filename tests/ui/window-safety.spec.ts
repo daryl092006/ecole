@@ -99,7 +99,7 @@ for (const width of [360, 390]) {
     await dialog.getByLabel('Référence du versement', { exact: true }).fill('RECETTE-TEST');
     await dialog.getByLabel('Organisme ou caisse', { exact: true }).fill('Caisse ESCEN');
     await dialog.getByLabel('Date du paiement', { exact: true }).fill('2026-10-18');
-    const reason = dialog.getByRole('textbox', { name: 'Motif', exact: true }); await reason.fill('Paiement vérifié');
+    const reason = dialog.getByLabel('Date du paiement', { exact: true });
     await reducedViewport(page, dialog, reason, width);
     await dialog.getByRole('button', { name: 'Annuler', exact: true }).click();
     await expect(dialog.getByText('Quitter sans enregistrer ?', { exact: true })).toBeVisible();
@@ -179,7 +179,7 @@ test('Correction publiée : une valeur vide ou hors limites ne produit aucun app
   await page.goto('/academique/evaluations'); await page.getByRole('button', { name: 'Saisir / Gérer', exact: true }).click();
   const dialog = page.getByRole('dialog'); await dialog.getByRole('button', { name: 'Corriger', exact: true }).first().click();
   const value = dialog.getByLabel('Nouvelle note / 20', { exact: true });
-  await dialog.getByLabel('Motif obligatoire de la correction', { exact: true }).fill('Erreur de report vérifiée');
+  
   for (const invalid of ['', '-1', '21']) { await value.fill(invalid); await expect(dialog.getByRole('button', { name: 'Valider la révision', exact: true })).toBeDisabled(); }
   expect(fixture.commands).toHaveLength(0);
   await value.fill('0'); await dialog.getByRole('button', { name: 'Valider la révision', exact: true }).click();

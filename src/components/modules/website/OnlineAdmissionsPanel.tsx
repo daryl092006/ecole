@@ -444,21 +444,6 @@ export default function OnlineAdmissionsPanel({
                         <option value="CLASSE">Classé</option>
                       </select>
                     </label>
-                    <label className="form-group">
-                      Motif du suivi
-                      <textarea
-                        aria-label="Motif du suivi"
-                        className="input"
-                        required
-                        minLength={3}
-                        maxLength={1000}
-                        value={reason}
-                        onChange={event => {
-                          setReason(event.target.value);
-                          setConfirm(false);
-                        }}
-                      />
-                    </label>
                     {!confirm && (
                       <DrawerActions>
                         <button className="btn btn-outline" disabled={busy}>
@@ -511,7 +496,6 @@ export default function OnlineAdmissionsPanel({
             validate={() => {
               if (!convNom.trim()) return 'Le nom de famille est obligatoire.';
               if (!convPrenom.trim()) return 'Le prénom est obligatoire.';
-              if (!convReason.trim() || convReason.trim().length < 3) return 'Le motif d’admission (min 3 caractères) est requis.';
               return null;
             }}
             confirmLabel="Confirmer l’admission et créer le dossier"
@@ -521,7 +505,6 @@ export default function OnlineAdmissionsPanel({
               { label: 'Email', value: convEmail || 'Non renseigné' },
               { label: 'Téléphone', value: convPhone || 'Non renseigné' },
               { label: 'Formation', value: convertingApp.intake_label || 'Non renseignée' },
-              { label: 'Motif', value: convReason },
             ]}
             consequence="Le dossier étudiant officiel sera créé avec un matricule automatique. La candidature sera validée pour l’inscription annuelle."
             onConfirm={async event => {
@@ -656,18 +639,6 @@ export default function OnlineAdmissionsPanel({
                 </label>
                 <CountrySelect value={convNationality} onChange={setConvNationality} />
               </div>
-
-              <label className="form-group">
-                Motif d’admission
-                <textarea
-                  className="input"
-                  required
-                  minLength={3}
-                  maxLength={1000}
-                  value={convReason}
-                  onChange={e => setConvReason(e.target.value)}
-                />
-              </label>
 
               <DrawerActions>
                 <DrawerCloseButton className="btn btn-outline" disabled={convBusy}>

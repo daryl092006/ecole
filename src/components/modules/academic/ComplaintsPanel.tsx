@@ -101,11 +101,11 @@ export default function ComplaintsPanel() {
     setBusy(true); setError('');
     try {
       await manageComplaint(portal.activeRole, creating ? {
-        action: 'create_complaint', gradeId, reason, revision: directory.revision,
+        action: 'create_complaint', gradeId, reason: reason.trim(), revision: directory.revision,
       } : {
         action: 'transition_complaint', complaintId: selected!.complaint.id,
         fromStatus: selected!.complaint.status, toStatus: selected!.target,
-        reason, revision: directory.revision,
+        reason: reason.trim() || selected!.label, revision: directory.revision,
         ...(selected!.correction ? { correctedGrade: Number(correctedGrade) } : {}),
       });
       setMessage(creating ? 'Réclamation déposée. Son traitement est disponible dans la liste.' : selected?.correction ? 'Note corrigée et réclamation clôturée. L’ancienne valeur est conservée.' : 'Étape de traitement enregistrée.');
@@ -228,13 +228,13 @@ export default function ComplaintsPanel() {
     </section>}
     {(creating || selected) && <WorkPage title={creating ? 'Déposer une réclamation' : selected!.label} busy={busy} onClose={() => { setCreating(false); setSelected(null); }}>
       <ReviewedForm busy={busy} error={error} confirmLabel={creating ? 'Confirmer le dépôt' : 'Confirmer le traitement'}
-        fields={[{ label: 'Note ou dossier', value: creating ? chosenGrade ? gradeLabel(chosenGrade) : '' : complaintLabel(selected!.complaint) }, { label: 'Motif', value: reason }, ...(selected?.correction ? [{ label: 'Nouvelle note /20', value: correctedGrade }] : [])]}
-        consequence={creating ? 'La réclamation sera enregistrée sur cette note publiée. La note reste inchangée pendant son analyse.' : selected?.correction ? 'La correction et la clôture seront enregistrées ensemble, avec conservation de l’ancienne note et du motif.' : 'Cette étape sera enregistrée avec son auteur et son motif.'}
+        fields={[{ label: 'Note ou dossier', value: creating ? chosenGrade ? gradeLabel(chosenGrade) : '' : complaintLabel(selected!.complaint) }, ...(creating || reason.trim() ? [{ label: creating ? 'Objet de la réclamation' : 'Avis', value: reason }] : []), ...(selected?.correction ? [{ label: 'Nouvelle note /20', value: correctedGrade }] : [])]}
+        consequence={creating ? 'La réclamation sera enregistrée sur cette note publiée. La note reste inchangée pendant son analyse.' : selected?.correction ? 'La correction et la clôture seront enregistrées ensemble, avec conservation de l’ancienne note.' : 'Cette étape sera enregistrée avec son auteur.'}
         validate={() => creating && !chosenGrade ? 'Choisissez une note publiée disponible.' : selected?.correction && (!correctedGrade.trim() || !Number.isFinite(Number(correctedGrade)) || Number(correctedGrade) < 0 || Number(correctedGrade) > 20) ? 'La note doit être comprise entre 0 et 20.' : null}
         onConfirm={() => { void save(); }}>
         {creating && <label className="form-group">Note concernée<select className="select-input" required value={gradeId} onChange={event => setGradeId(event.target.value)}><option value="">Choisir une note publiée</option>{eligibleGrades.map(grade => <option key={grade.id} value={grade.id}>{gradeLabel(grade)}</option>)}</select>{!eligibleGrades.length && <span>Aucune note publiée sans réclamation en cours dans votre périmètre.</span>}</label>}
         {selected?.correction && <label className="form-group">Nouvelle note /20<input className="input" required type="number" min="0" max="20" step="0.25" value={correctedGrade} onChange={event => setCorrectedGrade(event.target.value)} /></label>}
-        <label className="form-group">{creating ? 'Motif de la réclamation' : 'Avis ou motif'}<textarea className="input" required minLength={creating ? 5 : 3} maxLength={1000} value={reason} onChange={event => setReason(event.target.value)} /></label>
+        {(creating || selected?.target === 'AVIS_ENSEIGNANT' || selected?.target === 'DECISION_ACADEMIQUE') && <label className="form-group">{creating ? 'Objet de la réclamation' : 'Avis ou décision'}<textarea className="input" required={creating} minLength={creating ? 5 : undefined} maxLength={1000} value={reason} onChange={event => setReason(event.target.value)} /></label>}
         <DrawerActions><button className="btn btn-primary" disabled={creating && !eligibleGrades.length}>Vérifier les informations</button></DrawerActions>
       </ReviewedForm>
     </WorkPage>}

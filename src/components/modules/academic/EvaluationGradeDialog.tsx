@@ -246,15 +246,11 @@ function EvaluationGrades({ evaluationId, busy, setBusy }: { evaluationId: strin
       if (!correctionValue.trim() || !Number.isFinite(val) || val < 0 || val > 20) {
         throw new Error('La note doit être comprise entre 0 et 20.');
       }
-      if (!correctionReason.trim()) {
-        throw new Error('Un motif circonstancié est obligatoire pour corriger une note publiée.');
-      }
-
       const saved = await manageEvaluation(portal.activeRole, {
         action: 'correct_grade',
         gradeId,
         newValue: val,
-        reason: correctionReason.trim(),
+        reason: correctionReason.trim() || 'Correction de note publiée',
         revision: revision.current,
       });
       revision.current = saved.revision;
@@ -520,12 +516,12 @@ function EvaluationGrades({ evaluationId, busy, setBusy }: { evaluationId: strin
         {correctingGradeId && (
           <ReviewedForm className="card mb-2" aria-label="Formulaire de correction de note" busy={busy} error={error}
             confirmLabel="Confirmer la révision de note" validate={() => validCorrection ? null : 'La note doit être un nombre compris entre 0 et 20.'}
-            fields={[{ label: 'Note /20', previous: String(evaluationGradeValue(grades.find(grade => grade.id === correctingGradeId)) ?? ''), value: correctionValue }, { label: 'Motif', value: correctionReason }]}
-            consequence="La note publiée sera corrigée. L’ancienne valeur, le motif et l’auteur resteront conservés dans l’historique."
+            fields={[{ label: 'Note /20', previous: String(evaluationGradeValue(grades.find(grade => grade.id === correctingGradeId)) ?? ''), value: correctionValue }]}
+            consequence="La note publiée sera corrigée. L’ancienne valeur et l’auteur resteront conservés dans l’historique."
             onConfirm={() => { void handleCorrectGradeSubmit(correctingGradeId); }}>
             <h3>Corriger une note publiée</h3>
             <p className="cell-sub">
-              Conformément aux règles institutionnelles ESCEN, toute modification d’une note publiée doit être motivée et est conservée à vie dans le registre d’audit.
+              Conformément aux règles institutionnelles ESCEN, toute modification d’une note publiée est conservée à vie dans le registre d’audit.
             </p>
             <div className="form-grid mb-2">
               <label className="form-group">
@@ -541,19 +537,6 @@ function EvaluationGrades({ evaluationId, busy, setBusy }: { evaluationId: strin
                   onChange={e => setCorrectionValue(e.target.value)}
                 />
               </label>
-              <label className="form-group">
-                Motif obligatoire de la correction
-                <input
-                  type="text"
-                  required
-                  minLength={3}
-                  maxLength={1000}
-                  className="input"
-                  placeholder="Ex : Erreur de report, réclamation admise…"
-                  value={correctionReason}
-                  onChange={e => setCorrectionReason(e.target.value)}
-                />
-              </label>
             </div>
             <DrawerActions>
               <DrawerCloseButton className="btn btn-outline" onClose={() => setCorrectingGradeId(null)}>
@@ -561,7 +544,7 @@ function EvaluationGrades({ evaluationId, busy, setBusy }: { evaluationId: strin
               </DrawerCloseButton>
               <button
                 className="btn btn-primary"
-                disabled={busy || !validCorrection || correctionReason.trim().length < 3}
+                disabled={busy || !validCorrection}
                 type="submit"
               >
                 Valider la révision
@@ -646,30 +629,19 @@ function EvaluationGrades({ evaluationId, busy, setBusy }: { evaluationId: strin
 
         {/* Panneau de renvoi à l'enseignant */}
         {returnOpen && (
-          <form className="card mb-2" aria-label="Renvoyer à l'enseignant" aria-busy={busy} onSubmit={event => { event.preventDefault(); void handleTransition('SAISIES', returnReason); }}>
+          <form className="card mb-2" aria-label="Renvoyer à l'enseignant" aria-busy={busy} onSubmit={event => { event.preventDefault(); void handleTransition('SAISIES', returnReason.trim() || 'Retour des notes pour vérification'); }}>
             <fieldset className="permission-fieldset" disabled={busy}>
-            <h3>Motif du retour des notes</h3>
+            <h3>Renvoyer les notes à l’enseignant</h3>
             <p className="cell-sub">
-              Indiquez à l’enseignant les corrections ou vérifications requises avant nouvelle soumission.
+              Confirmez le retour des notes à l’enseignant pour corrections ou vérifications avant nouvelle soumission.
             </p>
-            <textarea
-              aria-label="Motif du retour des notes"
-              className="input mb-2"
-              required
-              minLength={3}
-              maxLength={1000}
-              rows={3}
-              placeholder="Ex : Erreur de barème sur les questions 2 et 4, notes à vérifier."
-              value={returnReason}
-              onChange={e => setReturnReason(e.target.value)}
-            />
             <DrawerActions>
               <DrawerCloseButton className="btn btn-outline" onClose={() => setReturnOpen(false)}>
                 Annuler
               </DrawerCloseButton>
               <button
                 className="btn btn-primary"
-                disabled={busy || returnReason.trim().length < 3}
+                disabled={busy}
                 type="submit"
               >
                 Confirmer le retour

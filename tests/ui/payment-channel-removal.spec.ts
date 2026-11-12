@@ -114,7 +114,7 @@ for (const width of [390, 1440]) test(`Retirer, terminer, rouvrir et recharger l
   await expect(mobile()).toHaveCount(0);
   const cash = page.getByRole('row').filter({ hasText: 'Caisse principale' });
   await cash.getByRole('button', { name: 'Archiver', exact: true }).click();
-  await page.getByLabel('Motif', { exact: true }).fill('Caisse non utilisée cette année');
+  
   await page.getByRole('button', { name: 'Vérifier l’archivage', exact: true }).click();
   await page.getByRole('button', { name: 'Confirmer l’archivage', exact: true }).click();
   await page.getByRole('button', { name: 'Terminer la rubrique', exact: true }).click();

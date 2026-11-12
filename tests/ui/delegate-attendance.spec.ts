@@ -34,7 +34,7 @@ for (const width of [390, 1440]) {
     const status = dialog.getByRole('combobox', { name: 'Présence de Élise Étudiante', exact: true });
     await expect(status.locator('option[value="DISPENSE"]')).toHaveAttribute('disabled', '');
     await status.selectOption('PRESENT');
-    await dialog.getByRole('textbox', { name: 'Motif', exact: true }).fill('Appel effectué en classe');
+    
     await dialog.getByRole('button', { name: 'Vérifier les informations', exact: true }).click();
     expect(f.transactions).toHaveLength(0);
     await dialog.getByRole('button', { name: /^Confirmer :/ }).click();

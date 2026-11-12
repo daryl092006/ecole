@@ -109,7 +109,7 @@ export default function CommunicationsWorkspace() {
               revision: directory.revision,
               expiresAt: expiration ? new Date(expiration).toISOString() : null
             }
-          : { action: 'withdraw', id: action.row.id, revision: directory.revision, reason: reason.trim() };
+          : { action: 'withdraw', id: action.row.id, revision: directory.revision, reason: reason.trim() || 'Retrait de l’annonce' };
       await manageCommunication(command, portal.activeRole);
       setAction(null);
       setSuccess(
@@ -263,7 +263,7 @@ export default function CommunicationsWorkspace() {
                             value: expiration ? new Date(expiration).toLocaleString('fr-FR') : 'Sans expiration'
                           }
                         ]
-                      : [{ label: 'Motif de retrait', value: reason }])
+                      : [])
                   ]
             }
             consequence={
@@ -271,7 +271,7 @@ export default function CommunicationsWorkspace() {
                 ? 'Le brouillon et ses destinataires seront enregistrés ensemble. Il ne sera pas visible dans les espaces des destinataires.'
                 : action.kind === 'publish'
                 ? 'L’annonce deviendra visible dans les espaces des destinataires sélectionnés. Aucun email ne sera envoyé.'
-                : 'L’annonce ne sera plus visible dans les espaces des destinataires. Les données et le motif de retrait seront conservés.'
+                : 'L’annonce ne sera plus visible dans les espaces des destinataires. Les données et l’historique seront conservés.'
             }
             validate={() =>
               action.kind === 'create'
@@ -279,9 +279,7 @@ export default function CommunicationsWorkspace() {
                   ? 'Complétez le titre, le contenu et les destinataires.'
                   : null
                 : action.kind === 'withdraw'
-                ? reason.trim().length < 3
-                  ? 'Le motif doit contenir au moins trois caractères.'
-                  : null
+                ? null
                 : expiration && (!Number.isFinite(Date.parse(expiration)) || Date.parse(expiration) <= Date.now())
                 ? 'Choisissez une expiration future.'
                 : null
@@ -332,10 +330,7 @@ export default function CommunicationsWorkspace() {
                 <input className="input" type="datetime-local" value={expiration} onChange={event => setExpiration(event.target.value)} />
               </label>
             ) : (
-              <label className="form-group">
-                Motif de retrait
-                <textarea className="input" required minLength={3} maxLength={1000} value={reason} onChange={event => setReason(event.target.value)} />
-              </label>
+              <p>Confirmez le retrait de l’annonce <strong>{String(action.row.title)}</strong>.</p>
             )}
             <DrawerActions>
               <button className="btn btn-primary" type="submit">

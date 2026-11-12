@@ -7,6 +7,7 @@ import WorkPage from '@/components/ui/WorkPage';
 import PageHeader from '@/components/ui/PageHeader';
 import ResponsiveTable from '@/components/ui/ResponsiveTable';
 import ReferenceCrudWorkspace from './ReferenceCrudWorkspace';
+import CourseAssignmentDialog from './CourseAssignmentDialog';
 import { formatSubjectCode } from '@/services/resaoCodeService';
 
 export default function ProgramsCoursesWorkspace() {
@@ -15,9 +16,11 @@ export default function ProgramsCoursesWorkspace() {
   const [groupId, setGroupId] = useState('');
   const [semesterId, setSemesterId] = useState('');
   const [task, setTask] = useState<{ collection: string; create?: boolean; editId?: string } | null>(null);
+  const [assigning, setAssigning] = useState<{ groupId: string; offeringId: string; componentId: string } | null>(null);
   const refreshedEmptySemesters = useRef(false);
   const refreshedSem5 = useRef(false);
   const canEdit = portal.globalAccess && portal.perms.permissions.includes('academic.structure.manage');
+  const canAssign = portal.perms.permissions.includes('academic.assignment.manage');
   const canSchedule = portal.perms.permissions.includes('schedule.create');
   const year = portal.academicYearContext?.years.find(row => row.id === portal.academicYearContext?.selectedYearId);
 
@@ -179,7 +182,7 @@ export default function ProgramsCoursesWorkspace() {
     </section>
     {(semester || showAllSemesters) && (semesterId || groupId) && <section className="card" aria-label="Matières du semestre">
       <div className="card-header"><div><h2>{selectedOption ? `${selectedOption.name} · ${activeSemesterLabel}` : activeSemesterLabel}</h2><p>{context}</p></div>{editableProgram && <button className="btn btn-primary" onClick={() => { if (showAllSemesters && semesters[0]) setSemesterId(semesters[0].id); setTask({ collection: 'subjects', create: true }); }}>Ajouter une matière</button>}</div>
-      <div className="table-wrap"><ResponsiveTable className="data-table"><thead><tr><th>Matière</th><th>Code</th>{showAllSemesters && <th>Semestre</th>}<th>Crédits</th><th>Actions</th></tr></thead><tbody>{components.map(component => {
+      <div className="table-wrap"><ResponsiveTable className="data-table"><thead><tr><th>Matière</th><th>Code</th>{showAllSemesters && <th>Semestre</th>}<th>Crédits</th>{selectedOption?.isRealGroup && <th>Enseignant</th>}<th>Actions</th></tr></thead><tbody>{components.map(component => {
         const subject = tables.subjects?.find(row => row.id === component.subject_id && !row.archived_at);
         if (!subject) return null;
         const unit = tables.teaching_units?.find(u => u.id === component.unit_id && !u.archived_at);
@@ -188,8 +191,20 @@ export default function ProgramsCoursesWorkspace() {
         const scheduleHref = canSchedule
           ? `/academique/emploi-du-temps?matiere=${encodeURIComponent(component.id)}${selectedOption?.isRealGroup ? `&groupe=${encodeURIComponent(selectedOption.id)}` : ''}`
           : '/academique/emploi-du-temps';
-        return <tr key={component.id}><td><strong>{String(subject.name)}</strong></td><td>{code || 'Code non renseigné'}</td>{showAllSemesters && <td>{semLabel(compSem || semesters[0]) || 'Semestre 1'}</td>}<td>{String(component.credits ?? 'Non renseignés')}</td><td><div className="btn-group">{canEdit && year && <button className="btn btn-outline" onClick={() => setTask({ collection: 'subjects', editId: subject.id })}>Modifier la matière</button>}{portal.perms.permissions.includes('schedule.view') && <Link className="btn btn-outline" href={scheduleHref}>{canSchedule ? 'Programmer un cours' : 'Voir l’emploi du temps'}</Link>}</div></td></tr>;
-      })}{!components.length && <tr><td colSpan={showAllSemesters ? 5 : 4}>Aucune matière dans ce semestre. Ajoutez la première matière pour préparer les cours.</td></tr>}</tbody></ResponsiveTable></div>
+        const groupOffering = selectedOption?.isRealGroup
+          ? (tables.academic_offerings || []).find(o => !o.archived_at && o.curriculum_id === curriculum?.id && (tables.group_offerings || []).some(go => !go.archived_at && go.group_id === selectedOption.id && go.offering_id === o.id))
+          : undefined;
+        const compAssignments = selectedOption?.isRealGroup
+          ? (tables.teaching_assignments || []).filter(a => !a.archived_at && a.group_id === selectedOption.id && a.component_id === component.id)
+          : [];
+        const assignedTeacherNames = [...new Set(compAssignments.map(a => {
+          const t = (tables.teachers || []).find(row => row.id === a.teacher_id);
+          const s = t ? (tables.staff || []).find(row => row.id === t.staff_id) : undefined;
+          const p = s ? (tables.people || []).find(row => row.id === s.person_id) : undefined;
+          return p ? `${String(p.firstname || '').trim()} ${String(p.lastname || '').trim()}`.trim() : '';
+        }).filter(Boolean))];
+        return <tr key={component.id}><td><strong>{String(subject.name)}</strong></td><td>{code || 'Code non renseigné'}</td>{showAllSemesters && <td>{semLabel(compSem || semesters[0]) || 'Semestre 1'}</td>}<td>{String(component.credits ?? 'Non renseignés')}</td>{selectedOption?.isRealGroup && <td>{assignedTeacherNames.join(', ') || <span className="cell-sub">Non affecté</span>}</td>}<td><div className="btn-group">{canEdit && year && <button className="btn btn-outline" onClick={() => setTask({ collection: 'subjects', editId: subject.id })}>Modifier la matière</button>}{selectedOption?.isRealGroup && groupOffering && canAssign && year && <button className="btn btn-outline" onClick={() => setAssigning({ groupId: selectedOption.id, offeringId: String(groupOffering.id), componentId: String(component.id) })}>{assignedTeacherNames.length ? 'Changer l’enseignant' : 'Affecter un enseignant'}</button>}{portal.perms.permissions.includes('schedule.view') && <Link className="btn btn-outline" href={scheduleHref}>{canSchedule ? 'Programmer un cours' : 'Voir l’emploi du temps'}</Link>}</div></td></tr>;
+      })}{!components.length && <tr><td colSpan={(showAllSemesters ? 5 : 4) + (selectedOption?.isRealGroup ? 1 : 0)}>Aucune matière dans ce semestre. Ajoutez la première matière pour préparer les cours.</td></tr>}</tbody></ResponsiveTable></div>
     </section>}
     {unassigned.length > 0 && <section className="card"><h2>Matières sans rattachement renseigné ({unassigned.length})</h2><p>Ces matières sont conservées dans le catalogue, sans semestre associé.</p>{unassigned.map(subject => <p key={subject.id}>{String(subject.name)} · {formatSubjectCode(subject.code, subject.name) || 'Code non renseigné'}</p>)}</section>}
     {task && <WorkPage title={`${task.collection === 'subjects' ? 'Matière' : 'Semestre'} · ${context}`} onClose={() => setTask(null)}>
@@ -197,5 +212,6 @@ export default function ProgramsCoursesWorkspace() {
         contextValues: task.collection === 'curriculum_semesters' ? { curriculum_id: curriculum?.id || '' } : task.create && task.collection === 'subjects' ? { semester_id: semester?.id || semesters[0]?.id || '' } : undefined,
         onSaved: changed, onCancel: () => setTask(null), onDone: () => setTask(null), onChoose: collection => setTask({ collection }) }} />
     </WorkPage>}
+    {assigning && <CourseAssignmentDialog {...assigning} onClose={() => setAssigning(null)} onSaved={async () => { setAssigning(null); portal.refreshCampus(); }} />}
   </div>;
 }

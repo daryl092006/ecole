@@ -214,7 +214,6 @@ function ScheduleManager() {
       { label: 'Enregistrement (Replay)', value: form.recordingUrl.trim() || 'Synchronisation automatique Microsoft Graph / OneDrive', previous: current.recordingUrl || 'Aucun' },
     ] : []),
     ...(action === 'block_period' ? [{ label: 'Intitulé', value: form.name }, { label: 'Type de période', value: form.kind }, { label: 'Site', value: directory.sites.find(site => site.id === form.siteId)?.name || 'Tous les sites' }] : []),
-    { label: 'Motif', value: effectiveReason },
   ];
 
   const consequence = sharedCreate ? 'Un seul cours sera créé pour tous les groupes sélectionnés. La salle et l’enseignant seront réservés une seule fois ; chaque groupe conservera ses présences et sa formation.'
@@ -439,7 +438,6 @@ function ScheduleManager() {
         </div>
       )}
       {action === 'cancel_session' && current && <p>{assignmentName(current.assignmentId)} · {displayTime(current.startsAt)} → ANNULE</p>}
-      {action === 'cancel_session' && <label className="form-group">Motif d’annulation (facultatif)<textarea className="input" maxLength={1000} placeholder="Facultatif — ex. indisponibilité de l’enseignant" value={form.reason} onChange={event => setForm({ ...form, reason: event.target.value })} /></label>}
       <DrawerActions><DrawerCloseButton className="btn btn-outline" disabled={saving}>Annuler</DrawerCloseButton><button className="btn btn-primary">Vérifier les informations</button></DrawerActions>
     </ReviewedForm></WorkPage>}
     {assigning && <CourseAssignmentDialog {...assigning} onClose={() => setAssigning(null)} onSaved={async id => {

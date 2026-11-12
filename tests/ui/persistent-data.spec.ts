@@ -67,7 +67,7 @@ test('La suppression d’un compte est enregistrée puis vérifiée par recharge
   await page.route('**/api/campus', route => route.fulfill({ json: { ...current, tables: { ...current.tables, accounts: current.tables.accounts.filter(row => !row.archived_at) } } }));
   await page.route('**/api/accounts/*', async route => { expect(route.request().method()).toBe('PATCH'); const input = route.request().postDataJSON(); expect(input.action).toBe('archive'); expect(input.reason).toBe('Compte de test retiré'); const id = route.request().url().split('/').at(-1); current.tables.accounts.find(row => row.id === id)!.archived_at = '2026-10-14T12:00:00Z'; archived = true; await route.fulfill({ json: { revision: 2 } }); });
   await page.goto('/personnel/utilisateurs'); const account = page.getByRole('row').filter({ hasText: 'sans-role@example.test' }); await account.getByRole('button', { name: 'Gérer', exact: true }).click();
-  await page.getByRole('button', { name: 'Retirer le compte', exact: true }).click(); await page.getByLabel('Motif', { exact: true }).fill('Compte de test retiré'); await page.getByRole('button', { name: 'Vérifier les changements' }).click();expect(archived).toBe(false);await page.getByRole('button', { name: 'Confirmer le retrait', exact: true }).click();
+  await page.getByRole('button', { name: 'Retirer le compte', exact: true }).click();  await page.getByRole('button', { name: 'Vérifier les changements' }).click();expect(archived).toBe(false);await page.getByRole('button', { name: 'Confirmer le retrait', exact: true }).click();
   await expect(account).toHaveCount(0); expect(archived).toBe(true); await page.reload(); await expect(page.getByRole('heading', { name: 'Annuaire (1 / 1)' })).toBeVisible();
 });
 

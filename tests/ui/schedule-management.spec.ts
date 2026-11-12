@@ -164,7 +164,7 @@ test('Programmer un cours : affecter un enseignant ici puis enregistrer le crén
   const assignment = page.getByRole('dialog', { name: 'Choisir l’enseignant de ce cours', exact: true });
   await assignment.getByLabel('Enseignant', { exact: true }).selectOption(uuid(21));
   await assignment.getByLabel('Début de l’enseignement', { exact: true }).fill('2026-01-01');
-  await assignment.getByLabel('Motif', { exact: true }).fill('Enseignement confirmé pour ce groupe');
+  
   await assignment.getByRole('button', { name: 'Vérifier l’enseignant' }).click();
   expect(commands).toHaveLength(0);
   await assignment.getByRole('button', { name: 'Confirmer l’enseignant', exact: true }).click();
@@ -175,7 +175,7 @@ test('Programmer un cours : affecter un enseignant ici puis enregistrer le crén
   await course.getByLabel('Salle prévue').selectOption(uuid(950));
   await course.getByLabel('Début (heure de Lomé)', { exact: true }).fill('2026-10-21T08:00');
   await course.getByLabel('Fin (heure de Lomé)', { exact: true }).fill('2026-10-21T10:00');
-  await course.getByLabel('Motif', { exact: true }).fill('Cours prévu avec le nouvel enseignant');
+  
   await confirm(course);
   expect(fixture.transactions).toHaveLength(1);
   expect(fixture.transactions[0][0].record).toMatchObject({ assignment_id: createdId, teacher_id: uuid(21) });
@@ -310,7 +310,7 @@ for (const width of [360, 390, 1440]) test(`Séance : créer, modifier, déplace
   await dialog.getByRole('combobox', { name: 'Salle prévue', exact: true }).selectOption(uuid(950));
   await dialog.getByLabel('Début (heure de Lomé)', { exact: true }).fill('2026-10-21T08:00');
   await dialog.getByLabel('Fin (heure de Lomé)', { exact: true }).fill('2026-10-21T10:00');
-  await dialog.getByRole('textbox', { name: 'Motif', exact: true }).fill('Créneau approuvé par le responsable');
+  
   if (width < 768) await expect(dialog.getByRole('button', { name: 'Vérifier les informations', exact: true })).toBeInViewport();
   await confirm(dialog);
   expect(fixture.transactions[0][0].record).toMatchObject({ starts_at: '2026-10-21T08:00:00.000Z', room_id: uuid(950) });
@@ -319,26 +319,26 @@ for (const width of [360, 390, 1440]) test(`Séance : créer, modifier, déplace
   await page.getByRole('button', { name: 'Modifier la séance', exact: true }).click();
   dialog = page.getByRole('dialog', { name: 'Modifier la séance', exact: true });
   await dialog.getByRole('combobox', { name: 'Salle prévue', exact: true }).selectOption(uuid(951));
-  await dialog.getByRole('textbox', { name: 'Motif', exact: true }).fill('Salle mieux adaptée');
+  
   await confirm(dialog);
   await selectInitial(page);
   await page.getByRole('button', { name: 'Déplacer la séance', exact: true }).click();
   dialog = page.getByRole('dialog', { name: 'Déplacer la séance', exact: true });
   await dialog.getByLabel('Début (heure de Lomé)', { exact: true }).fill('2026-10-20T10:00');
   await dialog.getByLabel('Fin (heure de Lomé)', { exact: true }).fill('2026-10-20T12:00');
-  await dialog.getByRole('textbox', { name: 'Motif', exact: true }).fill('Décalage horaire validé');
+  
   await confirm(dialog);
   const selectMoved = () => page.getByRole('button', { name: /10:00–12:00.*Groupe 1/ }).filter({ visible: true }).click();
   await selectMoved();
   await page.getByRole('button', { name: 'Remplacer l’enseignant', exact: true }).click();
   dialog = page.getByRole('dialog', { name: 'Remplacer l’enseignant', exact: true });
   await dialog.getByRole('combobox', { name: 'Remplaçant', exact: true }).selectOption(uuid(21));
-  await dialog.getByRole('textbox', { name: 'Motif', exact: true }).fill('Remplacement ponctuel confirmé');
+  
   await confirm(dialog);
   await selectMoved();
   await page.getByRole('button', { name: 'Annuler la séance', exact: true }).click();
   dialog = page.getByRole('dialog', { name: 'Annuler la séance', exact: true });
-  await dialog.getByRole('textbox', { name: 'Motif', exact: true }).fill('Indisponibilité exceptionnelle');
+  
   await confirm(dialog);
   expect(fixture.transactions).toHaveLength(5);
   expect(fixture.snapshot.tables.sessions.find(session => session.id === uuid(970))).toMatchObject({ status: 'ANNULE', replacement_teacher_id: uuid(21), room_id: uuid(951) });
@@ -355,7 +355,7 @@ test('Période bloquée : périmètre, motif et récapitulatif à 390px', async 
   await dialog.getByRole('combobox', { name: 'Site', exact: true }).selectOption(id.site);
   await dialog.getByLabel('Début (heure de Lomé)', { exact: true }).fill('2026-10-22T00:00');
   await dialog.getByLabel('Fin (heure de Lomé)', { exact: true }).fill('2026-10-23T00:00');
-  await dialog.getByRole('textbox', { name: 'Motif', exact: true }).fill('Maintenance autorisée des locaux');
+  
   await confirm(dialog);
   expect(fixture.transactions[0][0]).toMatchObject({ table: 'blocked_periods', record: { site_id: id.site, academic_year_id: id.year, reason: 'Maintenance autorisée des locaux' } });
   await page.getByText('Périodes bloquées (1)', { exact: true }).click();
@@ -367,11 +367,11 @@ test('Formulaire modifié : protection de l’annulation et du clavier Échap', 
   await page.goto('/academique/emploi-du-temps');
   await page.getByRole('button', { name: 'Programmer un cours', exact: true }).click();
   const dialog = page.getByRole('dialog', { name: 'Nouvelle séance', exact: true });
-  await dialog.getByRole('textbox', { name: 'Motif', exact: true }).fill('Modification en cours');
+  await dialog.getByLabel('Début (heure de Lomé)', { exact: true }).fill('2026-10-21T08:00');
   await dialog.getByRole('button', { name: 'Annuler', exact: true }).click();
   await expect(page.getByRole('heading', { name: 'Quitter sans enregistrer ?' })).toBeVisible();
   await page.getByRole('button', { name: 'Continuer la saisie', exact: true }).click();
-  await expect(dialog.getByRole('textbox', { name: 'Motif', exact: true })).toHaveValue('Modification en cours');
+  await expect(dialog.getByLabel('Début (heure de Lomé)', { exact: true })).toHaveValue('2026-10-21T08:00');
   await page.keyboard.press('Escape');
   await page.getByRole('button', { name: 'Abandonner les modifications', exact: true }).click();
   await expect(dialog).not.toBeVisible(); expect(fixture.transactions).toEqual([]);
@@ -391,11 +391,11 @@ test('Conflit : message dans le formulaire actif, champs verrouillés pendant l�
   await page.getByRole('button', { name: 'Remplacer l’enseignant', exact: true }).click();
   const dialog = page.getByRole('dialog', { name: 'Remplacer l’enseignant', exact: true });
   await dialog.getByRole('combobox', { name: 'Remplaçant', exact: true }).selectOption(uuid(21));
-  await dialog.getByRole('textbox', { name: 'Motif', exact: true }).fill('Demande de remplacement');
+  
   await dialog.getByRole('button', { name: 'Vérifier les informations', exact: true }).click();
   await dialog.getByRole('button', { name: /^Confirmer/ }).click();
   await expect(dialog.getByText('Enregistrement en cours…', { exact: true })).toBeVisible();
-  await expect(dialog.locator('select')).toBeDisabled(); await expect(dialog.locator('textarea')).toBeDisabled();
+  await expect(dialog.locator('select')).toBeDisabled();
   release();
   await expect(dialog.getByRole('alert')).toHaveText('Cet enseignant a déjà une séance sur ce créneau.');
   expect(fixture.transactions).toEqual([]);
@@ -411,7 +411,7 @@ for (const width of [360, 390, 1440]) test(`Épreuve liée : récapitulatif du d
   const dialog = page.getByRole('dialog', { name: 'Déplacer la séance', exact: true });
   await dialog.getByLabel('Début (heure de Lomé)', { exact: true }).fill('2026-10-21T08:00');
   await dialog.getByLabel('Fin (heure de Lomé)', { exact: true }).fill('2026-10-21T10:00');
-  await dialog.getByRole('textbox', { name: 'Motif', exact: true }).fill('Déplacement validé avant ouverture');
+  
   await dialog.getByRole('button', { name: 'Vérifier les informations', exact: true }).click();
   const review = dialog.getByRole('region', { name: 'Vérification avant enregistrement' });
   await expect(review).toContainText('Épreuve d’analyse');
@@ -442,7 +442,7 @@ test('Épreuve liée : ouverture arrivée pendant la confirmation, refus visible
   const dialog = page.getByRole('dialog', { name: 'Déplacer la séance', exact: true });
   await dialog.getByLabel('Début (heure de Lomé)', { exact: true }).fill('2026-10-21T08:00');
   await dialog.getByLabel('Fin (heure de Lomé)', { exact: true }).fill('2026-10-21T10:00');
-  await dialog.getByRole('textbox', { name: 'Motif', exact: true }).fill('Demande arrivée avant ouverture');
+  
   await dialog.getByRole('button', { name: 'Vérifier les informations', exact: true }).click();
   fixture.fail('Épreuve déjà ouverte : déplacement interdit');
   await dialog.getByRole('button', { name: /^Confirmer/ }).click();

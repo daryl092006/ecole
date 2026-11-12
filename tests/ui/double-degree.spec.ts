@@ -94,7 +94,7 @@ for(const width of [390,1440])test(`Avenant relu à 15 % et paiements conservés
   const dialog=page.getByRole('dialog');
   await dialog.getByLabel('Remise individuelle (%)').fill('15');
   await dialog.getByLabel('Date d’échéance de l’avenant').fill('2026-10-15');
-  await dialog.getByLabel('Motif de régularisation').fill('Double diplomation choisie et remise individuelle validée');
+  
   await dialog.getByRole('button',{name:'Vérifier l’avenant'}).click();
   expect(writes).toHaveLength(0);
   await expect(dialog).toContainText(/828\s*750/);

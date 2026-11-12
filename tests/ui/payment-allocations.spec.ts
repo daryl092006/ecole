@@ -21,7 +21,7 @@ async function fillPayment(page: Page, amount: string) {
   await page.getByLabel('Référence du versement').fill(`PAY-UI-${amount}`);
   await page.getByLabel('Organisme ou caisse').fill('Caisse ESCEN');
   await page.getByLabel('Date du paiement').fill('2026-10-18');
-  await page.getByLabel('Motif', { exact: true }).fill('Encaissement contrôlé');
+  
 }
 
 for (const width of [390, 1440]) {
@@ -32,7 +32,7 @@ for (const width of [390, 1440]) {
     await page.getByRole('button', { name: 'Réaffecter PAY-INITIAL', exact: true }).click();
     await page.getByLabel('Affectation Première échéance', { exact: true }).fill('0');
     await page.getByLabel('Affectation Deuxième échéance', { exact: true }).fill('350');
-    await page.getByLabel('Motif de réaffectation').fill('Répartition vérifiée avec le payeur');
+    
     await page.getByRole('button', { name: 'Vérifier la réaffectation', exact: true }).click();
     expect(fixture.transactions).toHaveLength(0);
     const review = page.getByRole('region', { name: 'Vérification avant enregistrement' });
@@ -78,7 +78,7 @@ test('Une erreur de réaffectation reste dans le récapitulatif et conserve les 
   await page.getByRole('button', { name: 'Réaffecter PAY-INITIAL', exact: true }).click();
   await page.getByLabel('Affectation Première échéance', { exact: true }).fill('0');
   await page.getByLabel('Affectation Deuxième échéance', { exact: true }).fill('350');
-  await page.getByLabel('Motif de réaffectation').fill('Répartition vérifiée');
+  
   await page.getByRole('button', { name: 'Vérifier la réaffectation', exact: true }).click();
   await page.getByRole('button', { name: 'Confirmer la réaffectation', exact: true }).click();
   await expect(page.getByRole('region', { name: 'Vérification avant enregistrement' }).getByRole('alert')).toContainText('Aucune opération partielle');

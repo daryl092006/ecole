@@ -26,7 +26,7 @@ for (const width of [390, 1440]) test(`Annulation relue par DG, reçu annulé et
   await page.setViewportSize({ width, height: 1000 });
   const fixture = await mount(page, ROLES.DG); const before = fixture.campusReads();
   await page.getByRole('button', { name: 'Annuler PAY-INITIAL', exact: true }).click();
-  await page.getByLabel('Motif de l’opération').fill('Double saisie confirmée par la direction');
+  
   await page.getByRole('button', { name: 'Vérifier l’opération financière', exact: true }).click();
   expect(fixture.transactions).toHaveLength(0);
   const review = page.getByRole('region', { name: 'Vérification avant enregistrement' });
@@ -49,7 +49,7 @@ for (const width of [390, 1440]) test(`Remboursement et avoir relus par RAF à $
   await page.getByRole('button', { name: 'Rembourser PAY-INITIAL', exact: true }).click();
   await page.getByLabel('Montant FCFA', { exact: true }).fill('100');
   await page.getByLabel('Référence du remboursement').fill('REF-UI');
-  await page.getByLabel('Motif de l’opération').fill('Remboursement vérifié avec le payeur');
+  
   await page.getByRole('button', { name: 'Vérifier l’opération financière', exact: true }).click();
   expect(fixture.transactions).toHaveLength(0);
   await page.getByRole('button', { name: 'Confirmer le remboursement', exact: true }).click();
@@ -58,7 +58,7 @@ for (const width of [390, 1440]) test(`Remboursement et avoir relus par RAF à $
   await expect(page.getByText(/Remboursement REF-UI · 100 FCFA/)).toBeVisible();
   await page.getByRole('button', { name: 'Créer un avoir · Frais 1', exact: true }).click();
   await page.getByLabel('Montant FCFA', { exact: true }).fill('200');
-  await page.getByLabel('Motif de l’opération').fill('Réduction contractuelle vérifiée');
+  
   await page.getByRole('button', { name: 'Vérifier l’opération financière', exact: true }).click();
   expect(fixture.transactions).toHaveLength(1);
   await page.getByRole('button', { name: 'Confirmer l’avoir', exact: true }).click();
@@ -77,7 +77,7 @@ test('Échec SQL : récapitulatif conservé et valeurs récupérables sans deuxi
   await page.getByRole('button', { name: 'Rembourser PAY-INITIAL', exact: true }).click();
   await page.getByLabel('Montant FCFA', { exact: true }).fill('100');
   await page.getByLabel('Référence du remboursement').fill('REF-ERREUR');
-  await page.getByLabel('Motif de l’opération').fill('Remboursement vérifié');
+  
   await page.getByRole('button', { name: 'Vérifier l’opération financière', exact: true }).click();
   await page.getByRole('button', { name: 'Confirmer le remboursement', exact: true }).click();
   await expect(page.getByRole('region', { name: 'Vérification avant enregistrement' }).getByRole('alert')).toContainText('Aucune opération partielle');

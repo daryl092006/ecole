@@ -61,9 +61,8 @@ async function prepare(page: Page, rejected = '') {
   return { tables, writes, reads: () => campusReads };
 }
 
-async function review(page: Page, reason: string) {
-  const motif = page.getByRole('textbox', { name: 'Motif', exact: true });
-  if (await motif.count()) await motif.fill(reason);
+async function review(page: Page, reason?: string) {
+  void reason;
   await page.getByRole('button', { name: 'Vérifier les informations', exact: true }).click();
 }
 async function confirm(page: Page) {

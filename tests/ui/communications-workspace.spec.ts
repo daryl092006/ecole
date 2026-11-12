@@ -88,7 +88,7 @@ for (const width of [390, 1440]) test(`Annonces : brouillon, publication relue e
     await expect(page.getByText('Publiée', { exact: true })).toBeVisible();
     await page.reload();
     await page.getByRole('button', { name: 'Retirer l’annonce', exact: true }).click();
-    await page.getByLabel('Motif de retrait', { exact: true }).fill('Annonce remplacée par le calendrier définitif');
+    
     await page.getByRole('button', { name: 'Vérifier les informations' }).click();
     await page.getByRole('dialog').getByRole('button', { name: 'Retirer l’annonce', exact: true }).click();
     await expect(page.getByText('Retirée', { exact: true })).toBeVisible();

@@ -91,7 +91,7 @@ for (const width of [390, 1440]) {
     });
     await page.goto('/personnel/utilisateurs'); const account = page.getByRole('row').filter({ hasText: 'sans-role@example.test' });
     await account.getByRole('button', { name: 'Gérer', exact: true }).click(); const work = page.getByRole('dialog');
-    await work.getByRole('combobox', { name: 'Rôle principal', exact: true }).selectOption(ROLES.IT); await work.getByLabel('Motif', { exact: true }).fill('Attribution demandée par la direction');
+    await work.getByRole('combobox', { name: 'Rôle principal', exact: true }).selectOption(ROLES.IT); 
     await work.getByRole('button', { name: 'Vérifier les changements' }).click(); await expect(work.locator('.action-review')).toContainText('42 permission(s)'); expect(writes).toBe(0);
     await work.getByRole('button', { name: 'Confirmer le rôle', exact: true }).click(); await expect(account).toContainText(ROLES.IT); expect(writes).toBe(1);
     await expect(page.getByRole('status', { name: 'Résultat de l’opération' })).toContainText('rôle principal modifié');

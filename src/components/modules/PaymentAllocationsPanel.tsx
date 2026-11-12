@@ -32,7 +32,7 @@ export default function PaymentAllocationsPanel({ matricule, revision, directory
     if (!targets.length || total > selected.available) { setError('Affectez un montant positif sans dépasser le paiement disponible.'); return; }
     setBusy(true); setError('');
     try {
-      const result = await studentOperations(matricule, portal.activeRole, { action: 'reallocate_payment', revision, enrollmentId: selected.enrollmentId, paymentId: selected.id, reason, targets });
+      const result = await studentOperations(matricule, portal.activeRole, { action: 'reallocate_payment', revision, enrollmentId: selected.enrollmentId, paymentId: selected.id, reason: reason.trim() || 'Réaffectation du paiement aux échéances', targets });
       setSelected(null);
       portal.refreshCampus(); onSaved(`Réaffectation enregistrée. Montant restant à affecter : ${money(result.unallocated)}.`);
     } catch (cause) { setError(cause instanceof Error ? cause.message : 'Réaffectation indisponible.'); }
@@ -52,7 +52,7 @@ export default function PaymentAllocationsPanel({ matricule, revision, directory
     </SecondaryDetails>
     {selected && <WorkPage title={`Réaffecter · ${selected.reference}`} busy={busy} onClose={() => setSelected(null)}>
       <ReviewedForm busy={busy} error={error} confirmLabel="Confirmer la réaffectation"
-        fields={[{ label: 'Paiement', value: selected.reference }, ...installments.map(row => ({ label: `${row.description} · ${row.dueOn}`, previous: money(selected.allocations.find(allocation => allocation.installmentId === row.id)?.amount || 0), value: money(Number(amounts[row.id] || 0)) })), { label: 'Reste à affecter', value: money(selected.available - total) }, { label: 'Motif', value: reason }]}
+        fields={[{ label: 'Paiement', value: selected.reference }, ...installments.map(row => ({ label: `${row.description} · ${row.dueOn}`, previous: money(selected.allocations.find(allocation => allocation.installmentId === row.id)?.amount || 0), value: money(Number(amounts[row.id] || 0)) })), { label: 'Reste à affecter', value: money(selected.available - total) }]}
         consequence="Les anciennes affectations seront contrepassées et les nouvelles enregistrées ensemble. Le paiement et le reçu conservent leur montant et leur historique."
         validate={() => !targets.length ? 'Affectez au moins un montant positif.' : total > selected.available ? 'Le montant affecté dépasse le paiement disponible.' : null}
         onConfirm={save}>
@@ -65,7 +65,6 @@ export default function PaymentAllocationsPanel({ matricule, revision, directory
           </label>;
         })}
         <p>Total à affecter : {money(total)} · Reste à affecter : {money(selected.available - total)}</p>
-        <label className="form-group">Motif de réaffectation<textarea className="input" required minLength={3} maxLength={1000} value={reason} onChange={event => setReason(event.target.value)} /></label>
         <DrawerActions><DrawerCloseButton className="btn btn-outline">Annuler</DrawerCloseButton><button className="btn btn-primary">Vérifier la réaffectation</button></DrawerActions>
       </ReviewedForm>
     </WorkPage>}

@@ -54,12 +54,13 @@ export default function TeachersWorkspace() {
   const offeringName = (id: string) => directory.offerings.find(row => row.id === id)?.label || 'Formation indisponible';
   const groupName = (id: string) => directory.groups.find(row => row.id === id)?.label || 'Groupe indisponible';
   const componentName = (id: string) => directory.components.find(row => row.id === id)?.label || 'Matière indisponible';
-  const isCreation = operation?.kind === 'create_profile' || operation?.kind === 'create_assignment';
   const effectiveReason = form.reason.trim() || (operation?.kind === 'create_profile'
     ? 'Ouverture du profil enseignant'
     : operation?.kind === 'create_assignment'
       ? 'Affectation pédagogique de l’enseignant'
-      : '');
+      : operation?.kind === 'set_active'
+        ? (operation.teacher.active ? 'Désactivation du profil enseignant' : 'Activation du profil enseignant')
+        : 'Clôture de l’affectation pédagogique');
   const title = operation?.kind === 'create_profile' ? 'Créer un profil enseignant'
     : operation?.kind === 'set_active' ? `${operation.teacher.active ? 'Désactiver' : 'Activer'} l’enseignant`
     : operation?.kind === 'end_assignment' ? 'Terminer l’affectation' : 'Nouvelle affectation';
@@ -172,8 +173,8 @@ export default function TeachersWorkspace() {
       </tr>;
     })}{!directory.assignments.length && <tr><td colSpan={5}>Aucune affectation dans cette année et ce périmètre.</td></tr>}</tbody></ResponsiveTable></section>}
     {operation && <WorkPage busy={saving} title={title} onClose={() => setOperation(null)}><ReviewedForm busy={saving} error={saveError}
-      confirmLabel={`Confirmer : ${title.toLocaleLowerCase('fr')}`} fields={[...fields, { label: 'Motif', value: effectiveReason }]} consequence={consequence}
-      validate={() => operation.kind === 'create_assignment' && form.validUntil && form.validUntil < form.validFrom ? 'La date de fin ne peut pas précéder la date de début.' : effectiveReason.length < 3 ? 'Le motif doit contenir au moins 3 caractères.' : null}
+      confirmLabel={`Confirmer : ${title.toLocaleLowerCase('fr')}`} fields={fields} consequence={consequence}
+      validate={() => operation.kind === 'create_assignment' && form.validUntil && form.validUntil < form.validFrom ? 'La date de fin ne peut pas précéder la date de début.' : null}
       onConfirm={event => {
         event.preventDefault(); setSaving(true); setSaveError('');
         const common = { revision: directory.revision, reason: effectiveReason };
@@ -185,7 +186,7 @@ export default function TeachersWorkspace() {
           setOperation(null);
           setSuccess(operation.kind === 'create_assignment'
             ? 'Affectation enregistrée et notification préparée pour l’enseignant.'
-            : 'Enregistrement effectué. Le motif et l’historique sont conservés.');
+            : 'Enregistrement effectué. L’historique est conservé.');
           setReload(value => value + 1);
           portal.refreshCampus();
         }).catch(cause => setSaveError(cause instanceof Error ? cause.message : 'Enregistrement impossible.')).finally(() => setSaving(false));
@@ -194,14 +195,17 @@ export default function TeachersWorkspace() {
       {operation.kind === 'set_active' && <p>{operation.teacher.name} : {operation.teacher.active ? 'Actif → Inactif' : 'Inactif → Actif'}</p>}
       {operation.kind === 'create_assignment' && <div className="form-grid">
         <label className="form-group">Enseignant<select className="select-input" required value={form.teacherId} onChange={event => setForm({ ...form, teacherId: event.target.value })}><option value="">Choisir un enseignant actif</option>{directory.teachers.filter(teacher => teacher.active).map(teacher => <option key={teacher.id} value={teacher.id}>{teacher.name}</option>)}</select></label>
-        <label className="form-group">Formation annuelle<select className="select-input" required value={form.offeringId} onChange={event => setForm({ ...form, offeringId: event.target.value, groupId: '', componentId: '' })}><option value="">Choisir une formation</option>{directory.offerings.map(row => <option key={row.id} value={row.id}>{row.label}</option>)}</select></label>
+        <label className="form-group">Formation annuelle<select className="select-input" required value={form.offeringId} onChange={event => {
+          const nextOfferingId = event.target.value;
+          const matchingGroups = directory.groups.filter(group => group.offeringIds.includes(nextOfferingId));
+          setForm({ ...form, offeringId: nextOfferingId, groupId: matchingGroups.length === 1 ? matchingGroups[0].id : '', componentId: '' });
+        }}><option value="">Choisir une formation</option>{directory.offerings.map(row => <option key={row.id} value={row.id}>{row.label}</option>)}</select></label>
         <label className="form-group">Groupe<select className="select-input" required disabled={!offering} value={form.groupId} onChange={event => setForm({ ...form, groupId: event.target.value })}><option value="">Choisir un groupe rattaché</option>{directory.groups.filter(group => group.offeringIds.includes(form.offeringId)).map(group => <option key={group.id} value={group.id}>{group.label}</option>)}</select></label>
         <label className="form-group">Matière du programme<select className="select-input" required disabled={!offering} value={form.componentId} onChange={event => setForm({ ...form, componentId: event.target.value })}><option value="">Choisir une matière de la maquette</option>{directory.components.filter(component => component.curriculumId === offering?.curriculumId).map(component => <option key={component.id} value={component.id}>{component.label}</option>)}</select></label>
         <label className="form-group">Début de l’affectation<input className="input" type="date" required value={form.validFrom} onChange={event => setForm({ ...form, validFrom: event.target.value })} /></label>
         <label className="form-group">Fin prévue (facultative)<input className="input" type="date" min={form.validFrom} value={form.validUntil} onChange={event => setForm({ ...form, validUntil: event.target.value })} /></label>
       </div>}
       {operation.kind === 'end_assignment' && <label className="form-group">Fin de l’affectation<input className="input" type="date" required min={operation.assignment.validFrom} max={operation.assignment.validUntil || undefined} value={form.endOn} onChange={event => setForm({ ...form, endOn: event.target.value })} /></label>}
-      <label className="form-group">Motif<textarea className="input" required={!isCreation} minLength={!isCreation ? 3 : undefined} maxLength={1000} placeholder={isCreation ? 'Facultatif à la création (renseigné automatiquement)' : undefined} value={form.reason} onChange={event => setForm({ ...form, reason: event.target.value })} /></label>
       <DrawerActions><DrawerCloseButton className="btn btn-outline" disabled={saving}>Annuler</DrawerCloseButton><button className="btn btn-primary">Vérifier les informations</button></DrawerActions>
     </ReviewedForm></WorkPage>}
   </div>;

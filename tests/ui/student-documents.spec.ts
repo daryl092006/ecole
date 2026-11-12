@@ -85,7 +85,7 @@ for (const width of [390, 1440]) test(`Pièces : dépôt confirmé, conformité 
     await page.getByRole('dialog').getByRole('button', { name: 'Déposer la pièce', exact: true }).click();
     await expect(page.getByRole('dialog')).toHaveCount(0);
     await page.getByRole('button', { name: 'Déclarer conforme', exact: true }).click();
-    await page.getByLabel('Motif de vérification').fill('Copie et identité vérifiées');
+    
     await page.getByRole('button', { name: 'Vérifier les informations' }).click();
     await page.getByRole('dialog').getByRole('button', { name: 'Confirmer la vérification', exact: true }).click();
     await expect(page.getByText('Conforme', { exact: true })).toBeVisible();

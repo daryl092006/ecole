@@ -757,7 +757,6 @@ export default function AnnualFeesWorkspace() {
                 label: 'Valeur',
                 value: schKind === 'POURCENTAGE' ? `${schPercent}%` : money(Number(schAmount || 0)),
               },
-              { label: 'Motif', value: schReason },
             ]}
             validate={() => {
               if (!schCode.trim()) return 'Le code de la bourse est obligatoire.';
@@ -768,7 +767,6 @@ export default function AnnualFeesWorkspace() {
               if (schKind === 'MONTANT_FIXE' && (!schAmount || Number(schAmount) <= 0)) {
                 return 'Le montant fixe doit être un entier positif.';
               }
-              if (schReason.trim().length < 3) return 'Le motif doit comporter au moins 3 caractères.';
               return null;
             }}
             onConfirm={async event => {
@@ -786,7 +784,7 @@ export default function AnnualFeesWorkspace() {
                   kind: schKind,
                   percent: pct,
                   amount: amt,
-                  reason: schReason.trim(),
+                  reason: schReason.trim() || 'Création de bourse',
                 });
                 portal.refreshCampus();
                 setReloadKey(k => k + 1);
@@ -879,21 +877,6 @@ export default function AnnualFeesWorkspace() {
               </div>
             )}
 
-            <div className="form-group" style={{ marginBottom: '1rem' }}>
-              <label htmlFor="sch-reason" className="field-label">
-                Motif d’enregistrement (justification pour l’audit) *
-              </label>
-              <textarea
-                id="sch-reason"
-                className="field-input"
-                rows={2}
-                required
-                placeholder="Motif de création ou référence de la convention…"
-                value={schReason}
-                onChange={e => setSchReason(e.target.value)}
-              />
-            </div>
-
             <DrawerActions>
               <DrawerCloseButton className="btn btn-outline" onClose={closeModal}>
                 Fermer
@@ -925,12 +908,10 @@ export default function AnnualFeesWorkspace() {
                     : money(selectedScholarship.amount || 0),
                 value: schKind === 'POURCENTAGE' ? `${schPercent}%` : money(Number(schAmount || 0)),
               },
-              { label: 'Motif', value: schReason },
             ]}
             validate={() => {
               if (!schCode.trim()) return 'Le code est obligatoire.';
               if (!schName.trim()) return 'L’intitulé est obligatoire.';
-              if (schReason.trim().length < 3) return 'Le motif doit comporter au moins 3 caractères.';
               return null;
             }}
             onConfirm={async event => {
@@ -950,7 +931,7 @@ export default function AnnualFeesWorkspace() {
                   percent: pct,
                   amount: amt,
                   active: selectedScholarship.active,
-                  reason: schReason.trim(),
+                  reason: schReason.trim() || 'Modification de bourse',
                 });
                 portal.refreshCampus();
                 setReloadKey(k => k + 1);
@@ -1039,20 +1020,6 @@ export default function AnnualFeesWorkspace() {
               </div>
             )}
 
-            <div className="form-group" style={{ marginBottom: '1rem' }}>
-              <label htmlFor="edit-sch-reason" className="field-label">
-                Motif de modification *
-              </label>
-              <textarea
-                id="edit-sch-reason"
-                className="field-input"
-                rows={2}
-                required
-                value={schReason}
-                onChange={e => setSchReason(e.target.value)}
-              />
-            </div>
-
             <DrawerActions>
               <DrawerCloseButton className="btn btn-outline" onClose={closeModal}>
                 Fermer
@@ -1086,12 +1053,10 @@ export default function AnnualFeesWorkspace() {
                 value: directory.levels.find(l => l.id === feeLevelId)?.name || 'Tous les niveaux',
               },
               { label: 'Montant avant remise individuelle', value: money(Number(feeAmount || 0)) },
-              { label: 'Motif', value: feeReason },
             ]}
             validate={() => {
                 if (feeDoubleDegree && !directory.programs.some(p => p.id === feeProgramId && p.doubleDegreeEligible)) return 'Choisissez une filière éligible à la double diplomation.';
               if (!feeAmount || Number(feeAmount) <= 0) return 'Le montant doit être un entier positif.';
-              if (feeReason.trim().length < 3) return 'Le motif doit comporter au moins 3 caractères.';
               return null;
             }}
             onConfirm={async event => {
@@ -1109,7 +1074,7 @@ export default function AnnualFeesWorkspace() {
                   deliveryMode: feeMode || null,
                   doubleDegree: feeDoubleDegree,
                   amount: Number(feeAmount),
-                  reason: feeReason.trim(),
+                  reason: feeReason.trim() || 'Configuration de tarif annuel',
                 });
                 portal.refreshCampus();
                 setReloadKey(k => k + 1);
@@ -1211,21 +1176,6 @@ export default function AnnualFeesWorkspace() {
                 required
                 value={feeAmount}
                 onChange={e => setFeeAmount(e.target.value)}
-              />
-            </div>
-
-            <div className="form-group" style={{ marginBottom: '1rem' }}>
-              <label htmlFor="fee-reason" className="field-label">
-                Motif d’enregistrement *
-              </label>
-              <textarea
-                id="fee-reason"
-                className="field-input"
-                rows={2}
-                required
-                placeholder="Motif de validation du tarif…"
-                value={feeReason}
-                onChange={e => setFeeReason(e.target.value)}
               />
             </div>
 

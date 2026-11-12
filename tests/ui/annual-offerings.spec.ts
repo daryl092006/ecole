@@ -129,14 +129,14 @@ for (const width of [390, 1440]) {
     await dialog.getByRole('button', { name: 'Conserver la ligne', exact: true }).click();
     await expect(finance).toBeVisible();
     await finance.getByRole('button', { name: 'Retirer toute la ligne', exact: true }).click();
-    await dialog.getByLabel('Motif du retrait').fill('Filière non proposée cette année');
+    
     await dialog.getByRole('button', { name: 'Confirmer le retrait de toute la ligne', exact: true }).click();
     await expect(dialog.getByRole('alert')).toContainText('retrait refusé');
     await dialog.getByRole('button', { name: 'Confirmer le retrait de toute la ligne', exact: true }).click();
     await expect(finance).toHaveCount(0);
     const marketing = dialog.getByRole('row').filter({ has: page.getByText('Marketing Digital', { exact: true }) });
     await marketing.getByRole('button', { name: 'Retirer toute la ligne', exact: true }).click();
-    await dialog.getByLabel('Motif du retrait').fill('Proposition non retenue');
+    
     await dialog.getByRole('button', { name: 'Confirmer le retrait de toute la ligne', exact: true }).click();
     await expect(marketing).toHaveCount(0);
     expect(writes).toHaveLength(4);

@@ -55,14 +55,13 @@ for (const width of [360, 390, 1440]) {
     await page.getByRole('button', { name: 'Saisir ou corriger les présences', exact: true }).click();
     await dialog.getByRole('combobox', { name: 'Présence de Élise Étudiante', exact: true }).selectOption('RETARD');
     await dialog.getByLabel('Retard de Élise Étudiante (minutes)', { exact: true }).fill('12');
-    await expect(dialog.getByRole('textbox', { name: 'Motif', exact: true })).toHaveAttribute('required', '');
-    await dialog.getByRole('textbox', { name: 'Motif', exact: true }).fill('Retard vérifié avec le surveillant');
+    
     await review(dialog);
     await expect(dialog.getByText(/Avant : Présent/)).toBeVisible();
     await confirm(dialog);
     await expect(page.getByRole('cell', { name: /En retard$/ })).toBeVisible();
     expect(fixture.snapshot.tables.attendances[0].late_minutes).toBe(12);
-    expect(fixture.transactions[1][0].record.reason).toBe('Retard vérifié avec le surveillant');
+    expect(fixture.transactions[1][0].record.reason).toBe('Correction de présence');
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth + 1)).toBe(true);
   });
 
@@ -90,7 +89,7 @@ for (const width of [360, 390, 1440]) {
     const fixture = await connected(page);
     await page.getByRole('button', { name: 'Accepter', exact: true }).click();
     const dialog = page.getByRole('dialog', { name: 'Accepter le justificatif', exact: true });
-    await dialog.getByRole('textbox', { name: 'Motif', exact: true }).fill('Certificat médical vérifié');
+    
     await review(dialog);
     await expect(dialog.getByText(/dans la même transaction/)).toBeVisible();
     expect(fixture.transactions).toHaveLength(0);
@@ -106,7 +105,7 @@ test('Refuser un justificatif conserve la présence ; une erreur de sauvegarde r
   const fixture = await connected(page); fixture.failures.write = true;
   await page.getByRole('button', { name: 'Refuser', exact: true }).click();
   const dialog = page.getByRole('dialog', { name: 'Refuser le justificatif', exact: true });
-  await dialog.getByRole('textbox', { name: 'Motif', exact: true }).fill('Document insuffisant pour cette absence');
+  
   await review(dialog);
   await dialog.getByRole('button', { name: /^Confirmer :/ }).click();
   await expect(dialog.getByRole('alert')).toContainText('Aucune modification partielle');
@@ -122,11 +121,11 @@ test('Un formulaire modifié protège sa saisie et la consultation seule n’aff
   await connected(page);
   await page.getByRole('button', { name: 'Saisir ou corriger les présences', exact: true }).click();
   const dialog = page.getByRole('dialog', { name: 'Émargement des étudiants', exact: true });
-  await dialog.getByRole('textbox', { name: 'Motif', exact: true }).fill('Saisie à conserver');
+  await dialog.getByLabel('Commentaire pour Élise Étudiante', { exact: true }).fill('Saisie à conserver');
   page.once('dialog', popup => popup.dismiss());
   await page.keyboard.press('Escape');
   await expect(dialog).toBeVisible();
-  await expect(dialog.getByRole('textbox', { name: 'Motif', exact: true })).toHaveValue('Saisie à conserver');
+  await expect(dialog.getByLabel('Commentaire pour Élise Étudiante', { exact: true })).toHaveValue('Saisie à conserver');
 });
 
 test('La consultation LOG conserve les données et retire les commandes d’écriture', async ({ page }) => {
@@ -142,7 +141,7 @@ test('Une correction de statut conserve les secondes des horaires existants', as
   await page.getByRole('button', { name: 'Saisir ou corriger les présences', exact: true }).click();
   const dialog = page.getByRole('dialog', { name: 'Émargement des étudiants', exact: true });
   await dialog.getByRole('combobox', { name: 'Présence de Élise Étudiante', exact: true }).selectOption('RETARD');
-  await dialog.getByRole('textbox', { name: 'Motif', exact: true }).fill('Statut corrigé, horaire conservé');
+  
   await review(dialog); await confirm(dialog);
   expect(fixture.transactions[0][0].record.arrived_at).toBe('2026-11-01T08:00:15.000Z');
 });

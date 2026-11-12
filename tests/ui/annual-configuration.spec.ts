@@ -96,8 +96,7 @@ for (const width of [390, 1440]) test(`Les filières du groupe sont pré-cochée
   await expect(finance).not.toBeChecked();
   await expect(page.getByRole('checkbox', { checked: true })).toHaveCount(1);
   await page.getByLabel('Nom', { exact: true }).fill('L1 GROUPE MODIFIÉ');
-  const groupMotif1 = page.getByLabel('Motif', { exact: true });
-  if (await groupMotif1.count()) await groupMotif1.fill('Correction du nom du groupe');
+  
   await page.getByRole('button', { name: 'Enregistrer', exact: true }).click();
   await page.getByRole('button', { name: 'Confirmer l’enregistrement', exact: true }).click();
   await expect(page.getByRole('heading', { name: 'Préparer : Groupes · 2026-2027', exact: true })).toBeVisible();
@@ -118,8 +117,7 @@ for (const width of [390, 1440]) test(`Les filières du groupe sont pré-cochée
   await expect(page.getByRole('row').filter({ hasText: 'L1 SECOND GROUPE' })).toBeVisible();
   await page.getByRole('row').filter({ hasText: 'L1 GROUPE MODIFIÉ' }).getByRole('button', { name: 'Modifier', exact: true }).click();
   await page.getByLabel('Nom', { exact: true }).fill('L1 GROUPE FINAL');
-  const groupMotif2 = page.getByLabel('Motif', { exact: true });
-  if (await groupMotif2.count()) await groupMotif2.fill('Ajustement après consultation');
+  
   await page.getByRole('button', { name: 'Enregistrer', exact: true }).click();
   await page.getByRole('button', { name: 'Confirmer l’enregistrement', exact: true }).click();
   await expect(page.getByRole('row').filter({ hasText: 'L1 GROUPE FINAL' })).toBeVisible();

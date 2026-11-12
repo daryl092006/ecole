@@ -139,9 +139,10 @@ export default function AcademicYearsPanel({ academicYears, actorRole, onChange 
         const evaluations = portal.evaluations.filter(item => assignments.includes(item.classId)).map(item => item.id);
         if (year.status === 'EN_CLOTURE' && portal.reclamations.some(item => evaluations.includes(item.evaluationId) && item.status !== 'CLOTUREE')) throw new Error('Clôturez les réclamations en cours avant la clôture définitive.');
         const target = year.status === 'OUVERTE' ? 'EN_CLOTURE' : 'CLOTUREE';
-        const updated = transitionAcademicYear(year, target, { actor: actorRole, role: actorRole, reason: closingReason });
-        onChange(academicYears.map(item => item.id === updated.id ? updated : item)); portal.logEvent('Clôture année', JSON.stringify({ entity: year.id, oldValue: year.status, newValue: target, reason: closingReason })); setClosingId(''); setMessage('Statut de l’année mis à jour.');
+        const effectiveClosingReason = closingReason.trim() || 'Changement de statut de l’année';
+        const updated = transitionAcademicYear(year, target, { actor: actorRole, role: actorRole, reason: effectiveClosingReason });
+        onChange(academicYears.map(item => item.id === updated.id ? updated : item)); portal.logEvent('Clôture année', JSON.stringify({ entity: year.id, oldValue: year.status, newValue: target, reason: effectiveClosingReason })); setClosingId(''); setMessage('Statut de l’année mis à jour.');
       } catch (error) { setErrors({ form: error instanceof Error ? error.message : 'Clôture impossible.' }); }
-    }}><label className="form-group">Motif de clôture<textarea autoFocus required minLength={3} className="input" value={closingReason} onChange={event => setClosingReason(event.target.value)} /></label><div className="btn-group"><button className="btn btn-primary">Confirmer le changement de statut</button><IconButton type="button" className="btn btn-outline" onClick={() => setClosingId('')} label="Fermer" /></div></form>}
+    }}><div className="btn-group"><button className="btn btn-primary">Confirmer le changement de statut</button><IconButton type="button" className="btn btn-outline" onClick={() => setClosingId('')} label="Fermer" /></div></form>}
   </>;
 }

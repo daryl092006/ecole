@@ -351,8 +351,7 @@ export default function StudentOperationsPanel({
                       { label: 'Nouveau groupe', value: candidateGroups.find(g => g.id === groupId)?.name || groupId },
                       { label: 'Date d’effet', value: effectiveOn }
                     ]
-                  : [{ label: 'Nouveau statut', value: status }]),
-                ...(reason.trim() ? [{ label: 'Motif', value: reason }] : [])
+                  : [{ label: 'Nouveau statut', value: status }])
               ]}
               consequence={
                 action === 'payment'

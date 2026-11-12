@@ -56,7 +56,7 @@ export default function EmailOutboxPanel() {
     if (!selected || !canRetry || busy) return;
     setBusy(true); setSaveError('');
     try {
-      const response = await fetch('/api/email-outbox', { method: 'POST', headers: { ...await headers(), 'Content-Type': 'application/json' }, body: JSON.stringify({ id: selected.id, version: selected.version, reason }) });
+      const response = await fetch('/api/email-outbox', { method: 'POST', headers: { ...await headers(), 'Content-Type': 'application/json' }, body: JSON.stringify({ id: selected.id, version: selected.version, reason: reason.trim() || 'Nouvelle tentative d’envoi du mail' }) });
       const result = await response.json();
       if (!response.ok) throw new Error(result.error || 'Reprise impossible.');
       await portal.refreshCampus();
@@ -93,9 +93,8 @@ export default function EmailOutboxPanel() {
     {selected && <WorkPage title={retrying ? 'Reprendre un mail en échec' : 'Détail du mail'} busy={busy} onClose={() => { if (!busy) setSelected(null); }}>
       {retrying ? <ReviewedForm onConfirm={() => void retry()} busy={busy} error={saveError} fields={[
         { label: 'Destinataire', value: selected.recipient_email }, { label: 'Objet', value: selected.subject },
-        { label: 'État', previous: statuses[selected.status], value: 'En attente' }, { label: 'Motif', value: reason },
+        { label: 'État', previous: statuses[selected.status], value: 'En attente' },
       ]} consequence="Le même message sera proposé au service d’envoi. Vérifiez que la cause du refus est corrigée. Les envois incertains ne sont pas repris ici." confirmLabel="Confirmer la reprise">
-        <label className="form-group">Motif<input className="input" required minLength={3} maxLength={1000} value={reason} onChange={event => setReason(event.target.value)} /></label>
         <button className="btn btn-primary" type="submit">Vérifier la reprise</button>
       </ReviewedForm> : <>
         <dl className="record-details-grid">{[['Destinataire', selected.recipient_email], ['Objet', selected.subject], ['État', statuses[selected.status]], ['Tentatives', String(selected.attempts)], ['Année · référence', selected.academic_year_id], ['Dernière mise à jour', date(selected.updated_at)], ['Référence du service', selected.provider_reference || 'Aucune'], ['Code de suivi', selected.last_error_code || 'Aucun'], ['Motif', selected.reason]].map(([label, value]) => <div key={label}><dt>{label}</dt><dd className="audit-values">{value}</dd></div>)}</dl>

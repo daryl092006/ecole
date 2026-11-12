@@ -622,38 +622,33 @@ export default function CourseResourcesWorkspace() {
                     { label: 'Type', value: COURSE_RESOURCE_KIND_LABELS[resourceKind] },
                     { label: 'Fichier joint', value: fileName || 'Aucun fichier' },
                     { label: 'Lien URL', value: resourceUrl.trim() || 'Aucun lien externe' },
-                    { label: 'Motif', value: reason.trim() },
                   ]
                 : operation.kind === 'archive_resource'
                 ? [
                     { label: 'Support', value: operation.resource.title },
                     { label: 'Cours', value: `${operation.resource.subjectName} · ${operation.resource.groupName}` },
-                    { label: 'Motif du retrait', value: reason.trim() },
                   ]
                 : operation.kind === 'create_online_session'
                 ? [
                     { label: 'Cours', value: selectedCourse ? `${selectedCourse.subjectName} · ${selectedCourse.groupName} (${selectedCourse.teacherName})` : '' },
                     { label: 'Date & Horaires (UTC/Lomé)', value: `${sessionDate} de ${startTime} à ${endTime}` },
                     { label: 'Lien Microsoft Teams', value: resourceUrl.trim() || 'Création automatique Microsoft Teams (@escen.university)' },
-                    { label: 'Motif', value: reason.trim() },
                   ]
                 : operation.kind === 'generate_meeting_link'
                 ? [
                     { label: 'Séance en ligne', value: `${operation.session.subjectName} · ${operation.session.groupName} (${formatDate(operation.session.startsAt)})` },
                     { label: 'Lien Microsoft Teams', value: resourceUrl.trim() || 'Création automatique via Microsoft Graph (@escen.university)' },
-                    { label: 'Motif', value: reason.trim() },
                   ]
                 : [
                     { label: 'Séance en ligne', value: `${operation.session.subjectName} · ${operation.session.groupName} (${formatDate(operation.session.startsAt)})` },
                     { label: 'Lien de l’enregistrement', value: resourceUrl.trim() || 'Synchronisation automatique Microsoft Teams / OneDrive' },
-                    { label: 'Motif', value: reason.trim() },
                   ]
             }
             consequence={
               operation.kind === 'create_resource'
                 ? 'Le support sera immédiatement accessible aux étudiants inscrits dans cette classe ainsi qu’à l’équipe pédagogique.'
                 : operation.kind === 'archive_resource'
-                ? 'Le support sera archivé avec son motif et ne sera plus affiché aux étudiants.'
+                ? 'Le support sera archivé et ne sera plus affiché aux étudiants.'
                 : operation.kind === 'create_online_session'
                 ? 'La séance en ligne sera créée dans l’emploi du temps, la réunion Microsoft Teams sera automatiquement générée sur @escen.university, et les étudiants y auront accès depuis cet espace.'
                 : operation.kind === 'generate_meeting_link'
@@ -661,7 +656,6 @@ export default function CourseResourcesWorkspace() {
                 : 'L’enregistrement vidéo sera rattaché à la séance et publié automatiquement dans l’espace Supports & Replays des étudiants.'
             }
             validate={() => {
-              if (reason.trim().length < 3) return 'Renseignez un motif d’au moins 3 caractères.';
               if (operation.kind === 'create_resource') {
                 if (!assignmentId) return 'Choisissez un cours.';
                 if (title.trim().length < 2) return 'Renseignez l’intitulé du support.';
@@ -680,6 +674,7 @@ export default function CourseResourcesWorkspace() {
               event.preventDefault();
               setSaving(true);
               setSaveError('');
+              const effectiveReason = reason.trim() || 'Opération sur les supports et cours en ligne';
               const payload =
                 operation.kind === 'create_resource'
                   ? {
@@ -694,14 +689,14 @@ export default function CourseResourcesWorkspace() {
                       fileName: fileName || null,
                       mimeType: mimeType || null,
                       fileContentBase64: fileContentBase64 || null,
-                      reason: reason.trim(),
+                      reason: effectiveReason,
                     }
                   : operation.kind === 'archive_resource'
                   ? {
                       action: 'archive_resource',
                       revision: directory.revision,
                       resourceId: operation.resource.id,
-                      reason: reason.trim(),
+                      reason: effectiveReason,
                     }
                   : operation.kind === 'create_online_session'
                   ? {
@@ -711,7 +706,7 @@ export default function CourseResourcesWorkspace() {
                       startsAt: `${sessionDate}T${startTime}:00Z`,
                       endsAt: `${sessionDate}T${endTime}:00Z`,
                       customMeetingUrl: resourceUrl.trim() || null,
-                      reason: reason.trim(),
+                      reason: effectiveReason,
                     }
                   : operation.kind === 'generate_meeting_link'
                   ? {
@@ -719,14 +714,14 @@ export default function CourseResourcesWorkspace() {
                       revision: directory.revision,
                       sessionId: operation.session.id,
                       customMeetingUrl: resourceUrl.trim() || null,
-                      reason: reason.trim(),
+                      reason: effectiveReason,
                     }
                   : {
                       action: 'save_recording',
                       revision: directory.revision,
                       sessionId: operation.session.id,
                       recordingUrl: resourceUrl.trim() || null,
-                      reason: reason.trim(),
+                      reason: effectiveReason,
                     };
 
               void apiFetch(activeRole, '/api/course-resources', {
@@ -884,18 +879,6 @@ export default function CourseResourcesWorkspace() {
                 </label>
               </>
             )}
-
-            <label className="form-group">
-              Motif de l’opération
-              <input
-                className="input"
-                required
-                minLength={3}
-                maxLength={1000}
-                value={reason}
-                onChange={e => setReason(e.target.value)}
-              />
-            </label>
 
             <DrawerActions>
               <DrawerCloseButton className="btn btn-outline" disabled={saving}>Annuler</DrawerCloseButton>

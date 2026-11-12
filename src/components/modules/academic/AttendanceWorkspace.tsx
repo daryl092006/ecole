@@ -83,7 +83,6 @@ export default function AttendanceWorkspace() {
         if (draft.leftAt && (!draft.arrivedAt || draft.leftAt < draft.arrivedAt)) return `Vérifiez l’arrivée et le départ de ${student.name}.`;
       }
       if (!changed.length) return 'Renseignez ou modifiez au moins une présence.';
-      if (correcting && reason.trim().length < 3) return 'Un motif de correction de 3 à 1000 caractères est obligatoire.';
     }
     if (operation.kind === 'teacher' && teacher.leftAt && teacher.leftAt <= teacher.arrivedAt) return 'Le départ enseignant doit être postérieur à son arrivée.';
     return null;
@@ -164,8 +163,8 @@ export default function AttendanceWorkspace() {
         </div></td></tr>)}{!session.justifications.length && <tr><td colSpan={4}>Aucun justificatif enregistré pour cette séance.</td></tr>}</tbody></ResponsiveTable>
       </section>}
       {operation && <WorkPage busy={saving} title={title} onClose={() => setOperation(null)}><ReviewedForm busy={saving} error={saveError} validate={validate} confirmLabel={`Confirmer : ${title.toLocaleLowerCase('fr')}`}
-        fields={[{ label: 'Séance', value: `${session.label} · ${date(session.startsAt)}` }, ...fields, ...(operation.kind !== 'teacher' ? [{ label: 'Motif', value: reason }] : [])]}
-        consequence={operation.kind === 'students' ? 'Les présences renseignées ou modifiées seront enregistrées ensemble. Les corrections conserveront leur motif, leur auteur et les valeurs avant/après.' : operation.kind === 'teacher' ? 'Les horaires enseignants seront enregistrés pour cette séance. Leur historique et leur auteur seront conservés.' : operation.decision === 'VALIDE' ? 'Le justificatif sera accepté et l’absence ou le retard sera immédiatement justifié. La décision sera conservée.' : 'Le justificatif sera refusé avec ce motif. Le statut de présence actuel sera conservé.'}
+        fields={[{ label: 'Séance', value: `${session.label} · ${date(session.startsAt)}` }, ...fields]}
+        consequence={operation.kind === 'students' ? 'Les présences renseignées ou modifiées seront enregistrées ensemble. Les corrections conserveront leur auteur et les valeurs avant/après.' : operation.kind === 'teacher' ? 'Les horaires enseignants seront enregistrés pour cette séance. Leur historique et leur auteur seront conservés.' : operation.decision === 'VALIDE' ? 'Le justificatif sera accepté et l’absence ou le retard sera immédiatement justifié. La décision sera conservée.' : 'Le justificatif sera refusé. Le statut de présence actuel sera conservé.'}
         onConfirm={event => {
           event.preventDefault(); setSaving(true); setSaveError('');
           try {
@@ -173,7 +172,7 @@ export default function AttendanceWorkspace() {
               ...((reason.trim() || (correcting ? "Correction de présence" : "Émargement de séance")) ? { reason: reason.trim() || (correcting ? "Correction de présence" : "Émargement de séance") } : {}), entries: changed.map(student => { const draft = drafts[student.enrollmentId]; return { enrollmentId: student.enrollmentId, status: draft.status as AttendanceStatus,
                 arrivedAt: instant(draft.arrivedAt), leftAt: instant(draft.leftAt), lateMinutes: draft.lateMinutes === '' ? null : Number(draft.lateMinutes), comment: draft.comment } satisfies AttendanceEntry; }) }
               : operation.kind === 'teacher' ? { action: 'record_teacher', sessionId: session.id, revision: directory.revision, arrivedAt: instant(teacher.arrivedAt)!, leftAt: instant(teacher.leftAt), comment: teacher.comment }
-                : { action: 'review_justification', justificationId: operation.justification.id, decision: operation.decision, revision: directory.revision, reason: reason.trim() };
+                : { action: 'review_justification', justificationId: operation.justification.id, decision: operation.decision, revision: directory.revision, reason: reason.trim() || (operation.decision === 'VALIDE' ? 'Validation du justificatif d’absence' : 'Refus du justificatif d’absence') };
             void manageAttendance(activeRole, command).then(() => { setOperation(null); setSuccess('Enregistrement effectué. L’historique est conservé.'); setReload(value => value + 1); portal.refreshCampus(); })
               .catch(cause => setSaveError(cause instanceof Error ? cause.message : 'Enregistrement impossible.')).finally(() => setSaving(false));
           } catch { setSaveError('Vérifiez les dates et les valeurs saisies.'); setSaving(false); }
@@ -192,7 +191,6 @@ export default function AttendanceWorkspace() {
           })}</>}
           {operation.kind === 'teacher' && <><p>{session.teacherName}</p><label className="form-group">Arrivée enseignante<input className="input" type="datetime-local" step={1} required value={teacher.arrivedAt} onChange={event => setTeacher({ ...teacher, arrivedAt: event.target.value })} /></label><label className="form-group">Départ enseignant<input className="input" type="datetime-local" step={1} value={teacher.leftAt} onChange={event => setTeacher({ ...teacher, leftAt: event.target.value })} /></label><label className="form-group">Commentaire enseignant<textarea className="input" maxLength={4000} value={teacher.comment} onChange={event => setTeacher({ ...teacher, comment: event.target.value })} /></label></>}
           {operation.kind === 'review' && <p>{operation.justification.studentName} · {operation.justification.reason}</p>}
-          {operation.kind === 'review' && <label className="form-group">Motif de la décision<textarea className="input" minLength={3} maxLength={1000} required value={reason} onChange={event => setReason(event.target.value)} /></label>}
           <DrawerActions><button className="btn btn-primary">Vérifier les informations</button></DrawerActions>
         </fieldset>
       </ReviewedForm></WorkPage>}

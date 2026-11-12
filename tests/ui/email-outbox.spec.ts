@@ -33,7 +33,7 @@ for (const width of [390, 1440]) test(`Suivi : états, reprise relue, envoi dés
   await page.getByRole('dialog').getByRole('button', { name: 'Fermer le détail' }).click();
   await page.getByRole('button', { name: 'Réessayer l’envoi', exact: true }).click();
   const dialog = page.getByRole('dialog');
-  await dialog.getByLabel('Motif', { exact: true }).fill('Adresse expéditrice corrigée');
+  
   await dialog.getByRole('button', { name: 'Vérifier la reprise', exact: true }).click();
   expect(mutations).toHaveLength(0);
   await expect(dialog.getByText('Avant : Échec confirmé')).toBeVisible();

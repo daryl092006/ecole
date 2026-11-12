@@ -85,20 +85,20 @@ for (const width of [390, 1440]) test(`Achats : demande, décision et deux livra
     await page.getByLabel('Description de la ligne 2', { exact: true }).fill('Stylos');
     await page.getByLabel('Quantité de la ligne 2', { exact: true }).fill('2');
     await page.getByLabel('Prix unitaire FCFA de la ligne 2', { exact: true }).fill('500');
-    await page.getByLabel('Motif', { exact: true }).fill('Fournitures pour la rentrée');
+    
     await page.getByRole('button', { name: 'Vérifier les informations' }).click();
     expect(local.requests.filter((entry: { path: string; method: string }) => entry.path === '/api/purchases' && entry.method === 'POST')).toHaveLength(0);
     await page.getByRole('dialog').getByRole('button', { name: 'Enregistrer la demande', exact: true }).click();
     await expect(page.getByRole('dialog')).toHaveCount(0);
     await page.reload(); await selectIT();
     await page.getByRole('button', { name: 'Approuver', exact: true }).click();
-    await page.getByLabel('Motif', { exact: true }).fill('Budget et besoin vérifiés');
+    
     await page.getByRole('button', { name: 'Vérifier les informations' }).click();
     await page.getByRole('dialog').getByRole('button', { name: 'Approuver la demande', exact: true }).click();
     await expect(page.getByRole('dialog')).toHaveCount(0);
     await page.getByRole('button', { name: 'Réceptionner', exact: true }).click();
     await page.getByLabel('Papier · reste 3', { exact: true }).fill('1');
-    await page.getByLabel('Motif', { exact: true }).fill('Première livraison vérifiée');
+    
     await page.getByRole('button', { name: 'Vérifier les informations' }).click();
     await page.getByRole('dialog').getByRole('button', { name: 'Enregistrer la réception', exact: true }).click();
     await expect(page.getByRole('dialog')).toHaveCount(0);
@@ -106,7 +106,7 @@ for (const width of [390, 1440]) test(`Achats : demande, décision et deux livra
     await page.getByRole('button', { name: 'Réceptionner', exact: true }).click();
     await page.getByLabel('Papier · reste 2', { exact: true }).fill('2');
     await page.getByLabel('Stylos · reste 2', { exact: true }).fill('2');
-    await page.getByLabel('Motif', { exact: true }).fill('Livraison du solde vérifiée');
+    
     await page.getByRole('button', { name: 'Vérifier les informations' }).click();
     await page.getByRole('dialog').getByRole('button', { name: 'Enregistrer la réception', exact: true }).click();
     await expect(page.getByRole('dialog')).toHaveCount(0);

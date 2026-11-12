@@ -29,7 +29,7 @@ for(const width of [390,1440])for(const existing of [false,true])test(`Attributi
   const dialog=page.getByRole('dialog');
   await expect(dialog.getByRole('button',{name:'Vérifier l’attribution et le contrat'})).toBeDisabled();
   await dialog.getByLabel('Date de prise d’effet').fill('2026-10-15');
-  await dialog.getByLabel('Motif d’attribution').fill('Décision de bourse validée');
+  
   if(existing){
     await dialog.getByRole('button',{name:'Calculer l’effet financier'}).click();
     await expect(dialog.getByRole('alert')).toContainText('Décidez explicitement du cumul');

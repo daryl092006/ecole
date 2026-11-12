@@ -160,8 +160,7 @@ for (const width of [390, 1440]) test(`Cocher plusieurs filières, vérifier et 
   await finance.check();
   await expect(marketing).not.toBeChecked();
   await page.getByLabel('Montant FCFA', { exact: true }).fill('500000');
-  const feeMotif = page.getByLabel('Motif', { exact: true });
-  if (await feeMotif.count()) await feeMotif.fill('Correction du tarif existant');
+  
   await page.getByRole('button', { name: 'Enregistrer le tarif', exact: true }).click();
   await expect(review).toContainText('Le tarif existant sera mis à jour en conservant son identifiant');
   expect(f.transactions).toHaveLength(2);

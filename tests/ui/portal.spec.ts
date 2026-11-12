@@ -157,7 +157,7 @@ test(`Parcours métier complet et formulaires à ${width}px`, async ({ page }) =
   await page.getByLabel('Fichier (PDF, JPEG, PNG · 5 Mo max.)', { exact: true }).setInputFiles({ name: 'identite.pdf', mimeType: 'application/pdf', buffer: Buffer.from('%PDF-1.4 test') }); await page.getByRole('button', { name: 'Ajouter la pièce' }).click(); await expect(page.getByText('identite.pdf', { exact: true })).toBeVisible(); await captureWorkspace(page, 'parcours-documents');
   await navigate(page, 'Mon Espace', 'Tableau de bord');
   await page.getByRole('combobox', { name: 'Note concernée', exact: true }).selectOption({ index: 1 });
-  await page.getByLabel('Motif', { exact: true }).fill('Demande de vérification du barème de correction.');
+  
   await page.getByRole('button', { name: 'Déposer la réclamation', exact: true }).click();
   await expect(page.getByText('Réclamation déposée. Vous pouvez suivre son traitement ci-contre.')).toBeVisible();
   await role(page, ROLES.DA); await navigate(page, 'Académique', 'Réclamations');
@@ -185,7 +185,7 @@ test(`Parcours métier complet et formulaires à ${width}px`, async ({ page }) =
   await role(page, ROLES.LOG); await navigate(page, 'Étudiants', 'Liste des Étudiants');
   await follow(page, page.getByRole('link', { name: 'Fiche & Dossier', exact: true }));
   await page.getByRole('button', { name: 'Conforme', exact: true }).click();
-  await page.getByLabel('Motif de la vérification').fill('Pièce originale contrôlée et conforme.');
+  
   await page.getByRole('button', { name: 'Confirmer la vérification' }).click();
   await expect(page.getByText('Vérification enregistrée.', { exact: true })).toBeVisible();
   await captureWorkspace(page, 'parcours-dossier');
@@ -234,7 +234,7 @@ test(`Parcours métier complet et formulaires à ${width}px`, async ({ page }) =
   await captureWorkspace(page, 'parcours-inventaire');
   await role(page, ROLES.DG); await navigate(page, 'Finance', 'Échéanciers & Versements');
   await page.getByRole('button', { name: 'Annuler', exact: true }).click();
-  await page.getByLabel('Motif', { exact: true }).fill('Versement saisi sur une référence erronée.');
+  
   await page.getByRole('button', { name: 'Confirmer l’annulation', exact: true }).click();
   await expect(page.getByText('Paiement annulé. La transaction et son reçu sont conservés.')).toBeVisible();
   await expect(page.getByRole('row').filter({ hasText: 'CAISSE-001' })).toContainText('Ama Etudiante');
@@ -248,7 +248,7 @@ test(`Parcours métier complet et formulaires à ${width}px`, async ({ page }) =
     await openActionPanel(page, 'Mettre à jour le parcours');
     await page.getByRole('combobox', { name: 'Étudiant', exact: true }).selectOption({ index: 1 });
     await page.getByLabel('Opération').selectOption('Suspendu');
-    await page.getByLabel('Motif', { exact: true }).fill('Suspension temporaire autorisée.');
+    
     await page.getByRole('button', { name: 'Confirmer l’opération', exact: true }).click();
     await expect(page.getByRole('row').filter({ hasText: 'ETU001' })).toContainText('Suspendu');
     await role(page, ROLES.DG);
@@ -259,7 +259,7 @@ test(`Parcours métier complet et formulaires à ${width}px`, async ({ page }) =
     await openActionPanel(page, 'Mettre à jour le parcours');
     await page.getByRole('combobox', { name: 'Étudiant', exact: true }).selectOption({ index: 1 });
     await page.getByLabel('Opération').selectOption('Inscrit');
-    await page.getByLabel('Motif', { exact: true }).fill('Reprise autorisée après suspension.');
+    
     await page.getByRole('button', { name: 'Confirmer l’opération', exact: true }).click();
     await expect(page.getByRole('status')).toContainText('Le parcours a été mis à jour');
   });

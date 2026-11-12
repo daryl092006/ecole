@@ -13,9 +13,11 @@ export default function CourseAssignmentDialog({ groupId, offeringId, componentI
   groupId: string; offeringId: string; componentId: string; onClose: () => void; onSaved: (id: string) => Promise<void>;
 }) {
   const portal = usePortal();
+  const selectedYear = portal.academicYearContext?.years.find(row => row.id === portal.academicYearContext?.selectedYearId);
+  const defaultFrom = String(selectedYear?.starts_on || new Date().toISOString().slice(0, 10));
   const [directory, setDirectory] = useState<TeacherDirectory | null>(null);
   const [error, setError] = useState(''), [retry, setRetry] = useState(0), [busy, setBusy] = useState(false);
-  const [teacherId, setTeacherId] = useState(''), [from, setFrom] = useState(''), [until, setUntil] = useState('');
+  const [teacherId, setTeacherId] = useState(''), [from, setFrom] = useState(defaultFrom), [until, setUntil] = useState('');
   const [savedId, setSavedId] = useState('');
   useEffect(() => {
     const controller = new AbortController(); setError('');
@@ -29,7 +31,7 @@ export default function CourseAssignmentDialog({ groupId, offeringId, componentI
     {!directory ? error ? <div role="alert"><p>{error}</p><button className="btn btn-outline" onClick={() => setRetry(value => value + 1)}>Réessayer</button></div> : <LoadingState label="Chargement des enseignants…" /> : !valid ? <p role="alert">L’affectation n’est pas disponible pour ce groupe, cette matière ou cette année. Actualisez le planning.</p> : <ReviewedForm busy={busy} error={error} confirmLabel="Confirmer l’enseignant" fields={[
       { label: 'Groupe', value: directory.groups.find(row => row.id === groupId)?.label || '' }, { label: 'Formation', value: offering?.label || '' },
       { label: 'Matière', value: directory.components.find(row => row.id === componentId)?.label || '' }, { label: 'Enseignant', value: directory.teachers.find(row => row.id === teacherId)?.name || '' },
-      { label: 'Début', value: from }, { label: 'Fin', value: until || 'Sans date de fin' }, { label: 'Motif', value: effectiveReason },
+      { label: 'Début', value: from }, { label: 'Fin', value: until || 'Sans date de fin' },
     ]} consequence="L’enseignant sera affecté à cette matière pour ce groupe et cette formation et recevra une notification par e-mail si son adresse est renseignée. Vous pourrez ensuite choisir le créneau du cours." validate={() => until && until < from ? 'La fin doit être postérieure ou égale au début.' : null} onConfirm={() => {
       setBusy(true); setError('');
       let recorded = Boolean(savedId);

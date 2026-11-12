@@ -113,10 +113,43 @@ export function resaoSubjectContext(snapshot: RelationalSnapshot, semesterId: st
   return { semester, curriculum, cycleNumber, semesterNumber };
 }
 
-export function generateResaoSubjectCode(snapshot: RelationalSnapshot, discipline: string, semesterId: string, yearId: string): string {
+function normalizeSubjectName(name: unknown): string {
+  return String(name || '')
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toUpperCase()
+    .replace(/[^A-Z0-9]+/g, ' ')
+    .trim();
+}
+
+export function findExistingSubjectForSemester(snapshot: RelationalSnapshot, subjectName: unknown, semesterId: string, yearId: string) {
+  const normalized = normalizeSubjectName(subjectName);
+  if (!normalized || !semesterId) return undefined;
+  let context: ReturnType<typeof resaoSubjectContext>;
+  try { context = resaoSubjectContext(snapshot, semesterId); }
+  catch { return undefined; }
+  const { curriculum, cycleNumber, semesterNumber } = context;
+  const alreadyInCurriculum = new Set(
+    (snapshot.tables.curriculum_components || [])
+      .filter(row => !row.archived_at && row.curriculum_id === curriculum.id)
+      .map(row => String(row.subject_id))
+  );
+  const yearSubjects = (snapshot.tables.subjects || []).filter(
+    row => !row.archived_at && row.academic_year_id === yearId && normalizeSubjectName(row.name) === normalized && !alreadyInCurriculum.has(String(row.id))
+  );
+  const codeCycleSem = `${cycleNumber}${semesterNumber}`;
+  return yearSubjects.find(row => /^[A-Z]{3}[1-3][1-6][0-9]{2}$/.test(String(row.code || '').trim().toUpperCase()) && String(row.code || '').trim().slice(3, 5) === codeCycleSem)
+    || yearSubjects[0];
+}
+
+export function generateResaoSubjectCode(snapshot: RelationalSnapshot, discipline: string, semesterId: string, yearId: string, subjectName?: unknown): string {
   const sigle = discipline.trim().toUpperCase();
   if (!/^[A-Z]{3}$/.test(sigle)) throw new Error('Le sigle de discipline doit comporter exactement trois lettres.');
   const { semester, cycleNumber, semesterNumber } = resaoSubjectContext(snapshot, semesterId);
+  const existing = subjectName ? findExistingSubjectForSemester(snapshot, subjectName, semesterId, yearId) : undefined;
+  if (existing && /^[A-Z]{3}[1-3][1-6][0-9]{2}$/.test(String(existing.code || '').trim().toUpperCase())) {
+    return String(existing.code).trim().toUpperCase();
+  }
   const prefix = `${sigle}${cycleNumber}${semesterNumber}`;
   // Archived codes remain reserved. Never renumber an existing subject.
   const reserved = new Set([
@@ -136,12 +169,15 @@ export function resaoSubjectChanges(snapshot: RelationalSnapshot, input: unknown
   const { semester, curriculum } = resaoSubjectContext(snapshot, values.semester_id);
   const offerings = (snapshot.tables.academic_offerings || []).filter(row => row.curriculum_id === curriculum.id && !row.archived_at);
   if (offerings.some(row => row.academic_year_id !== subject.academic_year_id)) throw new Error('Ce programme est déjà utilisé dans une autre année. Choisissez un programme propre à l’année consultée.');
-  const code = generateResaoSubjectCode(snapshot, discipline, values.semester_id, String(subject.academic_year_id));
+  const existing = findExistingSubjectForSemester(snapshot, subject.name, values.semester_id, String(subject.academic_year_id));
+  const code = generateResaoSubjectCode(snapshot, discipline, values.semester_id, String(subject.academic_year_id), subject.name);
   if (subject.code && subject.code !== code) throw new Error('Le code proposé a changé. Actualisez les données avant de confirmer.');
+  const subjectId = existing ? String(existing.id) : String(subject.id);
+  if (existing) subject.id = subjectId;
   const unitId = crypto.randomUUID();
   return [
-    { table: 'subjects', operation: 'insert', record: { ...subject, code } },
+    ...(existing ? [] : [{ table: 'subjects', operation: 'insert' as const, record: { ...subject, code } }]),
     { table: 'teaching_units', operation: 'insert', record: { id: unitId, curriculum_id: curriculum.id, semester_id: semester.id, code, name: subject.name, credits: values.credits, reason: subject.reason } },
-    { table: 'curriculum_components', operation: 'insert', record: { id: crypto.randomUUID(), curriculum_id: curriculum.id, unit_id: unitId, subject_id: subject.id, code, credits: values.credits, coefficient, reason: subject.reason } },
+    { table: 'curriculum_components', operation: 'insert', record: { id: crypto.randomUUID(), curriculum_id: curriculum.id, unit_id: unitId, subject_id: subjectId, code, credits: values.credits, coefficient, reason: subject.reason } },
   ];
 }

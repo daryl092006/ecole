@@ -24,7 +24,7 @@ for (const width of [390, 1440]) {
     const select = dialog.getByRole('combobox', { name: 'Note concernée', exact: true });
     await expect(select.locator('option')).toHaveCount(2);
     await select.selectOption(gradeIds[0]);
-    await dialog.getByLabel('Motif de la réclamation').fill('Vérifier le barème de ma copie');
+    await dialog.getByLabel('Objet de la réclamation').fill('Vérifier le barème de ma copie');
     await dialog.getByRole('button', { name: 'Vérifier les informations', exact: true }).click();
     expect(fixture.transactions).toHaveLength(0);
     fixture.failNext();

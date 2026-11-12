@@ -120,7 +120,7 @@ for (const category of ['SCOLARITE', 'INSCRIPTION'] as const) for (const width o
   await expect(dialog.getByLabel('Montant FCFA', { exact: true })).toHaveValue('720000');
   await expect(dialog.getByRole('combobox', { name: 'Mode de formation (facultatif)', exact: true })).toHaveValue('En ligne');
   await dialog.getByLabel('Montant FCFA', { exact: true }).fill('730000');
-  await dialog.getByLabel('Motif', { exact: true }).fill('Ajustement du tarif de scolarité');
+  
   await dialog.getByRole('button', { name: 'Enregistrer le tarif', exact: true }).click();
   await expect(dialog.getByRole('region', { name: 'Vérification avant enregistrement' })).toContainText(/Avant : 720\s000 FCFA/);
   await dialog.getByRole('button', { name: 'Confirmer l’enregistrement', exact: true }).click();

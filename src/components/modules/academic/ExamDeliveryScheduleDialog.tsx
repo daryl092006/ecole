@@ -75,7 +75,7 @@ export default function ExamDeliveryScheduleDialog({
       ? Number(authorizedPaper.duration_minutes) || 60
       : 60
   );
-  const [reason, setReason] = useState<string>(
+  const [reason] = useState<string>(
     existingDelivery?.reason ? String(existingDelivery.reason) : ''
   );
   const [busy, setBusy] = useState(false);
@@ -116,9 +116,6 @@ export default function ExamDeliveryScheduleDialog({
     if (durationMinutes < 1) return 'La durée de composition doit être d’au moins 1 minute.';
     if ((closes - opens) < durationMinutes * 60000) {
       return 'La fenêtre d’accès doit couvrir au moins la durée allouée à l’épreuve.';
-    }
-    if (!reason.trim() || reason.trim().length < 3) {
-      return 'Un motif d’au moins 3 caractères est obligatoire pour la traçabilité.';
     }
     return null;
   };
@@ -162,7 +159,6 @@ export default function ExamDeliveryScheduleDialog({
             { label: 'Ouverture de l’accès', value: accessOpensAt ? displayTime(iso(accessOpensAt)) : '' },
             { label: 'Fermeture de l’accès', value: accessClosesAt ? displayTime(iso(accessClosesAt)) : '' },
             { label: 'Durée allouée', value: `${durationMinutes} minute(s)` },
-            { label: 'Motif', value: reason },
           ]}
           consequence={
             existingDelivery
@@ -198,7 +194,7 @@ export default function ExamDeliveryScheduleDialog({
                 accessOpensAt: iso(accessOpensAt),
                 accessClosesAt: iso(accessClosesAt),
                 durationMinutes,
-                reason: reason.trim(),
+                reason: reason.trim() || (existingDelivery ? 'Modification de la programmation de l’épreuve' : 'Programmation de l’épreuve'),
                 revision: snapshot.revision,
               });
               portal.reportActionOutcome({
@@ -327,19 +323,6 @@ export default function ExamDeliveryScheduleDialog({
                 <li><strong>Protection des contenus :</strong> Clic droit et copier-coller bloqués pour préserver l’intégrité du sujet.</li>
               </ul>
             </div>
-
-            <label className="form-group">
-              Motif de programmation ou d’ajustement
-              <textarea
-                className="input"
-                required
-                minLength={3}
-                maxLength={1000}
-                value={reason}
-                onChange={event => setReason(event.target.value)}
-                placeholder="Ex. : Programmation de l'épreuve en ligne pour la session normale..."
-              />
-            </label>
 
             <DrawerActions>
               <DrawerCloseButton className="btn btn-outline" disabled={busy}>

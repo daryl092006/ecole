@@ -38,7 +38,7 @@ for (const width of [320, 1440]) {
     await openAccountMenu(page); await page.locator('#active-role').selectOption({ label: ROLES.MKT });
     await follow(page, '/communication/annonces');
     await page.getByRole('button', { name: 'Retirer l’annonce « Information pour les étudiants »', exact: true }).click();
-    await page.getByLabel('Motif du retrait', { exact: true }).fill('Le planning a été mis à jour.');
+    
     await captureWorkspace(page, 'annonce-retrait');
     await page.getByRole('button', { name: 'Confirmer le retrait', exact: true }).click();
     await expect(page.getByRole('status')).toContainText('Annonce retirée');
