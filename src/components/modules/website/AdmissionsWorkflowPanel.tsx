@@ -178,27 +178,16 @@ export default function AdmissionsWorkflowPanel() {
       title="Étude des dossiers de candidature"
       description="Gestion centralisée, examen des pièces et validation des candidatures entrantes."
     >
-      <button
-        type="button"
-        className="btn btn-primary"
-        style={{ display: 'inline-flex', alignItems: 'center', gap: '8px' }}
-        disabled={!listed.length}
-        onClick={exportExcel}
-      >
+      {data.capabilities.review && year && <button type="button" className="btn btn-primary" onClick={() => { setError(''); setCreateToken(newToken()); }}>Saisir une candidature</button>}
+      <button type="button" className="btn btn-outline" disabled={!listed.length} onClick={exportExcel}>
         <Download size={16} aria-hidden="true" />
-        EXPORTER EN EXCEL
+        Exporter Excel
       </button>
-      <button className="btn btn-outline" disabled={busy} onClick={() => { void refresh().catch(error => setError(error.message)); }}>Actualiser les dossiers</button>
-      {data.capabilities.review && year && <button className="btn btn-outline" onClick={() => { setError(''); setCreateToken(newToken()); }}>Saisir une candidature</button>}
+      <button type="button" className="btn btn-outline" disabled={busy} onClick={() => { void refresh().catch(error => setError(error.message)); }}>Actualiser</button>
     </PageHeader>
     {error && !selected && !createToken && <p role="alert" className="restricted-box">{error}</p>}{success && <p role="status" className="success-message">{success}</p>}
-    {!data.mail_configured ? (
+    {!data.mail_configured && (
       <p className="restricted-box" role="status">Les mails sont conservés dans la file d’envoi. Le service d’envoi doit être configuré pour les transmettre.</p>
-    ) : (
-      <p className="info-box" role="status" style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '0.5rem' }}>
-        <Mail size={16} aria-hidden="true" />
-        <span><strong>Notifications e-mail actives (Microsoft 365) :</strong> chaque étape (réception, demande de rectification, transmission à l’académie, admissibilité, refus, admission officielle et identifiants étudiants) est envoyée automatiquement par mail au candidat et aux responsables concernés.</span>
-      </p>
     )}
     <div className="admissions-pills-bar" role="toolbar" aria-label="Filtrer par statut">
       {MACRO_STAGES.map(stage => {
@@ -257,7 +246,7 @@ export default function AdmissionsWorkflowPanel() {
           </select>
         </label>
       </div>
-      <label className="candidate-consent" style={{ marginBottom: '0.75rem', display: 'inline-flex' }}>
+      <label className="candidate-consent admissions-filter-toggle">
         <input type="checkbox" checked={onlyMine} onChange={event => setOnlyMine(event.target.checked)} />
         Afficher uniquement les dossiers que je peux faire avancer ({data.applications.filter(canProgress).length})
       </label>
@@ -266,12 +255,12 @@ export default function AdmissionsWorkflowPanel() {
           <ResponsiveTable className="data-table">
             <thead>
               <tr>
-                <th>CANDIDAT</th>
-                <th>NUMÉRO DE DOSSIER</th>
-                <th>FILIÈRE</th>
-                <th>NIVEAU</th>
-                <th>STATUT DOSSIER</th>
-                <th>ACTION</th>
+                <th>Candidat</th>
+                <th>Dossier</th>
+                <th>Filière</th>
+                <th>Niveau</th>
+                <th>Statut</th>
+                <th>Action</th>
               </tr>
             </thead>
             <tbody>
@@ -299,7 +288,7 @@ export default function AdmissionsWorkflowPanel() {
                       <code className="dossier-ref-badge" title={item.reference}>{shortRef}</code>
                     </td>
                     <td>{info.program}</td>
-                    <td style={{ whiteSpace: 'nowrap' }}>{info.level}</td>
+                    <td>{info.level}</td>
                     <td>
                       <span className={`pill admission-status admission-status--${badge.tone}`}>
                         {badge.label}
@@ -309,11 +298,10 @@ export default function AdmissionsWorkflowPanel() {
                       <button
                         type="button"
                         aria-label="Ouvrir le dossier"
-                        className="btn btn-primary"
-                        style={{ minHeight: '32px', padding: '4px 14px', fontSize: '0.78rem', fontWeight: 600 }}
+                        className="btn btn-sm btn-outline"
                         onClick={() => { setSelected(item); setAction(''); setError(''); setSuccess(''); }}
                       >
-                        OUVRIR
+                        Ouvrir
                       </button>
                     </td>
                   </tr>
@@ -347,7 +335,7 @@ export default function AdmissionsWorkflowPanel() {
               <span className="dossier-meta-badge"><GraduationCap size={16} aria-hidden="true" /> {selected.intake_label || 'Formation à vérifier'}</span>
               <span className="dossier-meta-badge"><Folder size={16} aria-hidden="true" /> Réf. {selected.reference}</span>
               {linkedStudent && (
-                <span className="dossier-meta-badge" style={{ background: '#ecfdf5', color: '#065f46', borderColor: '#a7f3d0' }}>
+                <span className="dossier-meta-badge dossier-meta-badge--success">
                   <UserRound size={16} aria-hidden="true" /> Matricule {linkedStudent.matricule}
                 </span>
               )}
@@ -432,11 +420,11 @@ export default function AdmissionsWorkflowPanel() {
               </div>
 
               {journey.step === 4 && (
-                <div style={{ marginTop: '1rem', background: '#ecfdf5', border: '1px solid #10b981', color: '#065f46', display: 'flex', alignItems: 'center', gap: '12px', padding: '12px 16px', borderRadius: '8px' }}>
+                <div className="dossier-enrolled-callout">
                   <CircleCheck size={20} color="#10b981" aria-hidden="true" />
                   <div>
                     <strong>Étudiant officiellement inscrit pour l’année scolaire</strong>
-                    <p style={{ margin: 0, fontSize: '0.85rem' }}>Le dossier est validé et l’inscription annuelle est active.</p>
+                    <p>Le dossier est validé et l’inscription annuelle est active.</p>
                   </div>
                 </div>
               )}
@@ -460,7 +448,7 @@ export default function AdmissionsWorkflowPanel() {
               )}
 
               {year && (actionable.some(([key]) => key === journey.primary) || actionable.some(([key]) => ['request_changes', 'refuse'].includes(key))) && (
-                <div className="dossier-action-cta" style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: '12px' }}>
+                <div className="dossier-action-cta">
                   {journey.primary && actionable.some(([key]) => key === journey.primary) && (
                     <button
                       type="button"
@@ -483,7 +471,7 @@ export default function AdmissionsWorkflowPanel() {
                     </button>
                   ))}
                   {journey.primary && actionable.some(([key]) => key === journey.primary) && (
-                    <span className="dossier-action-hint" style={{ width: '100%' }}>
+                    <span className="dossier-action-hint">
                       Action principale : <strong>{ACTION_RESULTS[journey.primary]}</strong>
                     </span>
                   )}
@@ -609,7 +597,7 @@ export default function AdmissionsWorkflowPanel() {
           ))}
         </dl>
 
-        <h3 style={{ marginTop: '1.5rem', marginBottom: '0.75rem' }}>Parents ou tuteurs</h3>
+        <h3 className="dossier-subsection-title">Parents ou tuteurs</h3>
         {selected.guardians && selected.guardians.length > 0 ? (
           <div className="dossier-guardians-grid">
             {selected.guardians.map((guardian, index) => {
@@ -665,7 +653,7 @@ export default function AdmissionsWorkflowPanel() {
         <h3>Pièces du dossier ({selected.documents.length})</h3>
         {documentError && <p role="alert" className="restricted-box">{documentError}</p>}
         {selected.documents.length ? (
-          <div className="workspace-stack" style={{ gap: '0.625rem' }}>
+          <div className="workspace-stack dossier-docs-list">
             {selected.documents.map(doc => (
               <div key={doc.id} className="dossier-doc-card">
                 <div className="dossier-doc-main">
