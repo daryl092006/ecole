@@ -739,8 +739,8 @@ export default function WorkspaceHome({ mode = 'home' }: { mode?: 'home' | 'over
     {error && <div className="review-notice" role="alert"><span>{error}</span><IconButton className="btn btn-outline" onClick={retry} label="Réessayer" /></div>}
 
     {mode === 'home' && <>
-      {renderKpiCards()}
       {renderCharts()}
+      {renderKpiCards()}
       <section className="card" aria-label="Éléments à suivre">
         <div className="card-header"><h2>À suivre</h2></div>
         {followUps.length > 0 ? <div className="home-record-counts">{followUps.map(item => <div key={item.label}><Link href={item.href}>{item.label}</Link><strong>{item.count}</strong></div>)}</div>
