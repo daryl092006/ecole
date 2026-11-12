@@ -159,6 +159,32 @@ export async function getGraphAccessToken(): Promise<string | null> {
   return data.access_token as string;
 }
 
+function nameTokens(value: string): string[] {
+  return value.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().split(/[^a-z0-9]+/).filter(t => t.length > 1);
+}
+
+/** Recherche un compte étudiant existant (nom de famille identique et au moins un prénom commun). */
+export async function findExistingStudentAccount(token: string, firstname: string, lastname: string): Promise<{ id: string; email: string } | null> {
+  const last = nameTokens(lastname);
+  const first = new Set(nameTokens(firstname));
+  if (!last.length || !first.size) return null;
+  const filter = encodeURIComponent(`startswith(surname,'${lastname.replace(/'/g, "''")}') or startswith(displayName,'${lastname.replace(/'/g, "''")}')`);
+  const res = await fetch(`https://graph.microsoft.com/v1.0/users?$filter=${filter}&$select=id,userPrincipalName,displayName,givenName,surname&$top=50`, {
+    headers: { Authorization: `Bearer ${token}` },
+  });
+  if (!res.ok) throw new Error(`Recherche de compte existant impossible (${res.status})`);
+  const body = await res.json() as { value?: Array<{ id: string; userPrincipalName: string; displayName?: string }> };
+  for (const user of body.value || []) {
+    const tokens = new Set(nameTokens(user.displayName || ''));
+    if (!last.every(t => tokens.has(t))) continue;
+    const others = [...tokens].filter(t => !last.includes(t));
+    if (others.some(t => first.has(t)) && user.userPrincipalName.endsWith('.etudiant@escen.university')) {
+      return { id: user.id, email: user.userPrincipalName };
+    }
+  }
+  return null;
+}
+
 /**
  * Provisionne un compte Microsoft 365 pour un étudiant
  * Si les clés Azure ne sont pas encore configurées, simule la réservation de l'adresse avec le statut PENDING.
@@ -189,6 +215,12 @@ export async function provisionM365Account(params: {
       status: 'PENDING',
       error: 'Identifiants Azure non configurés (AZURE_TENANT_ID, AZURE_CLIENT_ID, AZURE_CLIENT_SECRET)',
     };
+  }
+
+  // Anti-doublon : si un compte existe déjà pour ce nom de famille avec un prénom commun, on le réutilise.
+  const existing = await findExistingStudentAccount(token, params.firstname, params.lastname);
+  if (existing) {
+    return { email: existing.email, userId: existing.id, status: 'ACTIVE' };
   }
 
   const payload: M365UserPayload = {

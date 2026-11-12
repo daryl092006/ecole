@@ -16,7 +16,7 @@ import SessionRecovery from './SessionRecovery';
 export default function FirstLoginForm() {
   const portal = usePortal(); const router = useRouter();
   const [data, setData] = useState<FirstLoginPage | null>(null);
-  const [decision, setDecision] = useState<'CONFIRM' | 'REPORT'>('CONFIRM');
+  const [programAnswer, setProgramAnswer] = useState<'' | 'YES' | 'NO'>('');
   const [firstname, setFirstname] = useState('');
   const [lastname, setLastname] = useState('');
   const [address, setAddress] = useState('');
@@ -33,7 +33,7 @@ export default function FirstLoginForm() {
   const session = portal.session; const authReady = portal.authReady;
 
   useEffect(() => {
-    if (decision !== 'REPORT' || !session?.mustVerifyProfile) return;
+    if (programAnswer !== 'NO' || !session?.mustVerifyProfile) return;
     const controller = new AbortController(); setSupport(null); setSupportError('');
     void (async () => {
       const { data: auth } = await getSupabaseBrowserClient().auth.getSession();
@@ -44,7 +44,7 @@ export default function FirstLoginForm() {
       if (!controller.signal.aborted) { setSupport(result); setYearId(result.currentYearId || result.years[0]?.id || ''); }
     })().catch(cause => { if (!controller.signal.aborted) setSupportError(cause instanceof Error ? cause.message : 'Chargement impossible.'); });
     return () => controller.abort();
-  }, [decision, session?.mustVerifyProfile, session?.accountId, supportRetry]);
+  }, [programAnswer, session?.mustVerifyProfile, session?.accountId, supportRetry]);
 
   useEffect(() => {
     if (!authReady || !session) return;
@@ -81,40 +81,44 @@ export default function FirstLoginForm() {
 
   const displayBirthDate = birthDate ? new Date(birthDate + 'T00:00:00').toLocaleDateString('fr-FR') : 'À renseigner';
 
+  const hasProgram = Boolean(data.profile.programName);
+  const reportsProgram = hasProgram && programAnswer === 'NO';
+  const formatDate = (value?: string | null) => value ? new Date(value + 'T00:00:00').toLocaleDateString('fr-FR') : 'Non renseignée';
+
   const reviewFields = [
-    { label: 'Nom', previous: data.profile.lastname, value: decision === 'CONFIRM' ? lastname.trim() : data.profile.lastname },
-    { label: 'Prénoms', previous: data.profile.firstname, value: decision === 'CONFIRM' ? firstname.trim() : data.profile.firstname },
-    ...(data.profile.programName ? [{ label: 'Filière d’inscription', value: data.profile.programName }] : []),
-    { label: 'Date de naissance', previous: data.profile.birthDate ? new Date(data.profile.birthDate + 'T00:00:00').toLocaleDateString('fr-FR') : 'Non renseignée', value: decision === 'CONFIRM' ? displayBirthDate : (data.profile.birthDate ? new Date(data.profile.birthDate + 'T00:00:00').toLocaleDateString('fr-FR') : 'Non renseignée') },
+    { label: 'Nom', previous: data.profile.lastname, value: lastname.trim() },
+    { label: 'Prénoms', previous: data.profile.firstname, value: firstname.trim() },
+    { label: 'Date de naissance', previous: formatDate(data.profile.birthDate), value: displayBirthDate },
+    ...(data.profile.isTeacher ? [
+      { label: 'Nationalité', value: nationality || 'Non renseignée' },
+      ...(isTogoleseNationality(nationality) || nif.trim() ? [{ label: 'NIF', value: nif.trim() || 'Non renseigné' }] : []),
+    ] : []),
+    { label: 'Numéro de téléphone', previous: displayedPhoneNumber(data.profile.phone) || 'Non renseigné', value: displayedPhoneNumber(phone) || 'Non renseigné' },
+    { label: 'Email personnel', previous: data.profile.personalEmail || 'Non renseigné', value: personalEmail || 'Non renseigné' },
+    { label: 'Adresse géographique', previous: data.profile.address || 'Non renseignée', value: address || 'Non renseignée' },
     { label: 'Email de connexion', value: data.profile.email },
-    ...(decision === 'CONFIRM' ? [
-      ...(data.profile.isTeacher ? [
-        { label: 'Nationalité', value: nationality || 'Non renseignée' },
-        ...(isTogoleseNationality(nationality) || nif.trim() ? [{ label: 'NIF', value: nif.trim() || 'Non renseigné' }] : []),
-      ] : []),
-      { label: 'Numéro de téléphone', value: displayedPhoneNumber(phone) || 'Non renseigné' },
-      { label: 'Email personnel', value: personalEmail || 'Non renseigné' },
-      { label: 'Adresse géographique', value: address || 'Non renseignée' },
-      { label: 'Statut de vérification', value: 'Informations confirmées' },
-    ] : [
-      { label: 'Statut de vérification', value: 'Erreur administrative signalée' },
-      { label: 'Informations à corriger', value: details },
+    ...(hasProgram ? [
+      { label: 'Filière et niveau', value: data.profile.programName || '' },
+      { label: 'Filière et niveau corrects', value: reportsProgram ? 'Non — correction demandée à la scolarité' : 'Oui' },
+    ] : []),
+    ...(reportsProgram ? [
+      { label: 'Correction demandée', value: details },
       { label: 'Année du signalement', value: support?.years.find(year => year.id === yearId)?.name || '' },
-    ]),
+    ] : []),
   ];
 
   return <div className="auth-form-card first-login-card">
     <span className="auth-eyebrow">PREMIÈRE CONNEXION · ÉTAPE 2 SUR 2</span>
     <h2>Vérifiez vos informations</h2>
-    <p className="auth-form-description">Vérifiez et corrigez votre nom, vos prénoms, votre date de naissance et vos coordonnées avant de confirmer.</p>
+    <p className="auth-form-description">Corrigez si besoin vos informations personnelles, puis indiquez si votre filière et votre niveau sont corrects.</p>
     <ReviewedForm
       busy={busy}
       error={error}
       fields={reviewFields}
-      confirmLabel={decision === 'CONFIRM' ? 'Confirmer mes informations' : 'Transmettre le signalement et continuer'}
-      consequence={decision === 'CONFIRM' ? 'Votre identité et vos coordonnées seront mises à jour dans votre dossier, les changements seront tracés et votre accès sera débloqué.' : 'Une demande sera transmise au centre de support. Vos informations officielles restent inchangées jusqu’à leur correction par une personne habilitée. Vous pourrez accéder à votre tableau de bord.'}
+      confirmLabel={reportsProgram ? 'Confirmer et envoyer la demande de correction' : 'Confirmer mes informations'}
+      consequence={reportsProgram ? 'Vos informations personnelles seront enregistrées. Une demande de correction de filière ou de niveau sera envoyée à la scolarité : votre inscription reste inchangée jusqu’à sa correction par une personne habilitée. Vous accéderez ensuite à votre tableau de bord.' : 'Vos informations personnelles seront enregistrées dans votre dossier, les changements seront tracés et vous accéderez à votre tableau de bord.'}
       validate={() => {
-        if (decision === 'CONFIRM') {
+        {
           if (!firstname.trim() || !lastname.trim()) return 'Veuillez renseigner votre nom et vos prénoms.';
           if (!birthDate) return 'Veuillez renseigner votre date de naissance.';
           if (data.profile.isTeacher) {
@@ -126,8 +130,9 @@ export default function FirstLoginForm() {
           if (personalEmail.trim().toLowerCase().endsWith('@escen.university')) return 'L’adresse institutionnelle @escen.university est votre identifiant de connexion. Renseignez votre adresse personnelle externe (ex. Gmail, Yahoo).';
           if (!address.trim()) return 'Veuillez renseigner votre adresse géographique (quartier, ville, rue...).';
         }
-        if (decision === 'REPORT') {
-          if (details.trim().length < 3) return 'Décrivez les informations administratives à corriger.';
+        if (hasProgram && !programAnswer) return 'Indiquez si votre filière et votre niveau sont corrects.';
+        if (reportsProgram) {
+          if (details.trim().length < 3) return 'Décrivez la correction attendue sur votre filière ou votre niveau.';
           if (!yearId || !support?.years.some(year => year.id === yearId)) return 'Choisissez une année autorisée pour le signalement.';
         }
         return null;
@@ -141,9 +146,9 @@ export default function FirstLoginForm() {
             method: 'POST',
             headers: { Authorization: `Bearer ${auth.session.access_token}`, 'Content-Type': 'application/json' },
             body: JSON.stringify({
-              decision,
+              decision: 'CONFIRM',
               snapshot: data.snapshot,
-              ...(decision === 'CONFIRM' ? {
+              ...({
                 firstname: firstname.trim(),
                 lastname: lastname.trim(),
                 address: address.trim(),
@@ -154,7 +159,8 @@ export default function FirstLoginForm() {
                   nationality: nationality.trim(),
                   nif: nif.trim(),
                 } : {}),
-              } : { details, yearId }),
+                ...(reportsProgram ? { programIssue: { details: details.trim(), yearId } } : {}),
+              }),
             }),
           });
           const result = await response.json();
@@ -182,29 +188,9 @@ export default function FirstLoginForm() {
         </dl>
       </section>
 
-      <fieldset className="first-login-decision-fieldset">
-        <legend>Ces informations administratives sont-elles exactes ?</legend>
-        <div className="first-login-decision-grid">
-          <label className={`first-login-decision-card ${decision === 'CONFIRM' ? 'is-selected' : ''}`}>
-            <input type="radio" name="profile-decision" checked={decision === 'CONFIRM'} onChange={() => setDecision('CONFIRM')} />
-            <div>
-              <strong>Vérifier et corriger mes informations personnelles</strong>
-              <span>Je corrige directement mon identité et mes coordonnées avant de les confirmer.</span>
-            </div>
-          </label>
-          <label className={`first-login-decision-card ${decision === 'REPORT' ? 'is-selected' : ''}`}>
-            <input type="radio" name="profile-decision" checked={decision === 'REPORT'} onChange={() => setDecision('REPORT')} />
-            <div>
-              <strong>Non, je souhaite signaler une erreur administrative</strong>
-              <span>Ma filière, mon niveau ou mon dossier scolaire nécessite une intervention de la scolarité.</span>
-            </div>
-          </label>
-        </div>
-      </fieldset>
-
-      {decision === 'CONFIRM' && (
+      {(
         <fieldset className="first-login-contact-fieldset">
-          <legend>Identité et coordonnées à vérifier</legend>
+          <legend>1. Vos informations personnelles (modifiables)</legend>
           <label className="form-group">Nom<input className="input" required maxLength={160} autoComplete="family-name" value={lastname} onChange={event => setLastname(event.target.value)} /></label>
           <label className="form-group">Prénoms<input className="input" required maxLength={160} autoComplete="given-name" value={firstname} onChange={event => setFirstname(event.target.value)} /></label>
           {(
@@ -256,17 +242,30 @@ export default function FirstLoginForm() {
         </fieldset>
       )}
 
-      {decision === 'REPORT' && (
-        <fieldset className="first-login-contact-fieldset">
-          <legend>Signalement au service scolarité</legend>
-          <label className="form-group">
-            Informations à corriger
-            <textarea className="input" rows={4} required minLength={3} maxLength={1000} value={details} onChange={event => setDetails(event.target.value)} placeholder="Précisez l’erreur sur votre filière, votre niveau ou votre dossier scolaire" />
-          </label>
-          {supportError ? <div role="alert">{supportError}<button type="button" className="btn btn-outline" onClick={() => setSupportRetry(value => value + 1)}>Réessayer le chargement des années</button></div>
-            : !support ? <LoadingState compact label="Chargement…" />
-              : support.years.length === 0 ? <p role="alert">Aucune année ne vous est encore attribuée pour transmettre ce signalement. Contactez l’administration ESCEN.</p>
-                : !portal.perms.scope.ownDataOnly ? <label className="form-group">Année du signalement<select className="select-input" required value={yearId} onChange={event => setYearId(event.target.value)}><option value="">Choisir une année</option>{support.years.map(year => <option key={year.id} value={year.id}>{year.name}</option>)}</select></label> : null}
+      {hasProgram && (
+        <fieldset className="first-login-decision-fieldset">
+          <legend>2. Votre filière et votre niveau sont-ils corrects ?</legend>
+          <p className="auth-form-description">{data.profile.programName} — seule la scolarité peut les modifier.</p>
+          <div className="first-login-decision-grid">
+            <label className={`first-login-decision-card ${programAnswer === 'YES' ? 'is-selected' : ''}`}>
+              <input type="radio" name="program-answer" checked={programAnswer === 'YES'} onChange={() => setProgramAnswer('YES')} />
+              <div><strong>Oui, c’est correct</strong></div>
+            </label>
+            <label className={`first-login-decision-card ${programAnswer === 'NO' ? 'is-selected' : ''}`}>
+              <input type="radio" name="program-answer" checked={programAnswer === 'NO'} onChange={() => setProgramAnswer('NO')} />
+              <div><strong>Non, il y a une erreur</strong><span>Une demande de correction sera envoyée à la scolarité.</span></div>
+            </label>
+          </div>
+          {reportsProgram && (<>
+            <label className="form-group">
+              Quelle est la bonne filière ou le bon niveau ?
+              <textarea className="input" rows={3} required minLength={3} maxLength={1000} value={details} onChange={event => setDetails(event.target.value)} placeholder="Ex : je suis inscrit en L2 Marketing et non en L1 Finance" />
+            </label>
+            {supportError ? <div role="alert">{supportError}<button type="button" className="btn btn-outline" onClick={() => setSupportRetry(value => value + 1)}>Réessayer le chargement des années</button></div>
+              : !support ? <LoadingState compact label="Chargement…" />
+                : support.years.length === 0 ? <p role="alert">Aucune année ne vous est encore attribuée pour transmettre cette demande. Contactez l’administration ESCEN.</p>
+                  : !portal.perms.scope.ownDataOnly ? <label className="form-group">Année du signalement<select className="select-input" required value={yearId} onChange={event => setYearId(event.target.value)}><option value="">Choisir une année</option>{support.years.map(year => <option key={year.id} value={year.id}>{year.name}</option>)}</select></label> : null}
+          </>)}
         </fieldset>
       )}
 

@@ -25,6 +25,7 @@ const reviewSchema = z.discriminatedUnion('decision', [
     nationality: z.string().trim().max(160).optional(),
     nif: z.string().trim().max(80).optional(),
     gender: z.string().trim().max(40).optional(),
+    programIssue: z.object({ details: z.string().trim().min(3).max(1000), yearId: z.uuid() }).strict().optional(),
   }).strict(),
   z.object({
     decision: z.literal('REPORT'),
@@ -97,24 +98,27 @@ export async function POST(request: Request) {
     const current = await ownProfile(auth);
     if (body.snapshot !== current.snapshot) throw new RequestError(409, 'Vos informations ont changé. Actualisez cette page pour les vérifier.');
     let ticketId: string | null = null;
-    if (body.decision === 'REPORT') {
+    const reportIssue = async (issue: { details: string; yearId: string }) => {
       const result = await auth.client.rpc('escen_backend_snapshot');
       if (result.error || !result.data) throw new RequestError(503, 'Le signalement est indisponible. Réessayez.');
       const snapshot = result.data as RelationalSnapshot;
       const digest = createHash('sha256').update(`first-login:v1:${auth.context.authUserId}`).digest('hex');
       ticketId = `${digest.slice(0, 8)}-${digest.slice(8, 12)}-5${digest.slice(13, 16)}-a${digest.slice(17, 20)}-${digest.slice(20, 32)}`;
       const existing = (snapshot.tables.support_tickets || []).find(ticket => ticket.id === ticketId);
-      if (existing && (existing.author_id !== auth.context.accountId || existing.academic_year_id !== body.yearId)) throw new RequestError(409, 'Le signalement ne peut pas être confirmé pour cette année.');
+      if (existing && (existing.author_id !== auth.context.accountId || existing.academic_year_id !== issue.yearId)) throw new RequestError(409, 'Le signalement ne peut pas être confirmé pour cette année.');
       // A deterministic ID preserves the first report if Auth fails after the audited transaction.
       if (!existing) {
-        const year = await resolveAcademicYear(new Request(request.url, { headers: { 'x-escen-year': body.yearId } }), auth.client, auth.context, snapshot);
+        const year = await resolveAcademicYear(new Request(request.url, { headers: { 'x-escen-year': issue.yearId } }), auth.client, auth.context, snapshot);
         if (!year.selectedYearId) throw new RequestError(409, 'L’année de travail doit être accessible pour transmettre ce signalement. Contactez l’administration.');
         const plan = planSupportCommand(snapshot, auth.context, year.selectedYearId, { action: 'create', revision: snapshot.revision,
-          title: 'Première connexion · Informations personnelles à corriger', description: body.details,
+          title: 'Première connexion · Filière, niveau ou dossier scolaire à corriger', description: issue.details,
           categoryId: null, priority: 'MEDIUM' }, () => ticketId!);
         const saved = await auth.client.rpc('escen_backend_transaction', { p_actor_id: auth.context.accountId, p_expected_revision: snapshot.revision, p_changes: plan.changes });
         if (saved.error) throw new RequestError(409, 'Le signalement n’a pas été enregistré. Réessayez.');
       }
+    };
+    if (body.decision === 'REPORT') {
+      await reportIssue({ details: body.details, yearId: body.yearId });
     } else if (body.decision === 'CONFIRM') {
       const person = auth.profile.person;
       if (auth.profile.student && body.personalEmail) {
@@ -177,11 +181,12 @@ export async function POST(request: Request) {
         });
         if (saved.error) throw new RequestError(409, 'Vos informations n’ont pas pu être enregistrées. Réessayez.');
       }
+      if (body.programIssue) await reportIssue(body.programIssue);
     }
     const record = auth.user.app_metadata.escen_first_login || {};
     const { data, error } = await auth.client.auth.admin.updateUserById(auth.context.authUserId, {
       app_metadata: { ...auth.user.app_metadata, escen_first_login: { ...record, version: 1,
-        profile_reviewed_at: new Date().toISOString(), profile_review: body.decision, profile_snapshot: body.snapshot, ticket_id: ticketId } },
+        profile_reviewed_at: new Date().toISOString(), profile_review: body.decision === 'CONFIRM' && body.programIssue ? 'CONFIRM_WITH_REPORT' : body.decision, profile_snapshot: body.snapshot, ticket_id: ticketId } },
     });
     if (error || !data.user) throw new RequestError(503, 'La vérification n’a pas été confirmée. Réessayez.');
     invalidateAuthCache();

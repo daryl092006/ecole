@@ -169,11 +169,10 @@ for (const width of [390, 1440]) for (const decision of ['CONFIRM', 'REPORT'] as
     studentId: null, teacherId: null, matricule: null, mustChangePassword: phase === 'PASSWORD', mustVerifyProfile: phase === 'PROFILE' } }));
   await page.route('**/api/session/password', route => { phase = 'PROFILE'; return route.fulfill({ json: { updated: true, next: 'PROFILE' } }); });
   await page.route('**/api/session/first-login', route => {
-    if (route.request().method() === 'GET') return route.fulfill({ json: { profile, snapshot: 'a'.repeat(64) } });
-    expect(route.request().postDataJSON()).toMatchObject({ decision, snapshot: 'a'.repeat(64) });
+    if (route.request().method() === 'GET') return route.fulfill({ json: { profile: decision === 'REPORT' ? { ...profile, personalEmail: 'alice@gmail.test', programName: 'Licence Marketing — L1' } : { ...profile, personalEmail: 'alice@gmail.test' }, snapshot: 'a'.repeat(64) } });
+    expect(route.request().postDataJSON()).toMatchObject({ decision: 'CONFIRM', snapshot: 'a'.repeat(64) });
     if (decision === 'CONFIRM') expect(route.request().postDataJSON()).toMatchObject({ firstname: 'Alice Marie', lastname: 'Exemple corrigé', birthDate: '2001-02-03' });
-    if (decision === 'REPORT') expect(route.request().postDataJSON().details).toBe('Mon numéro doit être corrigé.');
-    if (decision === 'REPORT') expect(route.request().postDataJSON().yearId).toBe(securityIds.year);
+    if (decision === 'REPORT') expect(route.request().postDataJSON().programIssue).toEqual({ details: 'Je suis en L2 Marketing.', yearId: securityIds.year });
     phase = 'DONE'; saved++; return route.fulfill({ json: { updated: true, ticketId: null } });
   });
   await page.route('**/api/session/first-login?*', route => route.fulfill({ json: { years: [{ id: securityIds.year, name: '2026-2027' }], currentYearId: securityIds.year } }));
@@ -186,8 +185,8 @@ for (const width of [390, 1440]) for (const decision of ['CONFIRM', 'REPORT'] as
   await expect(page.getByText('Alice', { exact: true })).toBeVisible();
   await expect(page.locator('#main-content')).toHaveCount(0);
   if (decision === 'REPORT') {
-    await page.getByLabel('Non, je souhaite signaler une erreur').check();
-    await page.getByLabel('Informations à corriger', { exact: true }).fill('Mon numéro doit être corrigé.');
+    await page.getByLabel('Non, il y a une erreur').check();
+    await page.getByLabel('Quelle est la bonne filière ou le bon niveau ?', { exact: true }).fill('Je suis en L2 Marketing.');
     await page.getByRole('combobox', { name: 'Année du signalement', exact: true }).selectOption(securityIds.year);
   } else {
     await page.getByLabel('Nom', { exact: true }).fill('Exemple corrigé');
@@ -203,7 +202,7 @@ for (const width of [390, 1440]) for (const decision of ['CONFIRM', 'REPORT'] as
     await expect(page.getByRole('region', { name: 'Vérification avant enregistrement' })).toContainText('Avant : Alice');
     await expect(page.getByRole('region', { name: 'Vérification avant enregistrement' })).toContainText('03/02/2001');
   }
-  await page.getByRole('button', { name: decision === 'CONFIRM' ? 'Confirmer mes informations' : 'Transmettre le signalement et continuer', exact: true }).click();
+  await page.getByRole('button', { name: decision === 'CONFIRM' ? 'Confirmer mes informations' : 'Confirmer et envoyer la demande de correction', exact: true }).click();
   await expect(page).toHaveURL(/mon-espace$/); await expect(page.locator('#main-content')).toBeVisible();
   expect(saved).toBe(1);
 });
