@@ -327,10 +327,11 @@ export default function GroupsWorkspace() {
         <section className="card card-full" aria-label="Liste des classes de l'établissement">
           {/* Onglets supérieurs de sélection de vue */}
           <div className="card-header" style={{ borderBottom: '1px solid var(--border-color, #e2e8f0)', paddingBottom: '12px' }}>
-            <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+            <div className="btn-group" role="group" aria-label="Vue des classes et des étudiants non affectés">
               <button
                 type="button"
                 className={`btn ${activeTab === 'classes' ? 'btn-primary' : 'btn-outline'}`}
+                aria-pressed={activeTab === 'classes'}
                 onClick={() => setActiveTab('classes')}
               >
                 Toutes les classes ({yearGroups.length})
@@ -338,6 +339,7 @@ export default function GroupsWorkspace() {
               <button
                 type="button"
                 className={`btn ${activeTab === 'unassigned' ? 'btn-primary' : 'btn-outline'}`}
+                aria-pressed={activeTab === 'unassigned'}
                 onClick={() => setActiveTab('unassigned')}
                 style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}
               >
