@@ -9,16 +9,14 @@ export function admissionsJourney(application: AdmissionApplication): { step: nu
     }
     return application.status === 'BROUILLON'
       ? { step: 0, owner: 'Candidat', instruction: 'Le candidat doit terminer et envoyer sa candidature. Ce brouillon ne peut pas être traité.', primary: null }
-      : { step: 0, owner: 'Chargé de clientèle', instruction: 'Dossier en cours d’étude.', primary: 'review' };
+      : { step: 0, owner: 'Chargé de clientèle', instruction: 'Vérifiez les informations et les pièces déposées : transmettez directement le dossier à l’académie ou demandez une rectification au candidat.', primary: 'transmit' };
   }
   switch (application.workflow_stage) {
-    case 'NOUVELLE': case 'RECUE': return { step: 0, owner: 'Chargé de clientèle', instruction: 'Ouvrir la vérification, contrôler les informations et les pièces, puis valider le dossier ou demander un complément.', primary: 'review' };
-    case 'VERIFICATION_ADMISSION': return { step: 0, owner: 'Chargé de clientèle', instruction: 'Contrôler l’identité, les tuteurs et chaque pièce obligatoire avant de valider la complétude.', primary: 'complete' };
-    case 'INCOMPLET': case 'A_COMPLETER': return { step: 0, owner: 'Candidat · suivi par le chargé de clientèle', instruction: 'Le candidat doit compléter son dossier depuis son espace personnel. Vous pouvez tracer une relance ou reprendre la vérification si les éléments sont disponibles.', primary: 'review' };
-    case 'COMPLET': return { step: 1, owner: 'Chargé de clientèle', instruction: 'Le contrôle est terminé. Transmettre le dossier à la direction académique pour qu’elle puisse prendre sa décision.', primary: 'transmit' };
-    case 'TRANSMIS_ACADEMIE': return { step: 1, owner: 'Direction académique', instruction: 'Prendre en charge le dossier transmis, puis examiner la candidature avant de décider.', primary: 'study' };
-    case 'ETUDE_ACADEMIQUE': return { step: 1, owner: 'Direction académique', instruction: 'Examiner le dossier puis prononcer l’admissibilité ou un refus motivé. L’admissibilité ouvre le règlement des frais ; elle ne vaut pas admission officielle.', primary: 'admissible' };
-    case 'ADMISSIBLE': case 'ATTENTE_PAIEMENT': return { step: 2, owner: 'Chargé de clientèle', instruction: 'Indiquer le montant réellement reçu, le moyen de paiement et la référence du reçu. Un paiement partiel conserve l’attente ; le solde intégral déclenche l’admission officielle.', primary: 'confirm_payment' };
+    case 'NOUVELLE': case 'RECUE': case 'VERIFICATION_ADMISSION': return { step: 0, owner: 'Chargé de clientèle', instruction: 'Vérifiez les informations et les pièces déposées : transmettez directement le dossier à l’académie s’il est conforme, ou demandez une rectification / un complément au candidat.', primary: 'transmit' };
+    case 'INCOMPLET': case 'A_COMPLETER': return { step: 0, owner: 'Candidat · suivi par le chargé de clientèle', instruction: 'En attente de rectification par le candidat dans son espace personnel. Dès que les éléments sont conformes, vous pouvez transmettre le dossier à l’académie ou renvoyer une nouvelle demande de rectification.', primary: 'transmit' };
+    case 'COMPLET': return { step: 1, owner: 'Chargé de clientèle', instruction: 'Le contrôle est validé. Transmettez le dossier à la direction académique pour décision.', primary: 'transmit' };
+    case 'TRANSMIS_ACADEMIE': case 'ETUDE_ACADEMIQUE': return { step: 1, owner: 'Direction académique', instruction: 'Examinez le dossier du candidat puis prononcez directement l’admissibilité (qui débloque le paiement des frais d’inscription) ou un refus motivé.', primary: 'admissible' };
+    case 'ADMISSIBLE': case 'ATTENTE_PAIEMENT': return { step: 2, owner: 'Chargé de clientèle', instruction: 'Saisissez le montant reçu, le moyen de paiement et la référence du reçu. Dès que les frais d’inscription sont soldés, l’admission devient officielle et le dossier étudiant (matricule, Microsoft 365, portail) est créé automatiquement.', primary: 'confirm_payment' };
     case 'ADMIS_OFFICIEL':
       if (!application.student_id) {
         return {

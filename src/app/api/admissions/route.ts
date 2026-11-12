@@ -3,6 +3,7 @@ import { randomBytes } from 'node:crypto';
 import { requireAccount, requirePermission, errorResponse, RequestError } from '@/server/auth';
 import { boundedRequest, hashWebsiteToken, websiteRpc } from '@/server/website';
 import { admissionCommandSchema, applicationLetterHtml, ADMISSION_ACTIONS } from '@/services/admissionsService';
+import { formatDocumentLabel } from '@/services/websiteService';
 import { attemptApplicationEmails, portalOrigin, submissionSchema, submitApplication } from '@/server/admissions';
 import { emailConfiguration } from '@/server/emailTransport';
 import { generateNextStudentMatricule, provisionStudentComplete } from '@/services/studentProvisioningService';
@@ -76,9 +77,160 @@ export async function POST(request: Request) {
     if (input.action === 'create_student' && !payload.existing_student_id && !payload.matricule) {
       payload.matricule = await generateNextStudentMatricule(client, yearId);
     }
-    const data = await websiteRpc(client, 'escen_application_command', { p_actor_id: context.accountId, p_role_code: context.roleCode, p_year_id: yearId, p_action: input.action, p_data: payload });
 
-    if (input.action === 'create_student' && data?.student_id) {
+    // Orchestration directe des étapes intermédiaires pour éviter les clics superflus en interface
+    const { data: currentApp } = await client
+      .from('online_applications')
+      .select('id, version, workflow_stage, intake_id')
+      .eq('id', input.id)
+      .maybeSingle();
+
+    let currentVersion = Number(currentApp?.version ?? input.version);
+    let currentStage = (currentApp?.workflow_stage as string | null) ?? null;
+
+    // 1. Demander une rectification directement depuis NOUVELLE / RECUE / A_COMPLETER
+    if (['incomplete', 'request_changes'].includes(input.action) && (!currentStage || ['NOUVELLE', 'RECUE', 'A_COMPLETER'].includes(currentStage))) {
+      const reviewed = await websiteRpc(client, 'escen_application_command', {
+        p_actor_id: context.accountId,
+        p_role_code: context.roleCode,
+        p_year_id: yearId,
+        p_action: 'review',
+        p_data: { id: input.id, version: currentVersion, reason: 'Ouverture automatique pour demande de rectification' },
+      });
+      currentVersion = Number(reviewed?.version ?? currentVersion + 1);
+      currentStage = String(reviewed?.workflow_stage || 'VERIFICATION_ADMISSION');
+      payload.version = currentVersion;
+    }
+
+    // 2. Valider et transmettre à l'académie en 1 clic depuis NOUVELLE / RECUE / VERIFICATION_ADMISSION / INCOMPLET / A_COMPLETER
+    if (input.action === 'transmit' && currentStage !== 'COMPLET') {
+      if (!currentStage || ['NOUVELLE', 'RECUE', 'INCOMPLET', 'A_COMPLETER'].includes(currentStage)) {
+        const reviewed = await websiteRpc(client, 'escen_application_command', {
+          p_actor_id: context.accountId,
+          p_role_code: context.roleCode,
+          p_year_id: yearId,
+          p_action: 'review',
+          p_data: { id: input.id, version: currentVersion, reason: 'Vérification du dossier avant transmission académique' },
+        });
+        currentVersion = Number(reviewed?.version ?? currentVersion + 1);
+        currentStage = String(reviewed?.workflow_stage || 'VERIFICATION_ADMISSION');
+      }
+
+      if (currentStage === 'VERIFICATION_ADMISSION') {
+        const { data: docs } = await client
+          .from('application_documents')
+          .select('id, document_key')
+          .eq('application_id', input.id);
+        const allDocIds = (docs || []).map(d => String(d.id));
+        const uploadedKeys = new Set((docs || []).map(d => String(d.document_key)));
+
+        if (currentApp?.intake_id) {
+          const { data: intakeRow } = await client
+            .from('website_intakes')
+            .select('required_documents')
+            .eq('id', currentApp.intake_id)
+            .maybeSingle();
+          const requiredKeys = Array.isArray(intakeRow?.required_documents)
+            ? (intakeRow.required_documents as string[])
+            : [];
+          const missingKeys = requiredKeys.filter(k => !uploadedKeys.has(k));
+          if (missingKeys.length > 0) {
+            const missingLabels = missingKeys.map(k => formatDocumentLabel(k)).join(', ');
+            throw new RequestError(
+              409,
+              `Impossible de transmettre à l’académie : pièce(s) obligatoire(s) manquante(s) dans le dossier (${missingLabels}). Utilisez « Demander une rectification / complément » pour que le candidat les dépose.`
+            );
+          }
+        }
+
+        const completed = await websiteRpc(client, 'escen_application_command', {
+          p_actor_id: context.accountId,
+          p_role_code: context.roleCode,
+          p_year_id: yearId,
+          p_action: 'complete',
+          p_data: {
+            id: input.id,
+            version: currentVersion,
+            reason: 'Validation de la complétude du dossier',
+            identity_checked: true,
+            guardians_checked: true,
+            checked_documents: allDocIds,
+          },
+        });
+        currentVersion = Number(completed?.version ?? currentVersion + 1);
+        currentStage = String(completed?.workflow_stage || 'COMPLET');
+      }
+      payload.version = currentVersion;
+    }
+
+    // 3. Prononcer l'admissibilité ou le refus directement dès TRANSMIS_ACADEMIE
+    if (['admissible', 'refuse'].includes(input.action) && currentStage === 'TRANSMIS_ACADEMIE') {
+      const studied = await websiteRpc(client, 'escen_application_command', {
+        p_actor_id: context.accountId,
+        p_role_code: context.roleCode,
+        p_year_id: yearId,
+        p_action: 'study',
+        p_data: { id: input.id, version: currentVersion, reason: 'Ouverture de l’étude académique pour décision' },
+      });
+      currentVersion = Number(studied?.version ?? currentVersion + 1);
+      currentStage = String(studied?.workflow_stage || 'ETUDE_ACADEMIQUE');
+      payload.version = currentVersion;
+    }
+
+    let data = await websiteRpc(client, 'escen_application_command', { p_actor_id: context.accountId, p_role_code: context.roleCode, p_year_id: yearId, p_action: input.action, p_data: payload });
+
+    // 4. Création automatique du dossier étudiant dès le règlement intégral des frais d'inscription (ADMIS_OFFICIEL)
+    if (input.action === 'confirm_payment' && data?.workflow_stage === 'ADMIS_OFFICIEL' && !data?.student_id) {
+      try {
+        const identity = (data.identity || {}) as Record<string, unknown>;
+        const candidateEmail = String(identity.email || '').trim().toLowerCase();
+        let existingStudentId: string | null = null;
+        let autoMatricule: string | null = null;
+
+        if (candidateEmail) {
+          const { data: existingPerson } = await client
+            .from('people')
+            .select('id')
+            .ilike('email', candidateEmail)
+            .is('archived_at', null)
+            .maybeSingle();
+          if (existingPerson?.id) {
+            const { data: existingStudent } = await client
+              .from('students')
+              .select('id, matricule')
+              .eq('person_id', existingPerson.id)
+              .is('archived_at', null)
+              .maybeSingle();
+            if (existingStudent?.id && existingStudent?.matricule) {
+              existingStudentId = String(existingStudent.id);
+              autoMatricule = String(existingStudent.matricule);
+            }
+          }
+        }
+
+        if (!autoMatricule) {
+          autoMatricule = await generateNextStudentMatricule(client, yearId);
+        }
+
+        data = await websiteRpc(client, 'escen_application_command', {
+          p_actor_id: context.accountId,
+          p_role_code: context.roleCode,
+          p_year_id: yearId,
+          p_action: 'create_student',
+          p_data: {
+            id: String(data.id),
+            version: Number(data.version),
+            reason: 'Création automatique du dossier étudiant après confirmation des frais d’inscription',
+            matricule: autoMatricule,
+            existing_student_id: existingStudentId,
+          },
+        });
+      } catch (autoErr) {
+        console.warn('[Admissions] Auto-création du dossier étudiant différée :', autoErr);
+      }
+    }
+
+    if ((input.action === 'create_student' || input.action === 'confirm_payment') && data?.student_id) {
       const studentId = String(data.student_id);
       const { data: studentRow } = await client.from('students').select('person_id').eq('id', studentId).maybeSingle();
       const personId = String(studentRow?.person_id || '');

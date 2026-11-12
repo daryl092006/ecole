@@ -23,9 +23,9 @@ import PageHeader from '@/components/ui/PageHeader';
 
 const ACTION_RESULTS: Record<AdmissionAction, string> = {
   acknowledge: 'Candidature reçue', review: 'En vérification admission', incomplete: 'Dossier incomplet',
-  request_changes: 'Dossier à compléter', complete: 'Dossier complet', transmit: 'Transmis à l’académie',
-  study: 'En étude académique', admissible: 'Admissible, sous réserve des frais d’inscription', refuse: 'Refusé',
-  await_payment: 'En attente de paiement', confirm_payment: 'Admis officiellement si le solde est réglé ; sinon en attente de paiement',
+  request_changes: 'Dossier à compléter (notification et lien envoyés au candidat)', complete: 'Dossier complet', transmit: 'Transmis à l’académie pour décision',
+  study: 'En étude académique', admissible: 'Admissible (frais d’inscription ouverts et lettre d’admissibilité envoyée)', refuse: 'Candidature refusée (lettre de refus envoyée)',
+  await_payment: 'En attente de paiement', confirm_payment: 'Admis officiellement et dossier étudiant créé automatiquement (si solde réglé) ; sinon en attente de paiement',
   reverse_payment: 'En attente de paiement', contact: 'Statut conservé ; appel ajouté à l’historique',
   create_student: 'Admission conservée ; dossier étudiant créé ou relié',
 };
@@ -100,12 +100,14 @@ export default function AdmissionsWorkflowPanel() {
     return () => controller.abort();
   }, [refresh, year, retry]);
   function chooseAction(value: AdmissionAction) {
-    const requiresReason = ['incomplete', 'request_changes'].includes(value);
+    const requiresReason = ['incomplete', 'request_changes', 'refuse', 'contact'].includes(value);
     setAction(value);
     setReason(requiresReason ? '' : ADMISSION_ACTIONS[value].label);
-    setChecks([]); setIdentityChecked(false); setGuardiansChecked(false);
+    setChecks((selected?.documents || []).map(d => d.id));
+    setIdentityChecked(true);
+    setGuardiansChecked(true);
     setAmount(String(Math.max(0, Number(selected?.registration_fee_due || 0) - Number(selected?.registration_fee_paid || 0))));
-    setReference(''); setPaymentId(''); setChannel(''); setStudent(selected?.legacy_student_id || ''); setMatricule(''); setError('');
+    setReference(''); setPaymentId(''); setChannel(data?.payment_channels?.[0]?.id || ''); setStudent(selected?.legacy_student_id || ''); setMatricule(''); setError('');
   }
   useEffect(() => { if (action) document.getElementById('admissions-action-form')?.scrollIntoView({ behavior: 'smooth', block: 'start' }); }, [action]);
   async function saved() { await Promise.all([portal.refreshCampus(),refresh()]); window.dispatchEvent(new Event('escen:admissions-changed')); }
@@ -148,7 +150,7 @@ export default function AdmissionsWorkflowPanel() {
   });
   const actionable = selected ? (Object.entries(ADMISSION_ACTIONS) as [AdmissionAction, typeof ADMISSION_ACTIONS[AdmissionAction]][]).filter(([key, value]) => data.capabilities[value.capability] && value.from.includes(selected.workflow_stage) && (key !== 'create_student' || !selected.student_id) && (key !== 'review' || selected.status !== 'BROUILLON')) : [];
   const identityRows = selected ? formatCandidateIdentity(selected.identity) : [];
-  const needsActionReason = Boolean(action && ['incomplete', 'request_changes'].includes(action));
+  const needsActionReason = Boolean(action && ['incomplete', 'request_changes', 'refuse', 'contact'].includes(action));
 
   function exportExcel() {
     if (!data || !listed.length) return;
@@ -450,44 +452,42 @@ export default function AdmissionsWorkflowPanel() {
                 </div>
               )}
 
-              {year && actionable.some(([key]) => key === journey.primary) && journey.primary && (
-                <div className="dossier-action-cta">
-                  <button
-                    className="btn btn-primary"
-                    disabled={busy}
-                    onClick={() => chooseAction(journey.primary!)}
-                  >
-                    {ADMISSION_ACTIONS[journey.primary].label}
-                  </button>
-                  <span className="dossier-action-hint">
-                    Après confirmation : <strong>{ACTION_RESULTS[journey.primary]}</strong>
-                  </span>
+              {year && (actionable.some(([key]) => key === journey.primary) || actionable.some(([key]) => ['request_changes', 'refuse'].includes(key))) && (
+                <div className="dossier-action-cta" style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: '12px' }}>
+                  {journey.primary && actionable.some(([key]) => key === journey.primary) && (
+                    <button
+                      type="button"
+                      className="btn btn-primary"
+                      disabled={busy}
+                      onClick={() => chooseAction(journey.primary!)}
+                    >
+                      {ADMISSION_ACTIONS[journey.primary].label}
+                    </button>
+                  )}
+                  {actionable.filter(([key]) => ['request_changes', 'refuse'].includes(key)).map(([key, value]) => (
+                    <button
+                      key={key}
+                      type="button"
+                      className={`btn ${key === 'refuse' ? 'btn-danger' : 'btn-outline'}`}
+                      disabled={busy}
+                      onClick={() => chooseAction(key)}
+                    >
+                      {value.label}
+                    </button>
+                  ))}
+                  {journey.primary && actionable.some(([key]) => key === journey.primary) && (
+                    <span className="dossier-action-hint" style={{ width: '100%' }}>
+                      Action principale : <strong>{ACTION_RESULTS[journey.primary]}</strong>
+                    </span>
+                  )}
                 </div>
               )}
 
-              {year && actionable.some(([key]) => ['request_changes', 'refuse'].includes(key)) && (
-                <div className="dossier-secondary-actions">
-                  <span className="dossier-secondary-title">Actions secondaires :</span>
-                  <div className="btn-group">
-                    {actionable.filter(([key]) => ['request_changes', 'refuse'].includes(key)).map(([key, value]) => (
-                      <button
-                        key={key}
-                        className={`btn btn-sm ${key === 'refuse' ? 'btn-danger' : 'btn-outline'}`}
-                        disabled={busy}
-                        onClick={() => chooseAction(key)}
-                      >
-                        {value.label}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-              )}
-
-              {year && actionable.some(([key]) => key !== journey.primary && !['acknowledge', 'await_payment', 'incomplete', 'request_changes', 'refuse'].includes(key)) && (
+              {year && actionable.some(([key]) => key !== journey.primary && !['acknowledge', 'review', 'complete', 'study', 'await_payment', 'incomplete', 'request_changes', 'refuse'].includes(key)) && (
                 <details className="admissions-other-actions">
-                  <summary>Autres actions : compléments, décision ou correction</summary>
+                  <summary>Autres actions complémentaires</summary>
                   <div className="admission-actions">
-                    {actionable.filter(([key]) => key !== journey.primary && !['acknowledge', 'await_payment', 'incomplete', 'request_changes', 'refuse'].includes(key)).map(([key, value]) => (
+                    {actionable.filter(([key]) => key !== journey.primary && !['acknowledge', 'review', 'complete', 'study', 'await_payment', 'incomplete', 'request_changes', 'refuse'].includes(key)).map(([key, value]) => (
                       <div className="admission-action" key={key}>
                         <button className="btn btn-outline" disabled={busy} onClick={() => chooseAction(key)}>
                           {value.label}
@@ -554,17 +554,17 @@ export default function AdmissionsWorkflowPanel() {
       </div>
 
       {enrollingMatricule && <EnrollmentDialog kind="auto" initialMatricule={enrollingMatricule} onClose={() => { setEnrollingMatricule(null); void saved(); }} />}
-      {action && <section id="admissions-action-form" className="card admissions-action-form"><button type="button" className="btn btn-outline" disabled={busy} onClick={() => setAction('')}>Annuler cette action</button><h2>{ADMISSION_ACTIONS[action].label}</h2><ReviewedForm key={`${selected.id}:${selected.version}:${action}`} busy={busy} error={error} confirmLabel={`Confirmer : ${ADMISSION_ACTIONS[action].label.toLocaleLowerCase('fr')}`} validate={() => needsActionReason && reason.trim().length < 3 ? 'Précisez les informations ou pièces à compléter.' : action === 'complete' && (!identityChecked || !guardiansChecked) ? 'Confirmez les contrôles des informations et des tuteurs.' : null}
-        fields={[{label:'Candidat',value:`${selected.identity.prenom} ${selected.identity.nom}`},{label:'Action',value:ADMISSION_ACTIONS[action].label},{label:'Étape du dossier',previous:stageLabel(selected),value:ACTION_RESULTS[action]},...(needsActionReason ? [{label:'Informations ou pièces à compléter',value:reason}] : []),
+      {action && <section id="admissions-action-form" className="card admissions-action-form"><button type="button" className="btn btn-outline" disabled={busy} onClick={() => setAction('')}>Annuler cette action</button><h2>{ADMISSION_ACTIONS[action].label}</h2><ReviewedForm key={`${selected.id}:${selected.version}:${action}`} busy={busy} error={error} confirmLabel={`Confirmer : ${ADMISSION_ACTIONS[action].label.toLocaleLowerCase('fr')}`} validate={() => needsActionReason && reason.trim().length < 3 ? (action === 'refuse' ? 'Précisez le motif du refus (au moins 3 caractères).' : action === 'contact' ? 'Précisez le compte-rendu de l’appel (au moins 3 caractères).' : 'Précisez les informations ou pièces à rectifier / compléter.') : action === 'complete' && (!identityChecked || !guardiansChecked) ? 'Confirmez les contrôles des informations et des tuteurs.' : null}
+        fields={[{label:'Candidat',value:`${selected.identity.prenom} ${selected.identity.nom}`},{label:'Action',value:ADMISSION_ACTIONS[action].label},{label:'Étape du dossier',previous:stageLabel(selected),value:ACTION_RESULTS[action]},...(needsActionReason ? [{label:action === 'refuse' ? 'Motif du refus' : action === 'contact' ? 'Compte-rendu de l’appel' : 'Éléments à rectifier ou compléter par le candidat',value:reason}] : []),
           ...(action === 'confirm_payment' ? [{label:'Montant confirmé',value:`${Number(amount).toLocaleString('fr-FR')} FCFA`},{label:'Référence',value:reference},{label:'Moyen de paiement',value:data.payment_channels.find(item => item.id === channel)?.name || ''}] : []),
           ...(action === 'complete' ? [{label:'Pièces contrôlées',value:checks.map(id => selected.documents.find(doc => doc.id === id)?.filename || '').join(', ')}] : []),
           ...(action === 'create_student' ? [{label:'Matricule',value:matricule || 'Généré automatiquement (xxx-ESC-2026)'},{label:'Dossier étudiant',value:student ? 'Dossier existant sélectionné' : 'Nouveau dossier (création M365, portail et inscription)'}] : [])]}
-        consequence={action === 'confirm_payment' ? 'Confirmez uniquement un règlement effectivement reçu. L’admission devient officielle lorsque la totalité des frais d’inscription est confirmée.' : action === 'reverse_payment' ? 'Une contre-opération sera conservée. Le dossier reviendra en attente de paiement ; l’identité étudiante existante sera conservée.' : action === 'transmit' ? 'Le dossier complet sera transmis à l’académie. Le candidat et l’académie seront informés.' : action === 'admissible' ? 'Une lettre d’admissibilité sera créée et mise en envoi, sous réserve du règlement des frais d’inscription. Cette décision ne confirme aucun paiement.' : action === 'refuse' ? 'La décision de refus et sa lettre seront conservées et communiquées au candidat.' : action === 'create_student' ? 'Le dossier étudiant officiel sera créé avec un matricule automatique. Ses accès Microsoft 365, son compte portail, son affectation et le transfert de ses pièces justificatives seront réalisés automatiquement.' : 'L’action sera enregistrée dans l’historique et les notifications prévues seront préparées.'} onConfirm={() => void command()}>
+        consequence={action === 'confirm_payment' ? 'Confirmez uniquement un règlement effectivement reçu. Dès que la totalité des frais d’inscription est confirmée, l’admission devient officielle et le dossier étudiant (matricule, Microsoft 365, portail) est créé automatiquement.' : action === 'reverse_payment' ? 'Une contre-opération sera conservée. Le dossier reviendra en attente de paiement ; l’identité étudiante existante sera conservée.' : action === 'transmit' ? 'Le dossier sera validé et transmis directement à l’académie pour décision. Le candidat et la direction académique seront notifiés.' : action === 'admissible' ? 'Une lettre d’admissibilité sera générée et envoyée au candidat, ce qui débloque l’étape de règlement des frais d’inscription.' : action === 'refuse' ? 'La décision de refus et la lettre officielle seront enregistrées et envoyées au candidat.' : action === 'create_student' ? 'Le dossier étudiant officiel sera créé avec un matricule automatique. Ses accès Microsoft 365, son compte portail, son affectation et le transfert de ses pièces justificatives seront réalisés automatiquement.' : 'L’action sera enregistrée dans l’historique et les notifications prévues seront envoyées au candidat.'} onConfirm={() => void command()}>
         {action === 'complete' && <><label className="candidate-consent"><input type="checkbox" checked={identityChecked} onChange={event => setIdentityChecked(event.target.checked)} />Informations personnelles vérifiées</label><label className="candidate-consent"><input type="checkbox" checked={guardiansChecked} onChange={event => setGuardiansChecked(event.target.checked)} />Parents ou tuteurs vérifiés</label><p>Pièces demandées : {selected.required_documents.map(key => formatDocumentLabel(key)).join(', ') || 'aucune pièce imposée par la formation.'}</p>{selected.documents.map(doc => <label className="candidate-consent" key={doc.id}><input type="checkbox" checked={checks.includes(doc.id)} onChange={event => setChecks(values => event.target.checked ? [...values,doc.id] : values.filter(id => id !== doc.id))} />Pièce vérifiée : {doc.filename}</label>)}</>}
         {action === 'confirm_payment' && <div className="form-grid"><label className="form-group">Montant reçu en FCFA<input type="number" className="input" min="1" step="1" max={Math.max(0,Number(selected.registration_fee_due)-Number(selected.registration_fee_paid))} required value={amount} onChange={event => setAmount(event.target.value)} /></label><label className="form-group">Moyen de paiement<select className="select-input" required value={channel} onChange={event => setChannel(event.target.value)}><option value="">Choisir</option>{data.payment_channels.map(item => <option key={item.id} value={item.id}>{item.name}</option>)}</select></label><label className="form-group">Référence du règlement ou reçu<input className="input" required minLength={3} maxLength={160} value={reference} onChange={event => setReference(event.target.value)} /></label></div>}
         {action === 'reverse_payment' && <label className="form-group">Confirmation à annuler<select className="select-input" required value={paymentId} onChange={event => setPaymentId(event.target.value)}><option value="">Choisir</option>{selected.registration_payments.filter(item => item.kind === 'PAYMENT' && !selected.registration_payments.some(reversal => reversal.reversal_of === item.id)).map(item => <option key={item.id} value={item.id}>{item.reference} · {Number(item.amount).toLocaleString('fr-FR')} FCFA</option>)}</select></label>}
         {action === 'create_student' && <div className="form-grid"><label className="form-group">Dossier existant<select className="select-input" value={student} onChange={event => { setStudent(event.target.value); const row = (portal.relationalSnapshot.tables.students || []).find(item => item.id === event.target.value); setMatricule(String(row?.matricule || '')); }}><option value="">Créer un nouveau dossier étudiant (Automatique)</option>{(portal.relationalSnapshot.tables.students || []).map(item => <option value={item.id} key={item.id}>{String(item.matricule)}</option>)}</select></label>{!student ? <div className="form-group"><span className="badge badge-success">Génération automatique</span><p style={{marginTop: 6, fontSize: 13, color: 'var(--text-muted)'}}>Le matricule officiel (xxx-ESC-2026), le compte Microsoft 365 (@escen.university), la licence Office 365, les accès au portail et le groupe seront créés automatiquement.</p></div> : <label className="form-group">Matricule officiel<input className="input" readOnly value={matricule} /></label>}</div>}
-        {needsActionReason && <label className="form-group">Informations ou pièces à compléter<textarea className="input" required minLength={3} maxLength={1000} value={reason} onChange={event => setReason(event.target.value)} /></label>}<button type="submit" className="btn btn-primary">Relire avant de confirmer</button>
+        {needsActionReason && <label className="form-group">{action === 'refuse' ? 'Motif du refus communiqué au candidat' : action === 'contact' ? 'Compte-rendu de l’appel d’accompagnement' : 'Éléments ou pièces à rectifier / compléter (le candidat recevra ce message dans son espace)'}<textarea className="input" required minLength={3} maxLength={1000} rows={3} placeholder={action === 'refuse' ? 'Indiquez la raison du refus...' : action === 'contact' ? 'Résumé de l’échange téléphonique avec le candidat...' : 'Ex. : Merci de joindre une copie lisible de votre relevé de notes du Bac et de corriger votre date de naissance.'} value={reason} onChange={event => setReason(event.target.value)} /></label>}<button type="submit" className="btn btn-primary">Relire avant de confirmer</button>
       </ReviewedForm></section>}
 
       <section className="card">
