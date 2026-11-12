@@ -5,6 +5,8 @@ import DrawerActions from '@/components/ui/DrawerActions';
 import IconButton from '@/components/ui/IconButton';
 import CatalogTaskDialog from '@/components/modules/academic/CatalogTaskDialog';
 import LoadingState from '@/components/ui/LoadingState';
+import ErrorState from '@/components/ui/ErrorState';
+import DataPanel from '@/components/ui/DataPanel';
 import PageHeader from '@/components/ui/PageHeader';
 import { useEffect, useState, type ReactNode } from 'react';
 import { usePortal } from '@/hooks/usePortal';
@@ -22,9 +24,10 @@ import ReviewedForm from '@/components/ui/ReviewedForm';
 import EnrollmentDialog from '@/components/modules/EnrollmentDialog';
 import { DrawerCloseButton } from '@/components/ui/DetailDrawer';
 
-function AdmissionsFrame({ title, onClose, children }: { title: string; onClose?: () => void; children: ReactNode }) {
+function AdmissionsFrame({ title, description, actions, onClose, children }: { title: string; description: string; actions?: ReactNode; onClose?: () => void; children: ReactNode }) {
   return onClose ? (
     <WorkPage title={title} onClose={onClose}>
+      {actions && <div className="btn-group">{actions}</div>}
       {children}
     </WorkPage>
   ) : (
@@ -32,8 +35,8 @@ function AdmissionsFrame({ title, onClose, children }: { title: string; onClose?
       <PageHeader
         eyebrow="SITE WEB & ADMISSIONS"
         title={title}
-        description="Configuration et gestion des dossiers d'admission en ligne."
-      />
+        description={description}
+      >{actions}</PageHeader>
       {children}
     </div>
   );
@@ -183,36 +186,24 @@ export default function OnlineAdmissionsPanel({
           }}
         />
       )}
-      {!selected && !intake && !convertingApp && !levelGroup && (
         <AdmissionsFrame
           title={mode === 'configuration' ? 'Formations et pièces' : 'Candidatures'}
+          description={mode === 'configuration' ? `Ouverture des formations et pièces communes par niveau pour ${yearLabel}.` : `Consultation des candidatures pour ${yearLabel}.`}
+          actions={<button type="button" className="btn btn-outline" disabled={busy} onClick={() => setRevision(value => value + 1)}>Actualiser</button>}
           onClose={onClose}
         >
-          <p>
-            {mode === 'configuration'
-              ? `Ouverture des inscriptions et pièces demandées pour ${yearLabel}.`
-              : `Candidatures pour ${yearLabel}.`}
-          </p>
-          {message && !selected && !intake && !levelGroup && <p role="alert" className="auth-error">{message}</p>}
-          <IconButton className="btn btn-outline mb-2" onClick={() => setRevision(value => value + 1)} label={mode === 'configuration' ? 'Actualiser les formations' : 'Actualiser les dossiers'} />
+          {data && message && !selected && !intake && !convertingApp && !levelGroup && <p role="alert" className="restricted-box">{message}</p>}
           {!data ? (
             message ? (
-              <section className="card" role="alert">
-                <p>{mode === 'configuration' ? 'Le chargement des formations a échoué.' : 'Le chargement des demandes a échoué.'}</p>
-                <IconButton className="btn btn-outline" onClick={() => setRevision(value => value + 1)} label="Réessayer" />
-              </section>
+              <ErrorState title={mode === 'configuration' ? 'Formations indisponibles' : 'Demandes indisponibles'} message={message} onRetry={() => setRevision(value => value + 1)} />
             ) : (
               <LoadingState label={mode === 'configuration' ? 'Chargement des formations…' : 'Chargement des demandes…'} variant="table" />
             )
           ) : (
             <>
               {mode === 'applications' && (
-                <div className="card card-full">
-                  <div className="card-header">
-                    <h2>Dossiers reçus du site</h2>
-                    <span className="pill pill-default">{data.applications.length} dossier(s)</span>
-                  </div>
-                  <div className="browser-toolbar">
+                <DataPanel title="Dossiers reçus du site" meta={<span className="pill pill-default">{data.applications.length} dossier(s)</span>}
+                  toolbar={<div className="panel-filter-grid">
                     <label className="form-group">
                       Rechercher un dossier
                       <input
@@ -228,7 +219,7 @@ export default function OnlineAdmissionsPanel({
                         Effacer la recherche
                       </button>
                     )}
-                  </div>
+                  </div>}>
                   {!data.applications.length ? (
                     <div className="empty-state">
                       <strong>Aucune demande pour {yearLabel}</strong>
@@ -300,14 +291,13 @@ export default function OnlineAdmissionsPanel({
                       </ResponsiveTable>
                     </div>
                   )}
-                </div>
+                </DataPanel>
               )}
       {mode === 'configuration' && <WebsiteIntakeList data={data} yearLabel={yearLabel} canManage={canManage} filters={intakeFilters} onFilters={setIntakeFilters} onConfigureLevel={group => { setSuccess(''); setMessage(''); setReason(''); setLevelGroup(group); }} onConfigure={item => { setSuccess(''); setIntake({ ...item, academic_year_id: item.academic_year_id || '' }); setSelected(null); setReason(''); setConfirm(false); }} />}
 
             </>
           )}
         </AdmissionsFrame>
-      )}
 
       {selected && !convertingApp && (
         <WorkPage

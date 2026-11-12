@@ -8,7 +8,7 @@ import { subjectExams, subjectExamIssue } from '@/services/subjectExamPolicy';
 import { connectedRecordName, connectedRecordValue } from '@/services/connectedRecordDisplayService';
 import type { DatabaseRow } from '@/types/persistence';
 import ResponsiveTable from '@/components/ui/ResponsiveTable';
-import ListFilters from '@/components/ui/ListFilters';
+import DataPanel from '@/components/ui/DataPanel';
 import IconButton from '@/components/ui/IconButton';
 import WorkPage from '@/components/ui/WorkPage';
 import ExamCopies from '../history/ExamCopies';
@@ -142,18 +142,20 @@ export default function NativeAssessmentWorkspace({ category }: { category: Asse
         </button>
       )}
     </PageHeader>
-    <section className="card card-full">
-      {linkedKeys.size > 1 && <p role="status">Ce lien concerne plusieurs formations. Choisissez l’épreuve de la formation à consulter.</p>}
-      <ListFilters count={allGroupedItems.length} active={Boolean(query || groupFilter || subjectFilter || statusFilter)}><div className="browser-toolbar">
+    <DataPanel title="Liste des épreuves" meta={<span className="pill pill-default">{rows.length} épreuve(s)</span>}
+      footer={exported ? `${rows.length} épreuve(s) exportée(s).` : `${rows.length} épreuve(s) affichée(s) sur ${allGroupedItems.length}`}
+      toolbar={<><div className="panel-filter-grid">
         <label className="form-group">Rechercher une épreuve<input className="input" type="search" value={query} onChange={event => { setQuery(event.target.value); setExported(false); }} placeholder="Matière, groupe ou état" /></label>
         {availableGroups.length > 0 && <label className="form-group">Filtrer par groupe<select className="select-input" value={groupFilter} onChange={e => { setGroupFilter(e.target.value); setSubjectFilter(''); setExported(false); }}><option value="">Tous les groupes ({availableGroups.length})</option>{availableGroups.map(g => <option key={g} value={g}>{g}</option>)}</select></label>}
         {availableSubjects.length > 0 && <label className="form-group">Filtrer par matière<select className="select-input" value={subjectFilter} onChange={e => { setSubjectFilter(e.target.value); setExported(false); }}><option value="">Toutes les matières ({availableSubjects.length})</option>{availableSubjects.map(s => <option key={s} value={s}>{s}</option>)}</select></label>}
         <label className="form-group">État de l’épreuve<select className="select-input" value={statusFilter} onChange={event => { setStatusFilter(event.target.value); setExported(false); }}><option value="">Tous les états</option>{[...new Set(allGroupedItems.map(item => item.statusLabel))].sort().map(status => <option key={status}>{status}</option>)}</select></label>
-        {rows.length > 1 && <IconButton className="btn btn-outline" label="Exporter les épreuves" disabled={!rows.length} onClick={() => { downloadCsv('epreuves.csv', ['Épreuve', 'Matière', 'Groupe', 'Notes et moyenne', 'État de l’épreuve'], rows.map(item => [String(item.primary.name), item.subjectLabel, item.groupLabel, item.statsLabel, item.statusLabel])); setExported(true); }} />}
-      </div></ListFilters>
-      {(withdrawn || allEvaluations.some(row => row.cancelled_at || row.archived_at)) && <label className="checkbox-field"><input type="checkbox" checked={withdrawn} onChange={event => { setWithdrawn(event.target.checked); setStatusFilter(''); setExported(false); }} /> Épreuves retirées</label>}
-      {exported && <p role="status">{rows.length} épreuve(s) exportée(s).</p>}
-      <ResponsiveTable className="data-table"><thead><tr><th>Épreuve</th><th>Matière</th><th>Groupe</th><th>Notes et moyenne</th><th>État de l’épreuve</th><th>Actions</th></tr></thead><tbody>
+      </div><div className="panel-filter-options">
+        {(withdrawn || allEvaluations.some(row => row.cancelled_at || row.archived_at)) && <label className="checkbox-field"><input type="checkbox" checked={withdrawn} onChange={event => { setWithdrawn(event.target.checked); setStatusFilter(''); setExported(false); }} /> Épreuves retirées</label>}
+        <div className="btn-group">{(query || groupFilter || subjectFilter || statusFilter) && <button type="button" className="btn btn-outline" onClick={() => { setQuery(''); setGroupFilter(''); setSubjectFilter(''); setStatusFilter(''); setExported(false); }}>Réinitialiser les filtres</button>}
+        <button type="button" className="btn btn-outline" disabled={!rows.length} onClick={() => { downloadCsv('epreuves.csv', ['Épreuve', 'Matière', 'Groupe', 'Notes et moyenne', 'État de l’épreuve'], rows.map(item => [String(item.primary.name), item.subjectLabel, item.groupLabel, item.statsLabel, item.statusLabel])); setExported(true); }}>Exporter les épreuves</button></div>
+      </div></>}>
+      {linkedKeys.size > 1 && <p role="status">Ce lien concerne plusieurs formations. Choisissez l’épreuve de la formation à consulter.</p>}
+      <div className="table-wrap"><ResponsiveTable className="data-table"><thead><tr><th>Épreuve</th><th>Matière</th><th>Groupe</th><th>Notes et moyenne</th><th>État de l’épreuve</th><th>Actions</th></tr></thead><tbody>
         {rows.map(item => <tr key={item.primary.id}><td><strong>{String(item.primary.name)}</strong></td><td>{item.subjectLabel}</td><td>{item.groupLabel}</td><td>{item.statsLabel}</td><td>{item.statusLabel}</td><td>
           <div className="btn-group">
             <IconButton className="btn btn-sm btn-outline" label="Ouvrir le détail" onClick={() => { setSelectedId(item.primary.id); setCopies(false); }} />
@@ -163,8 +165,8 @@ export default function NativeAssessmentWorkspace({ category }: { category: Asse
           </div>
         </td></tr>)}
         {!rows.length && <tr><td colSpan={6}>Aucune épreuve pour cette catégorie et ces filtres.</td></tr>}
-      </tbody></ResponsiveTable>
-    </section>
+      </tbody></ResponsiveTable></div>
+    </DataPanel>
     {selected && selectedMembers && (() => {
       const selectedPaper = (data.tables.exam_papers || [])
         .filter(row => row.evaluation_id === selected.id && !row.archived_at)

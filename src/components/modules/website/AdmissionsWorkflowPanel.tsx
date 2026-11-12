@@ -20,6 +20,7 @@ import LoadingState from '@/components/ui/LoadingState';
 import ResponsiveTable from '@/components/ui/ResponsiveTable';
 import DocumentPreview from '@/components/ui/DocumentPreview';
 import PageHeader from '@/components/ui/PageHeader';
+import DataPanel from '@/components/ui/DataPanel';
 
 const ACTION_RESULTS: Record<AdmissionAction, string> = {
   acknowledge: 'Candidature reçue', review: 'En vérification admission', incomplete: 'Dossier incomplet',
@@ -175,7 +176,7 @@ export default function AdmissionsWorkflowPanel() {
   return <div className="domain-workspace workspace-stack">
     <PageHeader
       eyebrow="SITE WEB & ADMISSIONS"
-      title="Étude des dossiers de candidature"
+      title="Candidatures"
       description="Gestion centralisée, examen des pièces et validation des candidatures entrantes."
     >
       {data.capabilities.review && year && <button type="button" className="btn btn-primary" onClick={() => { setError(''); setCreateToken(newToken()); }}>Saisir une candidature</button>}
@@ -189,32 +190,11 @@ export default function AdmissionsWorkflowPanel() {
     {!data.mail_configured && (
       <p className="restricted-box" role="status">Les mails sont conservés dans la file d’envoi. Le service d’envoi doit être configuré pour les transmettre.</p>
     )}
-    <div className="admissions-pills-bar" role="toolbar" aria-label="Filtrer par statut">
-      {MACRO_STAGES.map(stage => {
-        const count = data.applications.filter(item => stage.id === 'ALL' || getApplicationMacroStage(item) === stage.id).length;
-        const isActive = macroFilter === stage.id;
-        return (
-          <button
-            key={stage.id}
-            type="button"
-            className="admissions-pill-btn"
-            aria-pressed={isActive}
-            onClick={() => setMacroFilter(stage.id)}
-          >
-            <span className={`admissions-pill-dot admissions-pill-dot--${stage.dot}`} aria-hidden="true" />
-            <span>{stage.label} ({count})</span>
-          </button>
-        );
-      })}
-    </div>
-    <section className="card">
-      <div className="card-header">
-        <h2>Dossiers de candidature</h2>
-        <span>{listed.length} dossier(s)</span>
-      </div>
-      <div className="admissions-filters-bar">
+    <DataPanel title="Dossiers de candidature" meta={<span className="pill pill-default">{listed.length} dossier(s)</span>}
+      footer={`${listed.length} dossier(s) affiché(s) sur ${data.applications.length}`}
+      toolbar={<><div className="panel-filter-grid">
         <label className="form-group">
-          Rechercher un candidat...
+          Rechercher un candidat
           <input
             className="input"
             type="search"
@@ -245,11 +225,18 @@ export default function AdmissionsWorkflowPanel() {
             {niveauOptions.map(opt => <option key={opt} value={opt}>{opt}</option>)}
           </select>
         </label>
-      </div>
-      <label className="candidate-consent admissions-filter-toggle">
+        <label className="form-group">Statut
+          <select className="select-input" value={macroFilter} onChange={event => setMacroFilter(event.target.value as MacroStage)}>
+            {MACRO_STAGES.map(stage => <option key={stage.id} value={stage.id}>{stage.label.charAt(0) + stage.label.slice(1).toLocaleLowerCase('fr')} ({data.applications.filter(item => stage.id === 'ALL' || getApplicationMacroStage(item) === stage.id).length})</option>)}
+          </select>
+        </label>
+      </div><div className="panel-filter-options">
+      <label className="checkbox-field">
         <input type="checkbox" checked={onlyMine} onChange={event => setOnlyMine(event.target.checked)} />
         Afficher uniquement les dossiers que je peux faire avancer ({data.applications.filter(canProgress).length})
       </label>
+      {(search || filiereFilter || niveauFilter || onlyMine || macroFilter !== 'ALL') && <button type="button" className="btn btn-outline" onClick={() => { setSearch(''); setFiliereFilter(''); setNiveauFilter(''); setOnlyMine(false); setMacroFilter('ALL'); }}>Réinitialiser les filtres</button>}
+      </div></>}>
       {listed.length ? (
         <div className="table-wrap">
           <ResponsiveTable className="data-table">
@@ -268,9 +255,6 @@ export default function AdmissionsWorkflowPanel() {
                 const info = getCandidateProgramAndLevel(item, data.intakes);
                 const badge = stageBadge(item);
                 const initials = `${item.identity.prenom?.[0] || ''}${item.identity.nom?.[0] || ''}`.toUpperCase() || 'C';
-                const shortRef = item.reference.length > 18
-                  ? `${item.reference.slice(0, 10)}…${item.reference.slice(-5)}`
-                  : item.reference;
                 return (
                   <tr key={item.id}>
                     <td>
@@ -285,7 +269,7 @@ export default function AdmissionsWorkflowPanel() {
                       </div>
                     </td>
                     <td>
-                      <code className="dossier-ref-badge" title={item.reference}>{shortRef}</code>
+                      <code className="dossier-ref-badge">{item.reference}</code>
                     </td>
                     <td>{info.program}</td>
                     <td>{info.level}</td>
@@ -316,7 +300,7 @@ export default function AdmissionsWorkflowPanel() {
           <span>Les demandes en ligne et saisies à ESCEN suivent le même circuit.</span>
         </div>
       )}
-    </section>
+    </DataPanel>
     {createToken && <WorkPage title="Saisir une candidature à ESCEN" busy={busy} onClose={() => setCreateToken('')}><ApplicationIntakeForm intakes={data.intakes} busy={busy} error={error} onSave={create} title="Confirmer la candidature saisie à ESCEN" /></WorkPage>}
     {selected && <WorkPage title={`Dossier ${selected.reference}`} busy={busy} onClose={() => { setSelected(null); setAction(''); }}><div className="workspace-stack">
       <div className="dossier-hero">

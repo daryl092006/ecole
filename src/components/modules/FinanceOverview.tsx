@@ -5,7 +5,7 @@ import Link from 'next/link';
 import { usePortal } from '@/hooks/usePortal';
 import { studentPath } from '@/constants/portalRoutes';
 import ResponsiveTable from '@/components/ui/ResponsiveTable';
-import IconButton from '@/components/ui/IconButton';
+import DataPanel from '@/components/ui/DataPanel';
 import PageHeader from '@/components/ui/PageHeader';
 import { downloadCsv } from '@/utils/csv';
 import KpiChart from '@/components/ui/KpiChart';
@@ -108,11 +108,12 @@ export default function FinanceOverview() {
         <KpiChart title="Couverture des situations financières" description="Situations visibles selon la présence des données contractuelles ; les dossiers sans contrat restent identifiés." kind="donut" series={[{ label: 'Situations', values: [{ label: 'Renseignées', value: known.length }, { label: 'Sans contrat', value: missing }] }]} />
       </div>
 
-      <section className="card card-full">
-        <div className="card-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '0.75rem', marginBottom: '1rem' }}>
-          <h2 style={{ margin: 0 }}>Détail par étudiant ({rows.length})</h2>
-          <div className="browser-toolbar" style={{ margin: 0, padding: 0, border: 'none', background: 'transparent' }}>
-            <label className="checkbox-field" style={{ margin: 0 }}>
+      <DataPanel title={`Détail par étudiant (${rows.length})`}
+        footer={exported ? `${rows.length} situation(s) exportée(s).` : `${rows.length} situation(s) affichée(s).`}
+        toolbar={<><div className="panel-filter-grid"><label className="form-group">Rechercher un étudiant
+          <input className="input" type="search" placeholder="Rechercher par étudiant, matricule ou formation…" value={query} onChange={event => { setQuery(event.target.value); setExported(false); }} />
+        </label></div><div className="panel-filter-options">
+            <label className="checkbox-field">
               <input
                 type="checkbox"
                 checked={debtOnly}
@@ -123,9 +124,8 @@ export default function FinanceOverview() {
               />{' '}
               Dossiers avec solde débiteur uniquement
             </label>
-            <IconButton
+            <button type="button"
               className="btn btn-outline"
-              label="Exporter CSV"
               disabled={!rows.length}
               onClick={() => {
                 downloadCsv(
@@ -143,32 +143,14 @@ export default function FinanceOverview() {
                 );
                 setExported(true);
               }}
-            />
-          </div>
-        </div>
-
-        <div style={{ marginBottom: '1rem' }}>
-          <label className="form-group" style={{ margin: 0 }}>
-            <input
-              className="input"
-              type="search"
-              placeholder="Rechercher par étudiant, matricule ou formation…"
-              value={query}
-              onChange={event => {
-                setQuery(event.target.value);
-                setExported(false);
-              }}
-            />
-          </label>
-        </div>
+            >Exporter CSV</button>
+          </div></>}>
 
         {missing > 0 && (
-          <p className="cell-sub" style={{ marginBottom: '1rem', color: 'var(--text-muted)' }}>
+          <p className="cell-sub">
             {missing} dossier(s) n’ont pas encore de situation financière établie. L’inscription et le contrat doivent être validés dans le dossier étudiant.
           </p>
         )}
-
-        {exported && <p role="status">{rows.length} situation(s) exportée(s).</p>}
 
         <div className="table-wrap">
           <ResponsiveTable className="data-table">
@@ -232,7 +214,7 @@ export default function FinanceOverview() {
             </tbody>
           </ResponsiveTable>
         </div>
-      </section>
+      </DataPanel>
     </div>
   );
 }
