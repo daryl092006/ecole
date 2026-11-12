@@ -3,7 +3,7 @@ import { diplomaSchema, guardianSchema, identitySchema } from './websiteService'
 import { APPLICATION_STAGES, type AdmissionAction, type AdmissionApplication, type ApplicationStage } from '@/types/admissions';
 
 export const applicationIntakeSchema = z.object({ identity: identitySchema.extend({ adresse: z.string().trim().min(1).max(1000) }), diploma: diplomaSchema,
-  intake_id: z.uuid(), guardians: z.array(guardianSchema.extend({ lien: z.string().trim().min(1).max(100) })).min(1).max(5), consent: z.literal(true) }).strict();
+  intake_id: z.uuid(), guardians: z.array(guardianSchema.extend({ lien: z.string().trim().min(1).max(100).default('Parent / Tuteur') })).min(1).max(5), consent: z.literal(true) }).strict();
 const command = { id: z.uuid(), version: z.number().int().positive(), reason: z.string().trim().min(3).max(1000) };
 export const admissionCommandSchema = z.discriminatedUnion('action', [
   z.object({ ...command, action: z.enum(['acknowledge','review','incomplete','request_changes','transmit','study','admissible','refuse','await_payment','contact']) }).strict(),

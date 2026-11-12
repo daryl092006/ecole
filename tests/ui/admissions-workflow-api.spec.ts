@@ -5,7 +5,7 @@ import type { RoleName } from '../../src/types/permissions';
 const year = uuid(1), id = uuid(2);
 function api(role: RoleName = ROLES.IT, roleCode = 'IT') {
   const calls: { name: string; args: Record<string, unknown> }[] = [];
-  const client = { rpc: async (name: string,args: Record<string,unknown> = {}) => {
+  const client = { from: () => ({ select: () => ({ eq: () => ({ maybeSingle: async () => ({ data: { id, version: 1, workflow_stage: 'VERIFICATION_ADMISSION' }, error: null }) }) }) }), rpc: async (name: string,args: Record<string,unknown> = {}) => {
     calls.push({name,args});
     if (name === 'escen_academic_year_context') return {data:{currentYearId:year},error:null};
     if (name === 'escen_admissions_context') return {data:{enabled:true,applications:[],notices:[]},error:null};
@@ -85,11 +85,11 @@ test('API publique : refus d’une écriture depuis une autre origine',async()=>
 });
 
 for (const [role, code] of [[ROLES.LOG, 'LOG'], [ROLES.RAF, 'RAF']] as const) {
-  test(`API : ${code} ne traite plus les candidatures`, async () => {
+  test(`API : ${code} consulte les candidatures sans vérifier les dossiers`, async () => {
     const f = api(role, code);
-    expect((await f.route.GET(new Request('http://local.test/api/admissions'))).status).toBe(403);
+    expect((await f.route.GET(new Request('http://local.test/api/admissions'))).status).toBe(200);
     expect((await f.route.POST(post({ action: 'review', id, version: 1, reason: 'Ancien accès' }))).status).toBe(403);
-    expect(f.calls).toHaveLength(0);
+    expect(f.calls.some(call => call.name === 'escen_application_command')).toBe(false);
   });
 }
 test('API : le chargé de clientèle vérifie et confirme les frais sans décider de l’admissibilité', async () => {

@@ -20,7 +20,7 @@ export default function ApplicationIntakeForm({ intakes, initial, busy, error, o
     ...Object.fromEntries(Object.entries(initial?.identity || {}).filter(([key]) => ['nom','prenom','genre','date_naissance','lieu_naissance','nationalite','email','tel','tel2','tel3','adresse','nom_jeune_fille','numero_bordereau','moyen_connaissance_id','moyen_connaissance_precision'].includes(key))), ...(initial ? { date_naissance: initial.identity.date_naissance?.slice(0, 10) || '', genre: ['M','Masculin','Homme'].includes(initial.identity.genre) ? 'M' : ['F','Féminin','Femme'].includes(initial.identity.genre) ? 'F' : '' } : {}) });
   const [diploma, setDiploma] = useState<Record<string, string>>({ type_diplome_id: initial?.diploma.type_diplome_id || initial?.diploma.dernier_diplome || '' });
   const [intakeId, setIntakeId] = useState(initial?.intake_id || '');
-  const [guardians, setGuardians] = useState<Record<string, string>[]>(initial?.guardians.length ? initial.guardians : [newGuardian()]);
+  const [guardians, setGuardians] = useState<Record<string, string>[]>(initial?.guardians.length ? initial.guardians.map(g => ({ lien: 'Parent / Tuteur', ...g })) : [newGuardian()]);
   const [files, setFiles] = useState<Record<string, File | null>>({}); const [consent, setConsent] = useState(false);
   const intake = intakes.find(item => item.id === intakeId);
   const values = () => ({ identity, diploma, guardians, intake_id: intakeId, consent });
