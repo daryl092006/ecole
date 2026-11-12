@@ -11,6 +11,8 @@ import { netPaymentTotal } from '@/services/financialProjectionService';
 import { effectivePayments } from '@/services/paymentAllocationService';
 import StudentHome from '@/components/modules/student/StudentHome';
 import WorkspaceActions from '@/components/ui/WorkspaceActions';
+import KpiChart from '@/components/ui/KpiChart';
+import { PURCHASE_STATUS_LABELS } from '@/types/purchaseWorkspace';
 
 function fmtCompactFcfa(amount: number): string {
   if (amount >= 1_000_000) return `${(amount / 1_000_000).toFixed(1).replace('.0', '').replace('.', ',')} M FCFA`;
@@ -433,7 +435,6 @@ export default function WorkspaceHome({ mode = 'home' }: { mode?: 'home' | 'over
       items: [{ label: 'Dossiers étudiants', value: `${totalStudents}` }, { label: 'Groupes', value: `${count('groups')}` }] }] : [];
   })();
 
-  const showPopulationBreakdown = !state.perms.scope.ownDataOnly && canViewStudents && totalStudents > 0;
 
   const tasksByRole: Record<RoleName, string[]> = {
     [ROLES.DG]: ['dashboard_kpis', 'stud_list', 'fin_kpis', 'acad_grades', 'comm_announcements'],
@@ -485,6 +486,40 @@ export default function WorkspaceHome({ mode = 'home' }: { mode?: 'home' | 'over
     return page ? [{ label: page.name, href: page.href, icon: taskIcons[id] || Megaphone, description: activityDescriptions[id] || 'Ouvrir cet espace de travail' }] : [];
   });
   const allowedDestination = (href: string) => state.availableTabs.some(tab => tab.href === href || tab.subTabs?.some(page => page.href === href));
+  const evaluationStates: Record<string, string> = { BROUILLON: 'Brouillons', SAISIES: 'En saisie', SOUMISES: 'Soumises', A_CONTROLER: 'À contrôler', VALIDEES: 'Validées', PUBLIEES: 'Publiées' };
+  const groupStates = (table: string, labels: Record<string, string>) => {
+    const counts = new Map<string, number>();
+    for (const row of activeRows(table)) {
+      const label = labels[String(row.status)] || 'Autres états';
+      counts.set(label, (counts.get(label) || 0) + 1);
+    }
+    return [...counts].map(([label, value]) => ({ label, value }));
+  };
+  const communicationStates = () => {
+    const states = new Map<string, number>();
+    const now = Date.now();
+    for (const row of activeRows('communications')) {
+      const published = Date.parse(String(row.published_at));
+      const expires = row.expires_at ? Date.parse(String(row.expires_at)) : null;
+      const label = row.withdrawn_at ? 'Retirées' : !row.published_at ? 'Brouillons'
+        : !Number.isFinite(published) || expires !== null && !Number.isFinite(expires) ? 'À vérifier'
+        : published > now ? 'Programmées' : expires !== null && expires <= now ? 'Expirées' : 'Publiées';
+      states.set(label, (states.get(label) || 0) + 1);
+    }
+    return [...states].map(([label, value]) => ({ label, value }));
+  };
+  const renderCharts = () => <div className="home-bottom-grid" aria-label="Indicateurs graphiques">
+    {!state.perms.scope.ownDataOnly && canViewStudents && <KpiChart title="Répartition des étudiants" description="Effectifs des dossiers visibles pour l’année et le périmètre consultés." series={[
+      { label: 'Par filière', values: filiereBreakdown.map(item => ({ label: item.name, value: item.count })) },
+      { label: 'Par niveau', values: niveauBreakdown.map(item => ({ label: item.name, value: item.count })) },
+      { label: 'Par groupe', values: groupeBreakdown.map(item => ({ label: item.name, value: item.count })) },
+    ]} />}
+    {state.perms.permissions.includes('finance.view') && <KpiChart title="Répartition des frais" description={`${knownFinancialStudents.length} dossier(s) avec une situation financière renseignée. Les règlements en attente sont exclus.`} kind="donut" format="currency" available={knownFinancialStudents.length > 0} series={[{ label: 'Frais', values: [{ label: 'Réglé', value: collectedAmount }, { label: 'Reste à régler', value: remainingAmount }] }]} />}
+    {state.perms.permissions.includes('user.manage') && <KpiChart title="État des comptes" description="Comptes de connexion visibles dans votre périmètre." kind="donut" series={[{ label: 'Comptes', values: [{ label: 'Actifs', value: state.users.filter(user => user.active).length }, { label: 'Inactifs', value: state.users.filter(user => !user.active).length }] }]} />}
+    {[ROLES.DA, ROLES.LOG, ROLES.ENS, ROLES.SURV].includes(state.activeRole as typeof ROLES.DA) && (state.perms.permissions.includes('grade.view') || state.perms.permissions.includes('schedule.view')) && <KpiChart title="État des évaluations" description="Répartition des évaluations visibles selon leur état enregistré, sans estimation des résultats." series={[{ label: 'Évaluations', values: groupStates('evaluations', evaluationStates) }]} />}
+    {state.activeRole === ROLES.ACHATS && state.perms.permissions.includes('purchase.view') && <KpiChart title="Suivi des achats" description="Demandes visibles, regroupées selon leur état enregistré." series={[{ label: 'Demandes', values: groupStates('purchases', PURCHASE_STATUS_LABELS) }]} />}
+    {[ROLES.MKT, ROLES.SITE].includes(state.activeRole as typeof ROLES.MKT) && state.perms.permissions.includes('communication.view') && <KpiChart title="État des communications" description="Communications visibles selon leur état de publication enregistré." series={[{ label: 'Publications', values: communicationStates() }]} />}
+  </div>;
   const followUps = [
     { page: ['sys_support', 'espace_support'], label: 'Demandes de support ouvertes', count: activeRows('support_tickets').filter(ticket => ['OPEN', 'IN_PROGRESS'].includes(String(ticket.status))).length },
     { page: ['fin_payments'], label: 'Paiements en attente', count: pendingPayments.length },
@@ -515,60 +550,6 @@ export default function WorkspaceHome({ mode = 'home' }: { mode?: 'home' | 'over
           </section>
         );
       })}
-    </div>
-  );
-
-  const renderPopulationBreakdown = () => (
-    showPopulationBreakdown && <div className="home-bottom-grid">
-      <section className="card" aria-label="Effectifs par filière">
-        <div className="card-header">
-          <h2><GraduationCap size={18} /> Par filière</h2>
-          <Link href="/etudiants">Voir →</Link>
-        </div>
-        <div className="kpi-bar-list">
-          {filiereBreakdown.map(f => (
-            <div className="kpi-bar-item" key={f.name}>
-              <div className="kpi-bar-head">
-                <span>{f.name}</span>
-                <strong>{f.count} ({f.pct} %)</strong>
-              </div>
-              <div className="kpi-bar-track">
-                <div className="kpi-bar-fill" style={{ width: `${Math.max(4, f.pct)}%` }} />
-              </div>
-            </div>
-          ))}
-        </div>
-      </section>
-
-      <section className="card" aria-label="Effectifs par niveau et par groupe">
-        <div className="card-header">
-          <h2><Users size={18} /> Par niveau & groupe</h2>
-          <Link href="/academique/referentiel">Voir →</Link>
-        </div>
-        <div className="kpi-bar-grid">
-          <div className="kpi-stat-grid">
-            {niveauBreakdown.map(n => (
-              <div className="kpi-stat-tile" key={n.name}>
-                <strong>{n.count}</strong>
-                <span>{n.name} ({n.pct} %)</span>
-              </div>
-            ))}
-          </div>
-          <div className="kpi-bar-list" style={{ marginTop: '14px' }}>
-            {groupeBreakdown.map(g => (
-              <div className="kpi-bar-item" key={g.name}>
-                <div className="kpi-bar-head">
-                  <span>{g.name}</span>
-                  <strong>{g.count} ({g.pct} %)</strong>
-                </div>
-                <div className="kpi-bar-track">
-                  <div className="kpi-bar-fill" style={{ width: `${Math.max(4, g.pct)}%` }} />
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
     </div>
   );
 
@@ -612,18 +593,19 @@ export default function WorkspaceHome({ mode = 'home' }: { mode?: 'home' | 'over
     {error && <div className="review-notice" role="alert"><span>{error}</span><IconButton className="btn btn-outline" onClick={retry} label="Réessayer" /></div>}
 
     {mode === 'home' && <>
-      <WorkspaceActions actions={quickActions} />
+      {renderKpiCards()}
+      {renderCharts()}
       <section className="card" aria-label="Éléments à suivre">
         <div className="card-header"><h2>À suivre</h2></div>
         {followUps.length > 0 ? <div className="home-record-counts">{followUps.map(item => <div key={item.label}><Link href={item.href}>{item.label}</Link><strong>{item.count}</strong></div>)}</div>
           : <p>Aucun élément en attente dans votre périmètre.</p>}
       </section>
-      {renderKpiCards()}
+      <WorkspaceActions actions={quickActions} />
     </>}
 
     {mode === 'overview' && <>
+      {renderCharts()}
       {renderKpiCards()}
-      {renderPopulationBreakdown()}
 
       <div className="home-bottom-grid">{state.history.enabled && state.availableTabs.some(tab => tab.subTabs?.some(section => section.id === 'acad_reference')) && <section className="card"><div className="card-header"><h2><CalendarDays size={18} /> Données pédagogiques</h2><Link href="/academique/referentiel">Consulter</Link></div><div className="home-record-counts">{[['Années universitaires', 'academic_years'], ['Groupes', 'groups'], ['Enseignements', 'teaching_assignments'], ['Séances prévues', 'sessions'], ['Évaluations et examens', 'evaluations']].map(([label, table]) => <div key={table}><span>{label}</span><strong>{count(table)}</strong></div>)}</div></section>}
         {state.activeRole === ROLES.IT && state.history.enabled && state.perms.permissions.includes('system.audit.view') && <section className="card"><div className="card-header"><h2><ShieldCheck size={18} /> Contrôle de reprise des données</h2><Link href="/systeme/donnees">Voir les données</Link></div><strong className="review-count">{catalog ? flagged : '…'}</strong><div className="home-source-summary">{(Object.keys(HISTORY_DOMAINS) as HistoryDomain[]).map(domain => { const tables = HISTORY_TABLES.filter(item => item.domain === domain).map(item => item.table); const total = catalog?.datasets.filter(item => tables.includes(item.table)).reduce((sum, item) => sum + item.count, 0); return <span key={domain}>{HISTORY_DOMAINS[domain]} <strong>{total?.toLocaleString('fr-FR') ?? '…'}</strong></span>; })}</div></section>}
