@@ -27,3 +27,14 @@ Le service d’admission et les scripts d’activation utilisent désormais `pas
 - `npm test` : workflows et vérifications PostgreSQL locales réussis ; test de régression du provisionnement inclus.
 - Parcours première connexion : 55 tests réussis lors du premier passage sur le code synchronisé. Deux attentes anciennes ont été corrigées : sélecteur du nom de compte dans le menu et année accessible utilisée en repli. Ces deux tests passent après correction.
 - La colonne `escen.people.nif` nécessaire au code récupéré existe en production. La version de migration 107 n’est pas inscrite dans l’historique distant ; aucune réparation de cet historique n’a été réalisée.
+
+## Publication
+
+La version issue du commit local `04d901f`, avec les quatre modifications d’affichage préexistantes conservées dans la copie source, a été construite puis activée sur `https://portail.escen.university`.
+
+- Déploiement Vercel : `dpl_72aDLEsD3ohJ51ymnJkyNrH9dMZV` ; état Ready avant promotion.
+- URL technique : `https://ecole-exuq4j5p1-denis-gangnitos-projects.vercel.app`.
+- Contrôles après promotion : page de connexion HTTP 200, API campus sans session HTTP 401.
+- Nouveau test réel d’Evynel à 14:48 UTC : connexion acceptée avec le mot de passe initial, session HTTP 200, changement obligatoire et API métier HTTP 403 avant personnalisation.
+
+Aucun push Git, changement de configuration de production ou application de migration distante n’a été effectué. Les nouveaux comptes et les réinitialisations utilisent les mécanismes Auth et les RPC existants.
