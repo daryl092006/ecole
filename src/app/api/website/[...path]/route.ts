@@ -6,7 +6,7 @@ import { errorResponse, RequestError } from '@/server/auth';
 import { boundedRequest, hashWebsiteToken, isAllowedWebsiteOrigin, listPublicWebsiteGalleries, websiteRpc } from '@/server/website';
 import { DOCUMENT_LABELS, diplomaSchema, escapeArticleContent, guardianSchema, identitySchema, sniffDocument } from '@/services/websiteService';
 import type { WebsiteArticle, WebsiteGallery, WebsiteIntake } from '@/types/website';
-import { attemptApplicationEmails, portalOrigin } from '@/server/admissions';
+import { attemptApplicationEmails, enqueueCandidateCredentialsEmail, portalOrigin } from '@/server/admissions';
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
 type RouteContext = { params: Promise<{ path: string[] }> };
@@ -217,12 +217,23 @@ async function handle(request: Request, context: RouteContext) {
       const intake = intakes.find(item => item.academic_year_id === draft.candidat.academic_year_id && item.level_id === draft.candidat.niveau_id && item.program_id === draft.candidat.filiere_id);
       if (!intake) throw new RequestError(409, 'Formation fermée ou non renseignée.');
       const fields = (keys: string[]) => Object.fromEntries(keys.filter(key => draft.candidat[key] !== undefined).map(key => [key,draft.candidat[key]]));
+      const accessUrl = `${portalOrigin(request)}/candidature/suivi#access=${token}`;
       const receipt = await websiteRpc(client, 'escen_application_submit', {
         p_actor_id: null, p_role_code: null, p_year_id: draft.candidat.academic_year_id, p_token_hash: hashWebsiteToken(token),
         p_data: { consent: true, intake_id: intake.id, guardians: tuteurs,
           identity: fields(['nom','prenom','genre','date_naissance','lieu_naissance','nationalite','email','tel','tel2','tel3','adresse','nom_jeune_fille']),
           diploma: fields(['type_diplome_id','numero_table','annee_bac','serie','mention_bac','etablissement_diplome','annee_diplome','intitule_diplome','specialite_diplome','mention_diplome']) },
-        p_access_url: `${portalOrigin(request)}/candidature/suivi#access=${token}`,
+        p_access_url: accessUrl,
+      });
+      await enqueueCandidateCredentialsEmail(client, {
+        yearId: String(draft.candidat.academic_year_id),
+        applicationId: String(receipt.id),
+        reference: String(receipt.reference),
+        email: String(draft.candidat.email || ''),
+        firstname: String(draft.candidat.prenom || ''),
+        lastname: String(draft.candidat.nom || ''),
+        trackingUrl: accessUrl,
+        actorId: null,
       });
       await attemptApplicationEmails(client);
       return cors(request, Response.json(receipt));

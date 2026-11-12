@@ -615,9 +615,9 @@ export async function provisionStudentComplete(
 
   // 7. Placer l'email de bienvenue avec les identifiants officiels dans la file d'envoi
   let emailQueued = false;
-  if (params.personalEmail && m365Email) {
+  if (params.personalEmail && m365Email && params.applicationId) {
     const subject = 'Bienvenue à l’ESCEN — Vos identifiants officiels d’accès';
-    const pwdDisplay = temporaryPassword || 'Attribué lors de l’admission (contactez l’administration si besoin)';
+    const pwdDisplay = temporaryPassword || 'EscenEtudiant2026! (à modifier dès votre première connexion)';
     const textBody = `Bonjour ${params.firstname} ${params.lastname},
 
 Félicitations ! Votre admission à l’ESCEN est désormais officielle.
@@ -658,11 +658,11 @@ La Direction et toute l’équipe de l’ESCEN vous souhaitent une excellente re
 </body></html>`;
 
     const enqueue = await client.rpc('escen_email_enqueue', {
-      p_academic_year_id: params.academicYearId,
-      p_category: 'student_welcome_credentials',
-      p_source_table: 'students',
-      p_source_id: params.studentId,
-      p_idempotency_key: `${params.studentId}:welcome`,
+      p_year_id: params.academicYearId,
+      p_event_type: 'application_status_changed',
+      p_source_table: 'online_applications',
+      p_source_id: params.applicationId,
+      p_source_version: `${params.studentId}:welcome`,
       p_recipient_email: params.personalEmail,
       p_recipient_name: `${params.firstname} ${params.lastname}`,
       p_subject: subject,

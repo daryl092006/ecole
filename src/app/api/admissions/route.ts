@@ -4,7 +4,7 @@ import { requireAccount, requirePermission, errorResponse, RequestError } from '
 import { boundedRequest, hashWebsiteToken, websiteRpc } from '@/server/website';
 import { admissionCommandSchema, applicationLetterHtml, ADMISSION_ACTIONS } from '@/services/admissionsService';
 import { formatDocumentLabel } from '@/services/websiteService';
-import { attemptApplicationEmails, portalOrigin, submissionSchema, submitApplication } from '@/server/admissions';
+import { attemptApplicationEmails, enqueueRectificationEmail, portalOrigin, submissionSchema, submitApplication } from '@/server/admissions';
 import { emailConfiguration } from '@/server/emailTransport';
 import { generateNextStudentMatricule, provisionStudentComplete } from '@/services/studentProvisioningService';
 import type { AdmissionsContext } from '@/types/admissions';
@@ -178,6 +178,22 @@ export async function POST(request: Request) {
     }
 
     let data = await websiteRpc(client, 'escen_application_command', { p_actor_id: context.accountId, p_role_code: context.roleCode, p_year_id: yearId, p_action: input.action, p_data: payload });
+
+    if (['incomplete', 'request_changes'].includes(input.action) && data?.id) {
+      const identity = (data.identity || {}) as Record<string, unknown>;
+      await enqueueRectificationEmail(client, {
+        yearId,
+        applicationId: String(data.id),
+        reference: String(data.reference || ''),
+        version: Number(data.version || currentVersion + 1),
+        email: String(identity.email || ''),
+        firstname: String(identity.prenom || ''),
+        lastname: String(identity.nom || ''),
+        requestedChanges: String(input.reason || ''),
+        trackingUrl: String(payload.access_url || `${portalOrigin(request)}/candidature/suivi`),
+        actorId: context.accountId,
+      });
+    }
 
     // 4. Création automatique du dossier étudiant dès le règlement intégral des frais d'inscription (ADMIS_OFFICIEL)
     if (input.action === 'confirm_payment' && data?.workflow_stage === 'ADMIS_OFFICIEL' && !data?.student_id) {

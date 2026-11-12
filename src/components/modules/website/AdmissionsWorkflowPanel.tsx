@@ -119,7 +119,7 @@ export default function AdmissionsWorkflowPanel() {
       if (action === 'confirm_payment') Object.assign(payload, { amount: Number(amount), reference, channel_id: channel });
       if (action === 'reverse_payment') payload.payment_id = paymentId;
       if (action === 'create_student') Object.assign(payload, { matricule: matricule.trim() || undefined, existing_student_id: student || null });
-      await admissionsOperation(role, payload); setAction(''); await saved(); setSuccess('Le dossier a été enregistré. Les courriers prévus sont placés dans la file d’envoi.');
+      await admissionsOperation(role, payload); setAction(''); await saved(); setSuccess(data?.mail_configured ? 'Le dossier a été mis à jour et les notifications par e-mail ont été envoyées au candidat et aux responsables.' : 'Le dossier a été enregistré. Les courriers prévus sont placés dans la file d’envoi.');
     } catch (error) { setError(error instanceof Error ? error.message : 'Enregistrement impossible.'); } finally { setBusy(false); }
   }
   async function create(application: IntakeInput, files: FormData) {
@@ -192,7 +192,14 @@ export default function AdmissionsWorkflowPanel() {
       {data.capabilities.review && year && <button className="btn btn-outline" onClick={() => { setError(''); setCreateToken(newToken()); }}>Saisir une candidature</button>}
     </PageHeader>
     {error && !selected && !createToken && <p role="alert" className="restricted-box">{error}</p>}{success && <p role="status" className="success-message">{success}</p>}
-    {!data.mail_configured && <p className="restricted-box" role="status">Les mails sont conservés dans la file d’envoi. Le service d’envoi doit être configuré pour les transmettre.</p>}
+    {!data.mail_configured ? (
+      <p className="restricted-box" role="status">Les mails sont conservés dans la file d’envoi. Le service d’envoi doit être configuré pour les transmettre.</p>
+    ) : (
+      <p className="info-box" role="status" style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '0.5rem' }}>
+        <Mail size={16} aria-hidden="true" />
+        <span><strong>Notifications e-mail actives (Microsoft 365) :</strong> chaque étape (réception, demande de rectification, transmission à l’académie, admissibilité, refus, admission officielle et identifiants étudiants) est envoyée automatiquement par mail au candidat et aux responsables concernés.</span>
+      </p>
+    )}
     <div className="admissions-pills-bar" role="toolbar" aria-label="Filtrer par statut">
       {MACRO_STAGES.map(stage => {
         const count = data.applications.filter(item => stage.id === 'ALL' || getApplicationMacroStage(item) === stage.id).length;
