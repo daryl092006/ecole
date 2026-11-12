@@ -148,7 +148,7 @@ test('Signalement : un échec de transaction ne termine jamais la première conn
 
 test('Signalement : année explicitement choisie parmi les années accessibles, même hors année de travail', async () => {
   const f = fixture({ otherCurrentYear: true });
-  expect(await (await f.get('?support=1')).json()).toEqual({ years: [{ id: securityIds.year, name: '2026-2027' }], currentYearId: null });
+  expect(await (await f.get('?support=1')).json()).toEqual({ years: [{ id: securityIds.year, name: '2026-2027' }], currentYearId: securityIds.year });
   const { snapshot } = await (await f.get()).json();
   expect((await f.post({ decision: 'REPORT', snapshot, details: 'Téléphone à corriger.', yearId: securityIds.year })).status).toBe(200);
 });

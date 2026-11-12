@@ -207,8 +207,9 @@ test('Un changement de compte dans le navigateur recharge le profil et retire l�
   }, { key, token, id: ACCOUNT_IDS[0] });
   await expect(page.locator('#main-content')).toBeVisible();
   await page.getByLabel('Mon compte et mon rôle').click();
-  await expect(page.locator('.account-name')).toHaveText('Autre Compte');
-  await expect(page.locator('.account-name')).not.toContainText('Jean Technique');
+  const accountName = page.getByLabel('Mon compte et mon rôle').locator('strong');
+  await expect(accountName).toHaveText('Autre Compte');
+  await expect(accountName).not.toContainText('Jean Technique');
 });
 
 
