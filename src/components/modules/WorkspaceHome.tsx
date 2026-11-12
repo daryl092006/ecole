@@ -13,6 +13,7 @@ import StudentHome from '@/components/modules/student/StudentHome';
 import WorkspaceActions from '@/components/ui/WorkspaceActions';
 import KpiChart from '@/components/ui/KpiChart';
 import { PURCHASE_STATUS_LABELS } from '@/types/purchaseWorkspace';
+import { APPLICATION_STAGES } from '@/types/admissions';
 
 function fmtCompactFcfa(amount: number): string {
   if (amount >= 1_000_000) return `${(amount / 1_000_000).toFixed(1).replace('.0', '').replace('.', ',')} M FCFA`;
@@ -108,12 +109,19 @@ export default function WorkspaceHome({ mode = 'home' }: { mode?: 'home' | 'over
   const debtorStudents = knownFinancialStudents.filter(s => (s.financials?.remaining ?? 0) > 0).length;
 
   // Compact role-specific KPI cards (short 1-2 word labels, big numbers)
+  const applications = activeRows('online_applications');
+  const pendingApps = applications.filter(a => !['ADMIS_OFFICIEL', 'REFUSE'].includes(String(a.workflow_stage || a.status || ''))).length;
+  const admittedApps = applications.filter(a => String(a.workflow_stage || a.status || '') === 'ADMIS_OFFICIEL').length;
+  const absencesCount = activeRows('attendances').filter(a => a.status && String(a.status).toUpperCase() !== 'PRESENT').length;
+  const totalExpenses = activeRows('expenses').reduce((sum, e) => sum + (Number(e.amount ?? 0) || 0), 0);
+  const publishedComms = activeRows('communications').filter(c => c.published_at && !c.withdrawn_at).length;
+  const openTicketsCount = activeRows('support_tickets').filter(t => ['OPEN', 'IN_PROGRESS'].includes(String(t.status))).length;
+
   const roleKpiCards: RoleKpiCard[] = (() => {
     const role = state.activeRole;
 
     if (role === ROLES.IT) {
       const activeUsers = state.users.filter(u => u.active).length;
-      const openTickets = activeRows('support_tickets').filter(t => ['OPEN', 'IN_PROGRESS'].includes(String(t.status))).length;
       const teacherStaffIds = new Set(activeRows('teachers').map(row => row.staff_id));
       const contractStaffIds = new Set(activeRows('staff_contracts').filter(row => !row.ends_on).map(row => row.staff_id));
       const teacherOnlyPersonIds = new Set(
@@ -137,7 +145,7 @@ export default function WorkspaceHome({ mode = 'home' }: { mode?: 'home' | 'over
           items: [
             { label: 'Comptes actifs', value: `${activeUsers}/${state.users.length}` },
             { label: 'Enseignants', value: `${count('teachers')}` },
-            { label: 'Support ouvert', value: `${openTickets}` },
+            { label: 'Support ouvert', value: `${openTicketsCount}` },
             { label: 'Personnel', value: `${adminStaffCount}` },
             { label: 'Dossiers étudiants', value: `${totalStudents}` },
           ],
@@ -154,6 +162,32 @@ export default function WorkspaceHome({ mode = 'home' }: { mode?: 'home' | 'over
             { label: 'Recouvrement', value: expectedAmount > 0 ? `${Math.round(recoveryRate)} %` : 'Non établi' },
           ],
         },
+        {
+          title: 'Admissions & Pédagogie',
+          href: '/site-web/demandes',
+          icon: GraduationCap,
+          items: [
+            { label: 'Candidatures', value: `${applications.length}` },
+            { label: 'À traiter', value: `${pendingApps}` },
+            { label: 'Admis', value: `${admittedApps}` },
+            { label: 'Séances', value: `${count('sessions')}` },
+            { label: 'Notes', value: `${count('grades')}` },
+            { label: 'Absences', value: `${absencesCount}` },
+          ],
+        },
+        {
+          title: 'Opérations & Achats',
+          href: '/logistique/achats',
+          icon: Package,
+          items: [
+            { label: 'Achats', value: `${count('purchases')}` },
+            { label: 'Dépenses', value: fmtCompactFcfa(totalExpenses) },
+            { label: 'Publications', value: `${publishedComms}` },
+            { label: 'Réclamations', value: `${count('complaints')}` },
+            { label: 'Justificatifs', value: `${count('absence_justifications')}` },
+            { label: 'Documents', value: `${count('generated_documents')}` },
+          ],
+        },
       ];
     }
 
@@ -168,6 +202,8 @@ export default function WorkspaceHome({ mode = 'home' }: { mode?: 'home' | 'over
             { label: 'Filières', value: `${programsCount}` },
             { label: 'Groupes', value: `${count('groups')}` },
             { label: 'Enseignants', value: `${count('teachers')}` },
+            { label: 'Contrats', value: `${count('financial_contracts')}` },
+            { label: 'Bourses', value: `${count('scholarship_awards')}` },
           ],
         },
         {
@@ -181,6 +217,32 @@ export default function WorkspaceHome({ mode = 'home' }: { mode?: 'home' | 'over
             { label: 'Recouvrement', value: expectedAmount > 0 ? `${Math.round(recoveryRate)} %` : 'Non établi' },
             { label: 'Dossiers soldés', value: `${settledStudents}` },
             { label: 'Débiteurs', value: `${debtorStudents}` },
+          ],
+        },
+        {
+          title: 'Admissions & Pédagogie',
+          href: '/site-web/demandes',
+          icon: BookOpen,
+          items: [
+            { label: 'Candidatures', value: `${applications.length}` },
+            { label: 'À traiter', value: `${pendingApps}` },
+            { label: 'Admis', value: `${admittedApps}` },
+            { label: 'Épreuves', value: `${activeEvals.length}` },
+            { label: 'Notes', value: `${count('grades')}` },
+            { label: 'Absences', value: `${absencesCount}` },
+          ],
+        },
+        {
+          title: 'Achats & Opérations',
+          href: '/logistique/achats',
+          icon: Package,
+          items: [
+            { label: 'Achats', value: `${count('purchases')}` },
+            { label: 'Dépenses', value: fmtCompactFcfa(totalExpenses) },
+            { label: 'Publications', value: `${publishedComms}` },
+            { label: 'Réclamations', value: `${count('complaints')}` },
+            { label: 'Support ouvert', value: `${openTicketsCount}` },
+            { label: 'Documents', value: `${count('generated_documents')}` },
           ],
         },
       ];
@@ -207,9 +269,23 @@ export default function WorkspaceHome({ mode = 'home' }: { mode?: 'home' | 'over
           icon: Award,
           items: [
             { label: 'Épreuves', value: `${activeEvals.length}` },
+            { label: 'Copies', value: `${count('evaluation_candidates')}` },
             { label: 'Notes', value: `${count('grades')}` },
             { label: 'Réclamations', value: `${count('complaints')}` },
             { label: 'Décisions jury', value: `${count('jury_decisions')}` },
+          ],
+        },
+        {
+          title: 'Présences & Admissions',
+          href: '/academique/presences',
+          icon: ClipboardCheck,
+          items: [
+            { label: 'Pointages', value: `${count('attendances')}` },
+            { label: 'Absences', value: `${absencesCount}` },
+            { label: 'Justificatifs', value: `${count('absence_justifications')}` },
+            { label: 'Présences ens.', value: `${count('teacher_attendances')}` },
+            { label: 'Candidatures', value: `${applications.length}` },
+            { label: 'Étudiants', value: `${totalStudents}` },
           ],
         },
       ];
@@ -275,6 +351,18 @@ export default function WorkspaceHome({ mode = 'home' }: { mode?: 'home' | 'over
             { label: 'Reçus', value: `${count('receipts')}` },
           ],
         },
+        {
+          title: 'Dépenses & Achats',
+          href: '/logistique/achats',
+          icon: Package,
+          items: [
+            { label: 'Dépenses', value: fmtCompactFcfa(totalExpenses) },
+            { label: 'Achats', value: `${count('purchases')}` },
+            { label: 'Réceptions', value: `${count('purchase_receipts')}` },
+            { label: 'Fournisseurs', value: `${count('suppliers')}` },
+            { label: 'Équipements', value: `${count('assets')}` },
+          ],
+        },
       ];
     }
 
@@ -337,7 +425,8 @@ export default function WorkspaceHome({ mode = 'home' }: { mode?: 'home' | 'over
     }
 
     if (role === ROLES.ACHATS) {
-      const totalExpenses = activeRows('expenses').reduce((sum, e) => sum + (Number(e.amount ?? 0) || 0), 0);
+      const approvedPurchases = activeRows('purchases').filter(p => ['APPROUVE', 'COMMANDE', 'RECU'].includes(String(p.status))).length;
+      const pendingPurchases = activeRows('purchases').filter(p => ['BROUILLON', 'SOUMIS', 'EN_ATTENTE'].includes(String(p.status))).length;
       return [
         {
           title: 'Achats & Fournisseurs',
@@ -345,11 +434,22 @@ export default function WorkspaceHome({ mode = 'home' }: { mode?: 'home' | 'over
           icon: Package,
           items: [
             { label: 'Demandes', value: `${count('purchases')}` },
-            { label: 'Lignes', value: `${count('purchase_lines')}` },
+            { label: 'En attente', value: `${pendingPurchases}` },
+            { label: 'Validées', value: `${approvedPurchases}` },
             { label: 'Réceptions', value: `${count('purchase_receipts')}` },
             { label: 'Fournisseurs', value: `${count('suppliers')}` },
             { label: 'Dépenses', value: fmtCompactFcfa(totalExpenses) },
+          ],
+        },
+        {
+          title: 'Stocks & Équipements',
+          href: '/logistique/achats',
+          icon: ClipboardCheck,
+          items: [
+            { label: 'Lignes d’achat', value: `${count('purchase_lines')}` },
             { label: 'Équipements', value: `${count('assets')}` },
+            { label: 'Salles', value: `${count('rooms')}` },
+            { label: 'Support ouvert', value: `${openTicketsCount}` },
           ],
         },
       ];
@@ -362,7 +462,9 @@ export default function WorkspaceHome({ mode = 'home' }: { mode?: 'home' | 'over
           href: '/site-web/demandes',
           icon: Megaphone,
           items: [
-            { label: 'Candidatures', value: `${count('online_applications')}` },
+            { label: 'Candidatures', value: `${applications.length}` },
+            { label: 'À traiter', value: `${pendingApps}` },
+            { label: 'Admis', value: `${admittedApps}` },
             { label: 'Étudiants', value: `${totalStudents}` },
             { label: 'Filières', value: `${programsCount}` },
             { label: 'Groupes', value: `${count('groups')}` },
@@ -380,11 +482,22 @@ export default function WorkspaceHome({ mode = 'home' }: { mode?: 'home' | 'over
             { label: 'En attente', value: `${pendingPayments.length}` },
           ],
         },
+        {
+          title: 'Documents & Suivi',
+          href: '/etudiants/documents',
+          icon: Users,
+          items: [
+            { label: 'Documents émis', value: `${count('generated_documents')}` },
+            { label: 'Contrats', value: `${count('financial_contracts')}` },
+            { label: 'Bourses', value: `${count('scholarship_awards')}` },
+            { label: 'Réclamations', value: `${count('complaints')}` },
+            { label: 'Support ouvert', value: `${openTicketsCount}` },
+          ],
+        },
       ];
     }
 
     if (role === ROLES.MKT || role === ROLES.SITE) {
-      const publishedComms = activeRows('communications').filter(c => c.published_at && !c.withdrawn_at).length;
       return [
         {
           title: 'Communication & Site',
@@ -397,6 +510,18 @@ export default function WorkspaceHome({ mode = 'home' }: { mode?: 'home' | 'over
             { label: 'Concours & rentrées', value: `${count('annual_website_intakes')}` },
             { label: 'Brochures', value: `${count('annual_website_brochures')}` },
             { label: 'Filières', value: `${programsCount}` },
+          ],
+        },
+        {
+          title: 'Candidatures & Rentrées',
+          href: '/site-web/demandes',
+          icon: Users,
+          items: [
+            { label: 'Candidatures', value: `${applications.length}` },
+            { label: 'À traiter', value: `${pendingApps}` },
+            { label: 'Admis', value: `${admittedApps}` },
+            { label: 'Étudiants', value: `${totalStudents}` },
+            { label: 'Groupes', value: `${count('groups')}` },
           ],
         },
         ...(role === ROLES.MKT ? [{
@@ -508,6 +633,25 @@ export default function WorkspaceHome({ mode = 'home' }: { mode?: 'home' | 'over
     }
     return [...states].map(([label, value]) => ({ label, value }));
   };
+  const applicationStates = () => {
+    const counts = new Map<string, number>();
+    for (const row of applications) {
+      const stage = String(row.workflow_stage || row.status || '') as keyof typeof APPLICATION_STAGES;
+      const label = APPLICATION_STAGES[stage] || 'Autres étapes';
+      counts.set(label, (counts.get(label) || 0) + 1);
+    }
+    return [...counts].map(([label, value]) => ({ label, value }));
+  };
+  const attendanceStates = () => {
+    const counts = new Map<string, number>();
+    for (const row of activeRows('attendances')) {
+      const raw = String(row.status || '').toUpperCase();
+      const label = raw === 'PRESENT' ? 'Présents' : raw === 'ABSENT' ? 'Absents' : raw === 'RETARD' ? 'Retards'
+        : ['ABSENT_JUSTIFIE', 'RETARD_JUSTIFIE', 'DISPENSE'].includes(raw) ? 'Justifiés / Dispensés' : 'Autres';
+      counts.set(label, (counts.get(label) || 0) + 1);
+    }
+    return [...counts].map(([label, value]) => ({ label, value }));
+  };
   const renderCharts = () => <div className="home-bottom-grid" aria-label="Indicateurs graphiques">
     {!state.perms.scope.ownDataOnly && canViewStudents && <KpiChart title="Répartition des étudiants" description="Effectifs des dossiers visibles pour l’année et le périmètre consultés." series={[
       { label: 'Par filière', values: filiereBreakdown.map(item => ({ label: item.name, value: item.count })) },
@@ -516,9 +660,11 @@ export default function WorkspaceHome({ mode = 'home' }: { mode?: 'home' | 'over
     ]} />}
     {state.perms.permissions.includes('finance.view') && <KpiChart title="Répartition des frais" description={`${knownFinancialStudents.length} dossier(s) avec une situation financière renseignée. Les règlements en attente sont exclus.`} kind="donut" format="currency" available={knownFinancialStudents.length > 0} series={[{ label: 'Frais', values: [{ label: 'Réglé', value: collectedAmount }, { label: 'Reste à régler', value: remainingAmount }] }]} />}
     {state.perms.permissions.includes('user.manage') && <KpiChart title="État des comptes" description="Comptes de connexion visibles dans votre périmètre." kind="donut" series={[{ label: 'Comptes', values: [{ label: 'Actifs', value: state.users.filter(user => user.active).length }, { label: 'Inactifs', value: state.users.filter(user => !user.active).length }] }]} />}
-    {[ROLES.DA, ROLES.LOG, ROLES.ENS, ROLES.SURV].includes(state.activeRole as typeof ROLES.DA) && (state.perms.permissions.includes('grade.view') || state.perms.permissions.includes('schedule.view')) && <KpiChart title="État des évaluations" description="Répartition des évaluations visibles selon leur état enregistré, sans estimation des résultats." series={[{ label: 'Évaluations', values: groupStates('evaluations', evaluationStates) }]} />}
-    {state.activeRole === ROLES.ACHATS && state.perms.permissions.includes('purchase.view') && <KpiChart title="Suivi des achats" description="Demandes visibles, regroupées selon leur état enregistré." series={[{ label: 'Demandes', values: groupStates('purchases', PURCHASE_STATUS_LABELS) }]} />}
-    {[ROLES.MKT, ROLES.SITE].includes(state.activeRole as typeof ROLES.MKT) && state.perms.permissions.includes('communication.view') && <KpiChart title="État des communications" description="Communications visibles selon leur état de publication enregistré." series={[{ label: 'Publications', values: communicationStates() }]} />}
+    {[ROLES.IT, ROLES.DG, ROLES.DGA, ROLES.DA, ROLES.LOG, ROLES.ENS, ROLES.SURV].includes(state.activeRole as typeof ROLES.DA) && (state.perms.permissions.includes('grade.view') || state.perms.permissions.includes('schedule.view')) && <KpiChart title="État des évaluations" description="Répartition des évaluations visibles selon leur état enregistré, sans estimation des résultats." series={[{ label: 'Évaluations', values: groupStates('evaluations', evaluationStates) }]} />}
+    {[ROLES.IT, ROLES.DG, ROLES.DGA, ROLES.CC, ROLES.MKT, ROLES.SITE].includes(state.activeRole as typeof ROLES.CC) && applications.length > 0 && <KpiChart title="État des candidatures" description="Répartition des candidatures visibles selon leur étape de traitement." series={[{ label: 'Candidatures', values: applicationStates() }]} />}
+    {[ROLES.IT, ROLES.DG, ROLES.DGA, ROLES.DA, ROLES.LOG, ROLES.SURV].includes(state.activeRole as typeof ROLES.DA) && activeRows('attendances').length > 0 && <KpiChart title="Répartition des présences" description="Pointages enregistrés pour les séances visibles dans votre périmètre." kind="donut" series={[{ label: 'Présences', values: attendanceStates() }]} />}
+    {[ROLES.IT, ROLES.DG, ROLES.DGA, ROLES.RAF, ROLES.ACHATS].includes(state.activeRole as typeof ROLES.ACHATS) && state.perms.permissions.includes('purchase.view') && <KpiChart title="Suivi des achats" description="Demandes visibles, regroupées selon leur état enregistré." series={[{ label: 'Demandes', values: groupStates('purchases', PURCHASE_STATUS_LABELS) }]} />}
+    {[ROLES.IT, ROLES.DG, ROLES.DGA, ROLES.MKT, ROLES.SITE].includes(state.activeRole as typeof ROLES.MKT) && state.perms.permissions.includes('communication.view') && <KpiChart title="État des communications" description="Communications visibles selon leur état de publication enregistré." series={[{ label: 'Publications', values: communicationStates() }]} />}
   </div>;
   const followUps = [
     { page: ['sys_support', 'espace_support'], label: 'Demandes de support ouvertes', count: activeRows('support_tickets').filter(ticket => ['OPEN', 'IN_PROGRESS'].includes(String(ticket.status))).length },
