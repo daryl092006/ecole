@@ -497,7 +497,7 @@ export default function GradesWorkspace() {
               </div>
 
               <div className="cell-sub mb-2" style={{ fontSize: '12px' }}>
-                ⚖️ Barème officiel ESCEN : <strong>Devoir (40%)</strong> + <strong>Examen (60%)</strong> (ou <strong>100% Examen</strong> si pas de devoir)
+                Barème officiel ESCEN : <strong>Devoir (40%)</strong> + <strong>Examen (60%)</strong> (ou <strong>100% Examen</strong> si pas de devoir)
               </div>
               <div className="table-wrap">
                 <ResponsiveTable className="data-table">

@@ -219,14 +219,14 @@ export default function WebsiteArticlesPanel() {
               className={`btn btn-sm ${editing.status === 'PUBLIE' ? 'btn-primary' : 'btn-outline'}`}
               onClick={() => setEditing({ ...editing, status: 'PUBLIE' })}
             >
-              🌐 Publier sur le site officiel
+              Publier sur le site officiel
             </button>
             <button
               type="button"
               className={`btn btn-sm ${editing.status === 'BROUILLON' ? 'btn-primary' : 'btn-outline'}`}
               onClick={() => setEditing({ ...editing, status: 'BROUILLON' })}
             >
-              📝 Conserver en brouillon privé
+              Conserver en brouillon privé
             </button>
             {editing.id && (
               <button
@@ -234,7 +234,7 @@ export default function WebsiteArticlesPanel() {
                 className={`btn btn-sm ${editing.status === 'RETIRE' ? 'btn-danger' : 'btn-outline'}`}
                 onClick={() => setEditing({ ...editing, status: 'RETIRE' })}
               >
-                🚫 Retirer du site
+                Retirer du site
               </button>
             )}
           </div>

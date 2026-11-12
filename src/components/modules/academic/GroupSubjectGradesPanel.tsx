@@ -386,7 +386,7 @@ export default function GroupSubjectGradesPanel({ snapshot, canViewStudents, onS
             Notes de {activeSubjectSummary.name} — {activeGroup.name} ({studentRows.filter(r => r.hasAnyGrade).length} traité(s) sur {studentRows.length})
           </h3>
           <p className="cell-sub mb-2">
-            ⚖️ Barème officiel ESCEN : <strong>Devoir (40%)</strong> + <strong>Examen (60%)</strong> (ou <strong>100% Examen</strong> si pas de devoir)
+            Barème officiel ESCEN : <strong>Devoir (40%)</strong> + <strong>Examen (60%)</strong> (ou <strong>100% Examen</strong> si pas de devoir)
           </p>
           <div className="table-wrap">
             <ResponsiveTable className="data-table">

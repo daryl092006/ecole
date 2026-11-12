@@ -262,7 +262,7 @@ export default function EvaluationCreateDialog({
             <span className="page-eyebrow" style={{ color: 'var(--primary, #0284c7)', fontWeight: 700 }}>ÉTAPE 1 · CADRE PÉDAGOGIQUE</span>
             {selectedAssignment && (
               <span className="pill pill-default" style={{ fontSize: '0.82rem' }}>
-                👥 {candidateCount} candidat(s) rattaché(s)
+                {candidateCount} candidat(s) rattaché(s)
               </span>
             )}
           </div>
@@ -325,7 +325,7 @@ export default function EvaluationCreateDialog({
                 {category === 'resit' && <option value="RATTRAPAGE">Session de rattrapage (se substitue à l’examen)</option>}
               </select>
               <span className="cell-sub" style={{ marginTop: '4px', display: 'block' }}>
-                ⚖️ Barème officiel ESCEN : Devoir (40%) + Examen (60%) ou 100% Examen si pas de devoir = Note finale
+                Barème officiel ESCEN : Devoir (40%) + Examen (60%) ou 100% Examen si pas de devoir = Note finale
               </span>
             </label>
 
