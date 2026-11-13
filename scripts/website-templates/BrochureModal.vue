@@ -3,10 +3,12 @@
     <section ref="dialog" tabindex="-1" @keydown="onKeydown" :role="inline ? undefined : 'dialog'" :aria-modal="inline ? undefined : true" :aria-labelledby="inline ? undefined : 'brochure-title'" :class="inline ? 'bg-white rounded-xl p-6 mt-6' : 'bg-white text-gray-900 rounded-xl p-6 max-w-xl w-full max-h-[85vh] overflow-y-auto'">
       <div v-if="!inline" class="flex justify-between items-center gap-4 border-b pb-3 mb-4">
         <h2 id="brochure-title" class="text-xl font-bold">
-          {{ specificBrochure ? specificBrochure.title : (brochureName || 'Brochures ESCEN') }}
+          {{ !accessApproved ? 'Recevoir une brochure' : specificBrochure ? specificBrochure.title : (brochureName || 'Brochures ESCEN') }}
         </h2>
         <button type="button" aria-label="Fermer les brochures" class="text-gray-500 hover:text-gray-800 text-lg font-semibold" @click="$emit('close')">✕</button>
       </div>
+      <BrochureRequestForm v-if="!accessApproved" @saved="grantAccess" />
+      <template v-else>
       <p v-if="loading" role="status" class="py-6 text-center text-gray-600">Chargement de la brochure…</p>
       <div v-else-if="error" role="alert" class="py-6"><p class="text-red-600 mb-2">{{ error }}</p><button type="button" class="underline text-blue-600" @click="load">Réessayer</button></div>
       <p v-else-if="!displayedBrochures.length" class="py-6 text-gray-500 text-center">{{ association ? 'Aucune brochure publiée pour cette formation actuellement.' : 'Aucune brochure disponible actuellement.' }}</p>
@@ -43,17 +45,20 @@
           </div>
         </article>
       </div>
+      </template>
     </section>
   </div>
 </template>
 <script setup>
 import config from '../../config'
-const props = defineProps({ isOpen: Boolean, brochureName: String, inline: Boolean })
+import BrochureRequestForm from './BrochureRequestForm.vue'
+const props = defineProps({ isOpen: Boolean, brochureName: String, formationPath: String, brochureSlug: String, inline: Boolean })
 const emit = defineEmits(['close', 'submit'])
 const base = config.app_dev_url
 const brochures = ref([])
 const loading = ref(false)
 const error = ref('')
+const accessApproved = ref(false)
 let requestNumber = 0
 let controller
 const dialog = ref(null)
@@ -62,7 +67,7 @@ function onKeydown(event) {
   if (props.inline) return
   if (event.key === 'Escape') { event.preventDefault(); emit('close') }
   if (event.key !== 'Tab') return
-  const controls = [...dialog.value.querySelectorAll('button, a[href]')].filter(element => !element.disabled)
+  const controls = [...dialog.value.querySelectorAll('button, a[href], input')].filter(element => !element.disabled)
   const first = controls[0], last = controls.at(-1)
   if (event.shiftKey && (document.activeElement === first || document.activeElement === dialog.value)) { event.preventDefault(); last?.focus() }
   else if (!event.shiftKey && (document.activeElement === last || document.activeElement === dialog.value)) { event.preventDefault(); first?.focus() }
@@ -80,15 +85,16 @@ const brochureAssociations = {
   '/formations/executive-education/finance-digitale': ['EXECUTIVE', 'FD'],
   '/formations/executive-education/management-projets-transformation-digitale': ['EXECUTIVE', 'MP-TD']
 }
-const association = computed(() => props.inline ? null : brochureAssociations[route.path.replace(/\/$/, '')])
+const association = computed(() => props.inline ? null : brochureAssociations[(props.formationPath || route.path).replace(/\/$/, '')])
 const matchingBrochures = computed(() => {
+  if (props.brochureSlug) return brochures.value.filter(item => item.slug === props.brochureSlug)
   if (!association.value) return brochures.value
   const [cycle, code] = association.value
   return brochures.value.filter(item => item.cycle === cycle && item.program_code === code)
 })
 const specificBrochure = computed(() => {
   if (props.inline) return null
-  if (!association.value) return null
+  if (!association.value && !props.brochureSlug) return null
   const matches = matchingBrochures.value
   return matches.length === 1 ? matches[0] : null
 })
@@ -121,8 +127,8 @@ async function load() {
 }
 watch(() => props.isOpen, async value => {
   if (value) {
+    accessApproved.value = false
     if (import.meta.client && !props.inline) previousFocus = document.activeElement
-    load()
     await nextTick()
     if (!props.inline) dialog.value?.focus()
   } else {
@@ -131,5 +137,11 @@ watch(() => props.isOpen, async value => {
     previousFocus?.focus()
   }
 }, { immediate: true })
+async function grantAccess() {
+  accessApproved.value = true
+  load()
+  await nextTick()
+  if (!props.inline) dialog.value?.focus()
+}
 onBeforeUnmount(() => { requestNumber++; controller?.abort(); previousFocus?.focus() })
 </script>

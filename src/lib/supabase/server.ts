@@ -23,6 +23,7 @@ const READ_ONLY_RPCS = new Set([
   'escen_history_document',
   'escen_admission_document',
   'escen_brochures_public',
+  'escen_website_prospects_page',
 ]);
 
 function isReadOnlyRpc(name: string, args?: Record<string, unknown>): boolean {

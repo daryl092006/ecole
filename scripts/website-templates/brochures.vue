@@ -7,16 +7,20 @@
     <div v-else class="brochure-catalogue-list">
       <article v-for="brochure in brochures" :key="brochure.id">
         <div><h2>{{ brochure.title }}</h2><p>{{ brochure.description }}</p></div>
-        <a :href="`${base}/public/brochures/${brochure.slug}/download`" target="_blank" rel="noopener">Télécharger le PDF</a>
+        <button type="button" @click="selectedBrochure = brochure">Télécharger le PDF</button>
       </article>
     </div>
+    <BrochureModal :is-open="!!selectedBrochure" :brochure-slug="selectedBrochure?.slug" @close="selectedBrochure = null" />
   </main>
 </template>
 <script setup>
 import config from '../../config'
+import BrochureModal from '~/components/BrochureModal.vue'
+const selectedBrochure = ref(null)
 const base = config.app_dev_url
 const { data: brochures, error, refresh } = await useAsyncData('public-brochure-catalogue', async () => {
-  const fetchUrl = import.meta.server && process.env.ESCEN_SSR_API_URL ? `${process.env.ESCEN_SSR_API_URL}/public/brochures` : `${base}/public/brochures`
+  const serverBase = process.env.ESCEN_SSR_API_URL || config.app_prod_url
+  const fetchUrl = `${import.meta.server ? serverBase : base}/public/brochures`
   const response = await fetch(fetchUrl, { signal: AbortSignal.timeout(15000) })
   if (!response.ok) throw new Error('Catalogue indisponible')
   const rows = await response.json()

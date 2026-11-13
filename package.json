@@ -7,7 +7,7 @@
     "build": "node scripts/run-next.mjs build",
     "start": "node scripts/run-next.mjs start",
     "lint": "eslint",
-    "test": "node scripts/verify-workflows.cjs && npm run test:db",
+    "test": "node scripts/verify-workflows.cjs && npm run test:db && node scripts/verify-website-prospects.mjs",
     "test:db": "node scripts/verify-rpc-conflicts.mjs && node scripts/verify-database.mjs && node scripts/verify-teacher-profile-recovery.mjs && node scripts/verify-operational-recovery.mjs --self-test && node scripts/verify-admissions-workflow.mjs && node scripts/verify-room-simplification.mjs && node scripts/verify-shared-course-proposal.mjs",
     "test:legacy": "python3 scripts/prepare-legacy-data.py --self-test",
     "db:describe": "node scripts/describe-database.mjs",

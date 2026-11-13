@@ -2,7 +2,7 @@
 
 Généré avec `npm run db:describe` en exécutant les migrations dans PostgreSQL local (PGlite). Aucun accès à Supabase ou aux données de la sauvegarde.
 
-122 tables métier, 14 tables privées, 1112 colonnes, 310 clés étrangères, 267 CHECK de tables et 5 exclusions. Les domaines ajoutent les bornes des notes, des montants FCFA et des textes obligatoires.
+123 tables métier, 14 tables privées, 1118 colonnes, 311 clés étrangères, 270 CHECK de tables et 5 exclusions. Les domaines ajoutent les bornes des notes, des montants FCFA et des textes obligatoires.
 
 Toutes les tables ont RLS activée, sans accès applicatif permis à ce stade. Les noms techniques ne sont pas des libellés à afficher dans l’interface.
 
@@ -130,6 +130,7 @@ Toutes les tables ont RLS activée, sans accès applicatif permis à ce stade. L
 | escen | website_galleries | 14 | 2 | Oui |
 | escen | website_intakes | 9 | 3 | Oui |
 | escen | website_level_document_rules | 7 | 2 | Oui |
+| escen | website_prospects | 6 | 1 | Oui |
 | escen_private | application_access | 3 | 1 | Oui |
 | escen_private | archive_objects | 11 | 1 | Oui |
 | escen_private | audit_events | 13 | 1 | Oui |
@@ -5088,6 +5089,41 @@ Index :
 CREATE UNIQUE INDEX website_level_document_rules_academic_year_id_level_id_key ON escen.website_level_document_rules USING btree (academic_year_id, level_id)
 CREATE INDEX website_level_document_rules_level_fk ON escen.website_level_document_rules USING btree (level_id)
 CREATE UNIQUE INDEX website_level_document_rules_pkey ON escen.website_level_document_rules USING btree (id)
+```
+
+## escen.website_prospects
+
+| Attribut | Type | Nullable | Défaut | Généré |
+|---|---|---|---|---|
+| id | uuid | NO | — | NEVER |
+| academic_year_id | uuid | NO | — | NEVER |
+| full_name | text | NO | — | NEVER |
+| email | text | NO | — | NEVER |
+| phone | text | NO | — | NEVER |
+| created_at | timestamptz | NO | now() | NEVER |
+
+Contraintes :
+
+```sql
+website_prospects_academic_year_id_fkey: FOREIGN KEY (academic_year_id) REFERENCES escen.academic_years(id) ON DELETE RESTRICT
+website_prospects_academic_year_id_not_null: NOT NULL academic_year_id
+website_prospects_created_at_not_null: NOT NULL created_at
+website_prospects_email_check: CHECK (((email = lower(btrim(email))) AND (char_length(email) <= 254) AND (email ~ '^[^[:space:]<>@]+@[^[:space:]<>@]+\.[^[:space:]<>@]+$'::text)))
+website_prospects_email_not_null: NOT NULL email
+website_prospects_full_name_check: CHECK (((full_name = btrim(full_name)) AND ((char_length(full_name) >= 2) AND (char_length(full_name) <= 160))))
+website_prospects_full_name_not_null: NOT NULL full_name
+website_prospects_id_not_null: NOT NULL id
+website_prospects_phone_check: CHECK (((phone = btrim(phone)) AND ((char_length(phone) >= 6) AND (char_length(phone) <= 30)) AND (phone ~ '^\+?[0-9() .-]+$'::text) AND ((char_length(regexp_replace(phone, '[^0-9]'::text, ''::text, 'g'::text)) >= 6) AND (char_length(regexp_replace(phone, '[^0-9]'::text, ''::text, 'g'::text)) <= 15))))
+website_prospects_phone_not_null: NOT NULL phone
+website_prospects_pkey: PRIMARY KEY (id)
+```
+
+Index :
+
+```sql
+CREATE INDEX website_prospects_created ON escen.website_prospects USING btree (created_at DESC, id DESC)
+CREATE UNIQUE INDEX website_prospects_pkey ON escen.website_prospects USING btree (id)
+CREATE INDEX website_prospects_year_created ON escen.website_prospects USING btree (academic_year_id, created_at DESC, id DESC)
 ```
 
 ## escen_private.application_access

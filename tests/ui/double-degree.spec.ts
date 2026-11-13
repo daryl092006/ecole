@@ -71,7 +71,6 @@ test('Tarif de double diplomation configurable avec récapitulatif avant écritu
   await dialog.getByLabel('Filière (facultative)').selectOption('P');
   await dialog.getByLabel('Double diplomation (facultative)').selectOption('true');
   await dialog.getByLabel('Montant en FCFA').fill('850000');
-  await dialog.locator('#fee-reason').fill('Grille double diplomation validée');
   await dialog.getByRole('button',{name:/Vérifier/}).click();
   expect(writes).toHaveLength(0);
   await expect(dialog).toContainText('Double diplomation');

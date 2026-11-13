@@ -460,24 +460,20 @@ export default function AnnualFeesWorkspace() {
               Modalités de découpage des tranches (Règlement financier ESCEN)
             </h3>
             <p className="cell-sub" style={{ margin: '0 0 1rem 0' }}>
-              Les contrats d’études générés appliquent ces découpages types selon l’échéancier choisi lors de l’inscription :
+              Trois plans de paiement sont proposés à l’inscription et à la réinscription. Les frais d’inscription sont inclus dans la première tranche :
             </p>
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1rem' }}>
               <div style={{ padding: '0.85rem 1rem', background: 'var(--surface-alt)', border: '1px solid var(--border)', borderRadius: '8px' }}>
                 <strong style={{ color: 'var(--text-primary)' }}>Annuel (1 tranche)</strong>
-                <div className="cell-sub" style={{ marginTop: '0.25rem' }}>100% de la scolarité à la rentrée (ex: Octobre ou Mars).</div>
+                <div className="cell-sub" style={{ marginTop: '0.25rem' }}>Paiement comptant intégral avec une remise automatique de 15 % sur la scolarité.</div>
               </div>
               <div style={{ padding: '0.85rem 1rem', background: 'var(--surface-alt)', border: '1px solid var(--border)', borderRadius: '8px' }}>
                 <strong style={{ color: 'var(--text-primary)' }}>Trimestriel (3 tranches)</strong>
-                <div className="cell-sub" style={{ marginTop: '0.25rem' }}>3 versements égaux (ex: Octobre, Décembre, Février).</div>
+                <div className="cell-sub" style={{ marginTop: '0.25rem' }}>Scolarité répartie en 3 tranches. Une remise de 10 % peut être accordée sur validation explicite.</div>
               </div>
               <div style={{ padding: '0.85rem 1rem', background: 'var(--surface-alt)', border: '1px solid var(--border)', borderRadius: '8px' }}>
-                <strong style={{ color: 'var(--text-primary)' }}>Bi-mensuel (4 tranches)</strong>
-                <div className="cell-sub" style={{ marginTop: '0.25rem' }}>4 versements réguliers (ex: M3, M5, M7, M9 de 25% chacun).</div>
-              </div>
-              <div style={{ padding: '0.85rem 1rem', background: 'var(--surface-alt)', border: '1px solid var(--border)', borderRadius: '8px' }}>
-                <strong style={{ color: 'var(--text-primary)' }}>Mensuel (8 à 10 tranches)</strong>
-                <div className="cell-sub" style={{ marginTop: '0.25rem' }}>Mensualités étalées sur toute l’année académique.</div>
+                <strong style={{ color: 'var(--text-primary)' }}>Bimestriel (4 tranches)</strong>
+                <div className="cell-sub" style={{ marginTop: '0.25rem' }}>Scolarité au plein tarif répartie en 4 tranches, sans remise.</div>
               </div>
             </div>
           </div>

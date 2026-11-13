@@ -102,6 +102,7 @@ export async function localBusinessFixture(migrationOptions) {
     '/api/purchases': load(new URL('app/api/purchases/route.ts', root)),
     '/api/student-documents': load(new URL('app/api/student-documents/route.ts', root)),
     '/api/website-management': load(new URL('app/api/website-management/route.ts', root)),
+    '/api/website-prospects': load(new URL('app/api/website-prospects/route.ts', root)),
     '/api/year-preparation': load(new URL('app/api/year-preparation/route.ts', root)),
     '/api/students': load(new URL('app/api/students/route.ts', root)),
   };

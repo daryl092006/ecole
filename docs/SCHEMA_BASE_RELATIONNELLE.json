@@ -1,10 +1,10 @@
 {
   "stats": {
-    "businessTables": 122,
+    "businessTables": 123,
     "privateTables": 14,
-    "columns": 1112,
-    "foreignKeys": 310,
-    "checks": 267,
+    "columns": 1118,
+    "foreignKeys": 311,
+    "checks": 270,
     "exclusions": 5
   },
   "tables": [
@@ -616,6 +616,11 @@
     {
       "schema": "escen",
       "name": "website_level_document_rules",
+      "rls": true
+    },
+    {
+      "schema": "escen",
+      "name": "website_prospects",
       "rls": true
     },
     {
@@ -9874,6 +9879,60 @@
       "schema": "escen",
       "table": "website_level_document_rules",
       "name": "updated_at",
+      "type": "timestamptz",
+      "nullable": "NO",
+      "default": "now()",
+      "generated": "NEVER"
+    },
+    {
+      "schema": "escen",
+      "table": "website_prospects",
+      "name": "id",
+      "type": "uuid",
+      "nullable": "NO",
+      "default": null,
+      "generated": "NEVER"
+    },
+    {
+      "schema": "escen",
+      "table": "website_prospects",
+      "name": "academic_year_id",
+      "type": "uuid",
+      "nullable": "NO",
+      "default": null,
+      "generated": "NEVER"
+    },
+    {
+      "schema": "escen",
+      "table": "website_prospects",
+      "name": "full_name",
+      "type": "text",
+      "nullable": "NO",
+      "default": null,
+      "generated": "NEVER"
+    },
+    {
+      "schema": "escen",
+      "table": "website_prospects",
+      "name": "email",
+      "type": "text",
+      "nullable": "NO",
+      "default": null,
+      "generated": "NEVER"
+    },
+    {
+      "schema": "escen",
+      "table": "website_prospects",
+      "name": "phone",
+      "type": "text",
+      "nullable": "NO",
+      "default": null,
+      "generated": "NEVER"
+    },
+    {
+      "schema": "escen",
+      "table": "website_prospects",
+      "name": "created_at",
       "type": "timestamptz",
       "nullable": "NO",
       "default": "now()",
@@ -21453,6 +21512,83 @@
       "definition": "NOT NULL version"
     },
     {
+      "schema": "escen",
+      "table": "website_prospects",
+      "name": "website_prospects_academic_year_id_fkey",
+      "type": "f",
+      "definition": "FOREIGN KEY (academic_year_id) REFERENCES escen.academic_years(id) ON DELETE RESTRICT"
+    },
+    {
+      "schema": "escen",
+      "table": "website_prospects",
+      "name": "website_prospects_academic_year_id_not_null",
+      "type": "n",
+      "definition": "NOT NULL academic_year_id"
+    },
+    {
+      "schema": "escen",
+      "table": "website_prospects",
+      "name": "website_prospects_created_at_not_null",
+      "type": "n",
+      "definition": "NOT NULL created_at"
+    },
+    {
+      "schema": "escen",
+      "table": "website_prospects",
+      "name": "website_prospects_email_check",
+      "type": "c",
+      "definition": "CHECK (((email = lower(btrim(email))) AND (char_length(email) <= 254) AND (email ~ '^[^[:space:]<>@]+@[^[:space:]<>@]+\\.[^[:space:]<>@]+$'::text)))"
+    },
+    {
+      "schema": "escen",
+      "table": "website_prospects",
+      "name": "website_prospects_email_not_null",
+      "type": "n",
+      "definition": "NOT NULL email"
+    },
+    {
+      "schema": "escen",
+      "table": "website_prospects",
+      "name": "website_prospects_full_name_check",
+      "type": "c",
+      "definition": "CHECK (((full_name = btrim(full_name)) AND ((char_length(full_name) >= 2) AND (char_length(full_name) <= 160))))"
+    },
+    {
+      "schema": "escen",
+      "table": "website_prospects",
+      "name": "website_prospects_full_name_not_null",
+      "type": "n",
+      "definition": "NOT NULL full_name"
+    },
+    {
+      "schema": "escen",
+      "table": "website_prospects",
+      "name": "website_prospects_id_not_null",
+      "type": "n",
+      "definition": "NOT NULL id"
+    },
+    {
+      "schema": "escen",
+      "table": "website_prospects",
+      "name": "website_prospects_phone_check",
+      "type": "c",
+      "definition": "CHECK (((phone = btrim(phone)) AND ((char_length(phone) >= 6) AND (char_length(phone) <= 30)) AND (phone ~ '^\\+?[0-9() .-]+$'::text) AND ((char_length(regexp_replace(phone, '[^0-9]'::text, ''::text, 'g'::text)) >= 6) AND (char_length(regexp_replace(phone, '[^0-9]'::text, ''::text, 'g'::text)) <= 15))))"
+    },
+    {
+      "schema": "escen",
+      "table": "website_prospects",
+      "name": "website_prospects_phone_not_null",
+      "type": "n",
+      "definition": "NOT NULL phone"
+    },
+    {
+      "schema": "escen",
+      "table": "website_prospects",
+      "name": "website_prospects_pkey",
+      "type": "p",
+      "definition": "PRIMARY KEY (id)"
+    },
+    {
       "schema": "escen_private",
       "table": "application_access",
       "name": "application_access_expires_at_not_null",
@@ -25712,6 +25848,24 @@
       "table": "website_level_document_rules",
       "name": "website_level_document_rules_pkey",
       "definition": "CREATE UNIQUE INDEX website_level_document_rules_pkey ON escen.website_level_document_rules USING btree (id)"
+    },
+    {
+      "schema": "escen",
+      "table": "website_prospects",
+      "name": "website_prospects_created",
+      "definition": "CREATE INDEX website_prospects_created ON escen.website_prospects USING btree (created_at DESC, id DESC)"
+    },
+    {
+      "schema": "escen",
+      "table": "website_prospects",
+      "name": "website_prospects_pkey",
+      "definition": "CREATE UNIQUE INDEX website_prospects_pkey ON escen.website_prospects USING btree (id)"
+    },
+    {
+      "schema": "escen",
+      "table": "website_prospects",
+      "name": "website_prospects_year_created",
+      "definition": "CREATE INDEX website_prospects_year_created ON escen.website_prospects USING btree (academic_year_id, created_at DESC, id DESC)"
     },
     {
       "schema": "escen_private",

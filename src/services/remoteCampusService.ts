@@ -47,6 +47,11 @@ export async function loadRelationalCampus(role?: RoleName, signal?: AbortSignal
   return result.data;
 }
 
+export async function loadWebsiteProspects(role: RoleName, cursor?: { createdAt: string; id: string }, signal?: AbortSignal): Promise<import('@/types/website').WebsiteProspectsPage> {
+  const query = new URLSearchParams(cursor ? { beforeCreatedAt: cursor.createdAt, beforeId: cursor.id } : {});
+  return readResponse(await fetch(`/api/website-prospects?${query}`, { headers: await headers(role), cache: 'no-store', signal }));
+}
+
 export async function saveRelationalChanges(revision: number, changes: PersistentChange[], role?: RoleName): Promise<number> {
   const data = await readResponse(await fetch('/api/campus',{ method:'POST',headers:{ ...await headers(role),'Content-Type':'application/json' },body:JSON.stringify({ revision,changes }) }));
   return data.revision;

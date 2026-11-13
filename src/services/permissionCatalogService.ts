@@ -12,7 +12,7 @@ export const PERMISSION_DOMAINS = [
   { id: 'finance', label: 'Finance', prefixes: ['finance', 'payment'] },
   { id: 'staff', label: 'Personnel et accès', prefixes: ['staff', 'user'] },
   { id: 'logistics', label: 'Achats et inventaire', prefixes: ['purchase', 'asset'] },
-  { id: 'communication', label: 'Communication', prefixes: ['communication'] },
+  { id: 'communication', label: 'Communication et site web', prefixes: ['communication', 'website'] },
   { id: 'system', label: 'Système et support', prefixes: ['system', 'email'] },
 ];
 

@@ -57,8 +57,8 @@ try {
   });
   await check('Informaticien avec tous les droits, Stagiaire avec ses droits opérationnels et aucune attribution automatique', async () => {
     assert.equal(await scalar('select count(*)::integer as value from escen.roles'), 15);
-    assert.equal(await scalar('select count(*)::integer as value from escen.permissions'), 52);
-    assert.equal(await scalar("select count(*)::integer as value from escen.role_permissions rp join escen.roles r on r.id = rp.role_id where r.code = 'IT'"), 52);
+    assert.equal(await scalar('select count(*)::integer as value from escen.permissions'), 53);
+    assert.equal(await scalar("select count(*)::integer as value from escen.role_permissions rp join escen.roles r on r.id = rp.role_id where r.code = 'IT'"), 53);
     assert.equal(await scalar("select count(*)::integer as value from escen.role_permissions rp join escen.roles r on r.id = rp.role_id where r.code = 'STG'"), 14);
     assert.equal(await scalar('select count(*)::integer as value from escen.role_grants'), 0);
   });

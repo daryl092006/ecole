@@ -1,11 +1,58 @@
-import { expect, test } from '@playwright/test';
+import { expect, test, type Page } from '@playwright/test';
+import { completeBrochureRequest } from './website-brochure-form';
 const website = process.env.ESCEN_TEST_WEBSITE_URL || 'http://localhost:3200';
 const year = '44444444-4444-4444-8444-444444444444';
 const level = '11111111-1111-4111-8111-111111111111';
 const program = '22222222-2222-4222-8222-222222222222';
 const token = 'a'.repeat(64);
 
+async function waitForWebsite(page: Page) {
+  await page.waitForFunction(() => {
+    const root = document.querySelector('#__nuxt') as Element & {
+      __vue_app__?: { config: { globalProperties: { $nuxt?: { isHydrating: boolean } } } };
+    };
+    return root?.__vue_app__?.config.globalProperties.$nuxt?.isHydrating === false;
+  });
+}
+
+test('Brochure absente depuis une liste : les autres formations ne sont pas proposées', async ({ page }) => {
+  await page.route('**/api/website/**', handler => handler.fulfill({ json: handler.request().url().endsWith('/public/brochures')
+    ? [{ id: 'other', title: 'Licence Finance', slug: 'licence-finance', cycle: 'LICENCE', program_code: 'FD' }] : [] }));
+  await page.goto(`${website}/formations/master-professionnel`);
+  await waitForWebsite(page);
+  await page.getByRole('button', { name: 'Télécharger la brochure', exact: true }).first().click();
+  const dialog = page.getByRole('dialog');
+  await completeBrochureRequest(page);
+  await expect(dialog).toContainText('Aucune brochure publiée pour cette formation actuellement.');
+  await expect(dialog.getByRole('link')).toHaveCount(0);
+});
+
 for (const width of [390, 1440]) {
+  for (const [route, cycle, codes] of [
+    ['licence-professionnelle', 'LICENCE', ['MDE', 'FD']],
+    ['master-professionnel', 'MASTER', ['MDE', 'FD']],
+    ['executive-education', 'EXECUTIVE', ['FD', 'MP-TD']],
+  ] as const) {
+    test(`Brochure depuis la liste : ${cycle} à ${width}px`, async ({ page }) => {
+      await page.setViewportSize({ width, height: 950 });
+      await page.route('**/api/website/**', handler => handler.fulfill({ json: handler.request().url().endsWith('/public/brochures')
+        ? ['LICENCE', 'MASTER', 'EXECUTIVE'].flatMap(item => ['MDE', 'FD', 'MP-TD'].map(code => ({
+          id: `${item}-${code}`, title: `${item} ${code}`, slug: `${item.toLowerCase()}-${code.toLowerCase()}`,
+          program_code: code, cycle: item, filename: `${item}-${code}.pdf`, byte_size: 1000,
+        }))) : [] }));
+      await page.goto(`${website}/formations/${route}`);
+      await waitForWebsite(page);
+      for (const [index, code] of codes.entries()) {
+        await page.getByRole('button', { name: 'Télécharger la brochure', exact: true }).nth(index).click();
+        const dialog = page.getByRole('dialog');
+        await completeBrochureRequest(page);
+        await expect(dialog.getByRole('heading', { name: `${cycle} ${code}`, exact: true })).toBeVisible();
+        await expect(dialog.getByRole('link', { name: 'Télécharger la brochure', exact: true })).toHaveAttribute('href', new RegExp(`/${cycle.toLowerCase()}-${code.toLowerCase()}/download$`));
+        await expect(dialog.getByRole('article')).toHaveCount(0);
+        await dialog.getByRole('button', { name: 'Fermer les brochures' }).click();
+      }
+    });
+  }
   for (const resume of [false, true]) {
     test(`Les pièces indisponibles bloquent ${resume ? 'le dossier' : 'la préparation'} puis permettent de réessayer à ${width}px`, async ({ page }) => {
       await page.setViewportSize({ width, height: 950 });
@@ -63,8 +110,10 @@ for (const width of [390, 1440]) {
         return handler.fulfill({ json: handler.request().url().endsWith('/public/brochures') ? brochures : [] });
       });
       await page.goto(`${website}/formations/${route}/finance-digitale`);
+      await waitForWebsite(page);
       await page.getByRole('button', { name: 'Télécharger la brochure', exact: true }).first().click();
       const dialog = page.getByRole('dialog');
+      await completeBrochureRequest(page);
       await expect(dialog.getByRole('heading', { name: `${cycle} Finance Digitale`, exact: true })).toBeVisible();
       await expect(dialog.getByRole('link', { name: 'Télécharger la brochure', exact: true })).toHaveAttribute('href', new RegExp(`/${slug}/download$`));
       await page.screenshot({ path: `tmp/screenshots/website-review/${width}/brochure-${cycle}.png`, fullPage: true });
