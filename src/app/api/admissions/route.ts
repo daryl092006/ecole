@@ -79,14 +79,15 @@ export async function POST(request: Request) {
     }
 
     // Orchestration directe des étapes intermédiaires pour éviter les clics superflus en interface
-    const { data: currentApp } = await client
-      .from('online_applications')
-      .select('id, version, workflow_stage, intake_id')
-      .eq('id', input.id)
-      .maybeSingle();
+    const admissionContext = await websiteRpc(client, 'escen_admissions_context', {
+      p_actor_id: context.accountId, p_role_code: context.roleCode, p_year_id: yearId,
+    }) as AdmissionsContext;
+    const currentApp = admissionContext.applications.find(application => application.id === input.id);
+    if (!currentApp) throw new RequestError(404, 'Candidature introuvable dans votre périmètre pour cette année.');
+    if (currentApp.version !== input.version) throw new RequestError(409, 'Modification concurrente. Actualisez le dossier avant de confirmer.');
 
-    let currentVersion = Number(currentApp?.version ?? input.version);
-    let currentStage = (currentApp?.workflow_stage as string | null) ?? null;
+    let currentVersion = input.version;
+    let currentStage: string | null = currentApp.workflow_stage;
 
     // 1. Demander une rectification directement depuis NOUVELLE / RECUE / A_COMPLETER
     if (['incomplete', 'request_changes'].includes(input.action) && (!currentStage || ['NOUVELLE', 'RECUE', 'A_COMPLETER'].includes(currentStage))) {
@@ -117,22 +118,11 @@ export async function POST(request: Request) {
       }
 
       if (currentStage === 'VERIFICATION_ADMISSION') {
-        const { data: docs } = await client
-          .from('application_documents')
-          .select('id, document_key')
-          .eq('application_id', input.id);
-        const allDocIds = (docs || []).map(d => String(d.id));
-        const uploadedKeys = new Set((docs || []).map(d => String(d.document_key)));
+        const allDocIds = currentApp.documents.map(document => document.id);
+        const uploadedKeys = new Set(currentApp.documents.map(document => document.document_key));
 
-        if (currentApp?.intake_id) {
-          const { data: intakeRow } = await client
-            .from('website_intakes')
-            .select('required_documents')
-            .eq('id', currentApp.intake_id)
-            .maybeSingle();
-          const requiredKeys = Array.isArray(intakeRow?.required_documents)
-            ? (intakeRow.required_documents as string[])
-            : [];
+        if (currentApp.intake_id) {
+          const requiredKeys = currentApp.required_documents;
           const missingKeys = requiredKeys.filter(k => !uploadedKeys.has(k));
           if (missingKeys.length > 0) {
             const missingLabels = missingKeys.map(k => formatDocumentLabel(k)).join(', ');

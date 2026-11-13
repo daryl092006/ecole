@@ -1,22 +1,29 @@
 import { expect, test } from '@playwright/test';
 import { loadSecurityApi, securityContext, uuid } from './security-fixture';
 import { ROLES } from '../../src/types/permissions';
+import type { AdmissionApplication } from '../../src/types/admissions';
 import type { RoleName } from '../../src/types/permissions';
 const year = uuid(1), id = uuid(2);
 function api(role: RoleName = ROLES.IT, roleCode = 'IT') {
+  const application: Pick<AdmissionApplication, 'id' | 'version' | 'workflow_stage' | 'documents' | 'required_documents' | 'intake_id'> = { id, version: 1, workflow_stage: 'VERIFICATION_ADMISSION', documents: [], required_documents: [], intake_id: uuid(3) };
   const calls: { name: string; args: Record<string, unknown> }[] = [];
-  const client = { from: () => ({ select: () => ({ eq: () => ({ maybeSingle: async () => ({ data: { id, version: 1, workflow_stage: 'VERIFICATION_ADMISSION' }, error: null }) }) }) }), rpc: async (name: string,args: Record<string,unknown> = {}) => {
+  const client = { from: () => { throw new Error('Les tables métier ne sont pas exposées dans public'); }, rpc: async (name: string,args: Record<string,unknown> = {}) => {
     calls.push({name,args});
     if (name === 'escen_academic_year_context') return {data:{currentYearId:year},error:null};
-    if (name === 'escen_admissions_context') return {data:{enabled:true,applications:[],notices:[]},error:null};
+    if (name === 'escen_admissions_context') return {data:{enabled:true,applications:[application],notices:[]},error:null};
     if (name === 'escen_application_notices') return {data:[],error:null};
     if (name === 'escen_website_rate') return {data:true,error:null};
     if (name === 'escen_candidate_dossier') return {data:{application:{id,reference:'LOCAL'}},error:null};
+    if (name === 'escen_application_command') {
+      application.version++;
+      if (args.p_action === 'study') application.workflow_stage = 'ETUDE_ACADEMIQUE';
+      return { data: { ...application }, error: null };
+    }
     return {data:{id},error:null};
   } };
   const context = securityContext(role,{roleCode,grants:[{role_code:roleCode,role_name:role,site_id:null,group_id:null,academic_year_id:null}]});
   const route = loadSecurityApi('app/api/admissions/route.ts',client,context,client) as {GET:(r:Request)=>Promise<Response>;POST:(r:Request)=>Promise<Response>};
-  return {route,calls,client,context};
+  return {route,calls,client,context,application};
 }
 const post = (body: unknown, selected = year) => new Request('http://local.test/api/admissions',{method:'POST',headers:{'Content-Type':'application/json','x-escen-year':selected},body:JSON.stringify(body)});
 test('API : le marketing ne peut pas prendre une décision académique',async()=>{
@@ -119,4 +126,50 @@ test('API : les pièces du chargé de clientèle passent par le périmètre admi
   expect(await response.json()).toEqual({ url: 'https://storage.example.test/temporary' });
   expect(f.calls).toEqual([{ name: 'escen_admission_document', args: { p_actor_id: f.context.accountId, p_role_code: 'CC', p_year_id: year, p_id: uuid(3) } }]);
   expect(downloads).toEqual([{ bucket: 'private-applications', path: 'local/diploma.pdf', seconds: 60, options: { download: 'diploma.pdf' } }]);
+});
+
+for (const action of ['admissible', 'refuse'] as const) {
+  test(`API : ${action} depuis la transmission utilise le contexte autorisé avant la décision`, async () => {
+    const f = api(ROLES.DA, 'DA');
+    f.application.workflow_stage = 'TRANSMIS_ACADEMIE';
+    const response = await f.route.POST(post({ action, id, version: 1, reason: 'Décision académique motivée' }));
+    expect(response.status).toBe(200);
+    expect(f.calls[0]).toEqual({ name: 'escen_admissions_context', args: { p_actor_id: f.context.accountId, p_role_code: 'DA', p_year_id: year } });
+    const commands = f.calls.filter(call => call.name === 'escen_application_command');
+    expect(commands.map(call => call.args.p_action)).toEqual(['study', action]);
+    expect(commands.map(call => (call.args.p_data as { version: number }).version)).toEqual([1, 2]);
+  });
+}
+test('API : une version périmée ne déclenche aucune étape intermédiaire', async () => {
+  const f = api(ROLES.DA, 'DA');
+  f.application.workflow_stage = 'TRANSMIS_ACADEMIE';
+  f.application.version = 2;
+  const response = await f.route.POST(post({ action: 'admissible', id, version: 1, reason: 'Décision sur ancienne version' }));
+  expect(response.status).toBe(409);
+  expect(f.calls.some(call => call.name === 'escen_application_command')).toBe(false);
+});
+test('API : un dossier absent du périmètre ne déclenche aucune écriture', async () => {
+  const f = api(ROLES.DA, 'DA');
+  const response = await f.route.POST(post({ action: 'admissible', id: uuid(99), version: 1, reason: 'Dossier hors du contexte' }));
+  expect(response.status).toBe(404);
+  expect(f.calls.some(call => call.name === 'escen_application_command')).toBe(false);
+});
+
+test('API : la transmission contrôle les pièces du contexte autorisé sans lecture de table', async () => {
+  const f = api(ROLES.CC, 'CC');
+  f.application.required_documents = ['identite'];
+  f.application.documents = [{ id: uuid(4), document_key: 'identite', filename: 'identite.pdf', mime_type: 'application/pdf', byte_size: 100 }];
+  const response = await f.route.POST(post({ action: 'transmit', id, version: 1, reason: 'Pièces vérifiées par admission' }));
+  expect(response.status).toBe(200);
+  const commands = f.calls.filter(call => call.name === 'escen_application_command');
+  expect(commands.map(call => call.args.p_action)).toEqual(['complete', 'transmit']);
+  expect(commands[0].args.p_data).toMatchObject({ version: 1, checked_documents: [uuid(4)] });
+  expect(commands[1].args.p_data).toMatchObject({ version: 2 });
+});
+test('API : une pièce obligatoire manquante bloque la transmission', async () => {
+  const f = api(ROLES.CC, 'CC');
+  f.application.required_documents = ['identite'];
+  const response = await f.route.POST(post({ action: 'transmit', id, version: 1, reason: 'Pièce non fournie' }));
+  expect(response.status).toBe(409);
+  expect(f.calls.some(call => call.name === 'escen_application_command')).toBe(false);
 });
