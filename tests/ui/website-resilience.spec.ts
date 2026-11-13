@@ -1,4 +1,5 @@
 import { expect, test, type Page } from '@playwright/test';
+import { completeBrochureRequest } from './website-brochure-form';
 const website = process.env.ESCEN_TEST_WEBSITE_URL || 'http://localhost:3200';
 const year = '44444444-4444-4444-8444-444444444444';
 const level = '11111111-1111-4111-8111-111111111111';
@@ -21,6 +22,7 @@ test('Brochure absente depuis une liste : les autres formations ne sont pas prop
   await waitForWebsite(page);
   await page.getByRole('button', { name: 'Télécharger la brochure', exact: true }).first().click();
   const dialog = page.getByRole('dialog');
+  await completeBrochureRequest(page);
   await expect(dialog).toContainText('Aucune brochure publiée pour cette formation actuellement.');
   await expect(dialog.getByRole('link')).toHaveCount(0);
 });
@@ -43,6 +45,7 @@ for (const width of [390, 1440]) {
       for (const [index, code] of codes.entries()) {
         await page.getByRole('button', { name: 'Télécharger la brochure', exact: true }).nth(index).click();
         const dialog = page.getByRole('dialog');
+        await completeBrochureRequest(page);
         await expect(dialog.getByRole('heading', { name: `${cycle} ${code}`, exact: true })).toBeVisible();
         await expect(dialog.getByRole('link', { name: 'Télécharger la brochure', exact: true })).toHaveAttribute('href', new RegExp(`/${cycle.toLowerCase()}-${code.toLowerCase()}/download$`));
         await expect(dialog.getByRole('article')).toHaveCount(0);
@@ -110,6 +113,7 @@ for (const width of [390, 1440]) {
       await waitForWebsite(page);
       await page.getByRole('button', { name: 'Télécharger la brochure', exact: true }).first().click();
       const dialog = page.getByRole('dialog');
+      await completeBrochureRequest(page);
       await expect(dialog.getByRole('heading', { name: `${cycle} Finance Digitale`, exact: true })).toBeVisible();
       await expect(dialog.getByRole('link', { name: 'Télécharger la brochure', exact: true })).toHaveAttribute('href', new RegExp(`/${slug}/download$`));
       await page.screenshot({ path: `tmp/screenshots/website-review/${width}/brochure-${cycle}.png`, fullPage: true });

@@ -15,6 +15,7 @@ export async function adaptWebsite(root, portal) {
   // The preparation checklist and the registration form remain on the website.
   for (const [template, destination] of [
     ['BrochureModal.vue', 'app/components/BrochureModal.vue'],
+    ['BrochureRequestForm.vue', 'app/components/BrochureRequestForm.vue'],
     ['brochures.vue', 'app/pages/brochures.vue'],
   ]) {
     await writeFile(path.join(root, destination), await readFile(new URL(`./website-templates/${template}`, import.meta.url), 'utf8'));

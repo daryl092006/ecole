@@ -1,4 +1,5 @@
 import { expect, test } from '@playwright/test';
+import { completeBrochureRequest } from './website-brochure-form';
 import { authenticateFixture, snapshot } from './persistent-fixture';
 const yearId = '44444444-4444-4444-8444-444444444444';
 const brochureId = '55555555-5555-4555-8555-555555555555';
@@ -46,7 +47,7 @@ for (const width of [390, 1440]) {
       return route.fulfill({ json: saved ? [{ id: brochureId, academic_year_id: yearId, title: 'Brochure licence', slug: 'brochure-licence', description: 'Les formations', status, filename: 'licence.pdf', byte_size: 100, version: 1 }] : [] });
     });
     await page.goto('/site-web/brochures');
-    await page.getByRole('button', { name: 'Ajouter une brochure', exact: true }).click();
+    await page.getByRole('button', { name: '+ Ajouter une brochure', exact: true }).click();
     await page.getByLabel('Titre', { exact: true }).fill('Brochure licence');
     await expect(page.getByText('/brochures/brochure-licence', { exact: true })).toBeVisible();
     await page.getByLabel('Description', { exact: true }).fill('Les formations');
@@ -66,8 +67,8 @@ for (const width of [390, 1440]) {
     await page.getByRole('button', { name: 'Confirmer l’enregistrement' }).click();
     const brochureArticle = page.getByRole('article').filter({ has: page.getByRole('heading', { name: 'Brochure licence', exact: true }) });
     await expect(brochureArticle.getByText('Retirée', { exact: true })).toBeVisible();
-    await brochureArticle.locator('summary').click();
-    await expect(brochureArticle.getByText('licence.pdf', { exact: true })).toBeVisible();
+    await brochureArticle.getByRole('button', { name: 'Détails du document', exact: true }).click();
+    await expect(page.getByRole('dialog').getByText('licence.pdf', { exact: true })).toBeVisible();
     await expect.poll(() => page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
     await page.screenshot({ path: `tmp/screenshots/website-review/${width}/brochures.png`, fullPage: true });
   });
@@ -79,10 +80,13 @@ for (const width of [390, 1440]) {
     await page.context().route('**/api/website/public/brochures/brochure-licence/download', route => route.fulfill({ contentType: 'application/pdf', headers: { 'Content-Disposition': 'attachment; filename="brochure-licence.pdf"' }, body: '%PDF-1.7\n%%EOF' }));
     await page.goto(`${website}/brochures`);
     await expect(page.getByRole('heading', { name: 'Brochures ESCEN', exact: true })).toBeVisible();
-    await expect(page.getByRole('article').filter({ has: page.getByRole('heading', { name: 'Brochure licence', exact: true }) }).getByRole('link')).toHaveAttribute('href', /\/api\/website\/public\/brochures\/brochure-licence\/download$/);
     await expect(page.getByRole('textbox')).toHaveCount(0);
+    await page.getByRole('article').filter({ has: page.getByRole('heading', { name: 'Brochure licence', exact: true }) }).getByRole('button', { name: 'Télécharger le PDF', exact: true }).click();
+    await completeBrochureRequest(page);
+    const link = page.getByRole('dialog').getByRole('link', { name: 'Télécharger la brochure', exact: true });
+    await expect(link).toHaveAttribute('href', /\/api\/website\/public\/brochures\/brochure-licence\/download$/);
     const download = page.waitForEvent('download');
-    await page.getByRole('article').filter({ has: page.getByRole('heading', { name: 'Brochure licence', exact: true }) }).getByRole('link').click();
+    await link.click();
     expect((await download).suggestedFilename()).toBe('brochure-licence.pdf');
     await page.screenshot({ path: `tmp/screenshots/website-review/${width}/brochures-site.png`, fullPage: true });
   });

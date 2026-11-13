@@ -7,6 +7,7 @@ import { boundedRequest, hashWebsiteToken, isAllowedWebsiteOrigin, listPublicWeb
 import { DOCUMENT_LABELS, diplomaSchema, escapeArticleContent, guardianSchema, identitySchema, sniffDocument } from '@/services/websiteService';
 import type { WebsiteArticle, WebsiteGallery, WebsiteIntake } from '@/types/website';
 import { attemptApplicationEmails, enqueueCandidateCredentialsEmail, portalOrigin } from '@/server/admissions';
+import { websiteProspectSchema } from '@/services/websiteProspectService';
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
 type RouteContext = { params: Promise<{ path: string[] }> };
@@ -153,6 +154,13 @@ async function handle(request: Request, context: RouteContext) {
     const clientKey = trustedIpHeader ? request.headers.get(trustedIpHeader) || 'shared' : 'shared';
     const rate = await websiteRpc(client, 'escen_website_rate', { p_key: hashWebsiteToken(`site-write:${clientKey}`), p_limit: 120 });
     if (!rate) throw new RequestError(429, 'Trop de tentatives. Réessayez plus tard.');
+    if (route === 'public/brochure-requests' && request.method === 'POST') {
+      const input = websiteProspectSchema.parse(await (await boundedRequest(request, 4096)).json());
+      const saved = await websiteRpc(client, 'escen_website_prospect_create', {
+        p_request_id: input.request_id, p_full_name: input.full_name, p_email: input.email, p_phone: input.phone,
+      });
+      return cors(request, Response.json(saved, { status: 201 }));
+    }
     if (route === 'public/candidature/etape1' && request.method === 'POST') {
       const input = identitySchema.extend({academic_year_id:z.uuid()}).strict().parse(await (await boundedRequest(request, 16384)).json());
       const token = randomBytes(32).toString('hex');

@@ -1,3 +1,16 @@
+export interface WebsiteProspect {
+  id: string;
+  academic_year_id: string;
+  full_name: string;
+  email: string;
+  phone: string;
+  created_at: string;
+}
+export interface WebsiteProspectsPage {
+  prospects: WebsiteProspect[];
+  nextCursor: { createdAt: string; id: string } | null;
+}
+
 export interface WebsiteArticle {
   academic_year_id?: string | null;
   id: string; title: string; slug: string; excerpt: string; content: string;

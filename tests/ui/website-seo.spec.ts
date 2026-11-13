@@ -1,4 +1,5 @@
 import { expect, test } from '@playwright/test';
+import { completeBrochureRequest, waitForBrochurePage } from './website-brochure-form';
 
 const site = process.env.ESCEN_TEST_WEBSITE_URL || 'http://localhost:3200';
 for (const [route, title] of [
@@ -39,9 +40,11 @@ test('Une formation sans brochure publiée ne propose pas le PDF d’un autre cy
     id: 'other', title: 'Licence Finance Digitale', slug: 'licence-finance', cycle: 'LICENCE', program_code: 'FD',
   }] }));
   await page.goto(site + '/formations/master-professionnel/finance-digitale/');
+  await waitForBrochurePage(page);
   const trigger = page.getByRole('button', { name: 'Télécharger la brochure', exact: true }).first();
   await trigger.click();
   const dialog = page.getByRole('dialog');
+  await completeBrochureRequest(page);
   await expect(dialog).toContainText('Aucune brochure publiée pour cette formation');
   await expect(dialog.locator('a')).toHaveCount(0);
   await page.keyboard.press('Escape');

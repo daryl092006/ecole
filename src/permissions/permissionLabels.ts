@@ -1,5 +1,6 @@
 import type { Permission } from '@/types';
 export const PERMISSION_LABELS: Record<Permission, string> = {
+  'website.prospect.view': 'Consulter les prospects des demandes de brochures',
   'application.view': 'Consulter les candidatures autorisées', 'application.review': 'Vérifier et transmettre les candidatures',
   'application.decide': 'Prendre une décision académique', 'application.payment.confirm': 'Confirmer les frais d’inscription des candidats',
   'application.followup': 'Accompagner les candidatures à compléter',

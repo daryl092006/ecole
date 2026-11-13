@@ -15,3 +15,12 @@ input:not([type="checkbox"]):not([type="radio"]), select, textarea {
 }
 /* The country flags deliberately keep their straight corners. */
 .website-country-flag { border-radius: 0 !important; }
+
+.brochure-request-form { display: grid; gap: 1rem; color: #202a51; }
+.brochure-request-form fieldset { display: grid; gap: 1rem; border: 0; padding: 0; margin: 0; min-width: 0; }
+.brochure-request-form label { display: grid; gap: 0.4rem; font-weight: 600; }
+.brochure-request-form input { width: 100%; min-width: 0; box-sizing: border-box; padding: 0.75rem; border: 1px solid #b8c1ce; background: white; color: #202a51; font: inherit; }
+.brochure-request-form button { padding: 0.85rem 1rem; background: #0056b3; color: white; border: 0; border-radius: 6px; font: inherit; font-weight: 700; cursor: pointer; }
+.brochure-request-form button:disabled { opacity: 0.65; cursor: wait; }
+.brochure-request-form [role="alert"] { color: #a51c30; }
+.brochure-request-form a { text-decoration: underline; }

@@ -95,6 +95,7 @@ export const ALL_TABS = [
       { id: 'web_applications', name: 'Candidatures' },
       { id: 'web_documents', name: 'Formations et pièces' },
       { id: 'web_brochures', name: 'Brochures' },
+      { id: 'web_prospects', name: 'Prospects' },
       { id: 'comm_news', name: 'Articles' },
       { id: 'web_galleries', name: 'Galeries photos' },
     ],
@@ -130,6 +131,7 @@ const SUBTAB_PERMISSIONS: Record<string, Permission[]> = {
   web_applications: ['application.view', 'student.view'],
   web_documents: ['student.view'],
   web_brochures: ['communication.view'],
+  web_prospects: ['website.prospect.view'],
   web_galleries: ['communication.view'],
   staff_records: ['staff.view'],
   log_suppliers:['purchase.view'],
@@ -181,6 +183,7 @@ export function getAvailableTabs(role: RoleName, permissions?: Permission[], glo
         if (tab.id === 'website') {
           if (!globalAccess) return false;
           const effective = permissions || roleAccess.permissions;
+          if (subTab.id === 'web_prospects') return effective.includes('website.prospect.view');
           if (subTab.id === 'web_applications') return effective.includes('application.view');
           if (['web_applications', 'web_documents'].includes(subTab.id)) return [ROLES.DG, ROLES.DGA, ROLES.DA, ROLES.LOG, ROLES.RAF, ROLES.MKT, ROLES.CC, ROLES.IT].includes(role as typeof ROLES.DG) && effective.includes('student.view');
           return effective.includes('communication.view') && ![ROLES.STUD, ROLES.DEL, ROLES.ENS].includes(role as typeof ROLES.STUD);

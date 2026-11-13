@@ -43,6 +43,7 @@ export const PORTAL_ROUTES: PortalRoute[] = [
   { tab: 'website', section: 'web_applications', href: '/site-web/demandes', title: 'Candidatures' },
   { tab: 'website', section: 'web_documents', href: '/site-web/documents', title: 'Formations et pièces' },
   { tab: 'website', section: 'web_brochures', href: '/site-web/brochures', title: 'Brochures' },
+  { tab: 'website', section: 'web_prospects', href: '/site-web/prospects', title: 'Prospects' },
   { tab: 'logistique', section: 'log_purchases', href: '/logistique/achats', title: 'Demandes d’achat' },
   { tab:'logistique',section:'log_suppliers',href:'/logistique/fournisseurs',title:'Fournisseurs' },
   { tab: 'logistique', section: 'log_assets', href: '/logistique/inventaire', title: 'Inventaire du site' },
