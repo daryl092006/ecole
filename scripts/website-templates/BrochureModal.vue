@@ -48,7 +48,7 @@
 </template>
 <script setup>
 import config from '../../config'
-const props = defineProps({ isOpen: Boolean, brochureName: String, inline: Boolean })
+const props = defineProps({ isOpen: Boolean, brochureName: String, formationPath: String, inline: Boolean })
 const emit = defineEmits(['close', 'submit'])
 const base = config.app_dev_url
 const brochures = ref([])
@@ -80,7 +80,7 @@ const brochureAssociations = {
   '/formations/executive-education/finance-digitale': ['EXECUTIVE', 'FD'],
   '/formations/executive-education/management-projets-transformation-digitale': ['EXECUTIVE', 'MP-TD']
 }
-const association = computed(() => props.inline ? null : brochureAssociations[route.path.replace(/\/$/, '')])
+const association = computed(() => props.inline ? null : brochureAssociations[(props.formationPath || route.path).replace(/\/$/, '')])
 const matchingBrochures = computed(() => {
   if (!association.value) return brochures.value
   const [cycle, code] = association.value

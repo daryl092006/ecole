@@ -3,8 +3,15 @@ import path from 'node:path';
 import os from 'node:os';
 import { protectRegistrationDocuments } from './website-registration-resilience.mjs';
 import { adaptDiplomaForm } from './website-diploma.mjs';
+import { protectBrochureListing } from './website-brochure-selection.mjs';
 
 export async function adaptWebsite(root, portal) {
+  for (const cycle of ['licence-professionnelle', 'master-professionnel', 'executive-education']) {
+    const file = path.join(root, 'app/pages/formations', cycle, 'index.vue');
+    const source = await readFile(file, 'utf8');
+    const updated = protectBrochureListing(source);
+    if (updated !== source) await writeFile(file, updated);
+  }
   // The preparation checklist and the registration form remain on the website.
   for (const [template, destination] of [
     ['BrochureModal.vue', 'app/components/BrochureModal.vue'],
