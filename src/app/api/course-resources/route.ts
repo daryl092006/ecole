@@ -3,8 +3,9 @@ import { requireAccount, requirePermission, RequestError, errorResponse } from '
 import { resolveAcademicYear } from '@/server/academicYearContext';
 import { filterRelationalSnapshot } from '@/services/persistentPermissionsService';
 import { filterSnapshotForAcademicYear } from '@/services/academicYearScopeService';
-import { createTeamsOnlineMeeting, syncTeamsMeetingRecording } from '@/services/microsoftGraphService';
+import { createTeamsOnlineMeeting, syncTeamsMeetingRecording, TeamsIntegrationError } from '@/services/microsoftGraphService';
 import { formatSubjectCode } from '@/services/resaoCodeService';
+import { confirmedMeetingUrl } from '@/utils/meetingLinks';
 import type { PersistentChange, RelationalSnapshot } from '@/types/persistence';
 import type {
   CourseListEntry,
@@ -240,7 +241,7 @@ function buildDirectory(
         endsAt: String(s.ends_at),
         status: String(s.status),
         mode: (s.mode as 'EN_LIGNE' | 'COURS' | 'PAPIER') || 'COURS',
-        meetingUrl: s.meeting_url ? String(s.meeting_url) : null,
+        meetingUrl: confirmedMeetingUrl(s.meeting_url, s.meeting_id),
         meetingProvider: s.meeting_provider ? (String(s.meeting_provider) as 'TEAMS' | 'LIEN') : null,
         recordingUrl: s.recording_url ? String(s.recording_url) : null,
         recordingSyncedAt: s.recording_synced_at ? String(s.recording_synced_at) : null,
@@ -621,7 +622,7 @@ export async function POST(request: Request) {
 
     throw new RequestError(400, 'Action non reconnue.');
   } catch (error) {
-    return errorResponse(error);
+    return errorResponse(error instanceof TeamsIntegrationError ? new RequestError(503, error.message) : error);
   }
 }
 
