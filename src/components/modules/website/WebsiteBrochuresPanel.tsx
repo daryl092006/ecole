@@ -2,6 +2,8 @@
 import PageHeader from '@/components/ui/PageHeader';
 import SecondaryDetails from '@/components/ui/SecondaryDetails';
 import DrawerActions from '@/components/ui/DrawerActions';
+import { DrawerCloseButton } from '@/components/ui/DetailDrawer';
+import ReviewedForm from '@/components/ui/ReviewedForm';
 import { useEffect, useState } from 'react';
 import { usePortal } from '@/hooks/usePortal';
 import { loadWebsiteBrochures, loadWebsiteData, saveWebsiteBrochure } from '@/services/remoteCampusService';
@@ -39,7 +41,6 @@ export default function WebsiteBrochuresPanel({ onBack }: { onBack?: () => void 
   const [saveError, setSaveError] = useState('');
   const [success, setSuccess] = useState('');
   const [busy, setBusy] = useState(false);
-  const [confirm, setConfirm] = useState(false);
   const [revision, setRevision] = useState(0);
   const [programs, setPrograms] = useState<WebsiteProgramReference[]>([]);
   const [programsLoading, setProgramsLoading] = useState(true);
@@ -66,10 +67,10 @@ export default function WebsiteBrochuresPanel({ onBack }: { onBack?: () => void 
     return () => controller.abort();
   }, [role, year, canManage, programsRevision]);
 
-  function edit(row: typeof editing) { setEditing(row); setFile(null); setConfirm(false); setSaveError(''); setSuccess(''); }
+  function edit(row: typeof editing) { setEditing(row); setFile(null); setSaveError(''); setSuccess(''); }
 
   async function save() {
-    if (!editing) return;
+    if (!editing || busy) return;
     setBusy(true); setSaveError('');
     const { id, version, title, slug, description, status, program_id, cycle } = editing;
     const computedSlug = slugifyWebsiteText(slug || title) || 'brochure-escen';
@@ -90,6 +91,8 @@ export default function WebsiteBrochuresPanel({ onBack }: { onBack?: () => void 
     } catch (cause) { setSaveError(cause instanceof Error ? cause.message : 'Enregistrement impossible.'); }
     finally { setBusy(false); }
   }
+
+  const original = editing?.id ? rows.find(row => row.id === editing.id) : undefined;
 
   return <section>
     <FormFeedback message={success} error={false} />
@@ -117,10 +120,24 @@ export default function WebsiteBrochuresPanel({ onBack }: { onBack?: () => void 
       </section>;
     })}</div>}
     {editing && <WorkPage busy={busy} title={editing.id ? 'Modifier la brochure' : 'Ajouter une brochure'} onClose={() => { if (!busy) setEditing(null); }}>
-      <form className="card" onSubmit={event => { event.preventDefault(); if (!programsLoading && !programsError) setConfirm(true); }}>
+      <ReviewedForm className="brochure-editor" busy={busy} error={saveError}
+        confirmLabel="Confirmer l’enregistrement"
+        validate={() => programsLoading ? 'Attendez le chargement des filières.' : programsError || (!editing.id && !file ? 'Choisissez le PDF de la brochure.' : null)}
+        fields={[
+          { label: 'Titre', value: editing.title, previous: original?.title },
+          { label: 'Cycle', value: editing.cycle ? BROCHURE_CYCLES[editing.cycle] : 'Brochure générale', previous: original ? (original.cycle ? BROCHURE_CYCLES[original.cycle] : 'Brochure générale') : undefined },
+          { label: 'Filière', value: programs.find(program => program.id === editing.program_id)?.name || (editing.program_id ? editing.program_name || 'Filière actuelle' : 'Toutes les filières'), previous: editing.id ? original?.program_name || 'Toutes les filières' : undefined },
+          { label: 'Description', value: editing.description, previous: original?.description },
+          { label: 'Document PDF', value: file?.name || editing.filename || '', previous: editing.id ? editing.filename : undefined },
+          { label: 'Diffusion', value: labels[editing.status], previous: original ? labels[original.status] : undefined },
+        ]}
+        consequence={editing.status === 'PUBLIE' ? 'Cette brochure sera téléchargeable sur le site public lorsque l’année consultée est l’année de travail. Le nouveau PDF remplacera le document actuel si vous en avez choisi un.' : editing.status === 'RETIRE' ? 'La brochure ne sera plus téléchargeable sur le site public. Son historique sera conservé.' : 'Cette brochure restera privée et ne sera pas proposée au téléchargement sur le site public.'}
+        onConfirm={() => void save()}>
+        <p className="brochure-editor-intro">{editing.id ? 'Mettez à jour la présentation ou remplacez le PDF. Sans nouveau fichier, le document actuel est conservé.' : 'Associez un PDF à une formation, puis choisissez sa visibilité sur le site.'}</p>
         {programsLoading && <LoadingState label="Chargement des filières…" />}
         {programsError && <div role="alert"><p>{programsError}</p><button type="button" className="btn btn-outline" onClick={() => setProgramsRevision(value => value + 1)}>Réessayer les filières</button></div>}
-        <fieldset disabled={busy || confirm}>
+        <fieldset className="brochure-editor-section" disabled={busy}>
+          <legend>1. Formation et présentation</legend>
           <div className="brochure-fields">
             <label className="form-group">Cycle d&apos;études<select className="select-input" value={editing.cycle || ''} onChange={event => {
               const nextCycle = (event.target.value || null) as WebsiteBrochure['cycle'];
@@ -143,19 +160,33 @@ export default function WebsiteBrochuresPanel({ onBack }: { onBack?: () => void 
           }} /></label>
           {(editing.slug || editing.title) && (
             <div className="editorial-slug-hint">
-              <span>Lien de téléchargement généré automatiquement</span>
+              <span>Référence de la brochure</span>
               <code>/brochures/{editing.slug || slugifyWebsiteText(editing.title)}</code>
             </div>
           )}
           <label className="form-group">Description<textarea className="input" maxLength={500} placeholder="Présentation succincte des débouchés et du contenu de la brochure…" value={editing.description} onChange={event => setEditing({ ...editing, description: event.target.value })} /></label>
-          <label className="form-group">Fichier PDF — 10 Mo maximum<input className="input" type="file" accept="application/pdf,.pdf" required={!editing.id} onChange={event => setFile(event.target.files?.[0] || null)} /></label>
-          {editing.filename && <p>Fichier actuel : {editing.filename}</p>}
-          <label className="form-group">Diffusion<select className="select-input" value={editing.status} onChange={event => setEditing({ ...editing, status: event.target.value as WebsiteBrochure['status'] })}><option value="BROUILLON">Brouillon privé</option><option value="PUBLIE">Publier sur le site</option><option value="RETIRE">Retirer du site</option></select></label>
-          {!confirm && <DrawerActions><button className="btn btn-primary" disabled={programsLoading || !!programsError}>Vérifier la brochure</button></DrawerActions>}
         </fieldset>
-        {saveError && <p role="alert" className="auth-error">{saveError}</p>}
-        {confirm && <div className="card" role="region" aria-label="Confirmation de la brochure"><h2>{editing.title}</h2><p>{file?.name || editing.filename}</p><p>{editing.status === 'PUBLIE' ? 'Visible sur le site lorsque cette année est l’année de travail.' : editing.status === 'RETIRE' ? 'Le téléchargement sera retiré du site.' : 'Le PDF restera privé.'}</p><DrawerActions><button type="button" className="btn btn-outline" disabled={busy} onClick={() => setConfirm(false)}>Modifier</button><button type="button" className="btn btn-primary" disabled={busy} onClick={() => void save()}>{busy ? 'Enregistrement…' : 'Confirmer l’enregistrement'}</button></DrawerActions></div>}
-      </form>
+        <fieldset className="brochure-editor-section" disabled={busy}>
+          <legend>2. Document PDF</legend>
+          {editing.filename && <div className="brochure-current-file"><span className="cell-sub">Document actuel</span><strong>{editing.filename}</strong><span>{file ? "Il sera remplacé après confirmation." : "Il sera conservé si vous ne choisissez pas de nouveau PDF."}</span></div>}
+          <label className="form-group">Fichier PDF — 10 Mo maximum<input className="input" type="file" accept="application/pdf,.pdf" required={!editing.id} onChange={event => {
+            const selected = event.target.files?.[0] || null;
+            if (selected && (selected.size > 10 * 1024 * 1024 || !selected.name.toLowerCase().endsWith('.pdf') || (selected.type && selected.type !== 'application/pdf'))) {
+              setSaveError(selected.size > 10 * 1024 * 1024 ? 'Le PDF doit faire au maximum 10 Mo.' : 'Choisissez un fichier PDF valide.');
+              event.target.value = ''; setFile(null); return;
+            }
+            setSaveError(''); setFile(selected);
+          }} /></label>
+          {file && <p className="brochure-selected-file" role="status">Nouveau PDF : <strong>{file.name}</strong> · {(file.size / 1024 / 1024).toLocaleString('fr-FR', { maximumFractionDigits: 2 })} Mo</p>}
+          {saveError && <p role="alert" className="auth-error">{saveError}</p>}
+        </fieldset>
+        <fieldset className="brochure-editor-section" disabled={busy}>
+          <legend>3. Diffusion sur le site</legend>
+          <label className="form-group">Diffusion<select className="select-input" value={editing.status} onChange={event => setEditing({ ...editing, status: event.target.value as WebsiteBrochure['status'] })}><option value="BROUILLON">Brouillon privé</option><option value="PUBLIE">Publier sur le site</option><option value="RETIRE">Retirer du site</option></select></label>
+          <p className="cell-sub">{editing.status === 'PUBLIE' ? 'Accessible aux visiteurs du site pour l’année de travail.' : editing.status === 'BROUILLON' ? 'Visible uniquement dans cet espace de gestion.' : 'Retirée du catalogue public, avec conservation de son historique.'}</p>
+        </fieldset>
+        <DrawerActions><DrawerCloseButton className="btn btn-outline">Annuler</DrawerCloseButton><button className="btn btn-primary" disabled={programsLoading || !!programsError}>Vérifier la brochure</button></DrawerActions>
+      </ReviewedForm>
     </WorkPage>}
   </section>;
 }

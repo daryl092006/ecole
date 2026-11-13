@@ -2,7 +2,20 @@
 /* Brochure layouts preserve the existing desktop flow without utility classes. */
 .brochure-card-header { display: flex; gap: .5rem; }
 .brochure-context { font-size: inherit; font-weight: inherit; color: inherit; }
-.brochure-fields { display: block; }
+.brochure-fields { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 1rem; }
+.brochure-editor { display: grid; gap: 1.25rem; }
+.brochure-editor-intro { margin: 0; color: var(--text-secondary); line-height: 1.65; }
+.brochure-editor-section { min-width: 0; margin: 0 0 1.25rem; padding: 1.25rem; border: 1px solid var(--border); border-radius: 12px; }
+.brochure-editor-section legend { padding: 0 .5rem; font-size: .95rem; font-weight: 600; }
+.brochure-editor-section .form-group { margin-bottom: 1rem; }
+.brochure-editor-section textarea { min-height: 100px; resize: vertical; }
+.brochure-current-file { display: grid; gap: .4rem; margin-bottom: 1rem; padding: 1rem; background: var(--surface-sunken, #f8fafc); border-radius: 8px; font-size: .85rem; }
+.brochure-current-file strong, .brochure-selected-file { overflow-wrap: anywhere; }
+.brochure-selected-file { font-size: .85rem; line-height: 1.6; }
+@media (max-width: 768px) {
+  .brochure-fields { grid-template-columns: minmax(0, 1fr); gap: 0; }
+  .brochure-editor-section { padding: 1rem; }
+}
 .brochure-catalogue { display: grid; gap: 1.25rem; }
 .brochure-cycle-heading { display: flex; align-items: baseline; justify-content: space-between; gap: 1rem; padding-bottom: .75rem; }
 .brochure-cycle-heading h2 { margin: 0; font-size: 1.05rem; }
