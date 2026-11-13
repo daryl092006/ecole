@@ -108,10 +108,15 @@ export default defineNuxtPlugin(() => {
 `);
   await writeFile(path.join(root, 'config.ts'), `export default {
   app_local: true,
-  app_dev_url: '${portal.origin}/api/website',
+  app_dev_url: import.meta.dev ? '/api/website' : '${portal.origin}/api/website',
   app_prod_url: '${portal.origin}/api/website',
   app_dev_storage_url: '${portal.origin}',
   app_prod_storage_url: '${portal.origin}',
 } as const;
 `);
+  const nuxtFile = path.join(root, 'nuxt.config.ts');
+  const nuxtSource = await readFile(nuxtFile, 'utf8');
+  const proxyTarget = /('\/api\/website':\s*\{\s*target:\s*)'[^']*'/;
+  if (!proxyTarget.test(nuxtSource)) throw new Error('Proxy local du site introuvable.');
+  await writeFile(nuxtFile, nuxtSource.replace(proxyTarget, `$1'${portal.origin}/api/website'`));
 }
