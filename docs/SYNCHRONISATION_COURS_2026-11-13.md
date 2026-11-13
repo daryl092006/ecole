@@ -39,3 +39,17 @@ Les journaux locaux et les liens de réunions sont sous les chemins `tmp/.env.*`
 - Playwright : consultation étudiante limitée à son groupe, absence de droits d’édition, lien Teams et replay publié à 390 et 1440 px ; trois tests réussis.
 - API Prospects : validation, origine, authentification, droits, année et pagination vérifiés avec les vraies routes et un transport local simulé.
 - Les replays ne sont pas annoncés comme disponibles : aucun lien d’enregistrement réel n’est présent dans les séances contrôlées. L’accès automatique aux artefacts nécessite aussi la politique d’accès applicative Teams côté Microsoft.
+
+## Publication et contrôle final
+
+- Version applicative : commit local `20ffa68`, avec la modification CSS préexistante conservée dans la copie de publication ; aucun push Git.
+- Déploiement Vercel `dpl_8WHinPsppJ8q1pvkSM752qaL4Uz6`, construit puis Ready avant activation sur `https://portail.escen.university`.
+- URL technique : `https://ecole-gevib405e-denis-gangnitos-projects.vercel.app`.
+- Page de connexion HTTP 200 ; API des cours sans session HTTP 401.
+- Route réelle exercée localement avec le snapshot et le profil réels du compte test, transport Auth simulé : HTTP 200, 12 séances, 6 liens confirmés, 0 replay publié, aucun autre groupe et aucun droit de gestion étudiant.
+- Série ciblée des accueils, graphiques et cours : 16 tests réussis. API Prospects : un test réussi.
+- Après promotion, les trois tests d’accès aux cours passent aussi avec le domaine public comme base de navigation. Les données métier de ces tests sont interceptées ; ils ne créent aucun cours ou replay en production.
+
+L’utilisation d’`academie@escen.university` pour les cinq prochaines séances des deux coachs a été proposée à l’utilisateur. Aucun changement de leur organisateur n’a été effectué en attente de sa réponse.
+
+Références Microsoft : [création ou récupération idempotente d’une réunion et politique applicative](https://learn.microsoft.com/en-us/graph/api/onlinemeeting-createorget?view=graph-rest-1.0), [enregistrements rattachés à une réunion](https://learn.microsoft.com/en-us/graph/api/onlinemeeting-list-recordings?view=graph-rest-1.0).
