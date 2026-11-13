@@ -293,7 +293,7 @@ export async function provisionM365Account(params: {
 
 export interface TeamsOnlineMeetingResult {
   meetingUrl: string;
-  meetingId: string;
+  meetingId: string | null;
   provider: 'TEAMS' | 'LIEN';
   source: 'GRAPH_API' | 'FALLBACK';
 }
@@ -305,11 +305,22 @@ export interface TeamsRecordingSyncResult {
   message?: string;
 }
 
+export class TeamsIntegrationError extends Error {}
+
+async function teamsOrganizerId(token: string, email: string): Promise<string> {
+  const response = await fetch(`https://graph.microsoft.com/v1.0/users/${encodeURIComponent(email)}?$select=id`, {
+    headers: { Authorization: `Bearer ${token}` },
+  });
+  if (!response.ok) throw new TeamsIntegrationError('Le compte Microsoft de l’organisateur est inaccessible.');
+  const user = await response.json() as { id?: string };
+  if (!user.id) throw new TeamsIntegrationError('Microsoft n’a pas confirmé le compte organisateur.');
+  return user.id;
+}
+
 /**
  * Crée automatiquement une réunion Microsoft Teams via Microsoft Graph API
  * (avec activation de l'enregistrement automatique si supporté par la politique Teams).
- * Si les identifiants Azure ne sont pas configurés localement ou que le compte n'a pas encore de licence Teams active,
- * génère un lien de salle virtuelle Teams ESCEN prêt à l'emploi.
+ * Retourne uniquement une adresse créée et confirmée par Microsoft.
  */
 export async function createTeamsOnlineMeeting(params: {
   sessionId: string;
@@ -318,10 +329,6 @@ export async function createTeamsOnlineMeeting(params: {
   endDateTime: string;
   organizerEmail?: string | null;
 }): Promise<TeamsOnlineMeetingResult> {
-  const cleanSessionId = params.sessionId.replace(/[^a-zA-Z0-9]/g, '');
-  const fallbackUrl = `https://teams.microsoft.com/l/meetup-join/19%3ameeting_${cleanSessionId}%40thread.v2/0?context=%7b%22Tid%22%3a%22${encodeURIComponent(M365_DOMAIN)}%22%7d`;
-  const fallbackId = `teams-${params.sessionId}`;
-
   const organizerUpn =
     params.organizerEmail && params.organizerEmail.toLowerCase().endsWith(`@${M365_DOMAIN.toLowerCase()}`)
       ? params.organizerEmail.trim()
@@ -335,17 +342,13 @@ export async function createTeamsOnlineMeeting(params: {
   }
 
   if (!token) {
-    return {
-      meetingUrl: fallbackUrl,
-      meetingId: fallbackId,
-      provider: 'TEAMS',
-      source: 'FALLBACK',
-    };
+    throw new TeamsIntegrationError('La connexion à Microsoft Teams est indisponible. Aucun lien de réunion n’a été créé.');
   }
 
   try {
+    const organizerId = await teamsOrganizerId(token, organizerUpn);
     const meetingRes = await fetch(
-      `https://graph.microsoft.com/v1.0/users/${encodeURIComponent(organizerUpn)}/onlineMeetings`,
+      `https://graph.microsoft.com/v1.0/users/${encodeURIComponent(organizerId)}/onlineMeetings/createOrGet`,
       {
         method: 'POST',
         headers: {
@@ -356,6 +359,7 @@ export async function createTeamsOnlineMeeting(params: {
           startDateTime: params.startDateTime,
           endDateTime: params.endDateTime,
           subject: params.subject,
+          externalId: params.sessionId,
           recordAutomatically: true,
         }),
       }
@@ -366,7 +370,7 @@ export async function createTeamsOnlineMeeting(params: {
       if (data.joinWebUrl) {
         return {
           meetingUrl: data.joinWebUrl,
-          meetingId: data.id || fallbackId,
+          meetingId: data.id || null,
           provider: 'TEAMS',
           source: 'GRAPH_API',
         };
@@ -385,7 +389,7 @@ export async function createTeamsOnlineMeeting(params: {
         : [];
 
     const eventRes = await fetch(
-      `https://graph.microsoft.com/v1.0/users/${encodeURIComponent(organizerUpn)}/calendar/events`,
+      `https://graph.microsoft.com/v1.0/users/${encodeURIComponent(organizerId)}/calendar/events`,
       {
         method: 'POST',
         headers: {
@@ -393,6 +397,7 @@ export async function createTeamsOnlineMeeting(params: {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
+          transactionId: params.sessionId,
           subject: params.subject,
           start: { dateTime: params.startDateTime, timeZone: 'UTC' },
           end: { dateTime: params.endDateTime, timeZone: 'UTC' },
@@ -411,27 +416,22 @@ export async function createTeamsOnlineMeeting(params: {
       if (eventData.onlineMeeting?.joinUrl) {
         return {
           meetingUrl: eventData.onlineMeeting.joinUrl,
-          meetingId: eventData.id || fallbackId,
+          meetingId: null,
           provider: 'TEAMS',
           source: 'GRAPH_API',
         };
       }
     }
   } catch {
-    // Repli gracieux vers le lien Teams ESCEN
+    // Une panne Microsoft ne doit jamais produire une adresse de réunion inventée.
   }
 
-  return {
-    meetingUrl: fallbackUrl,
-    meetingId: fallbackId,
-    provider: 'TEAMS',
-    source: 'FALLBACK',
-  };
+  throw new TeamsIntegrationError('Microsoft Teams n’a pas confirmé la création de la réunion. Vérifiez les accès de l’organisateur ou renseignez un lien Teams existant.');
 }
 
 /**
  * Récupère automatiquement l'enregistrement d'une séance Teams via Microsoft Graph API
- * (endpoint /onlineMeetings/{id}/recordings ou dossier OneDrive /Recordings de l'organisateur).
+ * Vérifie uniquement les enregistrements rattachés à la réunion demandée.
  */
 export async function syncTeamsMeetingRecording(params: {
   sessionId: string;
@@ -453,8 +453,9 @@ export async function syncTeamsMeetingRecording(params: {
 
   if (token && params.meetingId && !params.meetingId.startsWith('teams-')) {
     try {
+      const organizerId = await teamsOrganizerId(token, organizerUpn);
       const recRes = await fetch(
-        `https://graph.microsoft.com/v1.0/users/${encodeURIComponent(organizerUpn)}/onlineMeetings/${encodeURIComponent(params.meetingId)}/recordings`,
+        `https://graph.microsoft.com/v1.0/users/${encodeURIComponent(organizerId)}/onlineMeetings/${encodeURIComponent(params.meetingId)}/recordings`,
         {
           method: 'GET',
           headers: { Authorization: `Bearer ${token}` },
@@ -467,61 +468,12 @@ export async function syncTeamsMeetingRecording(params: {
         const first = recData.value?.[0];
         if (first?.recordingContentUrl) {
           return {
-            recordingUrl: first.recordingContentUrl,
+            // L’URL de contenu Graph exige un jeton applicatif et n’est pas un lien de lecture pour l’étudiant.
+            recordingUrl: null,
             syncedAt,
             source: 'GRAPH_API',
+            message: 'Un enregistrement existe pour cette réunion. Renseignez son lien de lecture OneDrive ou SharePoint partagé avec les étudiants.',
           };
-        }
-      }
-
-      // Recherche dans le dossier OneDrive Recordings / Enregistrements de l'organisateur
-      for (const folderName of ['Recordings', 'Enregistrements']) {
-        const driveRes = await fetch(
-          `https://graph.microsoft.com/v1.0/users/${encodeURIComponent(organizerUpn)}/drive/root:/${folderName}:/children?$top=20&$orderby=createdDateTime desc`,
-          {
-            method: 'GET',
-            headers: { Authorization: `Bearer ${token}` },
-          }
-        );
-        if (driveRes.ok) {
-          const driveData = (await driveRes.json()) as {
-            value?: Array<{ id?: string; webUrl?: string; name?: string }>;
-          };
-          const item = driveData.value?.[0];
-          if (item?.webUrl) {
-            if (item.id) {
-              try {
-                const shareRes = await fetch(
-                  `https://graph.microsoft.com/v1.0/users/${encodeURIComponent(organizerUpn)}/drive/items/${encodeURIComponent(item.id)}/createLink`,
-                  {
-                    method: 'POST',
-                    headers: {
-                      Authorization: `Bearer ${token}`,
-                      'Content-Type': 'application/json',
-                    },
-                    body: JSON.stringify({ type: 'view', scope: 'organization' }),
-                  }
-                );
-                if (shareRes.ok) {
-                  const shareData = (await shareRes.json()) as { link?: { webUrl?: string } };
-                  if (shareData.link?.webUrl) {
-                    return {
-                      recordingUrl: shareData.link.webUrl,
-                      syncedAt,
-                      source: 'GRAPH_API',
-                    };
-                  }
-                }
-              } catch {
-                // Repli vers webUrl direct
-              }
-            }
-            return {
-              recordingUrl: item.webUrl,
-              syncedAt,
-              source: 'GRAPH_API',
-            };
-          }
         }
       }
     } catch {

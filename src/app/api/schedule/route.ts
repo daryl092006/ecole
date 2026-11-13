@@ -4,7 +4,7 @@ import { resolveAcademicYear } from '@/server/academicYearContext';
 import type { DatabaseRow, PersistentChange, RelationalSnapshot } from '@/types/persistence';
 import { canBlockSite, examRescheduleIssue, overlaps, scheduleConflict, scheduleDatabaseError, scheduleDirectory } from '@/services/scheduleManagementService';
 import { ensureSharedSessionParticipants } from '@/services/sharedSessionParticipants';
-import { createTeamsOnlineMeeting, syncTeamsMeetingRecording } from '@/services/microsoftGraphService';
+import { createTeamsOnlineMeeting, syncTeamsMeetingRecording, TeamsIntegrationError } from '@/services/microsoftGraphService';
 
 export const dynamic = 'force-dynamic';
 const common = { revision: z.number().int().nonnegative(), reason: z.string().trim().min(3).max(1000) };
@@ -291,5 +291,5 @@ export async function POST(request: Request) {
     const saved = await data.client.rpc('escen_backend_transaction', { p_actor_id: data.context.accountId, p_expected_revision: body.revision, p_changes: changes });
     if (saved.error) throw new RequestError(409, scheduleDatabaseError(saved.error));
     return Response.json({ id, count: changes.length, revision: saved.data }, { status: changes[0]?.operation === 'insert' ? 201 : 200, headers: { 'Cache-Control': 'no-store' } });
-  } catch (error) { return errorResponse(error); }
+  } catch (error) { return errorResponse(error instanceof TeamsIntegrationError ? new RequestError(503, error.message) : error); }
 }

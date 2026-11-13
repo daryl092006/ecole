@@ -250,3 +250,4 @@ require('../src/services/scholarshipEffectService.test.ts');
 require('../src/services/tuitionScheduleService.test.ts');
 require('../src/services/gradeCalculationService.test.ts');
 require('../src/services/studentPortalPassword.test.ts');
+require('../src/services/microsoftTeams.test.ts').verifyMicrosoftTeamsIntegration().catch(error => { console.error(error); process.exitCode = 1; });
