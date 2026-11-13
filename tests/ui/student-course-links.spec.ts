@@ -3,6 +3,7 @@ import { authenticateFixture, fixtureCapabilities, snapshot } from './persistent
 import { evaluationSecurityRoute, loadSecurityApi, securityContext, securityIds, uuid } from './security-fixture';
 import { ROLES } from '../../src/types/permissions';
 import type { CourseResourcesDirectory } from '../../src/types/courseResources';
+import { installResponsiveAudit } from './responsive-audit-fixture';
 
 const joinUrl = 'https://teams.microsoft.com/l/meetup-join/confirmed-session';
 const replayUrl = 'https://escen.sharepoint.com/sites/cours/recording.mp4';
@@ -51,3 +52,29 @@ for (const width of [390, 1440]) test(`Étudiant : accès au cours et replay pub
   await expect(page.getByText('Lien non généré', { exact: true })).toBeVisible();
   await expect(page.getByRole('button', { name: /Créer lien Teams|Associer replay|Programmer un cours/ })).toHaveCount(0);
 });
+
+for (const width of [390, 1440]) for (const state of ['published', 'missing', 'legacy'] as const) {
+  test(`Fiche de séance étudiante : liens ${state} à ${width}px`, async ({ page }) => {
+    await page.setViewportSize({ width, height: 950 });
+    await page.clock.setFixedTime(new Date('2026-10-19T07:00:00Z'));
+    const { snapshot: campus } = await installResponsiveAudit(page, 'student');
+    const session = campus.tables.sessions[0];
+    session.mode = 'EN_LIGNE';
+    session.room_id = null;
+    session.meeting_url = state === 'missing' ? null : joinUrl;
+    session.meeting_id = state === 'legacy' ? 'teams-old-session' : null;
+    session.recording_url = state === 'published' ? replayUrl : null;
+    await page.goto('/academique/emploi-du-temps');
+    await page.getByRole('button', { name: /^Séance / }).first().click();
+    const dialog = page.getByRole('dialog').last();
+    if (state === 'published') {
+      await expect(dialog.getByRole('link', { name: 'Rejoindre le cours Teams', exact: true })).toHaveAttribute('href', joinUrl);
+      await expect(dialog.getByRole('link', { name: 'Accéder à l’enregistrement', exact: true })).toHaveAttribute('href', replayUrl);
+    } else {
+      await expect(dialog.getByRole('link', { name: 'Rejoindre le cours Teams', exact: true })).toHaveCount(0);
+      await expect(dialog.getByText('Lien non encore généré', { exact: true })).toBeVisible();
+      await expect(dialog.getByRole('link', { name: 'Accéder à l’enregistrement', exact: true })).toHaveCount(0);
+    }
+    await expect(dialog.getByText('En ligne (Microsoft Teams)', { exact: true })).toBeVisible();
+  });
+}

@@ -53,3 +53,9 @@ Les journaux locaux et les liens de réunions sont sous les chemins `tmp/.env.*`
 L’utilisation d’`academie@escen.university` pour les cinq prochaines séances des deux coachs a été proposée à l’utilisateur. Aucun changement de leur organisateur n’a été effectué en attente de sa réponse.
 
 Références Microsoft : [création ou récupération idempotente d’une réunion et politique applicative](https://learn.microsoft.com/en-us/graph/api/onlinemeeting-createorget?view=graph-rest-1.0), [enregistrements rattachés à une réunion](https://learn.microsoft.com/en-us/graph/api/onlinemeeting-list-recordings?view=graph-rest-1.0).
+
+## Volet de détail d’une séance étudiante
+
+Le signalement du volet « Transformation digitale Approfondie (TDA2301) », séance du 16 novembre, correspond à la fiche générique de `ConnectedDomainWorkspace`. La correction locale `0d2a817` affiche le bouton « Rejoindre le cours Teams », le replay lorsqu’il est publié et la mention de salle en ligne. Elle est conservée et complétée par le même contrôle de liens confirmés que l’espace cours, afin de ne pas réexposer les anciennes URL de repli.
+
+TypeScript et ESLint passent. Les neuf tests Playwright couvrent les périmètres, les pages de cours et la fiche exacte, à 390 et 1440 px, avec lien publié, absent ou ancien lien de repli. Aucune donnée ni aucun mot de passe n’est modifié par cette correction d’affichage.
