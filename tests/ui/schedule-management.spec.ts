@@ -35,8 +35,33 @@ async function connectedSchedule(page: Page, withExam = false) {
     const response = request.method() === 'POST' ? await fixture.api.POST(input) : await fixture.api.GET(input);
     await route.fulfill({ status: response.status, json: await response.json() });
   });
+  await page.route('**/api/schedule/teacher-contact', async route => {
+    const request = route.request();
+    const response = await fixture.contactApi.POST(new Request(request.url(), { method: 'POST', headers: request.headers(), body: request.postData()! }));
+    await route.fulfill({ status: response.status, json: await response.json() });
+  });
   return { ...fixture, campusReads: () => reads };
 }
+
+for (const width of [390, 1440]) test(`Programmation : contact personnel obligatoire et séance conservée à ${width}px`, async ({ page }) => {
+  await page.setViewportSize({ width, height: 950 });
+  const fixture = await connectedSchedule(page);
+  fixture.snapshot.tables.people[0].email = null;
+  await page.goto(`/academique/emploi-du-temps?affectation=${id.assignment(0)}`);
+  const dialog = page.getByRole('dialog', { name: 'Nouvelle séance', exact: true });
+  await dialog.getByRole('combobox', { name: 'Salle prévue', exact: true }).selectOption(uuid(950));
+  await dialog.getByRole('button', { name: 'Renseigner l’e-mail personnel', exact: true }).click();
+  await dialog.getByLabel('E-mail personnel', { exact: true }).fill('alice@example.test');
+  await dialog.getByRole('button', { name: 'Vérifier les informations', exact: true }).click();
+  await expect(dialog.getByRole('region', { name: 'Vérification avant enregistrement' })).toContainText('alice@example.test');
+  expect(fixture.transactions).toHaveLength(0);
+  await dialog.getByRole('button', { name: 'Confirmer l’e-mail personnel', exact: true }).click();
+  await expect(dialog.getByRole('combobox', { name: 'Salle prévue', exact: true })).toHaveValue(uuid(950));
+  await expect(dialog.getByRole('button', { name: 'Renseigner l’e-mail personnel', exact: true })).toHaveCount(0);
+  expect(fixture.snapshot.tables.people[0].email).toBe('alice@example.test');
+  expect(fixture.transactions).toHaveLength(1);
+  expect(fixture.transactions[0].map(change => change.table)).toEqual(['people']);
+});
 async function confirm(dialog: Locator) {
   await dialog.getByRole('button', { name: 'Vérifier les informations', exact: true }).click();
   await expect(dialog.getByRole('region', { name: 'Vérification avant enregistrement' })).toBeVisible();
@@ -180,12 +205,15 @@ test('Programmer un cours : affecter un enseignant ici puis enregistrer le crén
   expect(fixture.transactions).toHaveLength(1);
   expect(fixture.transactions[0][0].record).toMatchObject({ assignment_id: createdId, teacher_id: uuid(21) });
 });
-const selectInitial = (page: Page) => page.locator('.calendar-list-day, .calendar-day')
-  .filter({ has: page.locator('time[datetime="2026-10-20"]') })
-  .getByRole('button', { name: /08:00–10:00.*Groupe 1/ }).filter({ visible: true }).click();
-
+const selectInitial = async (page: Page) => {
+  await page.getByRole('radio', { name: 'Liste', exact: true }).click();
+  await page.getByLabel('Mois :', { exact: true }).fill('2026-10');
+  await page.locator('.calendar-list-day').filter({ has: page.locator('time[datetime="2026-10-20"]') })
+    .locator('.timetable-card').filter({ hasText: 'Groupe 1' }).filter({ visible: true }).click();
+};
 async function expectSinglePlanning(page: Page) {
-  await expect(page.locator('.calendar-toolbar')).toHaveCount(1);
+  await expect(page.locator('.timetable-toolbar')).toHaveCount(1);
+  await page.getByRole('radio', { name: 'Mois', exact: true }).click();
   await expect(page.getByRole('navigation', { name: 'Source de l’emploi du temps', exact: true })).toHaveCount(0);
   await expect(page.getByRole('button', { name: 'Archives importées', exact: true })).toHaveCount(0);
   await expect(page.getByRole('button', { name: 'Planning de l’année', exact: true })).toHaveCount(0);
@@ -211,7 +239,7 @@ for (const width of [390, 1440]) test(`Un seul planning sans accès aux archives
   await page.goto('/academique/emploi-du-temps');
   await expect.poll(() => catalogReads).toBeGreaterThan(0);
   await expectSinglePlanning(page);
-  await expect(page.locator('.calendar-session:visible')).toHaveCount(0);
+  await expect(page.locator('.timetable-card:visible')).toHaveCount(0);
   await expect(page.getByText('Aucune séance datée pour ces filtres.', { exact: true })).toBeVisible();
   await expect(page.getByRole('combobox', { name: 'Groupe', exact: true })).toBeVisible();
   expect(archiveReads).toBe(0);
@@ -241,9 +269,10 @@ for (const readOnly of [false, true]) for (const width of [390, 1440]) test(`Cha
     const loaded = page.waitForResponse(response => new URL(response.url()).pathname === '/api/campus' && response.request().headers()['x-escen-year'] === value);
     await year.selectOption(value);
     await loaded;
-    await expect(page.getByLabel('Mois', { exact: true })).toHaveAttribute('min', month);
+    await page.getByRole('radio', { name: 'Mois', exact: true }).click();
+    await expect(page.getByLabel('Mois :', { exact: true })).toHaveAttribute('min', month);
     await expectSinglePlanning(page);
-    await expect(page.locator('.calendar-session:visible')).toHaveCount(0);
+    await expect(page.locator('.timetable-card:visible')).toHaveCount(0);
     expect(archiveReads).toBe(0);
   };
   await page.goto('/academique/emploi-du-temps');
@@ -271,28 +300,30 @@ for (const readOnly of [false, true]) for (const width of [390, 1440]) test(`Pla
   await page.goto('/academique/emploi-du-temps');
   const group = page.getByRole('combobox', { name: 'Groupe', exact: true });
   await expect(group).toBeVisible();
-  await expect(page.locator('.calendar-toolbar')).toHaveCount(1);
+  await expect(page.locator('.timetable-toolbar')).toHaveCount(1);
+  await page.getByRole('radio', { name: 'Liste', exact: true }).click();
+  await page.getByLabel('Mois :', { exact: true }).fill('2026-10');
   await group.selectOption(id.group);
-  await expect(page.locator('.calendar-session:visible')).toHaveCount(1);
-  await expect(page.locator('.calendar-session:visible')).toContainText('Groupe 1');
+  await expect(page.locator('.timetable-card:visible')).toHaveCount(1);
+  await expect(page.locator('.timetable-card:visible')).toContainText('Groupe 1');
   if (!readOnly) await expect(page.getByText('Séances annulées ou reportées', { exact: true })).toHaveCount(0);
   await page.getByRole('button', { name: 'Mois suivant', exact: true }).click();
   await expect(group).toHaveValue(id.group);
   await page.getByRole('button', { name: 'Mois précédent', exact: true }).click();
-  await expect(page.locator('.calendar-session:visible')).toHaveCount(1);
+  await expect(page.locator('.timetable-card:visible')).toHaveCount(1);
   await page.screenshot({ path: `tmp/screenshots/annual-offerings/${width}/emploi-du-temps-groupe-${readOnly ? 'consultation' : 'gestion'}.png` });
   await group.selectOption(id.otherGroup);
-  await expect(page.locator('.calendar-session:visible')).toHaveCount(readOnly ? 2 : 1);
+  await expect(page.locator('.timetable-card:visible')).toHaveCount(readOnly ? 2 : 1);
   if (!readOnly) {
     await expect(page.getByText('Séances annulées ou reportées', { exact: true })).toBeVisible();
     await group.selectOption(id.otherSiteGroup);
-    await expect(page.locator('.calendar-session:visible')).toHaveCount(0);
-    await expect(page.locator('.calendar-toolbar')).toHaveCount(1);
+    await expect(page.locator('.timetable-card:visible')).toHaveCount(0);
+    await expect(page.locator('.timetable-toolbar')).toHaveCount(1);
     await expectSinglePlanning(page);
   }
   await page.getByRole('button', { name: 'Afficher tous les groupes', exact: true }).click();
   await expect(group).toHaveValue('');
-  await expect(page.locator('.calendar-session:visible')).toHaveCount(readOnly ? 3 : 2);
+  await expect(page.locator('.timetable-card:visible')).toHaveCount(readOnly ? 3 : 2);
   expect(fixture.transactions).toEqual([]);
 });
 
@@ -328,7 +359,11 @@ for (const width of [360, 390, 1440]) test(`Séance : créer, modifier, déplace
   await dialog.getByLabel('Fin (heure de Lomé)', { exact: true }).fill('2026-10-20T12:00');
   
   await confirm(dialog);
-  const selectMoved = () => page.getByRole('button', { name: /10:00–12:00.*Groupe 1/ }).filter({ visible: true }).click();
+  const selectMoved = async () => {
+    await page.getByRole('radio', { name: 'Liste', exact: true }).click();
+    await page.getByLabel('Mois :', { exact: true }).fill('2026-10');
+    await page.locator('.timetable-card:visible').filter({ hasText: '10:00 – 12:00' }).filter({ hasText: 'Groupe 1' }).click();
+  };
   await selectMoved();
   await page.getByRole('button', { name: 'Remplacer l’enseignant', exact: true }).click();
   dialog = page.getByRole('dialog', { name: 'Remplacer l’enseignant', exact: true });
@@ -357,7 +392,7 @@ test('Période bloquée : périmètre, motif et récapitulatif à 390px', async 
   await dialog.getByLabel('Fin (heure de Lomé)', { exact: true }).fill('2026-10-23T00:00');
   
   await confirm(dialog);
-  expect(fixture.transactions[0][0]).toMatchObject({ table: 'blocked_periods', record: { site_id: id.site, academic_year_id: id.year, reason: 'Maintenance autorisée des locaux' } });
+  expect(fixture.transactions[0][0]).toMatchObject({ table: 'blocked_periods', record: { site_id: id.site, academic_year_id: id.year, reason: 'Période bloquée : Fermeture exceptionnelle' } });
   await page.getByText('Périodes bloquées (1)', { exact: true }).click();
   await expect(page.getByText('Fermeture exceptionnelle', { exact: true })).toBeVisible();
 });

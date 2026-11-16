@@ -2,6 +2,10 @@
 
 Règle validée le 16 novembre 2026 : l’e-mail personnel est obligatoire lors de la création d’un enseignant, depuis le personnel ou depuis les profils enseignants. L’adresse institutionnelle ESCEN ne remplace pas cet e-mail personnel.
 
+Complément validé pour les enseignants historiques : ils peuvent être importés avec leur compte Microsoft 365 déjà existant, sans inventer de contact personnel. Avant une création, un déplacement, une modification ou un remplacement de séance, le planning exige leur e-mail personnel. Un formulaire avec récapitulatif permet de le compléter ; la séance saisie reste conservée. Les instructions Microsoft 365 et le lien d’accès au portail sont alors envoyés au contact personnel, avec signalement d’un échec ou d’un résultat incertain. La consultation et l’annulation des anciennes séances restent possibles.
+
+Le contact est collecté par `/api/schedule/teacher-contact` uniquement pour un enseignant et une affectation/séance dans le périmètre autorisé, dans une année modifiable. Ce parcours ne permet pas d’écraser un e-mail personnel déjà valide. Il utilise la transaction auditée existante ; aucune nouvelle migration n’est nécessaire pour ce contrôle de programmation.
+
 ## Comportement
 
 - La création conserve dans une transaction le dossier, le profil et sa demande d’accès. Les profils historiques ne sont pas modifiés rétroactivement.

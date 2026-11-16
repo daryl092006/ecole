@@ -190,6 +190,12 @@ export async function manageTeacher(role: RoleName, command: import('@/types/tea
   return readResponse(await fetch('/api/teachers', { method: 'POST', headers: { ...await headers(role), 'Content-Type': 'application/json' }, body: JSON.stringify(command) }));
 }
 
+export async function updateScheduledTeacherContact(role: RoleName, body: {
+  teacherId: string; personalEmail: string; revision: number; reason: string; assignmentId?: string; sessionId?: string;
+}): Promise<{ revision: number; digitalAccess?: import('@/types/teacherDigitalAccess').TeacherDigitalAccessResult }> {
+  return readResponse(await fetch('/api/schedule/teacher-contact', { method: 'POST', headers: { ...await headers(role), 'Content-Type': 'application/json' }, body: JSON.stringify(body) }));
+}
+
 export async function loadSchedule(role: RoleName, signal?: AbortSignal): Promise<import('@/types/scheduleManagement').ScheduleDirectory> {
   return readResponse(await fetch('/api/schedule', { headers: await headers(role), cache: 'no-store', signal }));
 }

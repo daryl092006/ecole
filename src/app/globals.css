@@ -3351,6 +3351,8 @@ input[type="radio"] {
 .calendar-session { display:block; text-align:left; width:100%; margin-top:.4rem; padding:.5rem; border:1px solid #bfdbfe; border-radius:6px; background:#eff6ff; color:#1e40af; cursor:pointer; overflow-wrap:anywhere; }
 .calendar-session span { display:block; margin-top:.25rem; font-size:.8rem; }
 .schedule-calendar-list { display: none; }
+.schedule-calendar-list.is-active { display: grid; gap: 1rem; min-width: 0; }
+.schedule-calendar-list.is-active .calendar-list-day { min-width: 0; padding: .75rem; border: 1px solid var(--border); border-radius: var(--radius-sm); }
 @media (max-width: 768px) {
   .schedule-group-filter > .form-group { flex-basis: 100%; max-width: none; }
   .schedule-calendar-scroll { display: none; }

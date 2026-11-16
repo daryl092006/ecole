@@ -213,7 +213,10 @@
   },
   {
     "name": "Mme NANACHEVREUIL",
-    "email": "c.nana.coach@escen.university"
+    "email": "c.nana.coach@escen.university",
+    "nameAliases": [
+      "Nana CHEVREUIL"
+    ]
   },
   {
     "name": "M. KPONOUME Jean Claude",

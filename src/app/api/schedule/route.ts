@@ -1,4 +1,5 @@
 import { teacherMicrosoftEmail } from '@/server/teacherMicrosoftIdentity';
+import { teacherPersonalEmailSchema } from '@/services/teacherIdentityService';
 import { z } from 'zod';
 import { requireAccount, requirePermission, RequestError, errorResponse } from '@/server/auth';
 import { resolveAcademicYear } from '@/server/academicYearContext';
@@ -59,6 +60,12 @@ export async function POST(request: Request) {
     if (body.revision !== data.snapshot.revision) throw new RequestError(409, 'Le planning a changé. Actualisez avant de réessayer.');
     if ('startsAt' in body && Date.parse(body.endsAt) <= Date.parse(body.startsAt)) throw new RequestError(400, 'La fin doit être postérieure au début.');
     const rows = (table: string) => data.snapshot.tables[table] || [];
+    const requireTeacherContact = (teacherId: string) => {
+      const teacher = rows('teachers').find(row => row.id === teacherId);
+      const staff = rows('staff').find(row => row.id === teacher?.staff_id);
+      const person = rows('people').find(row => row.id === staff?.person_id && !row.archived_at);
+      if (!teacherPersonalEmailSchema.safeParse(person?.email).success) throw new RequestError(409, 'Renseignez l’e-mail personnel de l’enseignant avant de programmer cette séance.');
+    };
     let id = '';
     const changes: PersistentChange[] = [];
     if (body.action === 'create_shared_course') {
@@ -67,6 +74,7 @@ export async function POST(request: Request) {
         throw new RequestError(404, 'Une affectation est absente de votre périmètre ou de l’année sélectionnée.');
       }
       if (!data.directory.rooms.some(room => room.id === body.roomId && room.available)) throw new RequestError(409, 'Choisissez une salle disponible.');
+      for (const assignmentId of body.assignmentIds) requireTeacherContact(data.directory.assignments.find(row => row.id === assignmentId)!.teacherId);
       id = crypto.randomUUID();
       const saved = await data.client.rpc('escen_shared_course_create', { p_actor_id: data.context.accountId, p_role_code: data.context.roleCode,
         p_expected_revision: body.revision, p_session_id: id, p_assignment_ids: body.assignmentIds, p_room_id: body.roomId,
@@ -86,6 +94,7 @@ export async function POST(request: Request) {
       const assignment = data.directory.assignments.find(assignment => assignment.id === body.assignmentId);
       if (!assignment) throw new RequestError(404, 'Affectation active introuvable dans votre périmètre et cette année.');
       if (!data.directory.teachers.some(teacher => teacher.id === assignment.teacherId && teacher.active)) throw new RequestError(409, 'L’enseignant affecté doit être actif.');
+      requireTeacherContact(assignment.teacherId);
       if ((body.mode === 'EN_LIGNE') !== (body.roomId === null)) throw new RequestError(400, 'Une séance en ligne ne réserve pas de salle ; une séance en présentiel exige une salle.');
       const offering = rows('academic_offerings').find(offering => offering.id === assignment.offeringId)!;
       if (body.roomId) {
@@ -159,6 +168,9 @@ export async function POST(request: Request) {
       const current = 'sessionId' in body ? data.directory.sessions.find(session => session.id === body.sessionId) : undefined;
       if ('sessionId' in body && !current) throw new RequestError(404, 'Séance introuvable dans l’année et le périmètre sélectionnés.');
       if (current && !current.canUpdate) throw new RequestError(403, 'La modification exige une autorisation sur tous les groupes du cours commun.');
+      if (current && ['move_session', 'replace_teacher'].includes(body.action)) requireTeacherContact(
+        body.action === 'replace_teacher' ? body.teacherId || current.teacherId : current.replacementTeacherId || current.teacherId,
+      );
       if (body.action === 'generate_online_link' || body.action === 'sync_recording') {
         const original = rows('sessions').find(session => session.id === current!.id)!;
         id = original.id;
@@ -247,6 +259,7 @@ export async function POST(request: Request) {
       if (body.action === 'update_session') {
         const assignment = data.directory.assignments.find(assignment => assignment.id === body.assignmentId);
         if (!assignment) throw new RequestError(404, 'Affectation active introuvable dans votre périmètre et cette année.');
+        requireTeacherContact(current?.replacementTeacherId || assignment.teacherId);
         if ((!current || current.assignmentId !== assignment.id) && !data.directory.teachers.some(teacher => teacher.id === assignment.teacherId && teacher.active)) throw new RequestError(409, 'L’enseignant affecté doit être actif.');
         if ((body.mode === 'EN_LIGNE') !== (body.roomId === null)) throw new RequestError(400, 'Une séance en ligne ne réserve pas de salle ; une séance en présentiel exige une salle.');
         if (current && current.assignmentId !== assignment.id && original?.series_id) throw new RequestError(409, 'Cette séance appartient à une série : son affectation ne peut pas être changée individuellement.');

@@ -71,6 +71,7 @@ test('Accès enseignants : toute la liste protégée et ses variantes sont rése
   expect(protectedTeacherAccount('Edwige', 'AKOUETE')?.email).toBe('a.edwige.coach@escen.university');
   expect(protectedTeacherAccount('Bruce', 'ATA')?.email).toBe('b.ata.coach@escen.university');
   expect(protectedTeacherAccount('Thomas', 'GNAMALO')?.email).toBe('g.thomas@escen.university');
+  expect(protectedTeacherAccount('Nana', 'CHEVREUIL')?.email).toBe('c.nana.coach@escen.university');
   expect(protectedTeacherEmails.has('a.enoc.coah@escen.university')).toBe(true);
   expect(protectedTeacherAccount('Autre', 'AKOUETE')).toBeUndefined();
 });
@@ -146,4 +147,26 @@ test('Teams : adresse Microsoft conservée quand le contact et la connexion sont
   expect(await service.teacherMicrosoftEmail({} as SupabaseClient, { revision: 1, tables: {} }, {
     ...person, firstname: 'Edwige', lastname: 'AKOUETE',
   })).toBe('a.edwige.coach@escen.university');
+});
+
+test('Contact historique : accès envoyés au mail personnel sans réinitialiser Microsoft ni renvoyer automatiquement', async () => {
+  const person = { id: uuid(30), firstname: 'Edwige', lastname: 'AKOUETE', email: null };
+  const state: RelationalSnapshot = { revision: 1, tables: { accounts: [{ id: uuid(31), person_id: person.id, auth_user_id: uuid(32), active: true }] } };
+  let links = 0;
+  const client = { auth: { admin: {
+    getUserById: async () => ({ data: { user: { email: 'a.edwige.coach@escen.university', app_metadata: {} } }, error: null }),
+    generateLink: async () => { links++; return { data: { properties: { action_link: 'https://auth.example.test/private-link' } }, error: null }; },
+  } } } as unknown as SupabaseClient;
+  const service = loadSecurityApi('server/existingTeacherAccessEmail.ts', client, securityContext()) as typeof import('../../src/server/existingTeacherAccessEmail');
+  const messages: QueuedEmail[] = [];
+  const result = await service.emailExistingTeacherAccess(client, state, person, uuid(20), 'edwige@example.test', uuid(40), {
+    configuration: () => ({ ready: true, provider: 'microsoft', from: 'noreply@example.test', issue: null }),
+    deliver: async message => { messages.push(message); return { status: 'UNKNOWN', error: 'NETWORK_AMBIGUOUS' }; },
+  });
+  expect(result).toMatchObject({ status: 'UNKNOWN', reusedMicrosoftAccount: true });
+  expect(links).toBe(1);
+  expect(messages).toHaveLength(1);
+  expect(messages[0].recipient_email).toBe('edwige@example.test');
+  expect(messages[0].text_body).toContain('mot de passe Microsoft 365 existants sont conservés');
+  expect(messages[0].text_body).toContain('https://auth.example.test/private-link');
 });

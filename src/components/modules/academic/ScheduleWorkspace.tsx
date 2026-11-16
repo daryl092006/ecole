@@ -3,7 +3,8 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
 import { usePortal } from '@/hooks/usePortal';
-import { loadSchedule, manageSchedule } from '@/services/remoteCampusService';
+import { loadSchedule, manageSchedule, updateScheduledTeacherContact } from '@/services/remoteCampusService';
+import { teacherPersonalEmailSchema, teacherAccessMessage } from '@/services/teacherIdentityService';
 import { shiftExamAccess } from '@/services/scheduleManagementService';
 import type { ManagedSession, ScheduleCommand, ScheduleDirectory, SessionMode } from '@/types/scheduleManagement';
 import ConnectedDomainWorkspace from '../ConnectedDomainWorkspace';
@@ -75,6 +76,9 @@ function ScheduleManager() {
   const [reload, setReload] = useState(0), [detail, setDetail] = useState<ManagedSession | null>(null);
   const [operation, setOperation] = useState<Operation | null>(null), [form, setForm] = useState(blank);
   const [saving, setSaving] = useState(false), [saveError, setSaveError] = useState('');
+  const [contactEmail, setContactEmail] = useState('');
+  const [contactStep, setContactStep] = useState(false);
+  const [contactMessage, setContactMessage] = useState('');
   const [groupSelection, setGroupSelection] = useState({ yearId: '', groupId: '' });
 
   // Explicit dates share the same time range and are sent in one transaction.
@@ -138,6 +142,7 @@ function ScheduleManager() {
 
   const open = (action: Action, session?: ManagedSession) => {
     setDetail(null); setSaveError(''); setSharedAssignmentIds([]); setOperation({ action, session });
+    setContactEmail(''); setContactStep(false); setContactMessage('');
     setCadence('single');
     setSelectedDates([]);
     setMultiStartTime('08:00');
@@ -182,6 +187,10 @@ function ScheduleManager() {
     && (Date.parse(iso(effectiveStartsAt)) !== Date.parse(current.startsAt) || Date.parse(iso(effectiveEndsAt)) !== Date.parse(current.endsAt)) ? current.exam : null;
   const nextAccess = movingExam && current ? shiftExamAccess(movingExam, current.startsAt, iso(effectiveStartsAt)) : null;
   const assignment = directory.assignments.find(row => row.id === form.assignmentId);
+  const programmingTeacherId = action === 'replace_teacher' ? form.teacherId || current?.teacherId
+    : action === 'move_session' ? current?.replacementTeacherId || current?.teacherId
+      : editing ? (action === 'update_session' ? current?.replacementTeacherId : null) || assignment?.teacherId : null;
+  const missingContact = directory.teachers.find(teacher => teacher.id === programmingTeacherId && teacher.requiresPersonalEmail);
   const siteId = directory.offerings.find(offering => offering.id === assignment?.offeringId)?.siteId;
   const sharedChoices = directory.assignments.filter(candidate => candidate.id !== assignment?.id && candidate.teacherId === assignment?.teacherId
     && directory.components.some(component => component.id === candidate.componentId && !!component.subjectId
@@ -307,9 +316,34 @@ function ScheduleManager() {
         {!detail.hasAttendance && <button className="btn btn-danger" onClick={() => open('cancel_session', detail)}>Annuler la séance</button>}
       </div>}
     </WorkPage>}
-    {operation && <WorkPage title={titles[operation.action]} busy={saving} onClose={() => setOperation(null)}><ReviewedForm busy={saving} error={saveError} fields={fields} consequence={consequence}
+    {operation && <WorkPage title={titles[operation.action]} busy={saving} onClose={() => setOperation(null)}>{missingContact && contactStep ? <ReviewedForm key={`contact-${missingContact.id}`} busy={saving} error={saveError}
+      fields={[{ label: 'Enseignant', value: missingContact.name }, { label: 'E-mail personnel', value: contactEmail }]}
+      consequence="L’e-mail personnel sera enregistré dans le dossier enseignant et les instructions d’accès seront envoyées à cette adresse. Vous pourrez ensuite poursuivre la programmation de la séance. Le compte Microsoft 365 et son mot de passe seront conservés."
+      confirmLabel="Confirmer l’e-mail personnel"
+      validate={() => teacherPersonalEmailSchema.safeParse(contactEmail).success ? null : 'Indiquez un e-mail personnel valide, différent du compte ESCEN.'}
+      onConfirm={event => {
+        event.preventDefault(); setSaving(true); setSaveError('');
+        void updateScheduledTeacherContact(activeRole, { teacherId: missingContact.id, personalEmail: contactEmail,
+          revision: directory.revision, reason: 'Contact personnel complété avant la programmation d’une séance.',
+          ...(current ? { sessionId: current.id } : { assignmentId: form.assignmentId }),
+        }).then(result => {
+          setDirectory(previous => previous ? { ...previous, revision: result.revision,
+            teachers: previous.teachers.map(teacher => teacher.id === missingContact.id ? { ...teacher, requiresPersonalEmail: false } : teacher),
+          } : previous);
+          setContactEmail(''); setContactStep(false);
+          setContactMessage(result.digitalAccess?.status === 'FAILED'
+            ? 'Contact enregistré. Les accès n’ont pas pu être envoyés ; contactez le support pour terminer leur envoi.'
+            : `Contact enregistré. ${teacherAccessMessage(result.digitalAccess)}`);
+          portal.refreshCampus();
+        }).catch(cause => setSaveError(cause instanceof Error ? cause.message : 'Enregistrement du contact impossible.')).finally(() => setSaving(false));
+      }}>
+      <p>L’e-mail personnel de <strong>{missingContact.name}</strong> est nécessaire avant de programmer ce professeur.</p>
+      <label className="form-group">E-mail personnel<input className="input" type="email" required maxLength={254} value={contactEmail} onChange={event => setContactEmail(event.target.value)} /></label>
+      <DrawerActions><button type="button" className="btn btn-outline" disabled={saving} onClick={() => setContactStep(false)}>Revenir à la séance</button><button className="btn btn-primary" disabled={saving}>Vérifier les informations</button></DrawerActions>
+    </ReviewedForm> : <ReviewedForm busy={saving} error={saveError} fields={fields} consequence={consequence}
       confirmLabel={`Confirmer : ${titles[operation.action].toLocaleLowerCase('fr')}`} danger={action === 'cancel_session'}
       validate={() => {
+        if (missingContact) return 'Complétez d’abord l’e-mail personnel de l’enseignant pour programmer cette séance.';
         if (editing && !assignment) return 'Choisissez le groupe, la matière et l’enseignant du cours.';
         if (sharedCreate && (sharedAssignmentIds.length < 1 || sharedAssignmentIds.length > 29 || sharedAssignmentIds.some(id => !sharedChoices.some(choice => choice.id === id)))) return 'Choisissez de 2 à 30 affectations compatibles pour ce cours commun.';
         if (isMultiCreate) {
@@ -351,6 +385,8 @@ function ScheduleManager() {
           portal.refreshCampus();
         }).catch(cause => setSaveError(cause instanceof Error ? cause.message : 'Enregistrement impossible.')).finally(() => setSaving(false));
       }}>
+      {contactMessage && <p className="review-notice" role="status">{contactMessage}</p>}
+      {missingContact && <div className="review-notice"><p>L’e-mail personnel de {missingContact.name} est obligatoire avant de programmer cette séance.</p><button type="button" className="btn btn-outline" onClick={() => { setSaveError(''); setContactStep(true); }}>Renseigner l’e-mail personnel</button></div>}
       {editing && <>
         {(action === 'create_session' || sharedCreate) ? <ScheduleCourseSelector directory={directory} assignmentId={form.assignmentId} initialGroupId={requestedGroup || groupId} initialComponentId={params.get('matiere') || ''} canAssign={portal.perms.permissions.includes('academic.assignment.manage')} onChange={id => { setSharedAssignmentIds([]); setForm({ ...form, assignmentId: id, roomId: '' }); }} onAssign={setAssigning} /> : <label className="form-group">Affectation<select className="select-input" required value={form.assignmentId} onChange={event => setForm({ ...form, assignmentId: event.target.value, roomId: '' })}><option value="">Choisir une affectation</option>{directory.assignments.filter(assignment => assignment.id === current?.assignmentId || directory.teachers.some(teacher => teacher.id === assignment.teacherId && teacher.active)).map(assignment => <option key={assignment.id} value={assignment.id}>{assignmentName(assignment.id)}</option>)}</select></label>}
         {sharedCreate && assignment && <fieldset className="card"><legend>Autres groupes et formations du cours commun</legend>{sharedChoices.map(choice => <label className="form-group" key={choice.id}><input type="checkbox" checked={sharedAssignmentIds.includes(choice.id)} onChange={event => setSharedAssignmentIds(ids => event.target.checked ? [...ids, choice.id] : ids.filter(id => id !== choice.id))} />{assignmentName(choice.id)}</label>)}{!sharedChoices.length && <p>Aucune autre affectation compatible : vérifiez la matière, l’enseignant et le site des groupes à réunir.</p>}</fieldset>}
@@ -453,7 +489,7 @@ function ScheduleManager() {
       )}
       {action === 'cancel_session' && current && <p>{assignmentName(current.assignmentId)} · {displayTime(current.startsAt)} → ANNULE</p>}
       <DrawerActions><DrawerCloseButton className="btn btn-outline" disabled={saving}>Annuler</DrawerCloseButton><button className="btn btn-primary">Vérifier les informations</button></DrawerActions>
-    </ReviewedForm></WorkPage>}
+    </ReviewedForm>}</WorkPage>}
     {assigning && <CourseAssignmentDialog {...assigning} onClose={() => setAssigning(null)} onSaved={async id => {
       const updated = await loadSchedule(activeRole); setDirectory(updated); setForm(value => ({ ...value, assignmentId: id, roomId: '' })); setAssigning(null);
     }} />}

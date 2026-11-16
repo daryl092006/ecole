@@ -6,6 +6,7 @@ import { filterSnapshotForAcademicYear } from './academicYearScopeService';
 import { sessionParticipants } from './sessionParticipantsService';
 import { annualOfferingLabel } from './annualOfferingService';
 import { formatSubjectCode } from './resaoCodeService';
+import { teacherPersonalEmailSchema } from './teacherIdentityService';
 
 export const hasGlobalStaffManagement = (context: PersistentContext) => context.permissions.includes('staff.manage')
   && context.grants.some(grant => !grant.site_id && !grant.group_id && !grant.academic_year_id);
@@ -36,7 +37,8 @@ export function teacherDirectory(snapshot: RelationalSnapshot, context: Persiste
   const teachers: TeacherProfile[] = rows('teachers').flatMap(teacher => {
     const member = staff.find(row => row.id === teacher.staff_id);
     return member ? [{ id: teacher.id, staffId: member.id, personId: member.personId, name: member.name,
-      employeeNumber: member.employeeNumber, specialty: String(teacher.specialty || ''), active: teacher.active === true }] : [];
+      employeeNumber: member.employeeNumber, specialty: String(teacher.specialty || ''), active: teacher.active === true,
+      requiresPersonalEmail: !teacherPersonalEmailSchema.safeParse(member.personalEmail).success }] : [];
   });
   const offerings = (scoped.tables.academic_offerings || []).filter(row => !row.archived_at
     && scoped.tables.curricula?.some(curriculum => curriculum.id === row.curriculum_id && !curriculum.archived_at && curriculum.status !== 'ARCHIVED'));

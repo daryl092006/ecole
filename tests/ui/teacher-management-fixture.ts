@@ -5,7 +5,7 @@ export function teacherFixture(context: PersistentContext = securityContext(), m
   const snapshot = evaluationSecurityRoute(context).snapshot;
   const tables = snapshot.tables;
   tables.academic_years[0].starts_on = '2026-01-01'; tables.academic_years[0].ends_on = '2027-12-31';
-  tables.people = [0, 1, 2].map(index => ({ id: uuid(920 + index), firstname: ['Alice', 'Benoît', 'Claire'][index], lastname: 'Enseignant' }));
+  tables.people = [0, 1, 2].map(index => ({ id: uuid(920 + index), firstname: ['Alice', 'Benoît', 'Claire'][index], lastname: 'Enseignant', email: `enseignant-${index}@example.test` }));
   tables.staff = [0, 1, 2].map(index => ({ id: uuid(910 + index), person_id: uuid(920 + index), employee_number: `ENS-${index + 1}` }));
   tables.teachers = [0, 1].map(index => ({ id: uuid(20 + index), staff_id: uuid(910 + index), specialty: ['Analyse', 'Réseaux'][index], active: true }));
   tables.programs = [{ id: uuid(89), name: 'Informatique' }]; tables.levels = [{ id: uuid(88), name: 'Licence 1' }];

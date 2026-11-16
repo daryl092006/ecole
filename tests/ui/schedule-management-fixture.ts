@@ -56,9 +56,10 @@ export function scheduleFixture(context: PersistentContext = securityContext(), 
     return { data: snapshot.revision, error: null };
   } };
   const api = loadSecurityApi('app/api/schedule/route.ts', client, context) as { GET: (request: Request) => Promise<Response>; POST: (request: Request) => Promise<Response> };
+  const contactApi = loadSecurityApi('app/api/schedule/teacher-contact/route.ts', client, context) as { POST: (request: Request) => Promise<Response> };
   const get = (year = id.year) => api.GET(new Request('http://local.test/api/schedule', { headers: { 'x-escen-year': year } }));
   const post = (body: Record<string, unknown>, year = id.year) => api.POST(new Request('http://local.test/api/schedule', { method: 'POST', headers: { 'x-escen-year': year }, body: JSON.stringify({ revision: snapshot.revision, reason: 'Organisation pédagogique validée', ...body }) }));
-  return { snapshot, transactions, api, get, post, fail: (message: string) => { failure = { message }; } };
+  return { snapshot, transactions, api, contactApi, get, post, fail: (message: string) => { failure = { message }; } };
 }
 
 export const createSession = { action: 'create_session', assignmentId: id.assignment(0), roomId: uuid(950), mode: 'COURS', startsAt: '2026-10-21T08:00:00Z', endsAt: '2026-10-21T10:00:00Z' };

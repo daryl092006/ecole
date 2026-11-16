@@ -1,6 +1,6 @@
 export interface TeacherProfile {
   id: string; staffId: string; personId: string; name: string; employeeNumber: string;
-  specialty: string; active: boolean;
+  specialty: string; active: boolean; requiresPersonalEmail?: boolean;
 }
 export interface TeachingAssignmentRecord {
   id: string; teacherId: string; groupId: string; offeringId: string; componentId: string;

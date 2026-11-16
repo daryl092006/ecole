@@ -1,6 +1,29 @@
 import { expect, test } from '@playwright/test';
 import { scheduleFixture, createSession, attachScheduledExam } from './schedule-management-fixture';
 import { securityContext, securityIds as id, uuid } from './security-fixture';
+
+test('Programmation : contact personnel exigé, collecte autorisée et absence de divulgation', async () => {
+  const f = scheduleFixture(securityContext(), true);
+  f.snapshot.tables.people[0].email = null;
+  const contact = (body: object) => f.contactApi.POST(new Request('http://local.test/api/schedule/teacher-contact', {
+    method: 'POST', headers: { 'x-escen-year': id.year },
+    body: JSON.stringify({ teacherId: id.teacher, assignmentId: id.assignment(0), personalEmail: 'alice@example.test',
+      revision: f.snapshot.revision, reason: 'Contact avant programmation', ...body }),
+  }));
+  const directory = await (await f.get()).json();
+  expect(directory.teachers[0].requiresPersonalEmail).toBe(true);
+  expect(directory.teachers[0]).not.toHaveProperty('personalEmail');
+  expect((await f.post(createSession)).status).toBe(409);
+  expect((await f.post({ action: 'move_session', sessionId: uuid(970), startsAt: createSession.startsAt, endsAt: createSession.endsAt })).status).toBe(409);
+  for (const body of [{ personalEmail: '' }, { personalEmail: 'alice@escen.university' }]) expect((await contact(body)).status).toBe(400);
+  expect((await contact({ teacherId: uuid(999) })).status).toBe(404);
+  expect((await contact({ revision: 0 })).status).toBe(409);
+  expect(f.transactions).toEqual([]);
+  expect((await contact({})).status).toBe(200);
+  expect(f.snapshot.tables.people[0].email).toBe('alice@example.test');
+  expect((await contact({ personalEmail: 'autre@example.test' })).status).toBe(409);
+  expect((await f.post(createSession)).status).toBe(201);
+});
 import { ROLES } from '../../src/types/permissions';
 
 const systemNow = Date.now;
@@ -167,6 +190,7 @@ test('La fenêtre complète doit tenir dans le nouveau créneau et rester future
 test('Un refus SQL arrivé après le récapitulatif conserve les deux horaires', async () => {
   const fixture = scheduleFixture(securityContext(), true);
   attachScheduledExam(fixture);
+  await fixture.get(); // Normalize virtual participants before checking persisted-state invariants.
   const before = structuredClone(fixture.snapshot);
   fixture.fail('Épreuve déjà ouverte : déplacement interdit');
   const response = await fixture.post({ action: 'move_session', sessionId: uuid(970), startsAt: createSession.startsAt, endsAt: createSession.endsAt });
