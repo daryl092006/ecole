@@ -1,7 +1,7 @@
 import 'server-only';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import type { DatabaseRow, RelationalSnapshot } from '@/types/persistence';
-import { protectedTeacherAccount } from '@/services/teacherIdentityService';
+import { protectedTeacherAccount } from '@/server/protectedTeacherAccounts';
 
 /** The personal contact address must never become the organizer of an ESCEN Teams meeting. */
 export async function teacherMicrosoftEmail(client: SupabaseClient, snapshot: RelationalSnapshot, person?: DatabaseRow): Promise<string | null> {

@@ -3,8 +3,8 @@ import type { SupabaseClient, User } from '@supabase/supabase-js';
 import type { PersistentChange, RelationalSnapshot } from '../../src/types/persistence';
 import type { QueuedEmail } from '../../src/types/email';
 import { loadSecurityApi, securityContext, uuid } from './security-fixture';
-import { protectedTeacherAccount, protectedTeacherEmails } from '../../src/services/teacherIdentityService';
 import registry from '../../src/data/protectedTeacherAccounts.json';
+const { protectedTeacherAccount, protectedTeacherEmails } = loadSecurityApi('server/protectedTeacherAccounts.ts', {}, securityContext()) as typeof import('../../src/server/protectedTeacherAccounts');
 
 type Service = typeof import('../../src/server/teacherDigitalAccess');
 function fixture(options: { existing?: boolean; missingProtected?: boolean; emailUnknown?: boolean; licenseFailure?: boolean; identityConflict?: boolean } = {}) {

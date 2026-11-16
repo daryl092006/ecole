@@ -3,7 +3,8 @@ import { randomBytes, randomUUID } from 'node:crypto';
 import type { SupabaseClient, User } from '@supabase/supabase-js';
 import type { PersistentChange, RelationalSnapshot } from '@/types/persistence';
 import type { TeacherDigitalAccessResult } from '@/types/teacherDigitalAccess';
-import { protectedTeacherAccount, protectedTeacherEmails, teacherIdentityKey, teacherPersonalEmailSchema } from '@/services/teacherIdentityService';
+import { teacherIdentityKey, teacherPersonalEmailSchema } from '@/services/teacherIdentityService';
+import { protectedTeacherAccount, protectedTeacherEmails } from '@/server/protectedTeacherAccounts';
 import { sanitizeNameToken, getGraphAccessToken } from '@/services/microsoftGraphService';
 import { deliverEmail, emailConfiguration } from '@/server/emailTransport';
 
