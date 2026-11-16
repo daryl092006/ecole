@@ -28,7 +28,7 @@ La table `escen.teacher_digital_access` conserve les identifiants et un code d�
 
 ## Installation et validation
 
-La migration nouvelle est `202611160110_teacher_digital_access.sql`. Les anciennes migrations restent inchangées. Elle est appliquée uniquement dans PGlite pour ce chantier ; sa mise en production reste une étape distincte, à autoriser avant le déploiement du code qui l’utilise.
+La migration nouvelle est `202611160110_teacher_digital_access.sql`. Les anciennes migrations restent inchangées. Après répétition dans PGlite, elle a été appliquée lors de la publication demandée le 16 novembre ; le bilan se trouve dans `PUBLICATION_ENSEIGNANTS_2026-11-16.md`.
 
 Les secrets Azure et les paramètres d’envoi sont documentés dans `.env.example`. Ils doivent être configurés côté serveur. Les essais automatiques utilisent des transports simulés : ils ne créent ni compte Microsoft réel ni message réel.
 

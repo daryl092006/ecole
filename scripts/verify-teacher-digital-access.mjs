@@ -12,7 +12,13 @@ try {
   const legacyPerson = await scalar("insert into escen.people(firstname,lastname) values('Ancien','Enseignant') returning id as value");
   const legacyStaff = await scalar("insert into escen.staff(person_id,employee_number) values($1,'LEGACY-TEACHER') returning id as value", [legacyPerson]);
   const legacyTeacher = await scalar('insert into escen.teachers(staff_id) values($1) returning id as value', [legacyStaff]);
+  // Reproduce Supabase defaults rather than assuming a PostgreSQL installation without browser grants.
+  await db.exec('alter default privileges in schema public grant execute on functions to anon, authenticated; alter default privileges in schema escen grant execute on functions to anon, authenticated; alter default privileges in schema escen_private grant execute on functions to anon, authenticated; alter default privileges in schema escen grant all on tables to anon, authenticated;');
   await db.exec(await readFile(new URL(`../supabase/migrations/${migration}`, import.meta.url), 'utf8'));
+  assert.equal(await scalar("select has_function_privilege('anon','public.escen_backend_snapshot()','EXECUTE') as value"), true);
+  const hardening = await readFile(new URL('../supabase/migrations/202611160111_teacher_access_rpc_privileges.sql', import.meta.url), 'utf8');
+  await db.exec(hardening);
+  await db.exec(hardening); // An already hardened deployment remains safe on a repeated application.
   assert.equal(await scalar('select email as value from escen.people where id=$1', [legacyPerson]), null);
   assert.equal(await scalar('select count(*)::int as value from escen.teachers where id=$1', [legacyTeacher]), 1);
   const person = await scalar("insert into escen.people(firstname,lastname) values('Nouveau','Enseignant') returning id as value");
@@ -32,8 +38,11 @@ try {
   await assert.rejects(db.query('select public.escen_teacher_digital_access_request($1,$2,$3)', [randomUUID(), teacher, 'Auteur non autorisé']), /accès global/i);
   assert.equal(await scalar("select relrowsecurity as value from pg_class where oid='escen.teacher_digital_access'::regclass"), true);
   for (const role of ['anon', 'authenticated']) {
+    assert.equal(await scalar("select has_function_privilege($1,'public.escen_backend_snapshot()','EXECUTE') as value", [role]), false);
     assert.equal(await scalar("select has_function_privilege($1,'public.escen_teacher_digital_access_request(uuid,uuid,text)','EXECUTE') as value", [role]), false);
     assert.equal(await scalar("select has_function_privilege($1,'public.escen_backend_snapshot_before_teacher_access()','EXECUTE') as value", [role]), false);
+    assert.equal(await scalar("select has_function_privilege($1,'escen.request_teacher_digital_access(uuid,uuid,text)','EXECUTE') as value", [role]), false);
+    assert.equal(await scalar("select has_table_privilege($1,'escen.teacher_digital_access','SELECT') as value", [role]), false);
   }
   assert.equal(await scalar("select has_function_privilege('service_role','public.escen_teacher_digital_access_request(uuid,uuid,text)','EXECUTE') as value"), true);
   const snapshot = await scalar('select public.escen_backend_snapshot() as value');
