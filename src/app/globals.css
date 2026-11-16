@@ -5927,3 +5927,35 @@ form > .drawer-form-actions,
     grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
   }
 }
+
+/* Graphiques partagés : valeurs explicites, vue des données et palette commune. */
+.kpi-chart { min-width: 0; }
+.kpi-chart-description { margin: 0 0 18px; font-size: .8rem; line-height: 1.6; color: var(--text-secondary); }
+.kpi-chart-options { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 20px; }
+.kpi-chart-bars { display: grid; gap: 18px; padding: 0; margin: 0; list-style: none; }
+.kpi-chart-bars > li { min-width: 0; }
+.kpi-chart-bar-label { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; font-size: .8rem; line-height: 1.5; margin-bottom: 7px; }
+.kpi-chart-bar-label > span { min-width: 0; overflow-wrap: anywhere; }
+.kpi-chart-bar-label > strong { flex-shrink: 0; font-variant-numeric: tabular-nums; }
+.kpi-chart-track { height: 10px; border-radius: 5px; background: var(--bg-tertiary); overflow: hidden; }
+.kpi-chart-track > span { display: block; height: 100%; border-radius: inherit; }
+.kpi-chart-distribution { display: flex; align-items: center; justify-content: center; gap: 24px; flex-wrap: wrap; }
+.kpi-chart-ring { position: relative; width: 168px; height: 168px; flex-shrink: 0; }
+.kpi-chart-ring svg { display: block; width: 100%; height: 100%; }
+.kpi-chart-center { position: absolute; inset: 28px; display: flex; flex-direction: column; justify-content: center; align-items: center; gap: 4px; text-align: center; }
+.kpi-chart-center strong { font-size: 1.5rem; line-height: 1.2; font-variant-numeric: tabular-nums; color: var(--text-primary); overflow-wrap: anywhere; max-width: 100%; }
+.kpi-chart-center span { font-size: .75rem; line-height: 1.4; color: var(--text-secondary); }
+.kpi-chart-legend { display: grid; gap: 14px; flex: 1; min-width: min(100%, 180px); margin: 0; }
+.kpi-chart-legend > div { display: flex; align-items: baseline; justify-content: space-between; flex-wrap: wrap; gap: 5px 16px; }
+.kpi-chart-legend dt { display: flex; align-items: center; gap: 8px; font-size: .8rem; color: var(--text-secondary); min-width: 0; overflow-wrap: anywhere; }
+.kpi-chart-legend dd { margin: 0; font-weight: 600; font-size: .9rem; font-variant-numeric: tabular-nums; }
+.kpi-chart-dot { width: 9px; height: 9px; flex-shrink: 0; border-radius: 50%; }
+.kpi-chart-empty { color: var(--text-secondary); font-size: .8rem; line-height: 1.6; padding: 16px 0; margin: 0; }
+.kpi-chart-footer { margin-top: 20px; padding-top: 16px; border-top: 1px solid var(--border); }
+.kpi-chart-footer .btn { width: 100%; gap: 8px; }
+@media (max-width: 768px) {
+  .kpi-chart .card-header { align-items: flex-start !important; gap: 10px; }
+  .kpi-chart-distribution { gap: 16px; }
+  .kpi-chart-ring { width: 150px; height: 150px; }
+  .kpi-chart-center strong { font-size: 1.3rem; }
+}

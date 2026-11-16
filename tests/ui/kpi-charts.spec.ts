@@ -9,6 +9,9 @@ for (const width of [390, 1440]) test(`Graphiques : effectifs, données exactes 
   await page.goto('/mon-espace');
   const population = page.getByRole('region', { name: 'Répartition des étudiants', exact: true });
   await expect(population.locator('.kpi-chart-bars > li').first()).toBeVisible();
+  await expect(population.locator('.kpi-chart-bars')).toHaveCSS('list-style-type', 'none');
+  await expect(population.locator('.kpi-chart-track').first()).toHaveCSS('height', '10px');
+  await expect(population.locator('.kpi-chart-track > span').first()).toHaveCSS('display', 'block');
   await population.getByRole('button', { name: 'Par groupe', exact: true }).click();
   await expect(population.getByRole('button', { name: 'Par groupe', exact: true })).toHaveAttribute('aria-pressed', 'true');
   await population.getByRole('button', { name: 'Afficher les données', exact: true }).click();
@@ -18,6 +21,10 @@ for (const width of [390, 1440]) test(`Graphiques : effectifs, données exactes 
   await population.getByRole('button', { name: 'Afficher le graphique', exact: true }).click();
   const finance = page.getByRole('region', { name: 'Répartition des frais', exact: true });
   await expect(finance.locator('.kpi-chart-center')).toContainText('33,3 %');
+  const ringSize = width <= 768 ? '150px' : '168px';
+  await expect(finance.locator('.kpi-chart-ring')).toHaveCSS('width', ringSize);
+  await expect(finance.locator('.kpi-chart-ring')).toHaveCSS('height', ringSize);
+  await expect(finance.locator('.kpi-chart-center')).toHaveCSS('position', 'absolute');
   await finance.getByRole('button', { name: 'Afficher les données', exact: true }).click();
   await expect(finance.getByRole('row').filter({ hasText: 'Réglé' })).toContainText(/400\s*FCFA/);
   await expect(finance.getByRole('row').filter({ hasText: 'Reste à régler' })).toContainText(/800\s*FCFA/);
