@@ -1,10 +1,10 @@
 {
   "stats": {
-    "businessTables": 123,
+    "businessTables": 124,
     "privateTables": 14,
-    "columns": 1118,
-    "foreignKeys": 311,
-    "checks": 270,
+    "columns": 1131,
+    "foreignKeys": 315,
+    "checks": 276,
     "exclusions": 5
   },
   "tables": [
@@ -571,6 +571,11 @@
     {
       "schema": "escen",
       "name": "teacher_attendances",
+      "rls": true
+    },
+    {
+      "schema": "escen",
+      "name": "teacher_digital_access",
       "rls": true
     },
     {
@@ -9099,6 +9104,123 @@
       "type": "text",
       "nullable": "YES",
       "default": null,
+      "generated": "NEVER"
+    },
+    {
+      "schema": "escen",
+      "table": "teacher_digital_access",
+      "name": "id",
+      "type": "uuid",
+      "nullable": "NO",
+      "default": "gen_random_uuid()",
+      "generated": "NEVER"
+    },
+    {
+      "schema": "escen",
+      "table": "teacher_digital_access",
+      "name": "teacher_id",
+      "type": "uuid",
+      "nullable": "NO",
+      "default": null,
+      "generated": "NEVER"
+    },
+    {
+      "schema": "escen",
+      "table": "teacher_digital_access",
+      "name": "personal_email",
+      "type": "text",
+      "nullable": "NO",
+      "default": null,
+      "generated": "NEVER"
+    },
+    {
+      "schema": "escen",
+      "table": "teacher_digital_access",
+      "name": "institutional_email",
+      "type": "text",
+      "nullable": "YES",
+      "default": null,
+      "generated": "NEVER"
+    },
+    {
+      "schema": "escen",
+      "table": "teacher_digital_access",
+      "name": "m365_user_id",
+      "type": "uuid",
+      "nullable": "YES",
+      "default": null,
+      "generated": "NEVER"
+    },
+    {
+      "schema": "escen",
+      "table": "teacher_digital_access",
+      "name": "account_id",
+      "type": "uuid",
+      "nullable": "YES",
+      "default": null,
+      "generated": "NEVER"
+    },
+    {
+      "schema": "escen",
+      "table": "teacher_digital_access",
+      "name": "provisioning_status",
+      "type": "text",
+      "nullable": "NO",
+      "default": "'PENDING'::text",
+      "generated": "NEVER"
+    },
+    {
+      "schema": "escen",
+      "table": "teacher_digital_access",
+      "name": "email_id",
+      "type": "uuid",
+      "nullable": "YES",
+      "default": null,
+      "generated": "NEVER"
+    },
+    {
+      "schema": "escen",
+      "table": "teacher_digital_access",
+      "name": "last_error_code",
+      "type": "text",
+      "nullable": "YES",
+      "default": null,
+      "generated": "NEVER"
+    },
+    {
+      "schema": "escen",
+      "table": "teacher_digital_access",
+      "name": "requested_by",
+      "type": "uuid",
+      "nullable": "NO",
+      "default": null,
+      "generated": "NEVER"
+    },
+    {
+      "schema": "escen",
+      "table": "teacher_digital_access",
+      "name": "reason",
+      "type": "text",
+      "nullable": "NO",
+      "default": null,
+      "generated": "NEVER"
+    },
+    {
+      "schema": "escen",
+      "table": "teacher_digital_access",
+      "name": "created_at",
+      "type": "timestamptz",
+      "nullable": "NO",
+      "default": "now()",
+      "generated": "NEVER"
+    },
+    {
+      "schema": "escen",
+      "table": "teacher_digital_access",
+      "name": "updated_at",
+      "type": "timestamptz",
+      "nullable": "NO",
+      "default": "now()",
       "generated": "NEVER"
     },
     {
@@ -20484,6 +20606,167 @@
     },
     {
       "schema": "escen",
+      "table": "teacher_digital_access",
+      "name": "teacher_digital_access_account_id_fkey",
+      "type": "f",
+      "definition": "FOREIGN KEY (account_id) REFERENCES escen.accounts(id) ON DELETE RESTRICT"
+    },
+    {
+      "schema": "escen",
+      "table": "teacher_digital_access",
+      "name": "teacher_digital_access_account_id_key",
+      "type": "u",
+      "definition": "UNIQUE (account_id)"
+    },
+    {
+      "schema": "escen",
+      "table": "teacher_digital_access",
+      "name": "teacher_digital_access_check",
+      "type": "c",
+      "definition": "CHECK (((provisioning_status <> 'READY'::text) OR ((institutional_email IS NOT NULL) AND (m365_user_id IS NOT NULL) AND (account_id IS NOT NULL))))"
+    },
+    {
+      "schema": "escen",
+      "table": "teacher_digital_access",
+      "name": "teacher_digital_access_created_at_not_null",
+      "type": "n",
+      "definition": "NOT NULL created_at"
+    },
+    {
+      "schema": "escen",
+      "table": "teacher_digital_access",
+      "name": "teacher_digital_access_email_id_fkey",
+      "type": "f",
+      "definition": "FOREIGN KEY (email_id) REFERENCES escen.email_outbox(id) ON DELETE RESTRICT"
+    },
+    {
+      "schema": "escen",
+      "table": "teacher_digital_access",
+      "name": "teacher_digital_access_id_not_null",
+      "type": "n",
+      "definition": "NOT NULL id"
+    },
+    {
+      "schema": "escen",
+      "table": "teacher_digital_access",
+      "name": "teacher_digital_access_institutional_email_check",
+      "type": "c",
+      "definition": "CHECK (((institutional_email = lower(btrim(institutional_email))) AND (institutional_email ~ '^[^[:space:]<>@]+@escen\\.university$'::text)))"
+    },
+    {
+      "schema": "escen",
+      "table": "teacher_digital_access",
+      "name": "teacher_digital_access_institutional_email_key",
+      "type": "u",
+      "definition": "UNIQUE (institutional_email)"
+    },
+    {
+      "schema": "escen",
+      "table": "teacher_digital_access",
+      "name": "teacher_digital_access_last_error_code_check",
+      "type": "c",
+      "definition": "CHECK ((last_error_code = ANY (ARRAY['CONFIGURATION'::text, 'IDENTITY_CONFLICT'::text, 'MICROSOFT_REJECTED'::text, 'LICENSE_REJECTED'::text, 'AUTH_REJECTED'::text, 'CONCURRENT_UPDATE'::text, 'NETWORK_AMBIGUOUS'::text, 'EMAIL_REJECTED'::text])))"
+    },
+    {
+      "schema": "escen",
+      "table": "teacher_digital_access",
+      "name": "teacher_digital_access_m365_user_id_key",
+      "type": "u",
+      "definition": "UNIQUE (m365_user_id)"
+    },
+    {
+      "schema": "escen",
+      "table": "teacher_digital_access",
+      "name": "teacher_digital_access_personal_email_check",
+      "type": "c",
+      "definition": "CHECK (((personal_email = lower(btrim(personal_email))) AND (char_length(personal_email) <= 254) AND (personal_email ~ '^[^[:space:]<>@]+@[^[:space:]<>@]+\\.[^[:space:]<>@]+$'::text) AND (split_part(personal_email, '@'::text, 2) <> 'escen.university'::text)))"
+    },
+    {
+      "schema": "escen",
+      "table": "teacher_digital_access",
+      "name": "teacher_digital_access_personal_email_not_null",
+      "type": "n",
+      "definition": "NOT NULL personal_email"
+    },
+    {
+      "schema": "escen",
+      "table": "teacher_digital_access",
+      "name": "teacher_digital_access_pkey",
+      "type": "p",
+      "definition": "PRIMARY KEY (id)"
+    },
+    {
+      "schema": "escen",
+      "table": "teacher_digital_access",
+      "name": "teacher_digital_access_provisioning_status_check",
+      "type": "c",
+      "definition": "CHECK ((provisioning_status = ANY (ARRAY['PENDING'::text, 'PROCESSING'::text, 'READY'::text, 'FAILED'::text, 'UNKNOWN'::text])))"
+    },
+    {
+      "schema": "escen",
+      "table": "teacher_digital_access",
+      "name": "teacher_digital_access_provisioning_status_not_null",
+      "type": "n",
+      "definition": "NOT NULL provisioning_status"
+    },
+    {
+      "schema": "escen",
+      "table": "teacher_digital_access",
+      "name": "teacher_digital_access_reason_check",
+      "type": "c",
+      "definition": "CHECK (((char_length(btrim(reason)) >= 3) AND (char_length(btrim(reason)) <= 1000)))"
+    },
+    {
+      "schema": "escen",
+      "table": "teacher_digital_access",
+      "name": "teacher_digital_access_reason_not_null",
+      "type": "n",
+      "definition": "NOT NULL reason"
+    },
+    {
+      "schema": "escen",
+      "table": "teacher_digital_access",
+      "name": "teacher_digital_access_requested_by_fkey",
+      "type": "f",
+      "definition": "FOREIGN KEY (requested_by) REFERENCES escen.accounts(id) ON DELETE RESTRICT"
+    },
+    {
+      "schema": "escen",
+      "table": "teacher_digital_access",
+      "name": "teacher_digital_access_requested_by_not_null",
+      "type": "n",
+      "definition": "NOT NULL requested_by"
+    },
+    {
+      "schema": "escen",
+      "table": "teacher_digital_access",
+      "name": "teacher_digital_access_teacher_id_fkey",
+      "type": "f",
+      "definition": "FOREIGN KEY (teacher_id) REFERENCES escen.teachers(id) ON DELETE RESTRICT"
+    },
+    {
+      "schema": "escen",
+      "table": "teacher_digital_access",
+      "name": "teacher_digital_access_teacher_id_key",
+      "type": "u",
+      "definition": "UNIQUE (teacher_id)"
+    },
+    {
+      "schema": "escen",
+      "table": "teacher_digital_access",
+      "name": "teacher_digital_access_teacher_id_not_null",
+      "type": "n",
+      "definition": "NOT NULL teacher_id"
+    },
+    {
+      "schema": "escen",
+      "table": "teacher_digital_access",
+      "name": "teacher_digital_access_updated_at_not_null",
+      "type": "n",
+      "definition": "NOT NULL updated_at"
+    },
+    {
+      "schema": "escen",
       "table": "teachers",
       "name": "teacher_reason_length",
       "type": "c",
@@ -25590,6 +25873,42 @@
       "table": "teacher_attendances",
       "name": "teacher_attendances_session_id_teacher_id_key",
       "definition": "CREATE UNIQUE INDEX teacher_attendances_session_id_teacher_id_key ON escen.teacher_attendances USING btree (session_id, teacher_id)"
+    },
+    {
+      "schema": "escen",
+      "table": "teacher_digital_access",
+      "name": "teacher_digital_access_account_id_key",
+      "definition": "CREATE UNIQUE INDEX teacher_digital_access_account_id_key ON escen.teacher_digital_access USING btree (account_id)"
+    },
+    {
+      "schema": "escen",
+      "table": "teacher_digital_access",
+      "name": "teacher_digital_access_institutional_email_key",
+      "definition": "CREATE UNIQUE INDEX teacher_digital_access_institutional_email_key ON escen.teacher_digital_access USING btree (institutional_email)"
+    },
+    {
+      "schema": "escen",
+      "table": "teacher_digital_access",
+      "name": "teacher_digital_access_m365_user_id_key",
+      "definition": "CREATE UNIQUE INDEX teacher_digital_access_m365_user_id_key ON escen.teacher_digital_access USING btree (m365_user_id)"
+    },
+    {
+      "schema": "escen",
+      "table": "teacher_digital_access",
+      "name": "teacher_digital_access_pending",
+      "definition": "CREATE INDEX teacher_digital_access_pending ON escen.teacher_digital_access USING btree (provisioning_status, updated_at)"
+    },
+    {
+      "schema": "escen",
+      "table": "teacher_digital_access",
+      "name": "teacher_digital_access_pkey",
+      "definition": "CREATE UNIQUE INDEX teacher_digital_access_pkey ON escen.teacher_digital_access USING btree (id)"
+    },
+    {
+      "schema": "escen",
+      "table": "teacher_digital_access",
+      "name": "teacher_digital_access_teacher_id_key",
+      "definition": "CREATE UNIQUE INDEX teacher_digital_access_teacher_id_key ON escen.teacher_digital_access USING btree (teacher_id)"
     },
     {
       "schema": "escen",

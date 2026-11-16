@@ -46,7 +46,7 @@ export async function verifyScheduleManagement(db, check, { year, site, level, v
   await insert('offering_semesters', { offering_id: offering.id, curriculum_id: curriculum.id, curriculum_semester_id: semester.id, starts_on: '2026-02-01', ends_on: '2027-11-30' });
   const teachers = [];
   for (let index = 0; index < 2; index++) {
-    const person = await insert('people', { firstname: 'Professeur', lastname: `${index}` });
+    const person = await insert('people', { firstname: 'Professeur', lastname: `${index}`, email: `prof-${code}-${index}@example.test` });
     const staff = await insert('staff', { person_id: person.id, employee_number: `${code}-${index}` });
     teachers.push(await insert('teachers', { staff_id: staff.id }));
   }

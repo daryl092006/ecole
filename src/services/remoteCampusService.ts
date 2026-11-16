@@ -73,8 +73,8 @@ export async function loadPersonnel(role: RoleName, signal?: AbortSignal): Promi
   const data = await readResponse(await fetch('/api/staff', { headers: await headers(role), cache: 'no-store', signal }));
   return data;
 }
-export async function createPersonnel(values: import('@/types/staff').PersonnelForm, role: RoleName): Promise<void> {
-  await readResponse(await fetch('/api/staff', { method: 'POST', headers: { ...await headers(role), 'Content-Type': 'application/json' }, body: JSON.stringify(values) }));
+export async function createPersonnel(values: import('@/types/staff').PersonnelForm, role: RoleName): Promise<{ digitalAccess?: import('@/types/teacherDigitalAccess').TeacherDigitalAccessResult }> {
+  return readResponse(await fetch('/api/staff', { method: 'POST', headers: { ...await headers(role), 'Content-Type': 'application/json' }, body: JSON.stringify(values) }));
 }
 
 export async function loadCatalog(collection: string, role: RoleName, signal?: AbortSignal, yearId?: string): Promise<import('@/types/persistence').CatalogSnapshot> {
@@ -186,7 +186,7 @@ export async function loadAttendanceJustification(role: RoleName, id: string): P
   return readResponse(await fetch(`/api/attendances?justificationId=${encodeURIComponent(id)}`, { headers: await headers(role), cache: 'no-store' }));
 }
 
-export async function manageTeacher(role: RoleName, command: import('@/types/teachers').TeacherCommand): Promise<{ id: string; revision: number }> {
+export async function manageTeacher(role: RoleName, command: import('@/types/teachers').TeacherCommand): Promise<{ id: string; revision: number; digitalAccess?: import('@/types/teacherDigitalAccess').TeacherDigitalAccessResult }> {
   return readResponse(await fetch('/api/teachers', { method: 'POST', headers: { ...await headers(role), 'Content-Type': 'application/json' }, body: JSON.stringify(command) }));
 }
 

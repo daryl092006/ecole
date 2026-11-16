@@ -8,6 +8,15 @@ import { securityContext, securityIds, uuid } from './security-fixture';
 const form = { firstname: 'Marie', lastname: 'Personnel', email: '', phone: '', employeeNumber: '', position: 'Comptable' };
 const post = (fixture: ReturnType<typeof teacherFixture>, values: object) => fixture.staffApi.POST(new Request('http://local.test/api/staff', { method: 'POST', body: JSON.stringify(values) }));
 
+test('Personnel : un enseignant exige un e-mail personnel et non institutionnel', async () => {
+  const fixture = teacherFixture();
+  for (const email of ['', 'invalide', 'prof@escen.university']) {
+    expect((await post(fixture, { ...form, isTeacher: true, email })).status).toBe(400);
+    expect((await fixture.post({ action: 'create_profile', staffId: uuid(912), specialty: '', personalEmail: email })).status).toBe(400);
+  }
+  expect(fixture.transactions).toEqual([]);
+});
+
 test('Personnel : profil enseignant conservé pour le RAF et lorsque le profil est inactif', async () => {
   const fixture = teacherFixture(securityContext(ROLES.RAF));
   fixture.snapshot.tables.teachers[0].active = false;
@@ -34,11 +43,11 @@ test('Personnel : création administrative validée et profil enseignant faculta
     expect((await post(fixture, invalid)).status).toBe(400);
   }
   expect(fixture.transactions).toEqual([]);
-  expect((await post(fixture, { ...form, isTeacher: true, position: '', teacherSpecialty: 'Gestion' })).status).toBe(201);
-  expect(fixture.transactions[0].map(change => change.table)).toEqual(['people', 'staff', 'teachers']);
+  expect((await post(fixture, { ...form, email: 'marie@example.test', isTeacher: true, position: '', teacherSpecialty: 'Gestion' })).status).toBe(201);
+  expect(fixture.transactions[0].map(change => change.table)).toEqual(['people', 'staff', 'teachers', 'teacher_digital_access']);
   expect((await post(fixture, form)).status).toBe(201);
-  expect(fixture.transactions[1].map(change => change.table)).toEqual(['people', 'staff', 'staff_contracts']);
-  expect(fixture.transactions[0][1].record.employee_number).not.toBe(fixture.transactions[1][1].record.employee_number);
+  expect(fixture.transactions[2].map(change => change.table)).toEqual(['people', 'staff', 'staff_contracts']);
+  expect(fixture.transactions[0][1].record.employee_number).not.toBe(fixture.transactions[2][1].record.employee_number);
 });
 
 test('Personnel : absence de permission ou accès limité bloque les mutations', async () => {

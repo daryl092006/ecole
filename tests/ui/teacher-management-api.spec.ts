@@ -8,7 +8,7 @@ const assignment = { action: 'create_assignment', teacherId: id.teacher, offerin
 test('Les profils et affectations sont accessibles avec leurs permissions distinctes', async () => {
   const personnel = teacherFixture(securityContext(ROLES.RAF));
   expect((await personnel.get()).status).toBe(200);
-  expect((await personnel.post({ action: 'create_profile', staffId: uuid(912), specialty: 'Gestion' })).status).toBe(201);
+  expect((await personnel.post({ action: 'create_profile', staffId: uuid(912), specialty: 'Gestion', personalEmail: 'claire@example.test' })).status).toBe(201);
   expect((await personnel.post(assignment)).status).toBe(403);
   const logContext = securityContext(ROLES.LOG);
   const planning = teacherFixture({ ...logContext, permissions: logContext.permissions.filter(permission => permission !== 'staff.manage') });

@@ -44,8 +44,8 @@ export async function verifyTeacherManagement(db, check, { year, site, level }) 
   const api = loadLocalApiModule('app/api/teachers/route.ts', client, context);
   const revision = () => scalar('select revision as value from escen_private.portal_revision where singleton');
   const audits = () => scalar('select count(*)::integer as value from escen_private.audit_events');
-  const post = async body => api.POST(new Request('http://local.test/api/teachers', { method: 'POST', headers: { 'x-escen-year': year.id }, body: JSON.stringify({ revision: await revision(), reason: 'Gestion pédagogique validée', ...body }) }));
-  const addStaff = body => staffApi.POST(new Request('http://local.test/api/staff', { method: 'POST', body: JSON.stringify({ firstname: 'Nouveau', lastname: 'Professeur', email: '', phone: '', employeeNumber: `ENS-${randomUUID()}`, ...body }) }));
+  const post = async body => api.POST(new Request('http://local.test/api/teachers', { method: 'POST', headers: { 'x-escen-year': year.id }, body: JSON.stringify({ revision: await revision(), reason: 'Gestion pédagogique validée', ...(body.action === 'create_profile' ? { personalEmail: 'enseignant@example.test' } : {}), ...body }) }));
+  const addStaff = body => staffApi.POST(new Request('http://local.test/api/staff', { method: 'POST', body: JSON.stringify({ firstname: 'Nouveau', lastname: 'Professeur', email: `${randomUUID()}@example.test`, phone: '', employeeNumber: `ENS-${randomUUID()}`, ...body }) }));
   const profileAudit = async id => (await db.query("select * from escen_private.audit_events where table_name='teachers' and entity_id=$1 order by happened_at desc", [id])).rows;
   let teacherId;
   let ordinaryStaffId;
@@ -61,7 +61,7 @@ export async function verifyTeacherManagement(db, check, { year, site, level }) 
     assert.equal(teacher.specialty, 'Analyse décimale');
     assert.equal(teacher.active, true);
     assert.equal(saved.revision, before + 1);
-    assert.deepEqual(transactions.at(-1).map(change => change.table), ['people', 'staff', 'teachers']);
+    assert.deepEqual(transactions.find(changes => changes.some(change => change.table === 'teachers')).map(change => change.table), ['people', 'staff', 'teachers', 'teacher_digital_access']);
     assert.equal((await profileAudit(teacher.id))[0].actor_id, actor.id);
     assert.equal(await scalar('select count(*)::integer as value from escen.accounts'), accounts);
   });

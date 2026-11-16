@@ -1,3 +1,4 @@
+import { teacherMicrosoftEmail } from '@/server/teacherMicrosoftIdentity';
 import { z } from 'zod';
 import { requireAccount, requirePermission, RequestError, errorResponse } from '@/server/auth';
 import { resolveAcademicYear } from '@/server/academicYearContext';
@@ -129,7 +130,7 @@ export async function POST(request: Request) {
               subject: `${component?.label || 'Cours'} · ${group?.label || 'ESCEN'}`,
               startDateTime: slot.startsAt,
               endDateTime: slot.endsAt,
-              organizerEmail: typeof personRow?.email === 'string' ? personRow.email : null,
+              organizerEmail: await teacherMicrosoftEmail(data.client, data.snapshot, personRow),
             });
             patch.meeting_url = online.meetingUrl;
             patch.meeting_id = online.meetingId;
@@ -178,7 +179,7 @@ export async function POST(request: Request) {
               subject: `${component?.label || 'Cours en ligne'} · ${group?.label || 'ESCEN'}`,
               startDateTime: String(original.starts_at),
               endDateTime: String(original.ends_at),
-              organizerEmail: typeof personRow?.email === 'string' ? personRow.email : null,
+              organizerEmail: await teacherMicrosoftEmail(data.client, data.snapshot, personRow),
             });
             patch.meeting_url = online.meetingUrl;
             patch.meeting_id = online.meetingId;
@@ -191,7 +192,7 @@ export async function POST(request: Request) {
             const synced = await syncTeamsMeetingRecording({
               sessionId: id,
               meetingId: original.meeting_id ? String(original.meeting_id) : null,
-              organizerEmail: typeof personRow?.email === 'string' ? personRow.email : null,
+              organizerEmail: await teacherMicrosoftEmail(data.client, data.snapshot, personRow),
             });
             if (!synced.recordingUrl) {
               throw new RequestError(404, synced.message || 'Aucun enregistrement automatique trouvé sur Microsoft Cloud ; renseignez le lien du replay.');

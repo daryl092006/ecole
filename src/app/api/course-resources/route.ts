@@ -1,3 +1,4 @@
+import { teacherMicrosoftEmail } from '@/server/teacherMicrosoftIdentity';
 import { z } from 'zod';
 import { requireAccount, requirePermission, RequestError, errorResponse } from '@/server/auth';
 import { resolveAcademicYear } from '@/server/academicYearContext';
@@ -471,7 +472,7 @@ export async function POST(request: Request) {
             subject: `${String(subj?.name || 'Cours en ligne')} · ${String(group?.name || 'ESCEN')}`,
             startDateTime: String(session.starts_at),
             endDateTime: String(session.ends_at),
-            organizerEmail: typeof personRow?.email === 'string' ? personRow.email : null,
+            organizerEmail: await teacherMicrosoftEmail(data.client, data.snapshot, personRow),
           });
           meetingUrl = created.meetingUrl;
           meetingId = created.meetingId;
@@ -498,7 +499,7 @@ export async function POST(request: Request) {
           const synced = await syncTeamsMeetingRecording({
             sessionId: String(session.id),
             meetingId: session.meeting_id ? String(session.meeting_id) : null,
-            organizerEmail: typeof personRow?.email === 'string' ? personRow.email : null,
+            organizerEmail: await teacherMicrosoftEmail(data.client, data.snapshot, personRow),
           });
           if (!synced.recordingUrl) {
             throw new RequestError(404, synced.message || 'Aucun enregistrement automatique trouvé sur Microsoft Cloud ; renseignez le lien du replay.');
@@ -582,7 +583,7 @@ export async function POST(request: Request) {
           subject: `${String(subj?.name || 'Cours en ligne')} · ${String(group?.name || 'ESCEN')}`,
           startDateTime: body.startsAt,
           endDateTime: body.endsAt,
-          organizerEmail: typeof personRow?.email === 'string' ? personRow.email : null,
+          organizerEmail: await teacherMicrosoftEmail(data.client, data.snapshot, personRow),
         });
         meetingUrl = created.meetingUrl;
         meetingId = created.meetingId;

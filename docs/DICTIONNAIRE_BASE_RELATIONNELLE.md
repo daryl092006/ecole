@@ -2,7 +2,7 @@
 
 Généré avec `npm run db:describe` en exécutant les migrations dans PostgreSQL local (PGlite). Aucun accès à Supabase ou aux données de la sauvegarde.
 
-123 tables métier, 14 tables privées, 1118 colonnes, 311 clés étrangères, 270 CHECK de tables et 5 exclusions. Les domaines ajoutent les bornes des notes, des montants FCFA et des textes obligatoires.
+124 tables métier, 14 tables privées, 1131 colonnes, 315 clés étrangères, 276 CHECK de tables et 5 exclusions. Les domaines ajoutent les bornes des notes, des montants FCFA et des textes obligatoires.
 
 Toutes les tables ont RLS activée, sans accès applicatif permis à ce stade. Les noms techniques ne sont pas des libellés à afficher dans l’interface.
 
@@ -121,6 +121,7 @@ Toutes les tables ont RLS activée, sans accès applicatif permis à ce stade. L
 | escen | support_tickets | 11 | 4 | Oui |
 | escen | syllabuses | 11 | 2 | Oui |
 | escen | teacher_attendances | 7 | 3 | Oui |
+| escen | teacher_digital_access | 13 | 4 | Oui |
 | escen | teachers | 5 | 1 | Oui |
 | escen | teaching_assignments | 9 | 4 | Oui |
 | escen | teaching_units | 8 | 1 | Oui |
@@ -4677,6 +4678,63 @@ CREATE INDEX fk_17564 ON escen.teacher_attendances USING btree (teacher_id)
 CREATE INDEX fk_17569 ON escen.teacher_attendances USING btree (recorded_by)
 CREATE UNIQUE INDEX teacher_attendances_pkey ON escen.teacher_attendances USING btree (id)
 CREATE UNIQUE INDEX teacher_attendances_session_id_teacher_id_key ON escen.teacher_attendances USING btree (session_id, teacher_id)
+```
+
+## escen.teacher_digital_access
+
+| Attribut | Type | Nullable | Défaut | Généré |
+|---|---|---|---|---|
+| id | uuid | NO | gen_random_uuid() | NEVER |
+| teacher_id | uuid | NO | — | NEVER |
+| personal_email | text | NO | — | NEVER |
+| institutional_email | text | YES | — | NEVER |
+| m365_user_id | uuid | YES | — | NEVER |
+| account_id | uuid | YES | — | NEVER |
+| provisioning_status | text | NO | 'PENDING'::text | NEVER |
+| email_id | uuid | YES | — | NEVER |
+| last_error_code | text | YES | — | NEVER |
+| requested_by | uuid | NO | — | NEVER |
+| reason | text | NO | — | NEVER |
+| created_at | timestamptz | NO | now() | NEVER |
+| updated_at | timestamptz | NO | now() | NEVER |
+
+Contraintes :
+
+```sql
+teacher_digital_access_account_id_fkey: FOREIGN KEY (account_id) REFERENCES escen.accounts(id) ON DELETE RESTRICT
+teacher_digital_access_account_id_key: UNIQUE (account_id)
+teacher_digital_access_check: CHECK (((provisioning_status <> 'READY'::text) OR ((institutional_email IS NOT NULL) AND (m365_user_id IS NOT NULL) AND (account_id IS NOT NULL))))
+teacher_digital_access_created_at_not_null: NOT NULL created_at
+teacher_digital_access_email_id_fkey: FOREIGN KEY (email_id) REFERENCES escen.email_outbox(id) ON DELETE RESTRICT
+teacher_digital_access_id_not_null: NOT NULL id
+teacher_digital_access_institutional_email_check: CHECK (((institutional_email = lower(btrim(institutional_email))) AND (institutional_email ~ '^[^[:space:]<>@]+@escen\.university$'::text)))
+teacher_digital_access_institutional_email_key: UNIQUE (institutional_email)
+teacher_digital_access_last_error_code_check: CHECK ((last_error_code = ANY (ARRAY['CONFIGURATION'::text, 'IDENTITY_CONFLICT'::text, 'MICROSOFT_REJECTED'::text, 'LICENSE_REJECTED'::text, 'AUTH_REJECTED'::text, 'CONCURRENT_UPDATE'::text, 'NETWORK_AMBIGUOUS'::text, 'EMAIL_REJECTED'::text])))
+teacher_digital_access_m365_user_id_key: UNIQUE (m365_user_id)
+teacher_digital_access_personal_email_check: CHECK (((personal_email = lower(btrim(personal_email))) AND (char_length(personal_email) <= 254) AND (personal_email ~ '^[^[:space:]<>@]+@[^[:space:]<>@]+\.[^[:space:]<>@]+$'::text) AND (split_part(personal_email, '@'::text, 2) <> 'escen.university'::text)))
+teacher_digital_access_personal_email_not_null: NOT NULL personal_email
+teacher_digital_access_pkey: PRIMARY KEY (id)
+teacher_digital_access_provisioning_status_check: CHECK ((provisioning_status = ANY (ARRAY['PENDING'::text, 'PROCESSING'::text, 'READY'::text, 'FAILED'::text, 'UNKNOWN'::text])))
+teacher_digital_access_provisioning_status_not_null: NOT NULL provisioning_status
+teacher_digital_access_reason_check: CHECK (((char_length(btrim(reason)) >= 3) AND (char_length(btrim(reason)) <= 1000)))
+teacher_digital_access_reason_not_null: NOT NULL reason
+teacher_digital_access_requested_by_fkey: FOREIGN KEY (requested_by) REFERENCES escen.accounts(id) ON DELETE RESTRICT
+teacher_digital_access_requested_by_not_null: NOT NULL requested_by
+teacher_digital_access_teacher_id_fkey: FOREIGN KEY (teacher_id) REFERENCES escen.teachers(id) ON DELETE RESTRICT
+teacher_digital_access_teacher_id_key: UNIQUE (teacher_id)
+teacher_digital_access_teacher_id_not_null: NOT NULL teacher_id
+teacher_digital_access_updated_at_not_null: NOT NULL updated_at
+```
+
+Index :
+
+```sql
+CREATE UNIQUE INDEX teacher_digital_access_account_id_key ON escen.teacher_digital_access USING btree (account_id)
+CREATE UNIQUE INDEX teacher_digital_access_institutional_email_key ON escen.teacher_digital_access USING btree (institutional_email)
+CREATE UNIQUE INDEX teacher_digital_access_m365_user_id_key ON escen.teacher_digital_access USING btree (m365_user_id)
+CREATE INDEX teacher_digital_access_pending ON escen.teacher_digital_access USING btree (provisioning_status, updated_at)
+CREATE UNIQUE INDEX teacher_digital_access_pkey ON escen.teacher_digital_access USING btree (id)
+CREATE UNIQUE INDEX teacher_digital_access_teacher_id_key ON escen.teacher_digital_access USING btree (teacher_id)
 ```
 
 ## escen.teachers

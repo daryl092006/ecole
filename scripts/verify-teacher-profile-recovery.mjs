@@ -44,7 +44,7 @@ async function seed(db, snapshot, plan) {
     await db.query(`insert into escen.${table} (${columns.join(',')}) select ${columns.join(',')} from jsonb_populate_recordset(null::escen.${table},$1)`, [JSON.stringify(rows)]);
   };
   const t = snapshot.tables;
-  await insert('people', t.people.map((row, index) => ({ id: row.id, firstname: 'Identité locale', lastname: String(index), archived_at: row.archived_at ?? null })), ['id', 'firstname', 'lastname', 'archived_at']);
+  await insert('people', t.people.map((row, index) => ({ id: row.id, firstname: 'Identité locale', lastname: String(index), email: `identite-${index}@example.test`, archived_at: row.archived_at ?? null })), ['id', 'firstname', 'lastname', 'email', 'archived_at']);
   for (const account of t.accounts) if (account.auth_user_id) await db.query('insert into auth.users values($1) on conflict do nothing', [account.auth_user_id]);
   await insert('accounts', t.accounts, ['id', 'person_id', 'auth_user_id', 'active', 'archived_at']);
   const roles = (await db.query('select id,code from escen.roles')).rows;
@@ -163,7 +163,7 @@ function fixture() {
     permissions: [{ id: randomUUID(), code: 'staff.manage' }], role_permissions: [] };
   t.role_permissions.push({ id: randomUUID(), role_id: roles[0].id, permission_id: t.permissions[0].id });
   for (let index = 0; index < 21; index++) {
-    const person = { id: randomUUID(), firstname: 'Test', lastname: String(index), archived_at: null };
+    const person = { id: randomUUID(), firstname: 'Test', lastname: String(index), email: `identite-${index}@example.test`, archived_at: null };
     const account = { id: randomUUID(), person_id: person.id, auth_user_id: randomUUID(), active: true, archived_at: null };
     t.people.push(person); t.accounts.push(account);
     t.role_grants.push({ id: randomUUID(), account_id: account.id, role_id: roles[index === 0 ? 0 : index === 20 ? 2 : 1].id,

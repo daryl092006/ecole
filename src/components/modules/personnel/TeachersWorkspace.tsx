@@ -1,6 +1,7 @@
 'use client';
 
 import Link from 'next/link';
+import { teacherPersonalEmailSchema, teacherAccessMessage } from '@/services/teacherIdentityService';
 import { useEffect, useState } from 'react';
 import { usePortal } from '@/hooks/usePortal';
 import { loadTeachers, manageTeacher } from '@/services/remoteCampusService';
@@ -17,7 +18,7 @@ import { DrawerCloseButton } from '@/components/ui/DetailDrawer';
 
 type Operation = { kind: 'create_profile' } | { kind: 'set_active'; teacher: TeacherProfile }
   | { kind: 'create_assignment' } | { kind: 'end_assignment'; assignment: TeachingAssignmentRecord };
-const blank = () => ({ staffId: '', teacherId: '', offeringId: '', groupId: '', componentId: '',
+const blank = () => ({ staffId: '', personalEmail: '', teacherId: '', offeringId: '', groupId: '', componentId: '',
   validFrom: new Date().toISOString().slice(0, 10), validUntil: '', endOn: '', reason: '' });
 
 export default function TeachersWorkspace() {
@@ -64,12 +65,13 @@ export default function TeachersWorkspace() {
   const title = operation?.kind === 'create_profile' ? 'Créer un profil enseignant'
     : operation?.kind === 'set_active' ? `${operation.teacher.active ? 'Désactiver' : 'Activer'} l’enseignant`
     : operation?.kind === 'end_assignment' ? 'Terminer l’affectation' : 'Nouvelle affectation';
-  const consequence = operation?.kind === 'create_profile' ? 'Le profil enseignant sera lié au dossier du personnel existant et une notification sera envoyée si son e-mail est renseigné. Ses matières se définissent ensuite par les affectations.'
+  const consequence = operation?.kind === 'create_profile' ? 'Le profil sera lié au dossier du personnel. Son compte Microsoft 365 existant sera conservé ; sinon un compte sera créé. Les accès Microsoft 365 et au portail enseignant seront envoyés à son e-mail personnel. Ses matières se définissent ensuite par les affectations.'
     : operation?.kind === 'set_active' ? 'Le statut pédagogique sera modifié avec son motif. La désactivation est bloquée si des séances restent à assurer ; aucune séance ni aucun compte ne sera modifié automatiquement.'
       : operation?.kind === 'end_assignment' ? 'La date de fin sera enregistrée avec son motif. Les séances et l’historique restent conservés ; toute séance non annulée doit rester comprise dans les dates de l’affectation.'
         : 'L’enseignant sera affecté à ce groupe, cette formation et cette matière pour les dates indiquées, et recevra un e-mail de notification si son adresse est renseignée.';
   const fields: ReviewField[] = operation?.kind === 'create_profile' ? [
     { label: 'Membre du personnel', value: directory.staff.find(row => row.id === form.staffId)?.name || '' },
+    { label: 'E-mail personnel', value: form.personalEmail, previous: directory.staff.find(row => row.id === form.staffId)?.personalEmail || '' },
   ] : operation?.kind === 'set_active' ? [
     { label: 'Enseignant', value: operation.teacher.name }, { label: 'Statut', value: operation.teacher.active ? 'Inactif' : 'Actif', previous: operation.teacher.active ? 'Actif' : 'Inactif' },
   ] : operation?.kind === 'end_assignment' ? [
@@ -174,25 +176,26 @@ export default function TeachersWorkspace() {
     })}{!directory.assignments.length && <tr><td colSpan={5}>Aucune affectation dans cette année et ce périmètre.</td></tr>}</tbody></ResponsiveTable></section>}
     {operation && <WorkPage busy={saving} title={title} onClose={() => setOperation(null)}><ReviewedForm busy={saving} error={saveError}
       confirmLabel={`Confirmer : ${title.toLocaleLowerCase('fr')}`} fields={fields} consequence={consequence}
-      validate={() => operation.kind === 'create_assignment' && form.validUntil && form.validUntil < form.validFrom ? 'La date de fin ne peut pas précéder la date de début.' : null}
+      validate={() => operation.kind === 'create_profile' && !teacherPersonalEmailSchema.safeParse(form.personalEmail).success ? 'Indiquez un e-mail personnel valide, différent du compte ESCEN.' : operation.kind === 'create_assignment' && form.validUntil && form.validUntil < form.validFrom ? 'La date de fin ne peut pas précéder la date de début.' : null}
       onConfirm={event => {
         event.preventDefault(); setSaving(true); setSaveError('');
         const common = { revision: directory.revision, reason: effectiveReason };
-        const command: TeacherCommand = operation.kind === 'create_profile' ? { ...common, action: 'create_profile', staffId: form.staffId, specialty: '' }
+        const command: TeacherCommand = operation.kind === 'create_profile' ? { ...common, action: 'create_profile', staffId: form.staffId, specialty: '', personalEmail: form.personalEmail }
           : operation.kind === 'set_active' ? { ...common, action: 'set_active', teacherId: operation.teacher.id, active: !operation.teacher.active }
               : operation.kind === 'end_assignment' ? { ...common, action: 'end_assignment', assignmentId: operation.assignment.id, endOn: form.endOn }
                 : { ...common, action: 'create_assignment', teacherId: form.teacherId, offeringId: form.offeringId, groupId: form.groupId, componentId: form.componentId, validFrom: form.validFrom, validUntil: form.validUntil || null };
-        void manageTeacher(activeRole, command).then(() => {
+        void manageTeacher(activeRole, command).then(result => {
           setOperation(null);
           setSuccess(operation.kind === 'create_assignment'
             ? 'Affectation enregistrée et notification préparée pour l’enseignant.'
-            : 'Enregistrement effectué. L’historique est conservé.');
+            : operation.kind === 'create_profile' ? `Profil enseignant créé. ${teacherAccessMessage(result.digitalAccess)}` : 'Enregistrement effectué. L’historique est conservé.');
           setReload(value => value + 1);
           portal.refreshCampus();
         }).catch(cause => setSaveError(cause instanceof Error ? cause.message : 'Enregistrement impossible.')).finally(() => setSaving(false));
       }}>
-      {operation.kind === 'create_profile' && <label className="form-group">Membre du personnel<select className="select-input" required value={form.staffId} onChange={event => setForm({ ...form, staffId: event.target.value })}><option value="">Choisir un dossier existant</option>{directory.staff.map(member => <option key={member.id} value={member.id}>{member.name}</option>)}</select></label>}
+      {operation.kind === 'create_profile' && <label className="form-group">Membre du personnel<select className="select-input" required value={form.staffId} onChange={event => setForm({ ...form, staffId: event.target.value, personalEmail: directory.staff.find(row => row.id === event.target.value)?.personalEmail || '' })}><option value="">Choisir un dossier existant</option>{directory.staff.map(member => <option key={member.id} value={member.id}>{member.name}</option>)}</select></label>}
       {operation.kind === 'set_active' && <p>{operation.teacher.name} : {operation.teacher.active ? 'Actif → Inactif' : 'Inactif → Actif'}</p>}
+      {operation.kind === 'create_profile' && <label className="form-group">E-mail personnel<input className="input" aria-label="E-mail personnel" type="email" required maxLength={254} value={form.personalEmail} onChange={event => setForm({ ...form, personalEmail: event.target.value })} /><span className="cell-sub">Les accès Microsoft 365 et au portail enseignant seront envoyés à cette adresse.</span></label>}
       {operation.kind === 'create_assignment' && <div className="form-grid">
         <label className="form-group">Enseignant<select className="select-input" required value={form.teacherId} onChange={event => setForm({ ...form, teacherId: event.target.value })}><option value="">Choisir un enseignant actif</option>{directory.teachers.filter(teacher => teacher.active).map(teacher => <option key={teacher.id} value={teacher.id}>{teacher.name}</option>)}</select></label>
         <label className="form-group">Formation annuelle<select className="select-input" required value={form.offeringId} onChange={event => {

@@ -6,6 +6,8 @@ import type { PersonnelRecord } from '@/types/staff';
 import { ROLES } from '@/types/permissions';
 import { displayedPhoneNumber } from '@/services/phoneNumberService';
 import { displayedEmployeeNumber, internalStaffReference } from '@/utils/staffReference';
+import { teacherPersonalEmailSchema } from '@/services/teacherIdentityService';
+import { teacherAccessRequest, completeTeacherDigitalAccess } from '@/server/teacherDigitalAccess';
 export const dynamic = 'force-dynamic';
 const schema = z.object({ personId: z.uuid().optional(), firstname: z.string().trim().min(1).max(160), lastname: z.string().trim().min(1).max(160), email: z.union([z.email(), z.literal('')]), phone: z.string().trim().max(80), employeeNumber: z.string().trim().max(160).optional().default(''), isTeacher: z.boolean().optional().default(false), teacherSpecialty: z.string().trim().max(160).optional().default(''), position: z.string().trim().max(160).optional().default(''), contractType: z.enum(['PERMANENT', 'VACATAIRE', 'STAGIAIRE']).optional().default('PERMANENT'), startsOn: z.union([z.iso.date(), z.literal('')]).optional().default('') }).strict()
   .refine(form => form.isTeacher || form.position.length > 0, { message: 'La fonction du membre du personnel est obligatoire.', path: ['position'] });
@@ -64,6 +66,7 @@ export async function POST(request: Request) {
     const { client, context } = await requireAccount(request); requirePermission(context, 'staff.manage');
     if (!context.grants.some(g => !g.site_id && !g.group_id && !g.academic_year_id)) throw new RequestError(403, 'La création d’un dossier nécessite un accès global au personnel.');
     const form = schema.parse(await request.json());
+    if (form.isTeacher) form.email = teacherPersonalEmailSchema.parse(form.email);
     const result = await client.rpc('escen_backend_snapshot');
     if (result.error) throw new RequestError(503, 'Dossiers indisponibles.');
     const snapshot = result.data as RelationalSnapshot;
@@ -75,9 +78,15 @@ export async function POST(request: Request) {
     const personId = existing?.id || crypto.randomUUID(); const staffId = crypto.randomUUID();
     const changes: PersistentChange[] = [{ table: 'people', operation: existing ? 'update' : 'insert', record: { id: personId, firstname: form.firstname, lastname: form.lastname, email: form.email || null, phone: form.phone || null } }, { table: 'staff', operation: 'insert', record: { id: staffId, person_id: personId, employee_number: form.employeeNumber || internalStaffReference() } }];
     if (form.position) changes.push({ table: 'staff_contracts', operation: 'insert', record: { id: crypto.randomUUID(), staff_id: staffId, site_id: null, contract_type: form.contractType, position: form.position, starts_on: form.startsOn || new Date().toISOString().slice(0, 10) } });
-    if (form.isTeacher) changes.push({ table: 'teachers', operation: 'insert', record: { id: crypto.randomUUID(), staff_id: staffId, specialty: form.teacherSpecialty || null, active: true } });
+    const teacherId = form.isTeacher ? crypto.randomUUID() : null;
+    const accessRequest = teacherId ? teacherAccessRequest(teacherId, form.email, context.accountId) : null;
+    if (teacherId && accessRequest) changes.push({ table: 'teachers', operation: 'insert', record: { id: teacherId, staff_id: staffId, specialty: form.teacherSpecialty || null, active: true } }, accessRequest);
     const saved = await client.rpc('escen_backend_transaction', { p_actor_id: context.accountId, p_expected_revision: snapshot.revision, p_changes: changes });
     if (saved.error) throw new RequestError(409, 'Enregistrement refusé : vérifiez le matricule unique ou actualisez le dossier.');
-    return Response.json({ id: staffId, revision: saved.data }, { status: 201, headers: { 'Cache-Control': 'no-store' } });
+    const digitalAccess = teacherId && accessRequest ? await completeTeacherDigitalAccess(client, {
+      requestId: String(accessRequest.record.id), teacherId, personId, actorId: context.accountId,
+      firstname: form.firstname, lastname: form.lastname, personalEmail: form.email,
+    }) : undefined;
+    return Response.json({ id: staffId, revision: saved.data, digitalAccess }, { status: 201, headers: { 'Cache-Control': 'no-store' } });
   } catch (error) { return errorResponse(error); }
 }

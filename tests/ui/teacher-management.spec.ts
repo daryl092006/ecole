@@ -68,11 +68,14 @@ for (const width of [390, 1440]) {
     const dialog = page.getByRole('dialog', { name: 'Nouvel enseignant', exact: true });
     await dialog.getByRole('textbox', { name: 'Prénom', exact: true }).fill('Dina');
     await dialog.getByRole('textbox', { name: 'Nom', exact: true }).fill('Pédagogie');
+    await expect(dialog.getByLabel('E-mail personnel', { exact: true })).toHaveAttribute('required', '');
+    await dialog.getByLabel('E-mail personnel', { exact: true }).fill('dina@example.test');
     await expect(dialog.getByRole('textbox', { name: 'Matricule enseignant (facultatif)', exact: true })).toHaveCount(0);
     await expect(dialog.getByRole('textbox', { name: 'Fonction administrative (facultative)', exact: true })).toHaveCount(0);
     await expect(dialog.getByRole('textbox', { name: 'Spécialité enseignante', exact: true })).toHaveCount(0);
     await dialog.getByRole('button', { name: 'Vérifier les informations', exact: true }).click();
     await expect(dialog.locator('.action-review')).toContainText('Enseignant');
+    await expect(dialog.locator('.action-review')).toContainText('dina@example.test');
     await expect(dialog.locator('.action-review')).not.toContainText('Matricule');
     await expect(dialog.locator('.action-review')).not.toContainText('Fonction');
     await expect(dialog.locator('.action-review')).not.toContainText('Spécialité');
@@ -80,7 +83,7 @@ for (const width of [390, 1440]) {
     await dialog.getByRole('button', { name: 'Confirmer la création', exact: true }).click();
     await expect(dialog).not.toBeVisible();
     await expect(page.getByRole('row').filter({ hasText: 'Dina Pédagogie' })).toContainText('Enseignant');
-    expect(fixture.transactions[0].map(change => change.table)).toEqual(['people', 'staff', 'teachers']);
+    expect(fixture.transactions[0].map(change => change.table)).toEqual(['people', 'staff', 'teachers', 'teacher_digital_access']);
     expect(fixture.transactions[0][2].record).toMatchObject({ specialty: null, active: true });
     await expect.poll(fixture.campusReads).toBeGreaterThan(1);
   });
@@ -92,6 +95,7 @@ for (const width of [390, 1440]) {
     await page.getByRole('button', { name: 'Créer un profil enseignant', exact: true }).click();
     let dialog = page.getByRole('dialog');
     await dialog.getByRole('combobox', { name: 'Membre du personnel', exact: true }).selectOption(uuid(912));
+    await dialog.getByLabel('E-mail personnel', { exact: true }).fill('claire@example.test');
     await expect(dialog.getByRole('textbox', { name: 'Spécialité', exact: true })).toHaveCount(0);
     
     await confirm(dialog);
@@ -106,8 +110,8 @@ for (const width of [390, 1440]) {
       row = page.getByRole('row').filter({ hasText: 'Claire Enseignant' });
       await expect(row.getByRole('cell', { name: label === 'Désactiver' ? /^(Statut )?Inactif$/ : /^(Statut )?Actif$/ })).toBeVisible();
     }
-    expect(fixture.transactions).toHaveLength(3);
-    expect(fixture.transactions.every(changes => changes[0].record.reason)).toBe(true);
+    expect(fixture.transactions).toHaveLength(4);
+    expect(fixture.transactions.flat().filter(change => change.table === 'teachers').every(change => change.record.reason)).toBe(true);
   });
 }
 

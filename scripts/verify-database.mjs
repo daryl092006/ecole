@@ -63,7 +63,7 @@ try {
     assert.equal(await scalar('select count(*)::integer as value from escen.role_grants'), 0);
   });
 
-  const person = await insert('people', { firstname: 'Utilisateur', lastname: 'Test' });
+  const person = await insert('people', { firstname: 'Utilisateur', lastname: 'Test', email: 'utilisateur@example.test' });
   const account = await insert('accounts', { person_id: person.id, active: true });
   const site = await insert('sites', { code: 'TEST', name: 'Site Test' });
   const building = await insert('buildings', { site_id: site.id, code: 'A', name: 'Bâtiment A' });

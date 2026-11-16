@@ -30,7 +30,7 @@ export function teacherDirectory(snapshot: RelationalSnapshot, context: Persiste
   const staff = rows('staff').flatMap(member => {
     const person = rows('people').find(row => row.id === member.person_id && !row.archived_at);
     return member.archived_at || !person ? [] : [{ id: member.id, personId: person.id,
-      name: `${String(person.firstname || '')} ${String(person.lastname || '')}`.trim(), employeeNumber: displayedEmployeeNumber(member.employee_number) }];
+      name: `${String(person.firstname || '')} ${String(person.lastname || '')}`.trim(), employeeNumber: displayedEmployeeNumber(member.employee_number), personalEmail: String(person.email || '') }];
   });
   // Academic managers can choose an available teacher; no personal contact or account data is returned.
   const teachers: TeacherProfile[] = rows('teachers').flatMap(teacher => {

@@ -9,7 +9,7 @@ export interface TeachingAssignmentRecord {
 export interface TeacherDirectory {
   revision: number;
   teachers: TeacherProfile[];
-  staff: { id: string; name: string; employeeNumber: string }[];
+  staff: { id: string; name: string; employeeNumber: string; personalEmail?: string }[];
   assignments: TeachingAssignmentRecord[];
   offerings: { id: string; label: string; curriculumId: string }[];
   groups: { id: string; label: string; offeringIds: string[] }[];
@@ -17,7 +17,7 @@ export interface TeacherDirectory {
   canManageProfiles: boolean; canManageAssignments: boolean; selectedYearId: string | null;
 }
 export type TeacherCommand = { revision: number; reason: string } & (
-  | { action: 'create_profile'; staffId: string; specialty: string }
+  | { action: 'create_profile'; staffId: string; specialty: string; personalEmail: string }
   | { action: 'update_profile'; teacherId: string; specialty: string }
   | { action: 'set_active'; teacherId: string; active: boolean }
   | { action: 'create_assignment'; teacherId: string; groupId: string; offeringId: string; componentId: string; validFrom: string; validUntil: string | null }

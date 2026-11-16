@@ -4,13 +4,15 @@ import { resolveAcademicYear } from '@/server/academicYearContext';
 import type { RelationalSnapshot, PersistentChange } from '@/types/persistence';
 import { hasGlobalStaffManagement, teacherDirectory, teacherAcademicScope, assignmentIsGranted, teacherHasUpcomingSessions, assignmentHasSessionsAfter } from '@/services/teacherManagementService';
 import { processEmailBatch } from '@/server/emailWorker';
-import { deliverEmail, emailConfiguration } from '@/server/emailTransport';
+import { emailConfiguration } from '@/server/emailTransport';
+import { teacherPersonalEmailSchema } from '@/services/teacherIdentityService';
+import { teacherAccessRequest, completeTeacherDigitalAccess } from '@/server/teacherDigitalAccess';
 
 export const dynamic = 'force-dynamic';
 const common = { revision: z.number().int().nonnegative(), reason: z.string().trim().min(3).max(1000) };
 const specialty = z.string().trim().max(160).default('');
 const commandSchema = z.discriminatedUnion('action', [
-  z.object({ ...common, action: z.literal('create_profile'), staffId: z.uuid(), specialty }).strict(),
+  z.object({ ...common, action: z.literal('create_profile'), staffId: z.uuid(), specialty, personalEmail: teacherPersonalEmailSchema }).strict(),
   z.object({ ...common, action: z.literal('update_profile'), teacherId: z.uuid(), specialty }).strict(),
   z.object({ ...common, action: z.literal('set_active'), teacherId: z.uuid(), active: z.boolean() }).strict(),
   z.object({ ...common, action: z.literal('create_assignment'), teacherId: z.uuid(), groupId: z.uuid(), offeringId: z.uuid(), componentId: z.uuid(), validFrom: z.iso.date(), validUntil: z.iso.date().nullable() }).strict(),
@@ -67,7 +69,11 @@ export async function POST(request: Request) {
       const member = data.directory.staff.find(row => row.id === body.staffId);
       if (!member) throw new RequestError(409, 'Choisissez un dossier du personnel actif, sans profil enseignant existant.');
       id = crypto.randomUUID();
+      const rawStaff = data.snapshot.tables.staff?.find(row => row.id === member.id);
+      if (!rawStaff) throw new RequestError(409, 'Dossier du personnel introuvable.');
+      changes.push({ table: 'people', operation: 'update', record: { id: rawStaff.person_id, email: body.personalEmail } });
       changes.push({ table: 'teachers', operation: 'insert', record: { id, staff_id: member.id, specialty: body.specialty || null, active: true, reason: body.reason } });
+      changes.push(teacherAccessRequest(id, body.personalEmail, data.context.accountId));
     } else if (body.action === 'update_profile' || body.action === 'set_active') {
       const teacher = data.directory.teachers.find(row => row.id === body.teacherId);
       if (!teacher) throw new RequestError(404, 'Profil enseignant introuvable.');
@@ -137,42 +143,19 @@ export async function POST(request: Request) {
           // Do not fail the committed academic transaction if email queueing is unavailable in a test mock
         }
       }
-    } else if (body.action === 'create_profile' && emailConfiguration().ready) {
-      const rawStaff = data.snapshot.tables.staff?.find(row => row.id === body.staffId);
-      const rawPerson = rawStaff ? data.snapshot.tables.people?.find(row => row.id === rawStaff.person_id) : undefined;
-      const recipientEmail = String(rawPerson?.email || '').trim().toLowerCase();
-      const recipientName = `${String(rawPerson?.firstname || '').trim()} ${String(rawPerson?.lastname || '').trim()}`.trim();
-      if (isValidEmail(recipientEmail) && recipientName) {
-        try {
-          const nowIso = new Date().toISOString();
-          await deliverEmail({
-            id,
-            academic_year_id: data.year.selectedYearId || '00000000-0000-0000-0000-000000000000',
-            event_type: 'teaching_assignment_created',
-            source_table: 'teachers',
-            source_id: id,
-            recipient_email: recipientEmail,
-            recipient_name: recipientName,
-            subject: 'ESCEN — Activation de votre profil enseignant',
-            status: 'PROCESSING',
-            attempts: 1,
-            provider_reference: null,
-            accepted_at: null,
-            last_error_code: null,
-            requested_by: data.context.accountId,
-            reason: body.reason,
-            version: 1,
-            created_at: nowIso,
-            updated_at: nowIso,
-            text_body: `Bonjour ${recipientName},\n\nVotre profil enseignant a été activé sur la plateforme académique ESCEN${body.specialty ? ` (Spécialité : ${body.specialty})` : ''}.\n\nVous recevrez une notification dès que vos affectations de cours seront enregistrées.\n\nDirection Académique ESCEN`,
-            html_body: `<div style="font-family:sans-serif;color:#0f172a;line-height:1.6;"><h2>Profil enseignant activé — ESCEN</h2><p>Bonjour <strong>${escapeHtml(recipientName)}</strong>,</p><p>Votre profil enseignant a été activé sur la plateforme académique ESCEN${body.specialty ? ` (Spécialité : <strong>${escapeHtml(body.specialty)}</strong>)` : ''}.</p><p>Vous recevrez un e-mail dès que vos matières et groupes de cours vous seront affectés.</p><p style="color:#64748b;font-size:13px;">Direction Académique ESCEN</p></div>`,
-          });
-        } catch {
-          // Best-effort notification
-        }
-      }
+    }
+    let digitalAccess;
+    if (body.action === 'create_profile') {
+      const staff = data.snapshot.tables.staff!.find(row => row.id === body.staffId)!;
+      const person = data.snapshot.tables.people!.find(row => row.id === staff.person_id)!;
+      const accessRequest = changes.find(change => change.table === 'teacher_digital_access')!;
+      digitalAccess = await completeTeacherDigitalAccess(data.client, {
+        requestId: String(accessRequest.record.id), teacherId: id, personId: person.id,
+        actorId: data.context.accountId, firstname: String(person.firstname), lastname: String(person.lastname),
+        personalEmail: body.personalEmail,
+      });
     }
 
-    return Response.json({ id, revision: saved.data }, { status: body.action.startsWith('create_') ? 201 : 200, headers: { 'Cache-Control': 'no-store' } });
+    return Response.json({ id, revision: saved.data, digitalAccess }, { status: body.action.startsWith('create_') ? 201 : 200, headers: { 'Cache-Control': 'no-store' } });
   } catch (error) { return errorResponse(error); }
 }

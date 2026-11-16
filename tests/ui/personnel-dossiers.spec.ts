@@ -53,9 +53,10 @@ for (const width of [390, 1440]) test(`Personnel : création, historique et ense
   await page.getByRole('button', { name: 'Nouvel enseignant', exact: true }).click();
   await dialog.getByLabel('Prénom', { exact: true }).fill('Paul');
   await dialog.getByLabel('Nom', { exact: true }).fill('Professeur');
+  await dialog.getByLabel('E-mail personnel', { exact: true }).fill('paul@example.test');
   await expect(dialog.getByLabel('Spécialité enseignante')).toHaveCount(0);
   await dialog.getByRole('button', { name: 'Vérifier les informations', exact: true }).click();
-  await expect(dialog.locator('.action-consequence')).toContainText('Aucun compte de connexion ni affectation');
+  await expect(dialog.locator('.action-consequence')).toContainText('Les accès Microsoft 365 et au portail enseignant seront envoyés');
   await dialog.getByRole('button', { name: 'Confirmer la création', exact: true }).click();
   await expect(dialog).not.toBeVisible();
   await page.getByRole('combobox', { name: 'Profil', exact: true }).selectOption('teacher');
@@ -64,7 +65,7 @@ for (const width of [390, 1440]) test(`Personnel : création, historique et ense
   await page.reload();
   await expect(page.getByRole('row').filter({ hasText: 'Paul Professeur' })).toContainText('Enseignant');
   await expect(page.locator('#main-content')).not.toContainText('INT-');
-  expect(fixture.transactions).toHaveLength(3);
+  expect(fixture.transactions).toHaveLength(4);
   expect(campusReads).toBeGreaterThanOrEqual(4);
   await expectWorkspaceFits(page);
   await page.screenshot({ path: `tmp/screenshots/personnel-review/${width}/personnel-enseignants.png`, fullPage: true });
