@@ -360,6 +360,7 @@ export async function createTeamsOnlineMeeting(params: {
         headers: {
           Authorization: `Bearer ${token}`,
           'Content-Type': 'application/json',
+          Prefer: 'include-unknown-enum-members',
         },
         body: JSON.stringify({
           startDateTime: params.startDateTime,
@@ -379,7 +380,7 @@ export async function createTeamsOnlineMeeting(params: {
         // createOrGet may return an existing meeting: confirm the requested settings on it too.
         const attendees = (data.participants?.attendees || []).filter(person => person.identity?.user?.id !== teacherId && person.upn?.toLowerCase() !== teacherUpn);
         const configured = await fetch(`https://graph.microsoft.com/v1.0/users/${encodeURIComponent(organizerId)}/onlineMeetings/${encodeURIComponent(data.id)}`, {
-          method: 'PATCH', headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+          method: 'PATCH', headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json', Prefer: 'include-unknown-enum-members' },
           signal: AbortSignal.timeout(15000),
           body: JSON.stringify({ startDateTime: params.startDateTime, endDateTime: params.endDateTime, subject: params.subject,
             recordAutomatically: true, participants: { attendees: [...attendees, coorganizer] } }),

@@ -25,11 +25,13 @@ export async function verifyMicrosoftTeamsIntegration() {
         if (url.endsWith('?$select=id')) return Response.json({ id: url.includes(encodeURIComponent(COURSE_TEAMS_ORGANIZER)) ? organizerId : teacherId });
         if (url.includes('/onlineMeetings/createOrGet')) {
           assert.ok(url.includes(`/users/${organizerId}/`));
+          assert.equal(new Headers(init?.headers).get('prefer'), 'include-unknown-enum-members');
           return scenario === 'denied' ? Response.json({ error: { code: 'Forbidden' } }, { status: 403 })
             : Response.json({ id: 'confirmed-meeting', joinWebUrl: meetingUrl, participants: { attendees: [{ upn: 'another@escen.university', role: 'attendee', identity: { user: { id: 'another-user' } } }] } });
         }
         if (init?.method === 'PATCH') {
           assert.ok(url.includes(`/users/${organizerId}/onlineMeetings/confirmed-meeting`));
+          assert.equal(new Headers(init?.headers).get('prefer'), 'include-unknown-enum-members');
           if (scenario === 'configuration_denied') return Response.json({}, { status: 403 });
           const body = JSON.parse(String(init.body));
           if (scenario === 'unconfirmed_coorganizer') body.participants.attendees = [];
