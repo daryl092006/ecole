@@ -204,6 +204,7 @@ export async function POST(request: Request) {
             const synced = await syncTeamsMeetingRecording({
               sessionId: id,
               meetingId: original.meeting_id ? String(original.meeting_id) : null,
+              meetingUrl: original.meeting_url ? String(original.meeting_url) : null,
               organizerEmail: await teacherMicrosoftEmail(data.client, data.snapshot, personRow),
             });
             if (!synced.recordingUrl) {

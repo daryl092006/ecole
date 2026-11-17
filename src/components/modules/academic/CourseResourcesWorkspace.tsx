@@ -106,6 +106,7 @@ export default function CourseResourcesWorkspace() {
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState('');
   const [success, setSuccess] = useState('');
+  const [playback, setPlayback] = useState<{ sessionId: string; title: string; url: string | null; inline: boolean; error: string } | null>(null);
 
   // Form states
   const [assignmentId, setAssignmentId] = useState('');
@@ -248,6 +249,16 @@ export default function CourseResourcesWorkspace() {
   };
 
   const selectedCourse = directory.courses.find(c => c.assignmentId === assignmentId);
+
+  const playRecording = async (session: OnlineCourseSessionItem) => {
+    setPlayback({ sessionId: session.id, title: `Enregistrement · ${session.subjectName}`, url: null, inline: false, error: '' });
+    try {
+      const result = await apiFetch<{ url: string; inline: boolean }>(activeRole, `/api/course-resources?playbackSessionId=${encodeURIComponent(session.id)}`);
+      setPlayback(current => current?.sessionId === session.id ? { ...current, url: result.url, inline: result.inline } : current);
+    } catch (cause) {
+      setPlayback(current => current?.sessionId === session.id ? { ...current, error: cause instanceof Error ? cause.message : 'Lecture impossible.' } : current);
+    }
+  };
 
   return (
     <div className="domain-workspace workspace-stack">
@@ -521,6 +532,7 @@ export default function CourseResourcesWorkspace() {
                           <a
                             className="btn btn-sm btn-outline"
                             href={session.recordingUrl}
+                            onClick={event => { event.preventDefault(); void playRecording(session); }}
                             target="_blank"
                             rel="noopener noreferrer"
                           >
@@ -582,6 +594,17 @@ export default function CourseResourcesWorkspace() {
           </ResponsiveTable>
         )}
       </section>
+
+      {playback && (
+        <WorkPage title={playback.title} onClose={() => setPlayback(null)}>
+          {playback.error ? <p role="alert">{playback.error}</p> : playback.url && playback.inline ? (
+            <video className="course-recording-player" controls playsInline preload="metadata" src={playback.url}>
+              Votre navigateur ne prend pas en charge la lecture vidéo.
+            </video>
+          ) : playback.url ? <a className="btn btn-primary" href={playback.url} target="_blank" rel="noopener noreferrer">Ouvrir l’enregistrement</a>
+            : <LoadingState label="Préparation de l’enregistrement…" />}
+        </WorkPage>
+      )}
 
       {operation && (
         <WorkPage

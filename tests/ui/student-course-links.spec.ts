@@ -45,12 +45,41 @@ for (const width of [390, 1440]) test(`Étudiant : accès au cours et replay pub
     { ...common, id: uuid(801), subjectName: 'Cours sans lien', meetingUrl: null, recordingUrl: null },
   ] };
   await page.route('**/api/course-resources*', route => route.fulfill({ json: directory }));
+  await page.route('**/api/course-resources?playbackSessionId=*', route => route.fulfill({ json: { url: 'https://video.example.test/temporary-replay.mp4', inline: true } }));
+  await page.route('https://video.example.test/**', route => route.fulfill({ status: 200, contentType: 'video/mp4', body: '' }));
   await page.goto('/academique/supports');
   await page.getByRole('button', { name: /Séances en ligne/ }).click();
   await expect(page.getByRole('link', { name: 'Rejoindre Teams', exact: true })).toHaveAttribute('href', joinUrl);
   await expect(page.getByRole('link', { name: 'Voir le replay', exact: true })).toHaveAttribute('href', replayUrl);
   await expect(page.getByText('Lien non généré', { exact: true })).toBeVisible();
   await expect(page.getByRole('button', { name: /Créer lien Teams|Associer replay|Programmer un cours/ })).toHaveCount(0);
+  await page.getByRole('link', { name: 'Voir le replay', exact: true }).click();
+  await expect(page.getByRole('dialog').locator('video')).toHaveAttribute('src', 'https://video.example.test/temporary-replay.mp4');
+});
+
+test('Lecture d’un replay : séance du groupe uniquement, année et annulation contrôlées avant tout accès Microsoft', async () => {
+  const context = securityContext(ROLES.STUD, { studentId: uuid(600), teacherId: null, grants: [{ role_code: 'STUD', role_name: ROLES.STUD, site_id: null, group_id: securityIds.group, academic_year_id: securityIds.year }] });
+  const { snapshot: campus } = evaluationSecurityRoute(context);
+  campus.tables.sessions = [0, 1, 2, 3].map(index => ({
+    id: uuid(850 + index), assignment_id: securityIds.assignment(index === 1 ? 1 : index === 2 ? 2 : 0),
+    offering_id: index === 2 ? uuid(41) : uuid(40), group_id: index === 1 ? securityIds.otherGroup : index === 2 ? securityIds.otherYearGroup : securityIds.group,
+    teacher_id: securityIds.teacher, starts_at: '2026-06-16T18:30:00Z', ends_at: '2026-06-16T20:30:00Z',
+    status: index === 3 ? 'ANNULE' : 'PLANIFIE', mode: 'EN_LIGNE', recording_url: 'https://recordings.example.test/course.mp4',
+  }));
+  const client = { rpc: async (name: string) => {
+    if (name === 'escen_backend_snapshot') return { data: campus };
+    if (name === 'escen_academic_year_context') return { data: { currentYearId: securityIds.year } };
+    throw new Error('Unexpected RPC');
+  } };
+  const route = loadSecurityApi('app/api/course-resources/route.ts', client, context) as { GET: (request: Request) => Promise<Response> };
+  for (const index of [0, 1, 2, 3, 4]) {
+    const response = await route.GET(new Request(`http://local.test/api/course-resources?playbackSessionId=${uuid(850 + index)}`, { headers: { 'x-escen-year': securityIds.year } }));
+    expect(response.status).toBe(index === 0 ? 200 : 404);
+    if (index === 0) {
+      expect(response.headers.get('Cache-Control')).toBe('private, no-store');
+      expect(await response.json()).toEqual({ url: 'https://recordings.example.test/course.mp4', inline: false });
+    }
+  }
 });
 
 for (const width of [390, 1440]) for (const state of ['published', 'missing', 'legacy'] as const) {

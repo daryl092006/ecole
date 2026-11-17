@@ -7,6 +7,7 @@ import { filterSnapshotForAcademicYear } from '@/services/academicYearScopeServi
 import { createTeamsOnlineMeeting, syncTeamsMeetingRecording, TeamsIntegrationError } from '@/services/microsoftGraphService';
 import { formatSubjectCode } from '@/services/resaoCodeService';
 import { confirmedMeetingUrl } from '@/utils/meetingLinks';
+import { courseRecordingPlaybackUrl } from '@/server/courseRecordingPlayback';
 import type { PersistentChange, RelationalSnapshot } from '@/types/persistence';
 import type {
   CourseListEntry,
@@ -299,6 +300,16 @@ function buildDirectory(
 export async function GET(request: Request) {
   try {
     const data = await loadContext(request);
+    const playbackSessionId = new URL(request.url).searchParams.get('playbackSessionId');
+    if (playbackSessionId) {
+      const id = z.string().uuid().parse(playbackSessionId);
+      const session = (data.scoped.tables.sessions || []).find(row => row.id === id && row.status !== 'ANNULE');
+      if (!session?.recording_url) throw new RequestError(404, 'Enregistrement introuvable dans votre périmètre.');
+      try {
+        const url = await courseRecordingPlaybackUrl(String(session.recording_url), session.meeting_id ? String(session.meeting_id) : null);
+        return Response.json({ url, inline: url !== String(session.recording_url) }, { headers: { 'Cache-Control': 'private, no-store', 'Referrer-Policy': 'no-referrer' } });
+      } catch { throw new RequestError(503, 'La vidéo est temporairement indisponible auprès de Microsoft. Réessayez.'); }
+    }
     const downloadId = new URL(request.url).searchParams.get('downloadId');
     if (downloadId) {
       const id = z.string().uuid().parse(downloadId);
@@ -315,6 +326,13 @@ export async function GET(request: Request) {
         }
       }
       if (resource.resource_url) {
+        if (resource.kind === 'ENREGISTREMENT') {
+          try {
+            const session = (data.scoped.tables.sessions || []).find(row => row.id === resource.session_id && row.status !== 'ANNULE');
+            const url = await courseRecordingPlaybackUrl(String(resource.resource_url), session?.meeting_id ? String(session.meeting_id) : null);
+            return Response.json({ url }, { headers: { 'Cache-Control': 'private, no-store', 'Referrer-Policy': 'no-referrer' } });
+          } catch { throw new RequestError(503, 'La vidéo est temporairement indisponible auprès de Microsoft. Réessayez.'); }
+        }
         return Response.json({ url: String(resource.resource_url) }, { headers: { 'Cache-Control': 'no-store' } });
       }
       throw new RequestError(404, 'Le fichier de ce support est temporairement indisponible.');
@@ -499,6 +517,7 @@ export async function POST(request: Request) {
           const synced = await syncTeamsMeetingRecording({
             sessionId: String(session.id),
             meetingId: session.meeting_id ? String(session.meeting_id) : null,
+            meetingUrl: session.meeting_url ? String(session.meeting_url) : null,
             organizerEmail: await teacherMicrosoftEmail(data.client, data.snapshot, personRow),
           });
           if (!synced.recordingUrl) {
