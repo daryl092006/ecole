@@ -462,7 +462,7 @@ export default function CourseResourcesWorkspace() {
                       >
                         {res.kind === 'ENREGISTREMENT' ? 'Voir l’enregistrement' : res.hasStorageFile ? 'Télécharger' : 'Ouvrir'}
                       </button>
-                      {directory.canManage && (
+                      {directory.canManage && (res.kind !== 'ENREGISTREMENT' || directory.canScheduleOnline) && (
                         <button
                           type="button"
                           className="btn btn-sm btn-danger"
@@ -791,7 +791,7 @@ export default function CourseResourcesWorkspace() {
                   <label className="form-group">
                     Catégorie
                     <select className="select-input" value={resourceKind} onChange={e => setResourceKind(e.target.value as CourseResourceKind)}>
-                      {(Object.keys(COURSE_RESOURCE_KIND_LABELS) as CourseResourceKind[]).map(k => (
+                      {(Object.keys(COURSE_RESOURCE_KIND_LABELS) as CourseResourceKind[]).filter(k => k !== 'ENREGISTREMENT' || directory.canScheduleOnline).map(k => (
                         <option key={k} value={k}>{COURSE_RESOURCE_KIND_LABELS[k]}</option>
                       ))}
                     </select>
@@ -802,7 +802,7 @@ export default function CourseResourcesWorkspace() {
                   <input className="input" type="file" onChange={handleFileChange} />
                 </label>
                 <label className="form-group">
-                  Ou lien externe / lien de l’enregistrement (Teams, OneDrive, SharePoint, Web)
+                  {directory.canScheduleOnline ? 'Ou lien externe / lien de l’enregistrement (Teams, OneDrive, SharePoint, Web)' : 'Ou lien externe vers le support de cours'}
                   <input
                     className="input"
                     type="url"

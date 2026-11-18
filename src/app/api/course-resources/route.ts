@@ -341,7 +341,7 @@ export async function GET(request: Request) {
     const yearRow = (data.snapshot.tables.academic_years || []).find(y => y.id === data.year.selectedYearId);
     const writableYear = Boolean(data.year.selectedYearId && yearRow && !yearRow.archived_at && yearRow.status !== 'CLOTUREE');
     const canManage = writableYear && data.context.permissions.includes('course_resource.manage');
-    const canScheduleOnline = writableYear && (data.context.permissions.includes('schedule.update') || data.context.permissions.includes('course_resource.manage'));
+    const canScheduleOnline = writableYear && data.context.role !== ROLES.DEL && (data.context.permissions.includes('schedule.update') || data.context.permissions.includes('course_resource.manage'));
 
     const directory = buildDirectory(data.snapshot, data.annual, data.scoped, data.year.selectedYearId, canManage, canScheduleOnline);
     return Response.json(directory, { headers: { 'Cache-Control': 'no-store' } });
@@ -354,6 +354,10 @@ export async function POST(request: Request) {
   try {
     const data = await loadContext(request);
     const body = commandSchema.parse(await request.json());
+    if (data.context.role === ROLES.DEL && (['generate_meeting_link', 'save_recording', 'create_online_session'].includes(body.action)
+      || (body.action === 'create_resource' && body.kind === 'ENREGISTREMENT'))) {
+      throw new RequestError(403, 'Le rôle délégué ne permet pas de gérer les séances en ligne, les liens Teams ou les replays.');
+    }
     if (!data.year.selectedYearId) throw new RequestError(409, 'Choisissez une année scolaire précise.');
     if (body.revision !== data.snapshot.revision) throw new RequestError(409, 'Les données ont évolué. Actualisez avant de réessayer.');
 
@@ -440,6 +444,9 @@ export async function POST(request: Request) {
       requirePermission(data.context, 'course_resource.manage');
       const existing = (data.scoped.tables.course_resources || []).find(r => r.id === body.resourceId && !r.archived_at);
       if (!existing) throw new RequestError(404, 'Support de cours introuvable.');
+      if (data.context.role === ROLES.DEL && existing.kind === 'ENREGISTREMENT') {
+        throw new RequestError(403, 'Le rôle délégué ne permet pas de gérer les replays.');
+      }
       if ((data.context.role === ROLES.ENS || data.context.role === ROLES.DEL) && existing.uploaded_by !== data.context.accountId) {
         throw new RequestError(403, 'Vous ne pouvez archiver que les supports que vous avez déposés.');
       }

@@ -34,16 +34,17 @@ test('Cours étudiants : liens et replay de leur groupe uniquement, aucun lien T
   expect(directory.canScheduleOnline).toBe(false);
 });
 
-for (const width of [390, 1440]) test(`Étudiant : accès au cours et replay publié à ${width}px`, async ({ page }) => {
+for (const role of [ROLES.STUD, ROLES.DEL]) for (const width of [390, 1440]) test(`${role} : accès au cours et replay publié à ${width}px`, async ({ page }) => {
   await page.setViewportSize({ width, height: 950 });
   await authenticateFixture(page);
-  await page.route('**/api/session', route => route.fulfill({ json: { capabilities: fixtureCapabilities, accountId: 'student-account', name: 'Master 2 TEST', email: 'student@example.test', role: ROLES.STUD, availableRoles: [ROLES.STUD], studentId: uuid(600), teacherId: null, matricule: 'TEST-M2', mustChangePassword: false } }));
+  await page.route('**/api/session', route => route.fulfill({ json: { capabilities: fixtureCapabilities, accountId: 'student-account', name: 'Master 2 TEST', email: 'student@example.test', role, availableRoles: [role], studentId: uuid(600), teacherId: null, matricule: 'TEST-M2', mustChangePassword: false } }));
   await page.route('**/api/campus', route => route.fulfill({ json: snapshot }));
   const common = { assignmentId: uuid(100), offeringId: uuid(40), groupId: securityIds.group, groupName: 'Master 2 FD', componentId: uuid(60), subjectName: 'Finance', teacherName: 'Enseignant', startsAt: '2026-11-16T18:30:00Z', endsAt: '2026-11-16T20:30:00Z', status: 'PLANIFIE', mode: 'EN_LIGNE' as const, meetingProvider: 'TEAMS' as const, recordingSyncedAt: null };
-  const directory: CourseResourcesDirectory = { revision: 4, selectedYearId: securityIds.year, canManage: false, canScheduleOnline: false, courses: [], resources: [], onlineSessions: [
+  const directory: CourseResourcesDirectory = { revision: 4, selectedYearId: securityIds.year, canManage: role === ROLES.DEL, canScheduleOnline: false, courses: [], resources: [], onlineSessions: [
     { ...common, id: uuid(800), meetingUrl: joinUrl, recordingUrl: replayUrl },
     { ...common, id: uuid(801), subjectName: 'Cours sans lien', meetingUrl: null, recordingUrl: null },
   ] };
+  if (role === ROLES.DEL) directory.courses = [{ assignmentId: common.assignmentId, offeringId: common.offeringId, offeringLabel: 'Master 2 FD', groupId: common.groupId, groupName: common.groupName, componentId: common.componentId, subjectCode: 'FIN', subjectName: common.subjectName, semesterName: 'Semestre 1', credits: 3, coefficient: 1, teacherId: securityIds.teacher, teacherName: common.teacherName, teacherEmail: null, validFrom: '2026-01-01', validUntil: null, totalSessions: 2, onlineSessions: 2, resourcesCount: 0, recordingsCount: 1 }];
   await page.route('**/api/course-resources*', route => route.fulfill({ json: directory }));
   await page.route('**/api/course-resources?playbackSessionId=*', route => route.fulfill({ json: { url: 'https://video.example.test/temporary-replay.mp4', inline: true } }));
   await page.route('https://video.example.test/**', route => route.fulfill({ status: 200, contentType: 'video/mp4', body: '' }));
@@ -55,6 +56,14 @@ for (const width of [390, 1440]) test(`Étudiant : accès au cours et replay pub
   await expect(page.getByRole('button', { name: /Créer lien Teams|Associer replay|Programmer un cours/ })).toHaveCount(0);
   await page.getByRole('link', { name: 'Voir le replay', exact: true }).click();
   await expect(page.getByRole('dialog').locator('video')).toHaveAttribute('src', 'https://video.example.test/temporary-replay.mp4');
+  if (role === ROLES.DEL) {
+    await page.getByRole('dialog').getByRole('button', { name: 'Fermer le détail', exact: true }).click();
+    await page.getByRole('button', { name: '+ Déposer un support de cours', exact: true }).click();
+    const category = page.getByRole('combobox', { name: 'Catégorie', exact: true });
+    await expect(category.locator('option[value="ENREGISTREMENT"]')).toHaveCount(0);
+    await expect(category.locator('option[value="SUPPORT"]')).toHaveCount(1);
+  }
+
 });
 
 test('Lecture d’un replay : séance du groupe uniquement, année et annulation contrôlées avant tout accès Microsoft', async () => {
@@ -107,3 +116,41 @@ for (const width of [390, 1440]) for (const state of ['published', 'missing', 'l
     await expect(dialog.getByText('En ligne (Microsoft Teams)', { exact: true })).toBeVisible();
   });
 }
+
+test('Délégué : consultation et supports conservés, gestion Teams et replays refusée sans écriture', async () => {
+  const context = securityContext(ROLES.DEL, { roleCode: 'DEL', studentId: uuid(600), teacherId: null, grants: [{ role_code: 'DEL', role_name: ROLES.DEL, site_id: null, group_id: securityIds.group, academic_year_id: securityIds.year }] });
+  const { snapshot: campus } = evaluationSecurityRoute(context);
+  campus.tables.sessions = [{ id: uuid(800), assignment_id: securityIds.assignment(0), offering_id: uuid(40), group_id: securityIds.group, teacher_id: securityIds.teacher, starts_at: '2026-06-16T18:30:00Z', ends_at: '2026-06-16T20:30:00Z', status: 'PLANIFIE', mode: 'EN_LIGNE', meeting_id: 'confirmed-meeting', meeting_url: joinUrl, recording_url: replayUrl }];
+  campus.tables.course_resources = [{ id: uuid(810), assignment_id: securityIds.assignment(0), session_id: uuid(800), academic_year_id: securityIds.year, offering_id: uuid(40), group_id: securityIds.group, component_id: uuid(60), kind: 'ENREGISTREMENT', resource_url: replayUrl, uploaded_by: context.accountId }];
+  const writes: unknown[] = [];
+  const client = { rpc: async (name: string, args?: unknown) => {
+    if (name === 'escen_backend_snapshot') return { data: campus };
+    if (name === 'escen_academic_year_context') return { data: { currentYearId: securityIds.year } };
+    writes.push({ name, args });
+    return { data: 5 };
+  } };
+  const route = loadSecurityApi('app/api/course-resources/route.ts', client, context) as { GET: (request: Request) => Promise<Response>; POST: (request: Request) => Promise<Response> };
+  const headers = { 'Content-Type': 'application/json', 'x-escen-year': securityIds.year };
+  const directory = await (await route.GET(new Request('http://local.test/api/course-resources', { headers }))).json() as CourseResourcesDirectory;
+  expect(directory.canManage).toBe(true);
+  expect(directory.canScheduleOnline).toBe(false);
+  expect(directory.onlineSessions).toHaveLength(1);
+  expect(directory.onlineSessions[0]).toMatchObject({ meetingUrl: joinUrl, recordingUrl: replayUrl });
+  const payloads = [
+    { action: 'generate_meeting_link', sessionId: uuid(800) },
+    { action: 'generate_meeting_link', sessionId: uuid(800), customMeetingUrl: joinUrl },
+    { action: 'save_recording', sessionId: uuid(800), recordingUrl: replayUrl },
+    { action: 'save_recording', sessionId: uuid(800) },
+    { action: 'create_online_session', assignmentId: securityIds.assignment(0), startsAt: '2026-06-17T18:30:00Z', endsAt: '2026-06-17T20:30:00Z' },
+    { action: 'create_resource', assignmentId: securityIds.assignment(0), sessionId: uuid(800), kind: 'ENREGISTREMENT', title: 'Replay interdit', resourceUrl: replayUrl },
+    { action: 'archive_resource', resourceId: uuid(810) },
+  ];
+  for (const payload of payloads) {
+    const response = await route.POST(new Request('http://local.test/api/course-resources', { method: 'POST', headers, body: JSON.stringify({ revision: 4, reason: 'Vérification des droits du délégué', ...payload }) }));
+    expect(response.status, payload.action).toBe(403);
+  }
+  expect(writes).toHaveLength(0);
+  const saved = await route.POST(new Request('http://local.test/api/course-resources', { method: 'POST', headers, body: JSON.stringify({ revision: 4, reason: 'Déposer un support de cours du groupe', action: 'create_resource', assignmentId: securityIds.assignment(0), kind: 'SUPPORT', title: 'Support du cours', resourceUrl: 'https://documents.example.test/support.pdf' }) }));
+  expect(saved.status).toBe(201);
+  expect(writes).toHaveLength(1);
+});
