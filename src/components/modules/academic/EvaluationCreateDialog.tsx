@@ -5,7 +5,8 @@ import { usePortal } from '@/hooks/usePortal';
 import WorkPage from '@/components/ui/WorkPage';
 import ReviewedForm from '@/components/ui/ReviewedForm';
 import DrawerActions from '@/components/ui/DrawerActions';
-import { manageEvaluation } from '@/services/remoteCampusService';
+import { loadRelationalCampus, manageEvaluation, RemoteRequestError } from '@/services/remoteCampusService';
+import type { RelationalSnapshot } from '@/types/persistence';
 import { ROLES } from '@/types/permissions';
 import { isEvaluationEnrollmentStatus } from '@/services/evaluationCandidateService';
 
@@ -31,7 +32,11 @@ export default function EvaluationCreateDialog({
   category?: 'control' | 'exam' | 'resit';
 }) {
   const portal = usePortal();
-  const snapshot = portal.relationalSnapshot;
+  const [refreshedSnapshot, setRefreshedSnapshot] = useState<RelationalSnapshot | null>(null);
+  const snapshot = refreshedSnapshot && refreshedSnapshot.revision > portal.relationalSnapshot.revision
+    ? refreshedSnapshot : portal.relationalSnapshot;
+  const [reviewVersion, setReviewVersion] = useState(0);
+  const [createdEvaluation, setCreatedEvaluation] = useState<{ id: string; revision: number } | null>(null);
   const assignments = snapshot.tables.teaching_assignments || [];
   const groups = snapshot.tables.groups || [];
   const subjects = snapshot.tables.subjects || [];
@@ -180,8 +185,8 @@ export default function EvaluationCreateDialog({
     setBusy(true);
     setError('');
     try {
-      const currentRevision = portal.relationalSnapshot.revision;
-      const res = await manageEvaluation(portal.activeRole, {
+      const currentRevision = snapshot.revision;
+      const res = createdEvaluation || await manageEvaluation(portal.activeRole, {
         action: 'create',
         assignmentId,
         name: name.trim(),
@@ -189,6 +194,8 @@ export default function EvaluationCreateDialog({
         parentEvaluationId: kind === 'RATTRAPAGE' ? parentEvaluationId : null,
         revision: currentRevision,
       });
+
+      if (res.id) setCreatedEvaluation({ id: res.id, revision: res.revision });
 
       if (res.id && scheduleNow && startsAt && endsAt) {
         const iso = (v: string) => new Date(`${v}:00Z`).toISOString();
@@ -215,7 +222,7 @@ export default function EvaluationCreateDialog({
           accessClosesAt: iso(endsAt),
           durationMinutes: Number(durationMinutes),
           reason: 'Programmation lors de la création de l’épreuve',
-          revision: Number(res.revision) || currentRevision,
+          revision: Math.max(res.revision, currentRevision),
         });
       }
 
@@ -226,8 +233,22 @@ export default function EvaluationCreateDialog({
         onClose();
       }
     } catch (err) {
-      void portal.refreshCampus();
-      setError(err instanceof Error ? err.message : 'Erreur lors de la création de l’évaluation.');
+      const message = err instanceof Error ? err.message : 'Erreur lors de la création de l’évaluation.';
+      let refreshed = false;
+      if (err instanceof RemoteRequestError && err.status === 409) {
+        try {
+          const latest = await loadRelationalCampus(portal.activeRole);
+          if (latest.revision > snapshot.revision) {
+            setRefreshedSnapshot(latest);
+            refreshed = true;
+          }
+        } catch { /* Keep the original error if the refresh also fails. */ }
+      }
+      portal.refreshCampus();
+      if (refreshed) setReviewVersion(version => version + 1);
+      setError(refreshed
+        ? `${message} Les données viennent d’être rechargées. Votre saisie est conservée : vérifiez les informations puis confirmez à nouveau.`
+        : message);
     } finally {
       setBusy(false);
     }
@@ -235,8 +256,8 @@ export default function EvaluationCreateDialog({
 
   return (
     <WorkPage title={scheduleNow ? 'Créer et programmer une épreuve' : 'Créer une nouvelle évaluation'} onClose={onClose} busy={busy}>
-      <ReviewedForm onConfirm={handleSubmit} className="form-column" busy={busy} error={error}
-        confirmLabel={scheduleNow ? 'Confirmer la création et la programmation' : 'Confirmer la création de l’évaluation'}
+      <ReviewedForm onConfirm={handleSubmit} className="form-column" busy={busy} error={error} completionKey={String(reviewVersion)}
+        confirmLabel={createdEvaluation ? 'Confirmer la programmation de l’évaluation créée' : scheduleNow ? 'Confirmer la création et la programmation' : 'Confirmer la création de l’évaluation'}
         fields={[
           { label: 'Évaluation', value: name.trim() },
           { label: 'Nature', value: kind === 'DEVOIR' ? 'Devoir (Contrôle continu · 40% si examen)' : kind === 'EXAMEN' ? 'Examen sur table (60% ou 100% si aucun devoir)' : 'Session de rattrapage' },
@@ -255,6 +276,7 @@ export default function EvaluationCreateDialog({
         consequence={scheduleNow ? (deliveryMode === 'PAPIER' ? `L’épreuve sur table sera programmée le ${startsAt.replace('T', ' à ')} en salle ${availableRooms.find(r => r.id === roomId)?.name || 'sélectionnée'}. Le surveillant assurera l’émargement en salle, et l’enseignant saisira le bordereau de notes sur la plateforme une fois les copies physiques corrigées.` : `L’évaluation en ligne sera programmée le ${startsAt.replace('T', ' à ')}. Le sujet sera immédiatement débloqué pour la saisie des questions et du barème.`) : 'L’évaluation et ses candidats seront enregistrés sans horaire fixé (à programmer ultérieurement).'}
       >
         {error && <div className="restricted-box mb-2" role="alert">{error}</div>}
+        {createdEvaluation && <p className="info-box" role="status">L’évaluation et ses candidats sont déjà enregistrés. Il reste à programmer la séance ; une nouvelle confirmation ne créera pas une seconde évaluation.</p>}
 
         {/* Étape 1 : Cadre pédagogique */}
         <div className="card mb-3" style={{ border: '1px solid var(--border)', background: 'var(--surface, #ffffff)', padding: '16px' }}>
@@ -270,7 +292,7 @@ export default function EvaluationCreateDialog({
           <div className="form-grid mb-2">
             <label className="form-group">
               Groupe / Classe
-              <select className="select-input" required value={groupId} onChange={event => {
+              <select className="select-input" required disabled={Boolean(createdEvaluation)} value={groupId} onChange={event => {
                 const id = event.target.value;
                 setGroupId(id);
                 setAssignmentId(filteredAssignments.find(row => row.group_id === id)?.id || '');
@@ -290,6 +312,7 @@ export default function EvaluationCreateDialog({
                 className="select-input"
                 required
                 value={assignmentId}
+                disabled={Boolean(createdEvaluation)}
                 onChange={e => {
                   setAssignmentId(e.target.value);
                   setParentEvaluationId('');
@@ -318,6 +341,7 @@ export default function EvaluationCreateDialog({
               <select
                 className="select-input"
                 value={kind}
+                disabled={Boolean(createdEvaluation)}
                 onChange={e => setKind(e.target.value as typeof kind)}
               >
                 <option value="DEVOIR">Devoir (Contrôle continu · optionnel, compte pour 40%)</option>
@@ -338,6 +362,7 @@ export default function EvaluationCreateDialog({
                 className="input"
                 placeholder="Ex : Examen final du 1er semestre, Devoir surveillé n°1…"
                 value={name}
+                disabled={Boolean(createdEvaluation)}
                 onChange={e => setName(e.target.value)}
               />
             </label>
@@ -350,6 +375,7 @@ export default function EvaluationCreateDialog({
                 className="select-input"
                 required
                 value={parentEvaluationId}
+                disabled={Boolean(createdEvaluation)}
                 onChange={e => setParentEvaluationId(e.target.value)}
               >
                 <option value="">-- Choisir l’évaluation d’origine --</option>
@@ -373,6 +399,7 @@ export default function EvaluationCreateDialog({
             <input
               type="checkbox"
               checked={scheduleNow}
+              disabled={Boolean(createdEvaluation)}
               onChange={e => setScheduleNow(e.target.checked)}
             />
             <strong>Programmer la séance d’évaluation (pendant un cours existant ou sur un nouveau créneau)</strong>

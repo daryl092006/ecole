@@ -64,3 +64,48 @@ test('Modifier le sujet enregistré conserve ses questions', async ({ page }) =>
   await page.reload();
   await expect(page.locator('.subject-prompt')).toHaveValue('Question déjà rédigée');
 });
+
+for (const stage of ['create', 'schedule_delivery'] as const) test(`Création d’épreuve : reprise après conflit ${stage} sans doublon`, async ({ page }) => {
+  const { snapshot } = await installResponsiveAudit(page, 'staff');
+  const commands: Record<string, unknown>[] = [];
+  let failed = false;
+  await page.route('**/api/evaluations', async route => {
+    const body = route.request().postDataJSON();
+    commands.push(body);
+    if (body.action === stage && !failed) {
+      failed = true;
+      snapshot.revision += 1;
+      return route.fulfill({ status: 409, json: { error: 'Les données ont changé depuis leur chargement.' } });
+    }
+    expect(body.revision).toBe(snapshot.revision);
+    snapshot.revision += 1;
+    if (body.action === 'create') {
+      const assignment = snapshot.tables.teaching_assignments.find(a => a.id === body.assignmentId)!;
+      snapshot.tables.evaluations.push({ id: 'created-conflict-test', assignment_id: assignment.id,
+        offering_id: assignment.offering_id, component_id: assignment.component_id, name: body.name, kind: body.kind, status: 'BROUILLON' });
+    } else expect(body.evaluationId).toBe('created-conflict-test');
+    return route.fulfill({ json: { id: 'created-conflict-test', revision: snapshot.revision } });
+  });
+  await page.goto('/academique/examens');
+  await page.getByRole('button', { name: 'Nouvelle évaluation', exact: true }).click();
+  const dialog = page.getByRole('dialog');
+  await dialog.getByLabel('Intitulé de l’épreuve', { exact: true }).fill('Épreuve conservée');
+  await dialog.getByRole('combobox', { name: 'Mode de passage', exact: true }).selectOption('PAPIER');
+  await dialog.getByLabel('Début de l’épreuve (Date et heure)', { exact: true }).fill('2026-11-16T07:35');
+  await dialog.getByLabel('Fin de l’épreuve (Date et heure)', { exact: true }).fill('2026-11-16T09:35');
+  await dialog.getByRole('button', { name: 'Confirmer et programmer l’épreuve', exact: true }).click();
+  expect(commands).toHaveLength(0);
+  await dialog.getByRole('button', { name: 'Confirmer la création et la programmation', exact: true }).click();
+  await expect(dialog.getByRole('alert')).toContainText('Votre saisie est conservée');
+  await expect(dialog.getByLabel('Intitulé de l’épreuve', { exact: true })).toHaveValue('Épreuve conservée');
+  await expect(dialog.getByLabel('Début de l’épreuve (Date et heure)', { exact: true })).toHaveValue('2026-11-16T07:35');
+  if (stage === 'schedule_delivery') await expect(dialog.getByRole('status')).toContainText('déjà enregistrés');
+  const countBeforeReview = commands.length;
+  await dialog.getByRole('button', { name: 'Confirmer et programmer l’épreuve', exact: true }).click();
+  expect(commands).toHaveLength(countBeforeReview);
+  const confirmation = stage === 'create' ? 'Confirmer la création et la programmation' : 'Confirmer la programmation de l’évaluation créée';
+  await dialog.getByRole('button', { name: confirmation, exact: true }).click();
+  await expect(page.getByRole('heading', { name: 'Créer et programmer une épreuve', exact: true })).toHaveCount(0);
+  expect(commands.map(c => c.action)).toEqual(stage === 'create'
+    ? ['create', 'create', 'schedule_delivery'] : ['create', 'schedule_delivery', 'schedule_delivery']);
+});

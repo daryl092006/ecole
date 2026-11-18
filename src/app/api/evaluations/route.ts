@@ -182,7 +182,7 @@ export async function POST(request: Request) {
         const detail = saved.error.message || saved.error.details || '';
         const isConflict = saved.error.code === '40001' || detail.includes('CONCURRENT_UPDATE');
         const reasonMsg = isConflict
-          ? 'Une mise à jour concurrente est survenue (données actualisées).'
+          ? 'Les données ont changé depuis leur chargement.'
           : detail ? `Détail : ${detail}.` : '';
         throw new RequestError(409, `Création de l’évaluation refusée. ${reasonMsg} Aucun lot partiel n’est conservé : l’évaluation et tous ses candidats sont enregistrés ensemble. Actualisez les données puis réessayez.`);
       }

@@ -30,16 +30,16 @@ for (const rejected of [false, true]) {
     await page.goto('/academique/evaluations');
     await page.getByRole('button', { name: 'Nouvelle évaluation', exact: true }).click();
     const dialog = page.getByRole('dialog');
-    await expect(dialog.locator('p').filter({ hasText: 'Effectif rattaché' })).toContainText('2 étudiant(s)');
-    await dialog.getByRole('textbox', { name: 'Intitulé de l’évaluation' }).fill('Évaluation de recette');
-    await dialog.getByRole('button', { name: 'Créer l’évaluation en brouillon', exact: true }).click();
+    await expect(dialog.locator('p').filter({ hasText: 'Effectif convoqué' })).toContainText('2 étudiant(s)');
+    await dialog.getByRole('textbox', { name: 'Intitulé de l’épreuve' }).fill('Évaluation de recette');
+    await dialog.getByRole('button', { name: 'Enregistrer l’évaluation (saisie directe des notes)', exact: true }).click();
     expect(commands).toHaveLength(0);
     await dialog.getByRole('button', { name: 'Confirmer la création de l’évaluation', exact: true }).click();
     expect(commands).toHaveLength(1);
     if (rejected) {
       await expect(dialog.getByRole('alert')).toContainText('Aucun lot partiel');
       await dialog.getByRole('button', { name: 'Revenir aux informations', exact: true }).click();
-      await expect(dialog.getByRole('textbox', { name: 'Intitulé de l’évaluation' })).toHaveValue('Évaluation de recette');
+      await expect(dialog.getByRole('textbox', { name: 'Intitulé de l’épreuve' })).toHaveValue('Évaluation de recette');
     } else {
       await expect(page.getByRole('dialog').getByRole('heading', { name: 'Évaluation de recette', level: 2 })).toBeVisible();
       await expect(page.getByRole('region', { name: 'Préparation de l’épreuve' })).toBeVisible();
