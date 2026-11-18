@@ -77,7 +77,7 @@ try {
   const curriculum = await insert('curricula', { program_id: program.id, level_id: level.id, version: 1 });
   const semester = await insert('curriculum_semesters', { curriculum_id: curriculum.id, position: 1, name: 'Semestre 1', target_credits: 30 });
   const unit = await insert('teaching_units', { semester_id: semester.id, curriculum_id: curriculum.id, code: 'UE1', name: 'Fondamentaux', credits: 30 });
-  const component = await insert('curriculum_components', { subject_id: subject.id, unit_id: unit.id, curriculum_id: curriculum.id, code: 'EC1', coefficient: 1, credits: 30 });
+  const component = await insert('curriculum_components', { subject_id: subject.id, unit_id: unit.id, curriculum_id: curriculum.id, code: 'EC1', credits: 30 });
   await insert('assessment_weights', { curriculum_id: curriculum.id, component_id: component.id, evaluation_kind: 'DEVOIR', percent: 40 });
   await insert('assessment_weights', { curriculum_id: curriculum.id, component_id: component.id, evaluation_kind: 'EXAMEN', percent: 60 });
   await db.query("update escen.curricula set status = 'APPROVED', approved_by = $1, approved_at = now() where id = $2", [account.id, curriculum.id]);

@@ -11,7 +11,7 @@ const snapshot: RelationalSnapshot = { revision: 1, tables: {
   subjects: [{ id: 'OLD', academic_year_id: 'YEAR', code: 'ECN 2103' }, { id: 'OTHER', academic_year_id: 'OTHER', code: 'ECN2199' }],
 } };
 assert.equal(generateResaoSubjectCode(snapshot, 'ecn', semesterId, 'YEAR'), 'ECN2104');
-const values = { discipline: 'ECN', semester_id: semesterId, credits: 3.75, coefficient: 0.625 };
+const values = { discipline: 'ECN', semester_id: semesterId, credits: 3.75 };
 const subject = { id: 'SUB', code: 'ECN2104', name: 'Finance digitale', academic_year_id: 'YEAR', reason: 'Création validée' };
 const changes = resaoSubjectChanges(snapshot, values, subject);
 assert.deepEqual(changes.map(item => item.table), ['subjects', 'teaching_units', 'curriculum_components']);
@@ -20,7 +20,7 @@ assert.equal(changes[1].record.code, changes[2].record.code);
 assert.equal(changes[2].record.unit_id, changes[1].record.id);
 assert.equal(changes[2].record.subject_id, 'SUB');
 assert.equal(changes[2].record.credits, 3.75);
-assert.equal(changes[2].record.coefficient, 0.625);
+assert.equal('coefficient' in changes[2].record, false);
 assert.equal(snapshot.tables.subjects.length, 2);
 assert.throws(() => resaoSubjectChanges(snapshot, values, { ...subject, code: 'ECN2199' }), /Actualisez/);
 assert.throws(() => generateResaoSubjectCode(snapshot, 'XX', semesterId, 'YEAR'), /trois lettres/);

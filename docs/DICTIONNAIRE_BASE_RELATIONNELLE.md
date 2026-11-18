@@ -2,7 +2,7 @@
 
 Généré avec `npm run db:describe` en exécutant les migrations dans PostgreSQL local (PGlite). Aucun accès à Supabase ou aux données de la sauvegarde.
 
-124 tables métier, 14 tables privées, 1131 colonnes, 315 clés étrangères, 276 CHECK de tables et 5 exclusions. Les domaines ajoutent les bornes des notes, des montants FCFA et des textes obligatoires.
+124 tables métier, 14 tables privées, 1130 colonnes, 315 clés étrangères, 275 CHECK de tables et 5 exclusions. Les domaines ajoutent les bornes des notes, des montants FCFA et des textes obligatoires.
 
 Toutes les tables ont RLS activée, sans accès applicatif permis à ce stade. Les noms techniques ne sont pas des libellés à afficher dans l’interface.
 
@@ -43,7 +43,7 @@ Toutes les tables ont RLS activée, sans accès applicatif permis à ce stade. L
 | escen | credit_awards | 5 | 2 | Oui |
 | escen | credit_notes | 6 | 2 | Oui |
 | escen | curricula | 10 | 4 | Oui |
-| escen | curriculum_components | 15 | 3 | Oui |
+| escen | curriculum_components | 14 | 3 | Oui |
 | escen | curriculum_semesters | 7 | 1 | Oui |
 | escen | cycles | 5 | 0 | Oui |
 | escen | delegate_mandates | 6 | 2 | Oui |
@@ -1560,7 +1560,6 @@ CREATE INDEX fk_16837 ON escen.curricula USING btree (track_id, program_id)
 | unit_id | uuid | YES | — | NEVER |
 | curriculum_id | uuid | YES | — | NEVER |
 | code | escen.nonempty_text | NO | — | NEVER |
-| coefficient | numeric | YES | — | NEVER |
 | credits | numeric | YES | — | NEVER |
 | cm_hours | numeric | YES | 0 | NEVER |
 | td_hours | numeric | YES | 0 | NEVER |
@@ -1575,7 +1574,6 @@ Contraintes :
 
 ```sql
 component_archive_reason: CHECK (((archived_at IS NULL) OR ((length(btrim(COALESCE(reason, ''::text))) >= 3) AND (length(btrim(COALESCE(reason, ''::text))) <= 1000))))
-component_coefficient_evidence: CHECK ((((coefficient IS NOT NULL) AND (coefficient > (0)::numeric)) OR ((legacy_source_row_id IS NOT NULL) AND ((coefficient IS NULL) OR (coefficient >= (0)::numeric)))))
 component_definition_evidence: CHECK ((((curriculum_id IS NOT NULL) AND (unit_id IS NOT NULL) AND (credits IS NOT NULL)) OR (legacy_source_row_id IS NOT NULL)))
 component_hours_evidence: CHECK (((legacy_source_row_id IS NOT NULL) OR ((cm_hours IS NOT NULL) AND (td_hours IS NOT NULL) AND (tp_hours IS NOT NULL) AND (other_hours IS NOT NULL))))
 curriculum_components_cm_hours_check: CHECK ((cm_hours >= (0)::numeric))

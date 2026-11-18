@@ -183,7 +183,7 @@ export function useAppState() {
     const teacher = references.teachers.find(value => value.id === item.teacherId);
     const group = groups.find(value => value.id === item.groupId);
     const semester = references.semesters.find(value => value.id === item.semesterId);
-    return subject && teacher && group && semester ? [{ id: item.id, code: subject.code, name: subject.name, filiere: group.filieres.join(', '), level: group.niveau, groupId: group.id, teacherId: teacher.id, coefficient: subject.coefficient, teacher: `${teacher.firstname} ${teacher.lastname}`, semester: semester.name }] : [];
+    return subject && teacher && group && semester ? [{ id: item.id, code: subject.code, name: subject.name, filiere: group.filieres.join(', '), level: group.niveau, groupId: group.id, teacherId: teacher.id, teacher: `${teacher.firstname} ${teacher.lastname}`, semester: semester.name }] : [];
   })], [references.assignments, references.subjects, references.teachers, groups, references.semesters]);
   const [evaluations, setEvaluations] = useState<Evaluation[]>(initialEvaluations);
   const [reclamations, setReclamations] = useState<Reclamation[]>(initialReclamations);

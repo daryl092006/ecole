@@ -2,9 +2,9 @@
   "stats": {
     "businessTables": 124,
     "privateTables": 14,
-    "columns": 1131,
+    "columns": 1130,
     "foreignKeys": 315,
-    "checks": 276,
+    "checks": 275,
     "exclusions": 5
   },
   "tables": [
@@ -3406,15 +3406,6 @@
       "name": "code",
       "type": "escen.nonempty_text",
       "nullable": "NO",
-      "default": null,
-      "generated": "NEVER"
-    },
-    {
-      "schema": "escen",
-      "table": "curriculum_components",
-      "name": "coefficient",
-      "type": "numeric",
-      "nullable": "YES",
       "default": null,
       "generated": "NEVER"
     },
@@ -13883,13 +13874,6 @@
       "name": "component_archive_reason",
       "type": "c",
       "definition": "CHECK (((archived_at IS NULL) OR ((length(btrim(COALESCE(reason, ''::text))) >= 3) AND (length(btrim(COALESCE(reason, ''::text))) <= 1000))))"
-    },
-    {
-      "schema": "escen",
-      "table": "curriculum_components",
-      "name": "component_coefficient_evidence",
-      "type": "c",
-      "definition": "CHECK ((((coefficient IS NOT NULL) AND (coefficient > (0)::numeric)) OR ((legacy_source_row_id IS NOT NULL) AND ((coefficient IS NULL) OR (coefficient >= (0)::numeric)))))"
     },
     {
       "schema": "escen",

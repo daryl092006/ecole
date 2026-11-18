@@ -203,17 +203,17 @@ export async function verifyCurriculumCatalog(db, check) {
     assert.equal(Number(unit.credits), 3.5);
     assert.equal(unit.reason, 'Création de l’unité');
   });
-  await check('Catalogue / curriculum_components : création persistée avec coefficient décimal', async () => {
-    const saved = await save('curriculum_components', { curriculum_id: curriculum.id, unit_id: unit.id, subject_id: subject.id, code: 'EC1', credits: 3.5, coefficient: 0.5 }, { reason: 'Création de la matière' });
+  await check('Catalogue / curriculum_components : création persistée sans coefficient distinct', async () => {
+    const saved = await save('curriculum_components', { curriculum_id: curriculum.id, unit_id: unit.id, subject_id: subject.id, code: 'EC1', credits: 3.5 }, { reason: 'Création de la matière' });
     component = await row('curriculum_components', saved.id);
-    assert.equal(Number(component.coefficient), 0.5);
+    assert.equal('coefficient' in component, false);
     assert.equal(Number(component.credits), 3.5);
     assert.equal(component.reason, 'Création de la matière');
   });
   const changes = [
     ['curriculum_semesters', () => semester, { curriculum_id: curriculum.id, position: 1, name: 'Semestre modifié', target_credits: 3.75 }],
     ['teaching_units', () => unit, { curriculum_id: curriculum.id, semester_id: semester.id, code: 'UE1', name: 'Unité modifiée', credits: 3.75 }],
-    ['curriculum_components', () => component, { curriculum_id: curriculum.id, unit_id: unit.id, subject_id: subject.id, code: 'EC1', credits: 3.75, coefficient: 0.625 }],
+    ['curriculum_components', () => component, { curriculum_id: curriculum.id, unit_id: unit.id, subject_id: subject.id, code: 'EC1', credits: 3.75 }],
   ];
   for (const [table, entity, values] of changes) {
     await check(`Catalogue / ${table} : modification décimale, auteur et avant/après conservés`, async () => {
@@ -221,7 +221,6 @@ export async function verifyCurriculumCatalog(db, check) {
       const saved = await row(table, entity().id);
       const credits = table === 'curriculum_semesters' ? 'target_credits' : 'credits';
       assert.equal(Number(saved[credits]), 3.75);
-      if (table === 'curriculum_components') assert.equal(Number(saved.coefficient), 0.625);
       const events = await audit(table, saved.id);
       assert.equal(events.length, 2);
       assert.equal(events[0].action, 'INSERT');
@@ -256,7 +255,7 @@ export async function verifyCurriculumCatalog(db, check) {
     await assert.rejects(db.query('update escen.curriculum_semesters set archived_at=now(),reason=$1 where id=$2', [' ', empty.id]), /semester_archive_reason/);
     await assert.rejects(save('teaching_units', { curriculum_id: curriculum.id, semester_id: semester.id, code: 'REFUSE', name: 'Refusée', credits: 1 }), /introuvable ou archivé/i);
     await assert.rejects(insert('teaching_units', { curriculum_id: curriculum.id, semester_id: semester.id, code: 'REFUSE', name: 'Refusée', credits: 1 }), /semestre archivé/i);
-    await assert.rejects(insert('curriculum_components', { curriculum_id: curriculum.id, unit_id: unit.id, subject_id: subject.id, code: 'REFUSE', credits: 1, coefficient: 1 }), /unité.*archivée/i);
+    await assert.rejects(insert('curriculum_components', { curriculum_id: curriculum.id, unit_id: unit.id, subject_id: subject.id, code: 'REFUSE', credits: 1 }), /unité.*archivée/i);
     for (const table of ['teaching_units', 'curriculum_components']) {
       await assert.rejects(db.query(`update escen.${table} set reason=$1 where id=$2`, [' ', table === 'teaching_units' ? unit.id : component.id]), /archive_reason/);
     }
@@ -265,11 +264,11 @@ export async function verifyCurriculumCatalog(db, check) {
   const budgets = await draft();
   const activeSemester = await insert('curriculum_semesters', { curriculum_id: budgets.id, position: 1, name: 'Actif', target_credits: 6.25 });
   const activeUnit = await insert('teaching_units', { curriculum_id: budgets.id, semester_id: activeSemester.id, code: 'ACTIF', name: 'Active', credits: 6.25 });
-  const activeComponent = await insert('curriculum_components', { curriculum_id: budgets.id, unit_id: activeUnit.id, subject_id: subject.id, code: 'ACTIF', credits: 6.25, coefficient: 0.625 });
+  const activeComponent = await insert('curriculum_components', { curriculum_id: budgets.id, unit_id: activeUnit.id, subject_id: subject.id, code: 'ACTIF', credits: 6.25 });
   const archived = { archived_at: new Date().toISOString(), reason: 'Archive ignorée dans les budgets' };
   await insert('curriculum_semesters', { curriculum_id: budgets.id, position: 2, name: 'Archivé sans UE', target_credits: 99.99, ...archived });
   const archivedUnit = await insert('teaching_units', { curriculum_id: budgets.id, semester_id: activeSemester.id, code: 'ARCHIVE', name: 'Archivée sans matière', credits: 99.99, ...archived });
-  const archivedComponent = await insert('curriculum_components', { curriculum_id: budgets.id, unit_id: activeUnit.id, subject_id: subject.id, code: 'ARCHIVE', credits: 99.99, coefficient: 1, ...archived });
+  const archivedComponent = await insert('curriculum_components', { curriculum_id: budgets.id, unit_id: activeUnit.id, subject_id: subject.id, code: 'ARCHIVE', credits: 99.99, ...archived });
   await insert('assessment_weights', { curriculum_id: budgets.id, component_id: archivedComponent.id, evaluation_kind: 'DEVOIR', percent: 10 });
   await insert('assessment_weights', { curriculum_id: budgets.id, component_id: activeComponent.id, evaluation_kind: 'DEVOIR', percent: 60 });
   const approve = id => db.query("update escen.curricula set status='APPROVED',approved_by=$1,approved_at=now() where id=$2", [actor.id, id]);
@@ -306,7 +305,7 @@ export async function verifyCurriculumCatalog(db, check) {
     const year = await insert('academic_years', { code: `RESAO-${suffix}`, name: '2041-2042', starts_on: '2041-09-01', ends_on: '2042-07-01', status: 'BROUILLON' });
     const create = async (code, revisionNumber = null) => writeCatalog(new Request('http://local.test/api/catalog/subjects', {
       method: 'POST', headers: { 'Content-Type': 'application/json', 'x-escen-year': year.id },
-      body: JSON.stringify({ revision: revisionNumber ?? await revision(), reason: 'Création matière avec code REESAO', values: { name: 'Finance digitale', code, academic_year_id: year.id, resao: { discipline: 'ECN', semester_id: semester.id, credits: 3.75, coefficient: 0.625 } } }),
+      body: JSON.stringify({ revision: revisionNumber ?? await revision(), reason: 'Création matière avec code REESAO', values: { name: 'Finance digitale', code, academic_year_id: year.id, resao: { discipline: 'ECN', semester_id: semester.id, credits: 3.75 } } }),
     }), 'subjects');
     const before = await revision();
     await assert.rejects(create('FAUX'), error => error.status === 400);
@@ -320,7 +319,7 @@ export async function verifyCurriculumCatalog(db, check) {
     assert.equal(subject.code, 'ECN2101'); assert.equal(units.length, 1); assert.equal(components.length, 1);
     assert.equal(units[0].code, subject.code); assert.equal(components[0].code, subject.code);
     assert.equal(components[0].unit_id, units[0].id);
-    assert.equal(Number(components[0].coefficient), 0.625);
+    assert.equal('coefficient' in components[0], false);
     assert.equal(await revision(), before + 1);
     for (const [table, entity] of [['subjects', subject], ['teaching_units', units[0]], ['curriculum_components', components[0]]]) assert.equal((await audit(table, entity.id)).at(-1).actor_id, actor.id);
     await assert.rejects(create('ECN2102', before), error => error.status === 409);
@@ -328,7 +327,7 @@ export async function verifyCurriculumCatalog(db, check) {
     await assert.rejects(client.rpc('escen_backend_transaction', { p_actor_id: actor.id, p_expected_revision: await revision(), p_changes: [
       { table: 'subjects', operation: 'insert', record: { id: failedId, code: 'ECN2102', name: 'Rollback REESAO', academic_year_id: year.id } },
       { table: 'teaching_units', operation: 'insert', record: { id: unitId, curriculum_id: resaoCurriculum.id, semester_id: semester.id, code: 'ECN2102', name: 'Rollback REESAO', credits: 3.75 } },
-      { table: 'curriculum_components', operation: 'insert', record: { id: randomUUID(), subject_id: failedId, unit_id: unitId, curriculum_id: resaoCurriculum.id, code: 'ECN2102', credits: 3.75, coefficient: 0 } },
+      { table: 'curriculum_components', operation: 'insert', record: { id: randomUUID(), subject_id: failedId, unit_id: unitId, curriculum_id: resaoCurriculum.id, code: 'ECN2102', credits: -1 } },
     ] }).then(result => { if (result.error) throw new Error(result.error.message); }), /check|constraint/i);
     assert.equal(await row('subjects', failedId), undefined); assert.equal(await row('teaching_units', unitId), undefined);
     assert.equal((await audit('subjects', failedId)).length, 0); assert.equal(await revision(), before + 1);

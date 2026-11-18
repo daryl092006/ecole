@@ -44,7 +44,7 @@ for (const role of [ROLES.STUD, ROLES.DEL]) for (const width of [390, 1440]) tes
     { ...common, id: uuid(800), meetingUrl: joinUrl, recordingUrl: replayUrl },
     { ...common, id: uuid(801), subjectName: 'Cours sans lien', meetingUrl: null, recordingUrl: null },
   ] };
-  if (role === ROLES.DEL) directory.courses = [{ assignmentId: common.assignmentId, offeringId: common.offeringId, offeringLabel: 'Master 2 FD', groupId: common.groupId, groupName: common.groupName, componentId: common.componentId, subjectCode: 'FIN', subjectName: common.subjectName, semesterName: 'Semestre 1', credits: 3, coefficient: 1, teacherId: securityIds.teacher, teacherName: common.teacherName, teacherEmail: null, validFrom: '2026-01-01', validUntil: null, totalSessions: 2, onlineSessions: 2, resourcesCount: 0, recordingsCount: 1 }];
+  if (role === ROLES.DEL) directory.courses = [{ assignmentId: common.assignmentId, offeringId: common.offeringId, offeringLabel: 'Master 2 FD', groupId: common.groupId, groupName: common.groupName, componentId: common.componentId, subjectCode: 'FIN', subjectName: common.subjectName, semesterName: 'Semestre 1', credits: 3, teacherId: securityIds.teacher, teacherName: common.teacherName, teacherEmail: null, validFrom: '2026-01-01', validUntil: null, totalSessions: 2, onlineSessions: 2, resourcesCount: 0, recordingsCount: 1 }];
   await page.route('**/api/course-resources*', route => route.fulfill({ json: directory }));
   await page.route('**/api/course-resources?playbackSessionId=*', route => route.fulfill({ json: { url: 'https://video.example.test/temporary-replay.mp4', inline: true } }));
   await page.route('https://video.example.test/**', route => route.fulfill({ status: 200, contentType: 'video/mp4', body: '' }));

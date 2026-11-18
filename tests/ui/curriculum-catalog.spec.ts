@@ -22,7 +22,7 @@ async function prepare(page: Page, rejected = '') {
     curriculum_semesters: [{ id: ids.semester, curriculum_id: ids.curriculum, name: 'Semestre de référence', position: 1, target_credits: 30 }],
     teaching_units: [{ id: ids.unit, curriculum_id: ids.curriculum, semester_id: ids.semester, code: 'ECN2101', name: 'UE de référence', credits: 3.75 }],
     subjects: [{ id: ids.subject, name: 'Matière UI', code: 'ECN2101', academic_year_id: year.id }],
-    curriculum_components: [{ id: 'COMP', curriculum_id: ids.curriculum, unit_id: ids.unit, subject_id: ids.subject, code: 'ECN2101', credits: 3.75, coefficient: 0.625 }],
+    curriculum_components: [{ id: 'COMP', curriculum_id: ids.curriculum, unit_id: ids.unit, subject_id: ids.subject, code: 'ECN2101', credits: 3.75 }],
   };
   let revision = 1;
   let campusReads = 0;
@@ -45,7 +45,7 @@ async function prepare(page: Page, rejected = '') {
       tables[collection].push({ id: ids.created, ...body.values });
       if (collection === 'subjects') {
         tables.teaching_units.push({ id: 'NEW-UNIT', curriculum_id: ids.curriculum, semester_id: ids.semester, code: body.values.code, credits: body.values.resao.credits });
-        tables.curriculum_components.push({ id: 'NEW-COMP', curriculum_id: ids.curriculum, unit_id: 'NEW-UNIT', subject_id: ids.created, code: body.values.code, credits: body.values.resao.credits, coefficient: body.values.resao.coefficient });
+        tables.curriculum_components.push({ id: 'NEW-COMP', curriculum_id: ids.curriculum, unit_id: 'NEW-UNIT', subject_id: ids.created, code: body.values.code, credits: body.values.resao.credits });
       }
     } else {
       const id = new URL(request.url()).pathname.split('/').at(-1);
@@ -105,7 +105,7 @@ test('Semestre : modification des crédits avec récapitulatif avant envoi', asy
   await expect(page.getByRole('dialog')).toHaveCount(0);
 });
 
-test('Matière : crédits et coefficient décimaux transmis avec le code REESAO', async ({ page }) => {
+test('Matière : crédits décimaux transmis avec le code REESAO', async ({ page }) => {
   const fixture = await prepare(page);
   await page.getByRole('button', { name: 'Ajouter une matière', exact: true }).click();
   await page.getByLabel('Nom', { exact: true }).fill('Finance UI');
@@ -118,7 +118,7 @@ test('Matière : crédits et coefficient décimaux transmis avec le code REESAO'
   expect(fixture.writes).toHaveLength(0);
   await confirm(page);
   await expect(page.getByRole('region', { name: 'Matières du semestre' })).toContainText('Finance UI');
-  expect(fixture.writes[0]).toMatchObject({ collection: 'subjects', method: 'POST', values: { academic_year_id: year.id, code: 'FIU2101', resao: { semester_id: ids.semester, discipline: 'FIU', credits: 3.75, coefficient: 3.75 } } });
+  expect(fixture.writes[0]).toMatchObject({ collection: 'subjects', method: 'POST', values: { academic_year_id: year.id, code: 'FIU2101', resao: { semester_id: ids.semester, discipline: 'FIU', credits: 3.75 } } });
   await expect(page.getByRole('row').filter({ hasText: 'Finance UI' })).toContainText('3.75');
 });
 
@@ -131,7 +131,7 @@ test('Matière : modification conserve son rattachement et ses valeurs décimale
   await confirm(page);
   await expect(page.getByRole('region', { name: 'Matières du semestre' })).toContainText('Matière renommée');
   expect(fixture.writes[0]).toMatchObject({ collection: 'subjects', method: 'PATCH', values: { name: 'Matière renommée', code: 'ECN2101', academic_year_id: year.id } });
-  expect(fixture.tables.curriculum_components[0]).toMatchObject({ subject_id: ids.subject, unit_id: ids.unit, credits: 3.75, coefficient: 0.625 });
+  expect(fixture.tables.curriculum_components[0]).toMatchObject({ subject_id: ids.subject, unit_id: ids.unit, credits: 3.75 });
 });
 
 for (const sample of [

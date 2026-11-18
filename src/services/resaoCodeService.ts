@@ -3,7 +3,7 @@ import type { CrudField } from '@/data/crudCatalog';
 import type { PersistentChange, RelationalSnapshot } from '@/types/persistence';
 
 // One subject is one UE in the current ESCEN curriculum.
-// Credits also represent the subject's weight/coefficient, and the 3-letter REESAO
+// Credits represent the subject's weight, and the 3-letter REESAO
 // discipline prefix is derived automatically from the subject name when not supplied.
 export const resaoSubjectFields: CrudField[] = [
   { key: 'semester_id', label: 'Semestre du programme', type: 'reference', reference: 'curriculum_semesters', required: true },
@@ -90,7 +90,6 @@ export const resaoSubjectSchema = z.object({
   discipline: z.string().trim().toUpperCase().regex(/^[A-Z]{3}$/, 'Le sigle de discipline doit comporter exactement trois lettres.').optional(),
   semester_id: z.uuid(),
   credits: z.number().min(0.01).max(9999.99).multipleOf(0.01),
-  coefficient: z.number().min(0.001).max(99999.999).multipleOf(0.001).optional(),
 }).strict();
 
 export function resaoSubjectContext(snapshot: RelationalSnapshot, semesterId: string) {
@@ -165,7 +164,6 @@ export function generateResaoSubjectCode(snapshot: RelationalSnapshot, disciplin
 export function resaoSubjectChanges(snapshot: RelationalSnapshot, input: unknown, subject: Record<string, unknown>): PersistentChange[] {
   const values = resaoSubjectSchema.parse(input);
   const discipline = values.discipline || deriveResaoDiscipline(String(subject.name || ''));
-  const coefficient = values.coefficient ?? values.credits;
   const { semester, curriculum } = resaoSubjectContext(snapshot, values.semester_id);
   const offerings = (snapshot.tables.academic_offerings || []).filter(row => row.curriculum_id === curriculum.id && !row.archived_at);
   if (offerings.some(row => row.academic_year_id !== subject.academic_year_id)) throw new Error('Ce programme est déjà utilisé dans une autre année. Choisissez un programme propre à l’année consultée.');
@@ -178,6 +176,6 @@ export function resaoSubjectChanges(snapshot: RelationalSnapshot, input: unknown
   return [
     ...(existing ? [] : [{ table: 'subjects', operation: 'insert' as const, record: { ...subject, code } }]),
     { table: 'teaching_units', operation: 'insert', record: { id: unitId, curriculum_id: curriculum.id, semester_id: semester.id, code, name: subject.name, credits: values.credits, reason: subject.reason } },
-    { table: 'curriculum_components', operation: 'insert', record: { id: crypto.randomUUID(), curriculum_id: curriculum.id, unit_id: unitId, subject_id: subjectId, code, credits: values.credits, coefficient, reason: subject.reason } },
+    { table: 'curriculum_components', operation: 'insert', record: { id: crypto.randomUUID(), curriculum_id: curriculum.id, unit_id: unitId, subject_id: subjectId, code, credits: values.credits, reason: subject.reason } },
   ];
 }

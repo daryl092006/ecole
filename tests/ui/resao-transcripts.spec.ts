@@ -48,7 +48,7 @@ test('Création : code automatique, récapitulatif puis enregistrement avec le s
   await dialog.getByRole('button', { name: 'Confirmer l’enregistrement', exact: true }).click();
   await expect(dialog).toHaveCount(0);
   expect(writes).toHaveLength(1);
-  expect(writes[0].values).toMatchObject({ code: 'FID2101', name: 'Finance digitale', academic_year_id: year.id, resao: { discipline: 'FID', semester_id: semesterId, credits: 3.75, coefficient: 3.75 } });
+  expect(writes[0].values).toMatchObject({ code: 'FID2101', name: 'Finance digitale', academic_year_id: year.id, resao: { discipline: 'FID', semester_id: semesterId, credits: 3.75 } });
   await expect.poll(() => campusReads).toBeGreaterThan(readsBeforeSave);
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
 });
@@ -96,11 +96,16 @@ for (const count of [7, 20, 30]) test(`Le PDF avec ${count * 2} matières et des
 
 test('Impression connectée : un relevé incomplet reste bloqué sans inventer les résultats', async ({ page }) => {
   await authenticateFixture(page);
+  await page.route('**/api/student-documents', route => route.fulfill({ json: {
+    revision: 1, yearId: year.id, canUpload: false, canReview: false,
+    students: [{ id: 'S1', matricule: 'ESCEN-TEST-001', name: 'Alice Exemple' }],
+    enrollments: [], types: [], documents: [], reviews: [],
+  } }));
   await page.route('**/api/transcripts/*', route => route.fulfill({ status: 409, json: { error: 'Ce relevé ne contient pas les détails figés nécessaires à son impression.' } }));
   await page.route('**/api/campus', route => route.fulfill({ json: { ...snapshot, tables: { ...snapshot.tables, generated_documents: [{ id: 'DOC', student_id: 'S1', kind: 'RELEVE', decision_id: 'D', reference: 'REL-INCOMPLET', issued_at: '2026-09-09', content_snapshot: { average: 14 } }] } } }));
   await page.goto('/etudiants/cartes');
+  await page.getByRole('button', { name: 'Consulter les documents établis', exact: true }).click();
   await page.getByRole('button', { name: 'Consulter le dossier', exact: true }).click();
-  await page.getByRole('button', { name: 'Documents établis', exact: true }).click();
   await page.getByRole('row').filter({ hasText: 'REL-INCOMPLET' }).getByRole('button', { name: 'Ouvrir le détail', exact: true }).click();
   await page.getByRole('button', { name: 'Imprimer le relevé · A4, une page' }).click();
   await expect(page.getByRole('dialog').getByRole('alert')).toContainText('détails figés');
@@ -109,6 +114,11 @@ test('Impression connectée : un relevé incomplet reste bloqué sans inventer l
 
 test('Le bouton connecté prépare le relevé complet et déclenche son impression', async ({ page }) => {
   await authenticateFixture(page);
+  await page.route('**/api/student-documents', route => route.fulfill({ json: {
+    revision: 1, yearId: year.id, canUpload: false, canReview: false,
+    students: [{ id: 'S1', matricule: 'ESCEN-TEST-001', name: 'Alice Exemple' }],
+    enrollments: [], types: [], documents: [], reviews: [],
+  } }));
   let transcriptReads = 0;
   const freshDocument = { ...documentContent(7), issuedAt: '2027-11-03T23:30:00-04:00', student: { name: 'Identité du document serveur', matricule: 'DOSSIER-SERVEUR' }, city: 'Kara', director: 'Responsable enregistré', signatoryTitle: 'La Directrice Académique' };
   await page.route('**/api/transcripts/*', route => {
@@ -120,8 +130,8 @@ test('Le bouton connecté prépare le relevé complet et déclenche son impressi
   });
   await page.route('**/api/campus', route => route.fulfill({ json: { ...snapshot, tables: { ...snapshot.tables, generated_documents: [{ id: 'DOC', student_id: 'S1', kind: 'RELEVE', decision_id: 'D', reference: 'REL-RECETTE', issued_at: '2026-09-09', content_snapshot: documentContent(7) }] } } }));
   await page.goto('/etudiants/cartes');
+  await page.getByRole('button', { name: 'Consulter les documents établis', exact: true }).click();
   await page.getByRole('button', { name: 'Consulter le dossier', exact: true }).click();
-  await page.getByRole('button', { name: 'Documents établis', exact: true }).click();
   await page.getByRole('row').filter({ hasText: 'REL-RECETTE' }).getByRole('button', { name: 'Ouvrir le détail', exact: true }).click();
   await page.evaluate(() => {
     new MutationObserver(() => {

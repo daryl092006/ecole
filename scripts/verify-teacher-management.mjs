@@ -157,7 +157,7 @@ export async function verifyTeacherManagement(db, check, { year, site, level }) 
   const subject = await insert('subjects', { academic_year_id: year.id, code, name: 'Matière annuelle enseignants' });
   const semester = await insert('curriculum_semesters', { curriculum_id: curriculum.id, position: 1, name: 'Semestre', target_credits: 30 });
   const unit = await insert('teaching_units', { curriculum_id: curriculum.id, semester_id: semester.id, code, name: 'UE', credits: 30 });
-  const component = await insert('curriculum_components', { curriculum_id: curriculum.id, unit_id: unit.id, subject_id: subject.id, code, coefficient: 1, credits: 30 });
+  const component = await insert('curriculum_components', { curriculum_id: curriculum.id, unit_id: unit.id, subject_id: subject.id, code, credits: 30 });
   await insert('assessment_weights', { curriculum_id: curriculum.id, component_id: component.id, evaluation_kind: 'DEVOIR', percent: 100 });
   await db.query("update escen.curricula set status='APPROVED', approved_by=$1, approved_at=now() where id=$2", [actor.id, curriculum.id]);
   const offering = await insert('academic_offerings', { curriculum_id: curriculum.id, academic_year_id: year.id, level_id: level.id, site_id: site.id });

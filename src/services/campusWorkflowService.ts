@@ -44,7 +44,7 @@ export function classesFor(data: Dataset) {
   return data.assignments.flatMap(item => {
     const subject = data.subjects.find(subject => subject.id === item.subjectId); const teacher = data.teachers.find(teacher => teacher.id === item.teacherId);
     const group = data.groups.find(group => group.id === item.groupId); const semester = data.semesters.find(semester => semester.id === item.semesterId);
-    return subject && teacher && group && semester ? [{ id: item.id, code: subject.code, name: subject.name, filiere: group.filieres.join(', '), level: group.niveau, groupId: group.id, teacherId: teacher.id, coefficient: subject.coefficient, teacher: `${teacher.firstname} ${teacher.lastname}`, semester: semester.name }] : [];
+    return subject && teacher && group && semester ? [{ id: item.id, code: subject.code, name: subject.name, filiere: group.filieres.join(', '), level: group.niveau, groupId: group.id, teacherId: teacher.id, teacher: `${teacher.firstname} ${teacher.lastname}`, semester: semester.name }] : [];
   });
 }
 export function executeCampusWorkflow(source: Dataset, context: WorkflowContext, action: CampusAction, payload: unknown): { data: Dataset; audit: WorkflowAudit[] } {

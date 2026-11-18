@@ -32,7 +32,7 @@ export interface Program { id: string; code: string; name: string; description: 
 export interface Track { id: string; programId: string; code: string; name: string; active: boolean; history: CatalogHistoryEntry[]; }
 export interface Level { id: string; code: string; name: string; cycle: AcademicCycle; order: number; active: boolean; }
 export interface TeachingUnit { id: string; code: string; name: string; programId: string; academicYearId: string; semesterId: string; credits: number; active: boolean; }
-export interface Subject { id: string; code: string; name: string; coefficient: number; active: boolean; teachingUnitId?: string; academicYearId?: string; credits?: number; }
+export interface Subject { id: string; code: string; name: string; active: boolean; teachingUnitId?: string; academicYearId?: string; credits?: number; }
 export interface Teacher { id: string; employeeNumber: string; firstname: string; lastname: string; email: string; specialty: string; active: boolean; }
 
 export interface Group {
@@ -66,7 +66,6 @@ export interface ClassItem {
   level: string;
   groupId: string;
   teacherId: string;
-  coefficient: number;
   teacher: string;
   semester: string;
 }

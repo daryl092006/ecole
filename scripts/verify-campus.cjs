@@ -56,12 +56,13 @@ assert.doesNotThrow(() => run(abandoned, ROLES.IT, 'student.status', { studentId
 const semester = { id: 'SEM1', academicYearId: 'Y1', levelId: 'L1', name: 'Semestre 1', order: 1, startDate: year.startDate, endDate: '2027-01-31', active: true };
 const teacher = { id: 'T1', employeeNumber: 'ENS1', firstname: 'Enseignant', lastname: 'Test', email: '', specialty: '', active: true };
 const unit = { id: 'UE1', code: 'UE1', name: 'Fondamentaux', programId: 'P1', academicYearId: 'Y1', semesterId: 'SEM1', credits: 6, active: true };
-const subjects = ['A', 'B'].map((code, index) => ({ id: code, code, name: code, coefficient: index ? 1 : 2, credits: 3, academicYearId: 'Y1', teachingUnitId: 'UE1', active: true }));
+const subjects = ['A', 'B'].map(code => ({ id: code, code, name: code, credits: 3, academicYearId: 'Y1', teachingUnitId: 'UE1', active: true }));
 const assignments = subjects.map(subject => ({ id: 'ASS-' + subject.id, subjectId: subject.id, teacherId: 'T1', groupId: 'G1', semesterId: 'SEM1', academicYearId: 'Y1', active: true }));
 const evaluations = [['A', 'Devoir', 13], ['A', 'Examen', 16], ['B', 'Devoir', 8], ['B', 'Examen', 10]].map(([subject, type, value], index) => ({ id: 'EV' + index, classId: 'ASS-' + subject, name: type, type, date: '2026-11-01', status: 'PUBLIEES', history: [], grades: [{ matricule: 'S1', value }] }));
 const academic = { ...data, semesters: [semester], teachers: [teacher], units: [unit], subjects, assignments, evaluations, rooms: [{ code: 'R1', name: 'Salle 1', building: 'A', capacity: 1, status: 'Disponible' }] };
 const transcript = computeTranscript(academic, 'S1', 'SEM1', academic.settings[0]);
-assert.equal(transcript.average, 12.93); assert.equal(transcript.credits, 6); assert.equal(transcript.complete, true);
+assert.equal(transcript.average, 12); assert.equal(transcript.credits, 6); assert.equal(transcript.complete, true);
+assert.equal(computeTranscript({ ...academic, subjects: academic.subjects.map((subject, index) => ({ ...subject, credits: index ? 2 : 4 })) }, 'S1', 'SEM1', academic.settings[0]).average, 12.93);
 assert.equal(computeTranscript({ ...academic, evaluations: academic.evaluations.slice(0, -1) }, 'S1', 'SEM1', academic.settings[0]).complete, false);
 assert.equal(computeTranscript(academic, 'S1', 'SEM1', { ...academic.settings[0], eliminationMark: 10 }).credits, 0);
 assert.throws(() => run(academic, ROLES.LOG, 'jury.decide', { studentId: 'S1', semesterId: 'SEM1', decision: 'ADMIS', reason: 'PV de jury' }));

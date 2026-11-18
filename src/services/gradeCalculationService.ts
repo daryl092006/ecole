@@ -1,8 +1,8 @@
 /**
  * Règle de notation ESCEN :
  * - Deux types d'évaluations : Devoir et Examen
- * - Le Devoir compte pour 40% (coefficient 0.40)
- * - L'Examen compte pour 60% (coefficient 0.60)
+ * - Le Devoir compte pour 40%
+ * - L'Examen compte pour 60%
  * - Le devoir n'est pas obligatoire : s'il n'y a pas de devoir (uniquement l'examen), l'examen compte pour 100%.
  * - En cas de session de rattrapage, la note de rattrapage se substitue à la note d'examen si elle lui est supérieure.
  */

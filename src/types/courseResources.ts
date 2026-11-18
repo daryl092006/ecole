@@ -44,7 +44,6 @@ export interface CourseListEntry {
   subjectName: string;
   semesterName: string;
   credits: number;
-  coefficient: number;
   teacherId: string;
   teacherName: string;
   teacherEmail: string | null;

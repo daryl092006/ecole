@@ -798,7 +798,7 @@ function ReferenceCrudContent({
         }
         if (creatingResaoSubject) {
           values.code = resaoCode;
-          values.resao = { discipline: autoDiscipline, semester_id: form.semester_id, credits: Number(form.credits), coefficient: Number(form.credits) };
+          values.resao = { discipline: autoDiscipline, semester_id: form.semester_id, credits: Number(form.credits) };
         }
         if (collection === 'programs') {
           if (sourceRowId) delete values.level_ids;

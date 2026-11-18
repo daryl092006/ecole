@@ -46,7 +46,7 @@ export async function installResponsiveAudit(page: Page, account: AuditAccount, 
   Object.assign(tables.levels[0], { cycle_id: uuid(7900), code: 'L1', position: 1 });
   tables.curriculum_semesters.forEach(row => Object.assign(row, { name: 'Premier semestre', target_credits: 30 }));
   tables.teaching_units.forEach(row => Object.assign(row, { name: 'Méthodes quantitatives et systèmes', code: 'UE-ALGO', credits: 30 }));
-  tables.curriculum_components.forEach(row => Object.assign(row, { credits: 30, coefficient: 1 }));
+  tables.curriculum_components.forEach(row => Object.assign(row, { credits: 30, }));
   tables.subjects.forEach((row, index) => Object.assign(row, { code: `MAT-${index + 1}`, active: true }));
   tables.evaluations.forEach((row, index) => Object.assign(row, { name: ['Examen de conception des systèmes distribués', 'Contrôle continu d’analyse', 'Rattrapage d’analyse'][index % 3], kind: ['EXAMEN', 'DEVOIR', 'RATTRAPAGE'][index % 3], max_grade: 20 }));
   tables.communications = [{ id: uuid(7920), title: 'Organisation et calendrier des délibérations de fin de semestre', content: 'Consultez les horaires communiqués par la direction académique.', academic_year_id: id.year, published_at: '2026-10-01T08:00:00Z' }];

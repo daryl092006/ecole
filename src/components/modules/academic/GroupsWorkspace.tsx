@@ -300,7 +300,6 @@ export default function GroupsWorkspace() {
                       <th>Code</th>
                       <th>Matière</th>
                       <th>Enseignant affecté</th>
-                      <th>Coefficient</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -312,7 +311,6 @@ export default function GroupsWorkspace() {
                           <td><code>{sub?.code || '—'}</code></td>
                           <td><strong>{sub?.name || 'Matière'}</strong></td>
                           <td>{prof ? `${prof.firstname} ${prof.lastname}` : 'Non assigné'}</td>
-                          <td>{sub?.coefficient ?? 1}</td>
                         </tr>
                       );
                     })}

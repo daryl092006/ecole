@@ -13,11 +13,11 @@ export function createTeachingUnit(refs: AcademicReferencesState, input: Omit<Te
   if (refs.units.filter(item => item.semesterId === input.semesterId && item.programId === input.programId && item.active).reduce((sum, item) => sum + item.credits, 0) + input.credits > semesterBudget) throw new Error('Les crédits des UE dépassent le budget du semestre.');
   return { ...input, code: input.code.trim(), name: input.name.trim(), id: createMockId('UE'), active: true };
 }
-export function createAnnualSubject(refs: AcademicReferencesState, input: { code: string; name: string; coefficient: number; credits: number; teachingUnitId: string }, role: RoleName): Subject {
+export function createAnnualSubject(refs: AcademicReferencesState, input: { code: string; name: string; credits: number; teachingUnitId: string }, role: RoleName): Subject {
   if (!hasPermission(role, 'academic.structure.manage')) throw new Error('Gestion de la structure non autorisée.');
   const unit = refs.units.find(item => item.id === input.teachingUnitId && item.active);
   if (unit && refs.academicYears.some(item => item.id === unit.academicYearId && ['EN_CLOTURE', 'CLOTUREE'].includes(item.status))) throw new Error('L’année est protégée contre l’ajout de matières.');
-  if (!unit || !input.code.trim() || !input.name.trim() || !Number.isFinite(input.coefficient) || input.coefficient <= 0 || !Number.isSafeInteger(input.credits) || input.credits <= 0) throw new Error('UE active, nom, code, coefficient et crédits positifs obligatoires.');
+  if (!unit || !input.code.trim() || !input.name.trim() || !Number.isSafeInteger(input.credits) || input.credits <= 0) throw new Error('UE active, nom, code et crédits positifs obligatoires.');
   if (refs.subjects.some(item => item.academicYearId === unit.academicYearId && item.code.toLowerCase() === input.code.trim().toLowerCase())) throw new Error('Code matière déjà utilisé pour cette année.');
   const usedCredits = refs.subjects.filter(item => item.teachingUnitId === unit.id && item.active).reduce((sum, item) => sum + (item.credits ?? 0), 0);
   if (usedCredits + input.credits > unit.credits) throw new Error('Les crédits des matières dépassent les crédits de l’UE.');

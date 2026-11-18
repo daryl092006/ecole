@@ -11,7 +11,7 @@ for (const width of [390, 1440]) test(`Programmes guidés sans sélection d’UE
   campus.tables.curriculum_semesters = [{ id: 'SEM', curriculum_id: 'CUR', name: 'Semestre 1', position: 1 }];
   campus.tables.teaching_units = [{ id: 'UNIT', curriculum_id: 'CUR', semester_id: 'SEM' }];
   campus.tables.subjects = [{ id: 'SUBJECT', name: 'Introduction à la finance', code: 'FIN1101' }];
-  campus.tables.curriculum_components = [{ id: 'COMP', curriculum_id: 'CUR', unit_id: 'UNIT', subject_id: 'SUBJECT', credits: 3, coefficient: 1 }];
+  campus.tables.curriculum_components = [{ id: 'COMP', curriculum_id: 'CUR', unit_id: 'UNIT', subject_id: 'SUBJECT', credits: 3 }];
   await page.route('**/api/campus', route => route.fulfill({ json: campus }));
   await page.goto('/academique/filieres');
   await expect(page.getByRole('region', { name: 'Matières du semestre' })).toHaveCount(0);

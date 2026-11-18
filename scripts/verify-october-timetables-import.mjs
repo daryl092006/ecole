@@ -221,7 +221,6 @@ for (const course of data) {
         unit_id: unit.id,
         subject_id: subject.id,
         code: course.subject.slice(0, 10).toUpperCase().replace(/[^A-Z0-9]/g, ''),
-        coefficient: 1,
         credits: 3,
         reason: 'Composant matière de maquette pour planning',
       });

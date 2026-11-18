@@ -112,7 +112,6 @@ function buildDirectory(
       subjectId: String(c.subject_id || ''),
       unitId: String(c.unit_id || ''),
       credits: Number(c.credits || 0),
-      coefficient: Number(c.coefficient || 1),
     },
   ]));
   const unitsMap = new Map(allRows('teaching_units').map(u => [String(u.id), String(u.semester_id || '')]));
@@ -209,7 +208,6 @@ function buildDirectory(
         subjectName: subj?.name || 'Matière',
         semesterName,
         credits: comp?.credits ?? 0,
-        coefficient: comp?.coefficient ?? 1,
         teacherId: String(a.teacher_id),
         teacherName: tInfo.name,
         teacherEmail: tInfo.email,

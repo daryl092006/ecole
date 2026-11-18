@@ -6,13 +6,12 @@ const uuid = '00000000-0000-4000-8000-000000000035';
 const samples = [
   { collection: 'curriculum_semesters', values: { curriculum_id: uuid, name: 'Semestre', position: 1, target_credits: 3.75 }, field: 'target_credits', min: 0.01, max: 9999.99, step: 0.01 },
   { collection: 'teaching_units', values: { curriculum_id: uuid, semester_id: uuid, code: 'UE', name: 'Unité', credits: 3.75 }, field: 'credits', min: 0.01, max: 9999.99, step: 0.01 },
-  { collection: 'curriculum_components', values: { curriculum_id: uuid, unit_id: uuid, subject_id: uuid, code: 'EC', coefficient: 0.625, credits: 3.75 }, field: 'credits', min: 0, max: 9999.99, step: 0.01 },
-  { collection: 'curriculum_components', values: { curriculum_id: uuid, unit_id: uuid, subject_id: uuid, code: 'EC', coefficient: 0.625, credits: 3.75 }, field: 'coefficient', min: 0.001, max: 99999.999, step: 0.001 },
+  { collection: 'curriculum_components', values: { curriculum_id: uuid, unit_id: uuid, subject_id: uuid, code: 'EC', credits: 3.75 }, field: 'credits', min: 0, max: 9999.99, step: 0.01 },
 ];
 for (const { collection, values, field, min, max, step } of samples) {
   const spec = catalogSpec(collection).fields.find(item => item.key === field)!;
   assert.deepEqual({ min: spec.min, max: spec.max, step: spec.step }, { min, max, step });
-  for (const value of [min, max, step === 0.001 ? 0.625 : 1.1, step === 0.001 ? 1.001 : 1.01]) {
+  for (const value of [min, max, 1.1, 1.01]) {
     assert.equal(parseCatalogRecord(collection, { ...values, [field]: value })[field], value);
   }
   for (const value of [min - step, max + step, step / 2, NaN, Infinity]) {
@@ -56,7 +55,7 @@ assert.equal(restored.length, 1);
 assert.equal(restored[0].operation, 'insert');
 assert.equal(restored[0].record.version, 2);
 assert.equal(restored[0].record.level_id, 'L2');
-console.log('Catalogue : crédits au centième, coefficients au millième, bornes SQL et positions entières vérifiés.');
+console.log('Catalogue : crédits au centième, bornes SQL et positions entières vérifiés.');
 
 const feeIds = [1, 2, 3, 4].map(value => `00000000-0000-4000-8000-${String(value).padStart(12, '0')}`);
 const feeSnapshot: RelationalSnapshot = { revision: 1, tables: {
@@ -114,3 +113,5 @@ assert.deepEqual(dismissPaymentChannelProposal({ ...removalSnapshot, tables: { .
 assert.throws(() => dismissPaymentChannelProposal({ ...removalSnapshot, tables: { ...removalSnapshot.tables, annual_payment_channels: [...removalSnapshot.tables.annual_payment_channels, { ...removedChannel, archived_at: null }] } }, 'SOURCE', 'NEW', 'Déjà actif'), /déjà enregistré/);
 assert.throws(() => dismissPaymentChannelProposal(removalSnapshot, 'SOURCE', 'OLD', 'Même année'));
 assert.throws(() => dismissPaymentChannelProposal(removalSnapshot, 'ABSENT', 'NEW', 'Source absente'));
+
+assert.throws(() => parseCatalogRecord('curriculum_components', { ...samples[2].values, coefficient: 1 }));

@@ -14,7 +14,7 @@ const revision = () => value('select revision as value from escen_private.portal
 const audits = () => value('select count(*)::int as value from escen_private.audit_events');
 try {
   const legacySite = await insert('sites', { code: 'BEFORE-SHARED', name: 'Recette avant proposition' });
-  await verifyScheduleManagement(db, check, { site: legacySite, year, level, verifyExams: false });
+  await verifyScheduleManagement(db, check, { site: legacySite, year, level, verifyExams: false, legacySchema: true });
   const beforeSessions = (await db.query('select * from escen.sessions order by id')).rows;
   const oldSession = beforeSessions.find(row => row.status === 'PLANIFIE');
   const oldPerson = await insert('people', { firstname: 'Présence', lastname: 'Historique' });
@@ -41,7 +41,7 @@ try {
     assert.equal(await value("select has_function_privilege('service_role','public.escen_shared_course_create(uuid,text,bigint,uuid,uuid[],uuid,timestamptz,timestamptz,text)','EXECUTE') as value"), true);
   });
   const site = await insert('sites', { code: 'SHARED', name: 'Site recette cours communs' });
-  await verifyScheduleManagement(db, check, { site, year, level, verifyExams: false });
+  await verifyScheduleManagement(db, check, { site, year, level, verifyExams: false, legacySchema: true });
   const anchor = (await db.query('select a.* from escen.teaching_assignments a join escen.academic_offerings o on o.id=a.offering_id where o.site_id=$1 limit 1', [site.id])).rows[0];
   const room = (await db.query('select * from escen.rooms where site_id=$1 limit 1', [site.id])).rows[0];
   const subject = await value('select subject_id as value from escen.curriculum_components where id=$1', [anchor.component_id]);
@@ -50,6 +50,7 @@ try {
   const curriculum = await insert('curricula', { program_id: program.id, level_id: level.id, version: 1 });
   const semester = await insert('curriculum_semesters', { curriculum_id: curriculum.id, position: 1, name: 'Semestre commun', target_credits: 30 });
   const unit = await insert('teaching_units', { curriculum_id: curriculum.id, semester_id: semester.id, code: 'SHARED', name: 'UE commune', credits: 30 });
+  // This regression deliberately tests the historical schema at migration 087.
   const component = await insert('curriculum_components', { curriculum_id: curriculum.id, unit_id: unit.id, subject_id: subject, code: 'SHARED', coefficient: 1, credits: 30 });
   await insert('assessment_weights', { curriculum_id: curriculum.id, component_id: component.id, evaluation_kind: 'DEVOIR', percent: 100 });
   await db.query("update escen.curricula set status='APPROVED', approved_by=$1, approved_at=now() where id=$2", [account.id, curriculum.id]);

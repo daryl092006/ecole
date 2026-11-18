@@ -18,15 +18,15 @@ export function computeTranscript(data: Dataset, studentId: string, semesterId: 
     const continuous = [...values('Devoir'), ...values('Projet'), ...values('TP')]; const exam = values('Examen'); const resit = values('Rattrapage');
     let average: number | null = continuous.length && exam.length ? mean(continuous) * (1 - rules.examWeight / 100) + mean(exam) * rules.examWeight / 100 : null;
     if (resit.length && average != null) average = Math.max(average, mean(resit));
-    return { subjectId: subject.id, code: subject.code, name: subject.name, unitId: subject.teachingUnitId || '', credits: subject.credits || 0, coefficient: subject.coefficient, average: average == null ? null : Math.round(average * 100) / 100, validated: false };
+    return { subjectId: subject.id, code: subject.code, name: subject.name, unitId: subject.teachingUnitId || '', credits: subject.credits || 0, average: average == null ? null : Math.round(average * 100) / 100, validated: false };
   });
   const complete = rows.length > 0 && rows.every(row => row.average !== null);
-  const denominator = rows.reduce((sum, row) => sum + row.coefficient, 0);
-  const average = denominator ? rows.reduce((sum, row) => sum + (row.average || 0) * row.coefficient, 0) / denominator : 0;
+  const denominator = rows.reduce((sum, row) => sum + row.credits, 0);
+  const average = denominator ? rows.reduce((sum, row) => sum + (row.average || 0) * row.credits, 0) / denominator : 0;
   const unitResults = units.map(unit => {
     const members = rows.filter(row => row.unitId === unit.id);
-    const sum = members.reduce((total, row) => total + row.coefficient, 0);
-    const mean = sum ? members.reduce((total, row) => total + (row.average || 0) * row.coefficient, 0) / sum : 0;
+    const sum = members.reduce((total, row) => total + row.credits, 0);
+    const mean = sum ? members.reduce((total, row) => total + (row.average || 0) * row.credits, 0) / sum : 0;
     const filled = members.length > 0 && members.every(row => row.average != null) && members.reduce((total, row) => total + row.credits, 0) === unit.credits;
     const noElimination = members.every(row => row.average !== null && row.average >= rules.eliminationMark);
     return { unitId: unit.id, credits: unit.credits, validated: filled && noElimination && (mean >= rules.passMark || (rules.compensation && complete && average >= rules.passMark)) };

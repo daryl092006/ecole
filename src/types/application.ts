@@ -22,7 +22,7 @@ export interface JuryDecision {
   decision: 'ADMIS' | 'RATTRAPAGE' | 'AJOURNE'; reason: string; date: string;
   actor: string; rules: InstitutionSettings; rows: TranscriptRow[];
 }
-export interface TranscriptRow { subjectId: string; code: string; name: string; unitId: string; credits: number; coefficient: number; average: number | null; validated: boolean; }
+export interface TranscriptRow { subjectId: string; code: string; name: string; unitId: string; credits: number; average: number | null; validated: boolean; }
 export interface Exam {
   id: string; assignmentId: string; roomCode: string; date: string; startTime: string; endTime: string;
   mode?: 'PAPIER' | 'EN_LIGNE'; evaluationId?: string;
