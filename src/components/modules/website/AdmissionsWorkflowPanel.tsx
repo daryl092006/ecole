@@ -1,7 +1,7 @@
 'use client';
 import { useCallback, useEffect, useState } from 'react';
 import Link from 'next/link';
-import { CircleCheck, Download, FileText, Folder, Globe, GraduationCap, Info, Landmark, Mail, MapPin, Pencil, Phone, TriangleAlert, UserRound } from 'lucide-react';
+import { ArrowRight, ClipboardCheck, Files, Plus, RefreshCw, Search, CircleCheck, Download, FileText, Folder, Globe, GraduationCap, Info, Landmark, Mail, MapPin, Pencil, Phone, TriangleAlert, UserRound } from 'lucide-react';
 import { usePortal } from '@/hooks/usePortal';
 import EnrollmentDialog from '../EnrollmentDialog';
 import { admissionsOperation, downloadAdmissionLetter, downloadAdmissionDocument, admissionDocumentBlob, RemoteRequestError } from '@/services/remoteCampusService';
@@ -173,35 +173,49 @@ export default function AdmissionsWorkflowPanel() {
     downloadCsv('etude-des-dossiers-candidatures.csv', headers, rows);
   }
 
-  return <div className="domain-workspace workspace-stack">
+  return <div className="domain-workspace workspace-stack admissions-dashboard">
     <PageHeader
       eyebrow="SITE WEB & ADMISSIONS"
       title="Candidatures"
-      description="Gestion centralisée, examen des pièces et validation des candidatures entrantes."
+      description="Chaque candidature, du premier contact à l’admission."
     >
-      {data.capabilities.review && year && <button type="button" className="btn btn-primary" onClick={() => { setError(''); setCreateToken(newToken()); }}>Saisir une candidature</button>}
+      {data.capabilities.review && year && <button type="button" className="btn btn-primary" onClick={() => { setError(''); setCreateToken(newToken()); }}><Plus size={17} aria-hidden="true" />Saisir une candidature</button>}
       <button type="button" className="btn btn-outline" disabled={!listed.length} onClick={exportExcel}>
         <Download size={16} aria-hidden="true" />
         Exporter Excel
       </button>
-      <button type="button" className="btn btn-outline" disabled={busy} onClick={() => { void refresh().catch(error => setError(error.message)); }}>Actualiser</button>
+      <button type="button" className="btn btn-outline" disabled={busy} onClick={() => { void refresh().catch(error => setError(error.message)); }}><RefreshCw size={16} aria-hidden="true" />Actualiser</button>
     </PageHeader>
     {error && !selected && !createToken && <p role="alert" className="restricted-box">{error}</p>}{success && <p role="status" className="success-message">{success}</p>}
     {!data.mail_configured && (
       <p className="restricted-box" role="status">Les mails sont conservés dans la file d’envoi. Le service d’envoi doit être configuré pour les transmettre.</p>
     )}
-    <DataPanel title="Dossiers de candidature" meta={<span className="pill pill-default">{listed.length} dossier(s)</span>}
+    <section className="admissions-overview" aria-label="Vue d’ensemble des candidatures">
+      <div className="admissions-overview-card admissions-overview-total">
+        <span className="admissions-overview-icon"><Files size={21} aria-hidden="true" /></span>
+        <div><span className="admissions-overview-label">Dossiers de candidature</span><strong>{data.applications.length.toLocaleString('fr-FR')}</strong><span className="admissions-overview-caption">Dans la période consultée</span></div>
+      </div>
+      <div className="admissions-overview-card">
+        <span className="admissions-overview-icon"><ClipboardCheck size={21} aria-hidden="true" /></span>
+        <div><span className="admissions-overview-label">Actions disponibles</span><strong>{data.applications.filter(canProgress).length.toLocaleString('fr-FR')}</strong><span className="admissions-overview-caption">Dossiers que vous pouvez faire avancer</span></div>
+      </div>
+      <div className="admissions-overview-card admissions-overview-corrections">
+        <span className="admissions-overview-icon"><Pencil size={21} aria-hidden="true" /></span>
+        <div><span className="admissions-overview-label">À compléter ou corriger</span><strong>{data.applications.filter(item => getApplicationMacroStage(item) === 'CORRIGER').length.toLocaleString('fr-FR')}</strong><span className="admissions-overview-caption">Informations ou pièces à régulariser</span></div>
+      </div>
+    </section>
+    <DataPanel title="Tous les dossiers" description="Retrouvez un candidat et ouvrez son dossier pour consulter les pièces ou poursuivre son parcours." meta={<span className="pill pill-default">{listed.length} dossier(s)</span>}
       footer={`${listed.length} dossier(s) affiché(s) sur ${data.applications.length}`}
-      toolbar={<><div className="panel-filter-grid">
+      toolbar={<><div className="panel-filter-grid admissions-search-filters">
         <label className="form-group">
           Rechercher un candidat
-          <input
+          <span className="admissions-search-input"><Search size={18} aria-hidden="true" /><input
             className="input"
             type="search"
             placeholder="Rechercher par nom, email, référence..."
             value={search}
             onChange={event => setSearch(event.target.value)}
-          />
+          /></span>
         </label>
         <label className="form-group">
           Filières
@@ -239,7 +253,7 @@ export default function AdmissionsWorkflowPanel() {
       </div></>}>
       {listed.length ? (
         <div className="table-wrap">
-          <ResponsiveTable className="data-table">
+          <ResponsiveTable className="data-table admissions-candidate-table">
             <thead>
               <tr>
                 <th>Candidat</th>
@@ -270,6 +284,7 @@ export default function AdmissionsWorkflowPanel() {
                     </td>
                     <td>
                       <code className="dossier-ref-badge">{item.reference}</code>
+                      <span className="admissions-entry-channel">{item.entry_channel === 'ACCUEIL' ? <Landmark size={12} aria-hidden="true" /> : <Globe size={12} aria-hidden="true" />}{item.entry_channel === 'ACCUEIL' ? 'Accueil ESCEN' : 'Site web'}</span>
                     </td>
                     <td>{info.program}</td>
                     <td>{info.level}</td>
@@ -282,10 +297,10 @@ export default function AdmissionsWorkflowPanel() {
                       <button
                         type="button"
                         aria-label="Ouvrir le dossier"
-                        className="btn btn-sm btn-outline"
+                        className="btn btn-sm btn-outline admissions-open-dossier"
                         onClick={() => { setSelected(item); setAction(''); setError(''); setSuccess(''); }}
                       >
-                        Ouvrir
+                        Ouvrir <ArrowRight size={15} aria-hidden="true" />
                       </button>
                     </td>
                   </tr>
@@ -295,7 +310,8 @@ export default function AdmissionsWorkflowPanel() {
           </ResponsiveTable>
         </div>
       ) : (
-        <div className="empty-state">
+        <div className="empty-state admissions-empty-state">
+          <span className="admissions-overview-icon"><Search size={24} aria-hidden="true" /></span>
           <strong>Aucune candidature pour ce filtre</strong>
           <span>Les demandes en ligne et saisies à ESCEN suivent le même circuit.</span>
         </div>

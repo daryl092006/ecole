@@ -187,24 +187,23 @@ for (const width of [390,1440]) {
     await expect(page.getByRole('heading',{name:'Votre candidature est reçue'})).toBeVisible();expect(writes).toBe(1);
     expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true);
   });
-  test(`Vérification et transmission distinctes à ${width}px`,async({page})=>{
+  test(`Vérification et transmission confirmée à ${width}px`,async({page})=>{
     await page.setViewportSize({width,height:950});const f=await fixture(page,'VERIFICATION_ADMISSION');await page.goto('/site-web/demandes');
-    await page.getByRole('button',{name:'Ouvrir le dossier',exact:true}).click();await page.getByRole('button',{name:'Valider la complétude',exact:true}).click();
-    await page.getByRole('checkbox',{name:'Informations personnelles vérifiées',exact:true}).check();await page.getByRole('checkbox',{name:'Parents ou tuteurs vérifiés',exact:true}).check();
-    await page.getByRole('checkbox',{name:'Pièce vérifiée : diplome.pdf',exact:true}).check();
-    
+    await page.getByRole('button',{name:'Ouvrir le dossier',exact:true}).click();
+    await page.getByRole('button',{name:'Valider et passer à l’académie',exact:true}).click();
     await page.getByRole('button',{name:'Relire avant de confirmer',exact:true}).click();expect(f.commands).toHaveLength(0);
-    await page.getByRole('button',{name:'Confirmer : valider la complétude',exact:true}).click();
-    await expect(page.getByRole('button',{name:'Passer à l’académie',exact:true})).toBeVisible();expect(f.commands[0]).toMatchObject({action:'complete',checked_documents:[docId]});
+    await page.getByRole('button',{name:'Confirmer : valider et passer à l’académie',exact:true}).click();
+    await expect(page.locator('.dossier-owner-tag').getByText('Direction académique',{exact:true})).toBeVisible();
+    expect(f.commands).toHaveLength(1);expect(f.commands[0]).toMatchObject({action:'transmit',id,version:1});
   });
   test(`Admission officielle après confirmation financière à ${width}px`,async({page})=>{
     await page.setViewportSize({width,height:950});const f=await fixture(page,'ADMISSIBLE');await page.goto('/site-web/demandes');
     await page.getByRole('button',{name:'Ouvrir le dossier',exact:true}).click();await expect(page.getByRole('button',{name:'Créer ou relier le dossier étudiant',exact:true})).toHaveCount(0);
-    await page.getByRole('button',{name:'Confirmer les frais d’inscription',exact:true}).click();await page.getByRole('combobox',{name:'Moyen de paiement',exact:true}).selectOption(channel);
+    await page.getByRole('button',{name:'Confirmer le paiement des frais d’inscription',exact:true}).click();await page.getByRole('combobox',{name:'Moyen de paiement',exact:true}).selectOption(channel);
     await page.getByLabel('Référence du règlement ou reçu',{exact:true}).fill('RECU-LOCAL-001');
     
     await page.getByRole('button',{name:'Relire avant de confirmer',exact:true}).click();expect(f.commands).toHaveLength(0);
-    await page.getByRole('button',{name:'Confirmer : confirmer les frais d’inscription',exact:true}).click();
+    await page.getByRole('button',{name:'Confirmer : confirmer le paiement des frais d’inscription',exact:true}).click();
     await expect(page.getByRole('button',{name:'Créer ou relier le dossier étudiant',exact:true})).toBeVisible();expect(f.commands[0]).toMatchObject({action:'confirm_payment',amount:50000,channel_id:channel});
   });
   test(`Espace candidat et renvoi des compléments à ${width}px`,async({page})=>{
@@ -235,11 +234,11 @@ for (const width of [390, 1440]) {
     await page.goto('/site-web/demandes');
     await page.getByRole('button', { name: 'Ouvrir le dossier', exact: true }).click();
     await expect(page.locator('.dossier-owner-tag').getByText('Chargé de clientèle', { exact: true })).toBeVisible();
-    await page.getByRole('button', { name: 'Passer à l’académie', exact: true }).click();
+    await page.getByRole('button', { name: 'Valider et passer à l’académie', exact: true }).click();
     
     await page.getByRole('button', { name: 'Relire avant de confirmer', exact: true }).click();
     expect(f.commands).toHaveLength(0);
-    await page.getByRole('button', { name: 'Confirmer : passer à l’académie', exact: true }).click();
+    await page.getByRole('button', { name: 'Confirmer : valider et passer à l’académie', exact: true }).click();
     await expect(page.locator('.dossier-owner-tag').getByText('Direction académique', { exact: true })).toBeVisible();
     await expect(page.getByText('Ce dossier attend l’intervention du responsable indiqué ci-dessus', { exact: false })).toBeVisible();
     await expect(page.getByRole('button', { name: 'Commencer l’étude académique', exact: true })).toHaveCount(0);
@@ -252,9 +251,30 @@ for (const width of [390, 1440]) {
     await fixture(page, 'ETUDE_ACADEMIQUE', ROLES.DA);
     await page.goto('/site-web/demandes');
     await page.getByRole('button', { name: 'Ouvrir le dossier', exact: true }).click();
-    await expect(page.getByRole('button', { name: 'Déclarer admissible', exact: true })).toBeVisible();
+    await expect(page.getByRole('button', { name: 'Accepter (Déclarer admissible)', exact: true })).toBeVisible();
     await expect(page.getByRole('button', { name: 'Refuser la candidature', exact: true })).toBeVisible();
-    await expect(page.getByRole('button', { name: 'Confirmer les frais d’inscription', exact: true })).toHaveCount(0);
+    await expect(page.getByRole('button', { name: 'Confirmer le paiement des frais d’inscription', exact: true })).toHaveCount(0);
     await page.screenshot({ path: `tmp/screenshots/admissions-refonte/decision-${width}.png`, fullPage: true });
+  });
+}
+
+for (const width of [390, 1440]) {
+  test(`Annuaire candidatures : recherche et présentation à ${width}px`, async ({ page }) => {
+    await page.setViewportSize({ width, height: 1050 });
+    const { application } = await fixture(page, 'VERIFICATION_ADMISSION');
+    application.identity.nom = 'AMEGNON';
+    application.identity.prenom = 'Élodie';
+    await page.goto('/site-web/demandes');
+    await expect(page.getByRole('region', { name: 'Vue d’ensemble des candidatures' })).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'Tous les dossiers', exact: true })).toBeVisible();
+    await expect(page.getByRole('button', { name: 'Ouvrir le dossier', exact: true })).toBeVisible();
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
+    await page.screenshot({ path: `tmp/screenshots/responsive-audit/candidatures-refonte-${width}.png`, fullPage: true });
+    const search = page.getByRole('searchbox', { name: 'Rechercher un candidat' });
+    await search.fill('aucun-candidat-correspondant');
+    await expect(page.getByText('Aucune candidature pour ce filtre', { exact: true })).toBeVisible();
+    await page.getByRole('button', { name: 'Réinitialiser les filtres', exact: true }).click();
+    await page.getByRole('button', { name: 'Ouvrir le dossier', exact: true }).click();
+    await expect(page.getByRole('dialog')).toBeVisible();
   });
 }

@@ -22,6 +22,6 @@ for (const width of [390, 1440]) {
     await expect(page.getByRole('navigation', { name: 'Fil d’Ariane' }).getByText('Candidatures', { exact: true })).toHaveCount(1);
     if (width < 768) await page.getByRole('button', { name: /Ouvrir (la navigation|le menu)/ }).click();
     await expect(applications).toHaveAttribute('aria-current', 'page');
-    await expect(nav.getByRole('link', { name: 'Site web', exact: true })).toHaveAttribute('href', '/site-web/documents');
+    await expect(nav.getByRole('link', { name: 'Site web', exact: true })).toHaveAttribute('href', '/site-web/prospects');
   });
 }
