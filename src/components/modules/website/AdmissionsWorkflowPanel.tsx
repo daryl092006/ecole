@@ -268,14 +268,10 @@ export default function AdmissionsWorkflowPanel() {
               {listed.map(item => {
                 const info = getCandidateProgramAndLevel(item, data.intakes);
                 const badge = stageBadge(item);
-                const initials = `${item.identity.prenom?.[0] || ''}${item.identity.nom?.[0] || ''}`.toUpperCase() || 'C';
                 return (
                   <tr key={item.id}>
                     <td>
                       <div className="candidate-cell-flex">
-                        <div className="candidate-avatar-circle" aria-hidden="true">
-                          {initials}
-                        </div>
                         <div className="candidate-cell-info">
                           <strong>{item.identity.nom} {item.identity.prenom}</strong>
                           <div className="cell-sub candidate-cell-email" title={item.identity.email || ''}>{item.identity.email}</div>
@@ -321,9 +317,6 @@ export default function AdmissionsWorkflowPanel() {
     {selected && <WorkPage title={`Dossier ${selected.reference}`} busy={busy} onClose={() => { setSelected(null); setAction(''); }}><div className="workspace-stack">
       <div className="dossier-hero">
         <div className="dossier-hero-main">
-          <div className="dossier-avatar">
-            {selected.identity.prenom?.[0]?.toUpperCase() || ''}{selected.identity.nom?.[0]?.toUpperCase() || ''}
-          </div>
           <div className="dossier-hero-info">
             <div className="dossier-hero-title-row">
               <h2 className="dossier-hero-name">{selected.identity.prenom} {selected.identity.nom}</h2>

@@ -6001,7 +6001,6 @@ form > .drawer-form-actions,
 .admissions-dashboard .data-panel-content { padding: 0; }
 .admissions-dashboard .admissions-candidate-table th { padding: 14px 20px; background: var(--bg-card); color: var(--text-muted); font-size: .67rem; letter-spacing: .07em; text-transform: uppercase; font-weight: 600; }
 .admissions-dashboard .admissions-candidate-table td { padding: 19px 20px; font-size: .8rem; }
-.admissions-dashboard .candidate-avatar-circle { width: 40px; height: 40px; border-radius: 12px; background: #e9f3f4; color: #245769; font-size: .75rem; }
 .admissions-dashboard .candidate-cell-info strong { font-weight: 600; }
 .admissions-dashboard .candidate-cell-email { margin-top: 5px; font-size: .73rem; }
 .admissions-dashboard .dossier-ref-badge { padding: 0; border: 0; background: transparent; color: var(--text-secondary); font-size: .73rem; }
