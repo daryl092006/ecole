@@ -62,6 +62,11 @@
 }
 
 :root {
+  --workspace-gap: 24px;
+  --workspace-panel-radius: 14px;
+  --workspace-accent: #0d596b;
+  --workspace-accent-hover: #094555;
+  --workspace-primary-surface: #123c4a;
   --font-sans: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji';
   --font-display: var(--font-sans);
 
@@ -5251,7 +5256,7 @@ form > .drawer-form-actions,
 .card {
   padding: 1.15rem !important;
   border: 1px solid #e2e8f0 !important;
-  border-radius: 10px !important;
+  border-radius: var(--workspace-panel-radius) !important;
   box-shadow: 0 1px 2px rgba(15, 23, 42, 0.03) !important;
 }
 
@@ -5617,7 +5622,7 @@ form > .drawer-form-actions,
 .card {
   background: #ffffff !important;
   border: 1px solid #e2e8f0 !important;
-  border-radius: 10px !important;
+  border-radius: var(--workspace-panel-radius) !important;
   box-shadow: 0 1px 2px rgba(0, 0, 0, 0.03) !important;
   padding: 18px 22px !important;
   box-sizing: border-box !important;
@@ -5716,7 +5721,7 @@ form > .drawer-form-actions,
   padding: 14px 18px !important;
   background: #ffffff !important;
   border: 1px solid #e2e8f0 !important;
-  border-radius: 10px !important;
+  border-radius: var(--workspace-panel-radius) !important;
   box-shadow: 0 1px 2px rgba(0, 0, 0, 0.03) !important;
   min-width: 0 !important;
 }
@@ -5965,30 +5970,6 @@ form > .drawer-form-actions,
 
 /* Admissions: overview and candidate directory, scoped to the connected workspace. */
 .admissions-dashboard { gap: 24px; }
-.admissions-dashboard > .page-intro { margin-bottom: 0; align-items: center; }
-.admissions-dashboard .page-eyebrow { color: #087e96; letter-spacing: .12em; font-size: .67rem; }
-.admissions-dashboard > .page-intro h1 { font-size: 1.9rem; letter-spacing: -.045em; }
-.admissions-dashboard > .page-intro p { margin-top: 8px; }
-.admissions-dashboard > .page-intro > .btn-group { gap: 8px; }
-.admissions-dashboard > .page-intro .btn { min-height: 42px; border-radius: 9px; }
-.admissions-dashboard > .page-intro .btn-primary { background: #0d596b; border-color: #0d596b; }
-.admissions-dashboard > .page-intro .btn-primary:hover { background: #094555; }
-.admissions-overview { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; }
-.admissions-overview-card { display: flex; align-items: flex-start; gap: 16px; padding: 24px; border: 1px solid var(--border); border-radius: 14px; background: var(--bg-card); }
-.admissions-overview-card > div { display: grid; gap: 7px; min-width: 0; }
-.admissions-overview-icon { display: grid; place-items: center; flex-shrink: 0; width: 42px; height: 42px; border-radius: 12px; background: #eaf5f5; color: #0d6977; }
-.admissions-overview-label { color: var(--text-secondary); font-size: .79rem; font-weight: 600; line-height: 1.4; }
-.admissions-overview-card strong { font-size: 2rem; line-height: 1.1; font-weight: 650; letter-spacing: -.05em; font-variant-numeric: tabular-nums; }
-.admissions-overview-caption { color: var(--text-muted); font-size: .73rem; line-height: 1.5; }
-.admissions-overview-total { background: #123c4a; border-color: #123c4a; color: #fff; }
-.admissions-overview-total .admissions-overview-icon { background: #285260; color: #a7e4e8; }
-.admissions-overview-total .admissions-overview-label, .admissions-overview-total .admissions-overview-caption { color: #d0e0e5; }
-.admissions-overview-corrections .admissions-overview-icon { background: #fff4e4; color: #a96316; }
-.admissions-dashboard > .data-panel { overflow: hidden; border-radius: 14px; border: 1px solid var(--border); box-shadow: 0 3px 12px rgb(15 23 42 / 3%); }
-.admissions-dashboard .data-panel-header { padding: 24px; align-items: center; }
-.admissions-dashboard .data-panel-header h2 { margin: 0; font-size: 1rem; letter-spacing: -.02em; }
-.admissions-dashboard .data-panel-header p { max-width: 70ch; margin: 7px 0 0; font-size: .8rem; color: var(--text-muted); line-height: 1.6; }
-.admissions-dashboard .data-panel-toolbar { padding: 20px 24px; background: var(--bg-primary); border-block: 1px solid var(--border); }
 .admissions-dashboard .admissions-search-filters { display: grid; grid-template-columns: minmax(220px, 1.65fr) repeat(3, minmax(0, 1fr)); gap: 14px; }
 .admissions-search-filters .form-group { margin: 0; gap: 7px; font-size: .74rem; font-weight: 600; }
 .admissions-search-filters .input, .admissions-search-filters .select-input { min-height: 42px; border-radius: 8px; font-size: .8rem; background: var(--bg-card); }
@@ -5998,7 +5979,6 @@ form > .drawer-form-actions,
 .admissions-dashboard .panel-filter-options { margin-top: 16px; gap: 12px; }
 .admissions-dashboard .panel-filter-options .checkbox-field { font-size: .77rem; color: var(--text-secondary); }
 .admissions-dashboard .panel-filter-options input { accent-color: #0d6977; }
-.admissions-dashboard .data-panel-content { padding: 0; }
 .admissions-dashboard .admissions-candidate-table th { padding: 14px 20px; background: var(--bg-card); color: var(--text-muted); font-size: .67rem; letter-spacing: .07em; text-transform: uppercase; font-weight: 600; }
 .admissions-dashboard .admissions-candidate-table td { padding: 19px 20px; font-size: .8rem; }
 .admissions-dashboard .candidate-cell-info strong { font-weight: 600; }
@@ -6008,35 +5988,21 @@ form > .drawer-form-actions,
 .admissions-dashboard .admission-status { font-size: .7rem; font-weight: 600; padding: 5px 9px; white-space: normal; }
 .admissions-dashboard .admissions-open-dossier { min-height: 36px; border-color: var(--border); border-radius: 8px; gap: 8px; font-size: .75rem; }
 .admissions-dashboard .admissions-open-dossier:hover { color: #0d596b; border-color: #0d596b; background: #edf7f7; }
-.admissions-dashboard .data-panel-footer { padding: 14px 24px; font-size: .75rem; color: var(--text-muted); background: var(--bg-primary); }
 .admissions-dashboard .admissions-empty-state { padding: 48px 20px; gap: 12px; }
-.admissions-dashboard .admissions-empty-state .admissions-overview-icon { width: 56px; height: 56px; border-radius: 16px; }
+.admissions-dashboard .admissions-empty-state .workspace-summary-icon { width: 56px; height: 56px; border-radius: 16px; }
 .admissions-dashboard .table-pagination { padding: 16px 20px; }
 @media (max-width: 1024px) {
   .admissions-dashboard .admissions-search-filters { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-  .admissions-overview-card { padding: 18px; gap: 12px; }
 }
 @media (max-width: 768px) {
   .admissions-dashboard { gap: 18px; }
-  .admissions-dashboard > .page-intro { align-items: stretch; }
-  .admissions-dashboard > .page-intro h1 { font-size: 1.6rem; }
-  .admissions-dashboard > .page-intro > .btn-group { display: flex; flex-wrap: wrap; }
-  .admissions-dashboard > .page-intro .btn-primary { flex-basis: 100%; }
-  .admissions-overview { grid-template-columns: minmax(0, 1fr); gap: 10px; }
-  .admissions-overview-card { padding: 16px; align-items: center; }
-  .admissions-overview-card > div { flex: 1; grid-template-columns: minmax(0, 1fr) auto; gap: 4px 12px; }
-  .admissions-overview-card strong { grid-column: 2; grid-row: 1 / 3; align-self: center; font-size: 1.7rem; }
-  .admissions-overview-caption { grid-column: 1; }
-  .admissions-dashboard .data-panel-header, .admissions-dashboard .data-panel-toolbar { padding: 18px; }
   .admissions-dashboard .admissions-candidate-table tbody { padding: 12px; }
   .admissions-dashboard .admissions-candidate-table td { padding: 11px 14px; }
   .admissions-dashboard .admissions-candidate-table td:first-child { background: var(--bg-primary); border-radius: 10px 10px 0 0; }
   .admissions-dashboard .admissions-open-dossier { width: 100%; justify-content: center; }
-  .admissions-dashboard .data-panel-footer { padding: 14px 18px; }
 }
 @media (max-width: 480px) {
   .admissions-dashboard .admissions-search-filters { grid-template-columns: minmax(0, 1fr); }
-  .admissions-dashboard .data-panel-header { align-items: flex-start; }
 }
 
 /* Evaluation sessions and their connected assessment directory. */
@@ -6046,27 +6012,6 @@ form > .drawer-form-actions,
 .exams-workspace > .exam-session-tabs .btn[aria-current="page"] { background: var(--bg-card); color: #0d596b; border-color: var(--border); box-shadow: 0 1px 3px rgb(15 23 42 / 5%); }
 .exams-workspace > .exam-session-tabs .btn:hover { color: #0d596b; background: var(--bg-card); }
 .assessment-dashboard { gap: 24px; }
-.assessment-dashboard > .page-intro { margin-bottom: 0; align-items: center; }
-.assessment-dashboard .page-eyebrow { color: #087e96; font-size: .67rem; letter-spacing: .12em; }
-.assessment-dashboard > .page-intro h1 { font-size: 1.9rem; letter-spacing: -.045em; }
-.assessment-dashboard > .page-intro p { margin-top: 8px; }
-.assessment-dashboard > .page-intro .btn-primary { min-height: 42px; background: #0d596b; border-color: #0d596b; border-radius: 9px; }
-.assessment-dashboard > .page-intro .btn-primary:hover { background: #094555; }
-.assessment-overview { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; }
-.assessment-overview-card { display: flex; align-items: flex-start; gap: 16px; padding: 24px; border: 1px solid var(--border); border-radius: 14px; background: var(--bg-card); }
-.assessment-overview-card > div { display: grid; gap: 7px; min-width: 0; }
-.assessment-overview-icon { display: grid; place-items: center; flex-shrink: 0; width: 42px; height: 42px; border-radius: 12px; background: #eaf5f5; color: #0d6977; }
-.assessment-overview-label { font-size: .79rem; font-weight: 600; line-height: 1.4; color: var(--text-secondary); }
-.assessment-overview-card strong { font-size: 2rem; font-weight: 650; letter-spacing: -.05em; line-height: 1.1; font-variant-numeric: tabular-nums; }
-.assessment-overview-caption { font-size: .73rem; line-height: 1.5; color: var(--text-muted); }
-.assessment-overview-total { background: #123c4a; border-color: #123c4a; color: #fff; }
-.assessment-overview-total .assessment-overview-icon { background: #285260; color: #a7e4e8; }
-.assessment-overview-total .assessment-overview-label, .assessment-overview-total .assessment-overview-caption { color: #d0e0e5; }
-.assessment-dashboard > .data-panel { border: 1px solid var(--border); border-radius: 14px; overflow: hidden; box-shadow: 0 3px 12px rgb(15 23 42 / 3%); }
-.assessment-dashboard .data-panel-header { padding: 24px; align-items: center; }
-.assessment-dashboard .data-panel-header h2 { margin: 0; font-size: 1rem; letter-spacing: -.02em; }
-.assessment-dashboard .data-panel-header p { margin: 7px 0 0; color: var(--text-muted); font-size: .8rem; line-height: 1.6; }
-.assessment-dashboard .data-panel-toolbar { padding: 20px 24px; border-block: 1px solid var(--border); background: var(--bg-primary); }
 .assessment-dashboard .assessment-search-filters { display: grid; grid-template-columns: minmax(220px, 1.6fr) repeat(3, minmax(0, 1fr)); gap: 14px; }
 .assessment-search-filters .form-group { margin: 0; gap: 7px; font-size: .74rem; font-weight: 600; }
 .assessment-search-filters .input, .assessment-search-filters .select-input { min-height: 42px; border-radius: 8px; font-size: .8rem; background: var(--bg-card); }
@@ -6076,7 +6021,6 @@ form > .drawer-form-actions,
 .assessment-dashboard .panel-filter-options { justify-content: flex-end; gap: 12px; margin-top: 16px; }
 .assessment-dashboard .panel-filter-options > .checkbox-field { margin-right: auto; font-size: .77rem; }
 .assessment-dashboard .panel-filter-options .btn { gap: 7px; border-radius: 8px; font-size: .75rem; }
-.assessment-dashboard .data-panel-content { padding: 0; }
 .assessment-dashboard .assessment-table th { padding: 14px 20px; background: var(--bg-card); font-size: .67rem; font-weight: 600; letter-spacing: .07em; text-transform: uppercase; color: var(--text-muted); }
 .assessment-dashboard .assessment-table td { padding: 19px 20px; font-size: .8rem; }
 .assessment-dashboard .assessment-table td:first-child strong { font-weight: 600; }
@@ -6087,7 +6031,6 @@ form > .drawer-form-actions,
 .assessment-state-muted { background: var(--bg-tertiary); border-color: var(--border); color: var(--text-secondary); }
 .assessment-state-active { background: #edf5fa; border-color: #d6e6f1; color: #275d80; }
 .assessment-dashboard .assessment-table .icon-action { min-height: 36px; min-width: 36px; border-radius: 8px; }
-.assessment-dashboard .data-panel-footer { padding: 14px 24px; background: var(--bg-primary); color: var(--text-muted); font-size: .75rem; }
 .assessment-dashboard .table-pagination { padding: 16px 20px; }
 .assessment-empty { display: grid; justify-items: center; gap: 12px; padding: 38px 16px; text-align: center; color: var(--text-muted); }
 .assessment-empty > svg { color: #0d6977; }
@@ -6095,30 +6038,108 @@ form > .drawer-form-actions,
 .assessment-empty > span { font-size: .78rem; line-height: 1.6; }
 @media (max-width: 1024px) {
   .assessment-dashboard .assessment-search-filters { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-  .assessment-overview-card { padding: 18px; gap: 12px; }
 }
 @media (max-width: 768px) {
   .exams-workspace > .exam-session-tabs { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); width: 100%; margin-bottom: 20px; }
   .exams-workspace > .exam-session-tabs .btn { padding: 9px 6px !important; font-size: .72rem; line-height: 1.5; white-space: normal; }
   .assessment-dashboard { gap: 18px; }
-  .assessment-dashboard > .page-intro { align-items: stretch; }
-  .assessment-dashboard > .page-intro h1 { font-size: 1.6rem; }
-  .assessment-dashboard > .page-intro > .btn-group, .assessment-dashboard > .page-intro .btn-primary { width: 100%; }
-  .assessment-overview { grid-template-columns: minmax(0, 1fr); gap: 10px; }
-  .assessment-overview-card { padding: 16px; align-items: center; }
-  .assessment-overview-card > div { flex: 1; grid-template-columns: minmax(0, 1fr) auto; gap: 4px 12px; }
-  .assessment-overview-card strong { grid-column: 2; grid-row: 1 / 3; align-self: center; font-size: 1.7rem; }
-  .assessment-overview-caption { grid-column: 1; }
-  .assessment-dashboard .data-panel-header, .assessment-dashboard .data-panel-toolbar { padding: 18px; }
   .assessment-dashboard .assessment-table tbody { padding: 12px; }
   .assessment-dashboard .assessment-table td { padding: 11px 14px; }
   .assessment-dashboard .assessment-table td:first-child { background: var(--bg-primary); border-radius: 10px 10px 0 0; }
   .assessment-dashboard .assessment-table .btn-group { justify-content: flex-end; }
-  .assessment-dashboard .data-panel-footer { padding: 14px 18px; }
 }
 @media (max-width: 480px) {
   .assessment-dashboard .assessment-search-filters { grid-template-columns: minmax(0, 1fr); }
-  .assessment-dashboard .data-panel-header { align-items: flex-start; }
   .assessment-dashboard .panel-filter-options > .btn-group { width: 100%; }
   .assessment-dashboard .panel-filter-options .btn { flex: 1; }
+}
+
+/* Shared workspace architecture: headings, summaries, filters, lists and actions. */
+:where(.main-content, .detail-drawer-body) { min-width: 0; }
+:where(.workspace-stack, .domain-workspace, .workspace-home, .data-panel, .data-panel-content) { min-width: 0; max-width: 100%; }
+.workspace-stack, .domain-workspace, .workspace-home { gap: var(--workspace-gap); }
+.page-intro, .module-header { display: flex; flex-wrap: wrap; align-items: flex-start; justify-content: space-between; gap: 16px 24px; }
+.page-intro > div:first-child, .module-header > div:first-child { flex: 1 1 280px; min-width: 0; }
+.page-intro > .btn-group, .module-header > .btn-group { flex: 0 1 auto; display: flex; flex-wrap: wrap; align-items: center; justify-content: flex-end; gap: 8px; min-width: 0; max-width: 100%; }
+.page-intro h1, .module-header h1, .app-wrapper .page-intro h1, .app-wrapper .module-header h1 { font-size: clamp(1.4rem, 1.6vw, 1.9rem) !important; line-height: 1.3 !important; overflow-wrap: anywhere; }
+.page-eyebrow { color: var(--workspace-accent) !important; letter-spacing: .1em !important; font-size: .68rem !important; }
+.page-intro p, .module-header p { line-height: 1.65 !important; overflow-wrap: anywhere; }
+.page-intro .btn-primary, .module-header .btn-primary { background: var(--workspace-accent); border-color: var(--workspace-accent); }
+.page-intro .btn-primary:hover, .module-header .btn-primary:hover { background: var(--workspace-accent-hover); border-color: var(--workspace-accent-hover); }
+:where(.page-intro, .module-header, .data-panel-toolbar) .btn { min-height: 40px !important; border-radius: 8px !important; white-space: normal; line-height: 1.45; }
+.card.data-panel { padding: 0 !important; border-radius: var(--workspace-panel-radius) !important; overflow: hidden; }
+.card.data-panel > .data-panel-header { display: flex; flex-wrap: wrap; align-items: center; gap: 12px 20px; margin: 0 !important; padding: 20px 24px !important; border-bottom: 0 !important; }
+.data-panel-header > div:first-child { flex: 1 1 220px; min-width: 0; }
+.data-panel-header h2 { overflow-wrap: anywhere; }
+.data-panel-header p { margin: 7px 0 0; max-width: 75ch; color: var(--text-muted); font-size: .8rem; line-height: 1.65; overflow-wrap: anywhere; }
+.data-panel-meta { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; max-width: 100%; }
+.card.data-panel > .data-panel-toolbar { padding: 20px 24px; background: var(--bg-primary); border-block: 1px solid var(--border); }
+.panel-filter-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 180px), 1fr)); align-items: end; gap: 14px; min-width: 0; }
+.panel-filter-grid > *, .data-panel-toolbar > *, .data-panel-content > * { min-width: 0; }
+.panel-filter-grid .form-group { margin: 0; font-size: .76rem; font-weight: 600; overflow-wrap: anywhere; }
+.panel-filter-grid :is(.input, .select-input) { width: 100%; min-width: 0; }
+.panel-filter-options { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px; margin-top: 16px; }
+.panel-filter-options .btn-group { display: flex; flex-wrap: wrap; gap: 8px; max-width: 100%; }
+.panel-filter-options .checkbox-field { min-width: 0; overflow-wrap: anywhere; line-height: 1.6; }
+.data-panel-content { padding: 0; }
+.data-panel-content > :is(.empty-state, .error-state, .loading-state) { padding: 32px 24px; }
+.data-panel-content > .table-wrap { border: 0 !important; border-radius: 0 !important; }
+.data-panel-footer { padding: 14px 24px; border-top: 1px solid var(--border); background: var(--bg-primary); font-size: .76rem; color: var(--text-muted); line-height: 1.6; overflow-wrap: anywhere; }
+.data-panel .table-pagination { padding: 16px 20px; flex-wrap: wrap; gap: 12px; }
+:where(.main-content, .detail-drawer-body) .table-wrap { min-width: 0; max-width: 100%; overscroll-behavior-x: contain; }
+:where(.main-content, .detail-drawer-body) :is(input, select, textarea, fieldset) { min-width: 0; max-width: 100%; }
+textarea.input { height: auto !important; min-height: 112px !important; line-height: 1.6; resize: vertical; }
+:where(.main-content, .detail-drawer-body) :is(.btn, a, input, select, textarea):focus-visible { outline: 2px solid var(--workspace-accent) !important; outline-offset: 3px; }
+.workspace-summary { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 240px), 1fr)); gap: 16px; min-width: 0; }
+.workspace-summary-card { display: flex; align-items: flex-start; gap: 16px; padding: 24px; border: 1px solid var(--border); border-radius: var(--workspace-panel-radius); background: var(--bg-card); min-width: 0; }
+.workspace-summary-card > div { display: grid; gap: 7px; min-width: 0; }
+.workspace-summary-icon { display: grid; place-items: center; flex-shrink: 0; width: 42px; height: 42px; border-radius: 12px; background: #eaf5f5; color: #0d6977; }
+.workspace-summary-label { color: var(--text-secondary); font-size: .79rem; font-weight: 600; line-height: 1.4; overflow-wrap: anywhere; }
+.workspace-summary-card strong { font-size: clamp(1.65rem, 2vw, 2rem); line-height: 1.1; font-weight: 650; letter-spacing: -.05em; font-variant-numeric: tabular-nums; overflow-wrap: anywhere; }
+.workspace-summary-description { color: var(--text-muted); font-size: .73rem; line-height: 1.5; overflow-wrap: anywhere; }
+.workspace-summary-primary { background: var(--workspace-primary-surface); border-color: var(--workspace-primary-surface); color: #fff; }
+.workspace-summary-primary .workspace-summary-icon { background: #285260; color: #a7e4e8; }
+.workspace-summary-primary .workspace-summary-label, .workspace-summary-primary .workspace-summary-description { color: #d0e0e5; }
+.workspace-summary-warning .workspace-summary-icon { background: #fff4e4; color: #a96316; }
+@media (max-width: 1024px) {
+  .page-intro > .btn-group, .module-header > .btn-group { justify-content: flex-start; }
+  .workspace-summary-card { padding: 18px; gap: 12px; }
+}
+@media (max-width: 768px) {
+  .workspace-stack, .domain-workspace, .workspace-home { gap: 18px; }
+  .page-intro, .module-header { flex-direction: column; align-items: stretch; gap: 12px; }
+  .page-intro > div:first-child, .module-header > div:first-child { flex-basis: auto; }
+  .page-intro > .btn-group, .module-header > .btn-group { width: 100%; justify-content: flex-start; }
+  .page-intro > .btn-group > .btn, .module-header > .btn-group > .btn { flex: 1 1 140px; }
+  .page-intro > .btn-group > .btn-primary, .module-header > .btn-group > .btn-primary { flex-basis: 100%; }
+  .card.data-panel > .data-panel-header { padding: 18px !important; }
+  .card.data-panel > .data-panel-toolbar { padding: 18px; }
+  .panel-filter-grid, .admissions-dashboard .admissions-search-filters, .assessment-dashboard .assessment-search-filters { grid-template-columns: minmax(0, 1fr); }
+  :where(.app-wrapper, .detail-drawer, .auth-layout, .candidate-public-page) :is(input:not([type="checkbox"]):not([type="radio"]), select, textarea) { font-size: 16px !important; }
+  .app-wrapper .main-content :is(.btn, .btn-sm, .icon-action), .detail-drawer-body :is(.btn, .btn-sm, .icon-action) { min-height: 44px !important; }
+  .app-wrapper .main-content .icon-action, .detail-drawer-body .icon-action { min-width: 44px !important; }
+  :where(.main-content, .detail-drawer-body) :is(input:not([type="checkbox"]):not([type="radio"]):not([type="hidden"]):not([type="file"]), select) { min-height: 44px !important; height: auto !important; }
+  .data-panel .mobile-record-table > tbody { padding: 12px; }
+  .data-panel .mobile-record-table > tbody > tr { padding: 0; overflow: hidden; border-radius: 10px; }
+  .data-panel .mobile-record-table > tbody > tr > td { padding: 11px 14px !important; white-space: normal; text-align: left; }
+  .data-panel .mobile-record-table > tbody > tr > td:first-child { background: var(--bg-primary); }
+  .data-panel .mobile-record-table > tbody > tr > td:last-child { padding-bottom: 14px !important; }
+  .data-panel-footer { padding: 14px 18px; }
+  .workspace-summary { grid-template-columns: minmax(0, 1fr); gap: 10px; }
+  .workspace-summary-card { padding: 16px; align-items: center; }
+  .workspace-summary-card > div { flex: 1; grid-template-columns: minmax(0, 1fr) auto; gap: 4px 12px; }
+  .workspace-summary-card strong { grid-column: 2; grid-row: 1 / 3; align-self: center; }
+  .workspace-summary-description { grid-column: 1; }
+}
+@media (max-width: 480px) {
+  .academic-year-control { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; }
+  .academic-year-control > label { grid-column: 1; grid-row: 1; }
+  .academic-year-control > .academic-year-manage-link { grid-column: 2; grid-row: 1; min-height: 44px; justify-content: center; }
+  .academic-year-control > .select-input { grid-column: 1 / -1; grid-row: 2; width: 100%; }
+  .academic-year-control > .cell-sub { grid-column: 1 / -1; }
+
+  .page-intro > .btn-group > .btn, .module-header > .btn-group > .btn { min-width: 0; overflow-wrap: anywhere; }
+  .panel-filter-options > .btn-group { width: 100%; }
+  .panel-filter-options > .btn-group > .btn { flex: 1 1 140px; min-width: 0; }
+  .browser-pagination .btn-group { flex-wrap: wrap; }
 }

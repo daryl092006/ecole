@@ -60,6 +60,7 @@ export async function installResponsiveAudit(page: Page, account: AuditAccount, 
   const problems: string[] = [];
   const client = { async rpc(name: string) {
     if (name === 'escen_backend_snapshot') return { data: campus, error: null };
+    if (name === 'escen_website_prospects_page') return { data: [{ id: uuid(8010), full_name: 'Visiteur de recette', email: 'prospect@example.test', phone: '+228 90 00 00 00', created_at: '2026-10-19T08:00:00Z', academic_year_id: id.year }], error: null };
     if (name === 'escen_email_page') return { data: { yearId: id.year, records: [], total: 0, offset: 0, limit: 50 }, error: null };
     if (name === 'escen_academic_year_context') return { data: { currentYearId: id.year }, error: null };
     if (name === 'escen_application_notices') return { data: [], error: null };

@@ -21,6 +21,7 @@ import ResponsiveTable from '@/components/ui/ResponsiveTable';
 import DocumentPreview from '@/components/ui/DocumentPreview';
 import PageHeader from '@/components/ui/PageHeader';
 import DataPanel from '@/components/ui/DataPanel';
+import WorkspaceSummary from '@/components/ui/WorkspaceSummary';
 
 const ACTION_RESULTS: Record<AdmissionAction, string> = {
   acknowledge: 'Candidature reçue', review: 'En vérification admission', incomplete: 'Dossier incomplet',
@@ -190,20 +191,11 @@ export default function AdmissionsWorkflowPanel() {
     {!data.mail_configured && (
       <p className="restricted-box" role="status">Les mails sont conservés dans la file d’envoi. Le service d’envoi doit être configuré pour les transmettre.</p>
     )}
-    <section className="admissions-overview" aria-label="Vue d’ensemble des candidatures">
-      <div className="admissions-overview-card admissions-overview-total">
-        <span className="admissions-overview-icon"><Files size={21} aria-hidden="true" /></span>
-        <div><span className="admissions-overview-label">Dossiers de candidature</span><strong>{data.applications.length.toLocaleString('fr-FR')}</strong><span className="admissions-overview-caption">Dans la période consultée</span></div>
-      </div>
-      <div className="admissions-overview-card">
-        <span className="admissions-overview-icon"><ClipboardCheck size={21} aria-hidden="true" /></span>
-        <div><span className="admissions-overview-label">Actions disponibles</span><strong>{data.applications.filter(canProgress).length.toLocaleString('fr-FR')}</strong><span className="admissions-overview-caption">Dossiers que vous pouvez faire avancer</span></div>
-      </div>
-      <div className="admissions-overview-card admissions-overview-corrections">
-        <span className="admissions-overview-icon"><Pencil size={21} aria-hidden="true" /></span>
-        <div><span className="admissions-overview-label">À compléter ou corriger</span><strong>{data.applications.filter(item => getApplicationMacroStage(item) === 'CORRIGER').length.toLocaleString('fr-FR')}</strong><span className="admissions-overview-caption">Informations ou pièces à régulariser</span></div>
-      </div>
-    </section>
+    <WorkspaceSummary label="Vue d’ensemble des candidatures" items={[
+      { label: 'Dossiers de candidature', value: data.applications.length.toLocaleString('fr-FR'), description: 'Dans la période consultée', icon: <Files size={21} />, tone: 'primary' },
+      { label: 'Actions disponibles', value: data.applications.filter(canProgress).length.toLocaleString('fr-FR'), description: 'Dossiers que vous pouvez faire avancer', icon: <ClipboardCheck size={21} /> },
+      { label: 'À compléter ou corriger', value: data.applications.filter(item => getApplicationMacroStage(item) === 'CORRIGER').length.toLocaleString('fr-FR'), description: 'Informations ou pièces à régulariser', icon: <Pencil size={21} />, tone: 'warning' },
+    ]} />
     <DataPanel title="Tous les dossiers" description="Retrouvez un candidat et ouvrez son dossier pour consulter les pièces ou poursuivre son parcours." meta={<span className="pill pill-default">{listed.length} dossier(s)</span>}
       footer={`${listed.length} dossier(s) affiché(s) sur ${data.applications.length}`}
       toolbar={<><div className="panel-filter-grid admissions-search-filters">
@@ -307,7 +299,7 @@ export default function AdmissionsWorkflowPanel() {
         </div>
       ) : (
         <div className="empty-state admissions-empty-state">
-          <span className="admissions-overview-icon"><Search size={24} aria-hidden="true" /></span>
+          <span className="workspace-summary-icon"><Search size={24} aria-hidden="true" /></span>
           <strong>Aucune candidature pour ce filtre</strong>
           <span>Les demandes en ligne et saisies à ESCEN suivent le même circuit.</span>
         </div>

@@ -215,3 +215,12 @@ Cette section actualise les constats historiques des sections 1 et 5, notamment 
 - Ne pas lancer ce contrôle TypeScript en parallèle d'un build Next.js qui régénère les types inclus par tsconfig ; attendre la fin du build pour éviter des fichiers temporairement absents.
 - Responsive : rapports `docs/RESPONSIVE_AVANT_2026-10-19.md`, `docs/RESPONSIVE_APRES_2026-10-19.md` et `docs/RESPONSIVE_AVANT_APRES_2026-10-19.md` ; 71 écrans/variantes aux largeurs 360/390/768/1024/1440, 10 cas problématiques avant et aucun après les corrections.
 - Captures dans `tmp/screenshots/responsive-audit/`, sans toucher aux données protégées de `.tmp/`. La configuration `tests/ui/legacy-cleanup.config.ts` contrôle support et délibérations et écrit dans un dossier séparé de l'audit initial.
+
+### Architecture visuelle commune — 18 novembre 2026
+
+- Les écrans du portail suivent la même organisation générale que Candidatures et Examens : `PageHeader`, résumé pertinent éventuel, filtres, contenu, puis détail dans `WorkPage` ou `DetailDrawer`.
+- Réutiliser `DataPanel` pour les listes et `WorkspaceSummary` pour les indicateurs réellement disponibles. Ne pas inventer des indicateurs ni imposer des cartes ou tableaux à un écran dont l’usage nécessite une autre structure.
+- Réutiliser les styles partagés et les variables `--workspace-*` de `src/app/globals.css`. Les particularités d’un domaine doivent compléter cette base, sans recréer des styles indépendants pour les titres, filtres et actions.
+- Préserver les tableaux en fiches et le calendrier en liste à 768 px et moins, le défilement des grands tableaux dans leur conteneur sur ordinateur et le retour à la ligne des actions. Ne pas masquer un débordement global pour rendre un contrôle artificiellement conforme.
+- Après un changement des composants ou styles partagés, exécuter l’audit `npx playwright test --config tests/ui/workspace-layout.config.ts`, en plus des contrôles TypeScript, ESLint et des tests d’interaction concernés. Il couvre les écrans de référence et les transitions autour des trois breakpoints autorisés.
+- Guide et périmètre de vérification : `docs/INTERFACE_COMMUNE_2026-11-18.md`. Captures et diagnostics : `tmp/screenshots/workspace-layout/`.

@@ -10,6 +10,7 @@ import { connectedRecordName, connectedRecordValue } from '@/services/connectedR
 import type { DatabaseRow } from '@/types/persistence';
 import ResponsiveTable from '@/components/ui/ResponsiveTable';
 import DataPanel from '@/components/ui/DataPanel';
+import WorkspaceSummary from '@/components/ui/WorkspaceSummary';
 import IconButton from '@/components/ui/IconButton';
 import WorkPage from '@/components/ui/WorkPage';
 import ExamCopies from '../history/ExamCopies';
@@ -143,20 +144,11 @@ export default function NativeAssessmentWorkspace({ category }: { category: Asse
         </button>
       )}
     </PageHeader>
-    <section className="assessment-overview" aria-label="Vue d’ensemble des épreuves">
-      <div className="assessment-overview-card assessment-overview-total">
-        <span className="assessment-overview-icon"><Files size={21} aria-hidden="true" /></span>
-        <div><span className="assessment-overview-label">Épreuves de la session</span><strong>{allGroupedItems.length.toLocaleString('fr-FR')}</strong><span className="assessment-overview-caption">{withdrawn ? 'Épreuves retirées' : 'Dans la catégorie consultée'}</span></div>
-      </div>
-      <div className="assessment-overview-card">
-        <span className="assessment-overview-icon"><UsersRound size={21} aria-hidden="true" /></span>
-        <div><span className="assessment-overview-label">Groupes concernés</span><strong>{availableGroups.length.toLocaleString('fr-FR')}</strong><span className="assessment-overview-caption">Groupes identifiés dans cette session</span></div>
-      </div>
-      <div className="assessment-overview-card">
-        <span className="assessment-overview-icon"><BookOpen size={21} aria-hidden="true" /></span>
-        <div><span className="assessment-overview-label">Notes saisies</span><strong>{gradeDataAvailable ? allGroupedItems.reduce((sum, item) => sum + item.notesCount, 0).toLocaleString('fr-FR') : '—'}</strong><span className="assessment-overview-caption">{gradeDataAvailable ? 'Notes renseignées pour ces épreuves' : 'Données de notes indisponibles'}</span></div>
-      </div>
-    </section>
+    <WorkspaceSummary label="Vue d’ensemble des épreuves" items={[
+      { label: 'Épreuves de la session', value: allGroupedItems.length.toLocaleString('fr-FR'), description: withdrawn ? 'Épreuves retirées' : 'Dans la catégorie consultée', icon: <Files size={21} />, tone: 'primary' },
+      { label: 'Groupes concernés', value: availableGroups.length.toLocaleString('fr-FR'), description: 'Groupes identifiés dans cette session', icon: <UsersRound size={21} /> },
+      { label: 'Notes saisies', value: gradeDataAvailable ? allGroupedItems.reduce((sum, item) => sum + item.notesCount, 0).toLocaleString('fr-FR') : '—', description: gradeDataAvailable ? 'Notes renseignées pour ces épreuves' : 'Données de notes indisponibles', icon: <BookOpen size={21} /> },
+    ]} />
     <DataPanel title="Liste des épreuves" description="Retrouvez une épreuve, consultez son détail ou accédez à la gestion des notes." meta={<span className="pill pill-default">{rows.length} épreuve(s)</span>}
       footer={exported ? `${rows.length} épreuve(s) exportée(s).` : `${rows.length} épreuve(s) affichée(s) sur ${allGroupedItems.length}`}
       toolbar={<><div className="panel-filter-grid assessment-search-filters">
