@@ -3,6 +3,7 @@ import { randomUUID, createHash } from 'node:crypto';
 import { createDatabase, applyMigrations } from './database-engine.mjs';
 const db=createDatabase(); let checks=0;
 try {
+ await db.exec("create schema auth; create table auth.users(id uuid primary key,email text,raw_app_meta_data jsonb not null default '{}');");
  await applyMigrations(db);
  assert.equal((await db.query("select 1 from information_schema.columns where table_schema='escen' and table_name='online_applications' and column_name='workflow_stage'")).rows.length,1,'Le circuit doit être installé par les migrations');
  const run=async(sql,args=[])=> (await db.query(sql,args)).rows;
@@ -10,9 +11,10 @@ try {
  const roles=Object.fromEntries((await run('select id,code from escen.roles')).map(x=>[x.code,x.id]));
  const actors={};
  for(const role of ['IT','CC','LOG','DA','RAF','MKT','ENS','DG','DGA']){
-  const person=randomUUID();const account=randomUUID();actors[role]=account;
+  const person=randomUUID();const account=randomUUID();const auth=randomUUID();actors[role]=account;
   await run('insert into escen.people(id,firstname,lastname,email) values($1,$2,$3,$4)',[person,role,'Recette',role.toLowerCase()+'@example.test']);
-  await run('insert into escen.accounts(id,person_id,auth_user_id,active) values($1,$2,$3,true)',[account,person,randomUUID()]);
+  await run('insert into auth.users(id,email) values($1,$2)',[auth,role.toLowerCase()+'@escen.university']);
+  await run('insert into escen.accounts(id,person_id,auth_user_id,active) values($1,$2,$3,true)',[account,person,auth]);
   await run('insert into escen.role_grants(account_id,role_id,granted_by,valid_from,reason) values($1,$2,$1,now(),$3)',[account,roles[role],'Recette locale']);
  }
  // Le transfert est limité aux admissions ; les fonctions académiques et financières sont préservées.
@@ -65,6 +67,22 @@ try {
  await assert.rejects(command('CC','admissible'),/refusée/);checks++;
  await command('CC','request_changes');
  assert.deepEqual(await noticeRoles('request_changes'),['CC','MKT']);checks++;
+ const revisionAfterChanges=(await app()).version;
+ const staffMails=await run("select recipient_email from escen.email_outbox where source_id=$1 and source_version=$2 order by recipient_email",[submitted.id,revisionAfterChanges+':staff']);
+ assert.deepEqual(staffMails.map(row=>row.recipient_email),['cc@escen.university','mkt@escen.university']);checks++;
+ assert.deepEqual((await run("select recipient_email from escen.email_outbox where source_id=$1 and source_version=$2",[submitted.id,revisionAfterChanges+':candidate'])).map(row=>row.recipient_email),['candidate@example.test']);checks++;
+ assert.equal((await run('select email from escen.people where id=(select person_id from escen.accounts where id=$1)',[actors.MKT]))[0].email,'mkt@example.test');checks++;
+ const staffEmail=async(account)=>(await run('select escen_private.staff_notification_email($1) email',[account]))[0].email;
+ await run("update auth.users set raw_app_meta_data=jsonb_build_object('escen_m365_email','  PROFESSIONNEL@ESCEN.UNIVERSITY  ') where id=(select auth_user_id from escen.accounts where id=$1)",[actors.MKT]);
+ assert.equal(await staffEmail(actors.MKT),'professionnel@escen.university');checks++;
+ await run("update auth.users set raw_app_meta_data=jsonb_build_object('escen_m365_email','private@example.test') where id=(select auth_user_id from escen.accounts where id=$1)",[actors.MKT]);
+ assert.equal(await staffEmail(actors.MKT),'mkt@escen.university');checks++;
+ await run("update auth.users set email='private@example.test' where id=(select auth_user_id from escen.accounts where id=$1)",[actors.MKT]);
+ assert.equal(await staffEmail(actors.MKT),null);checks++;
+ await run("update escen.people set email='contact-pro@escen.university' where id=(select person_id from escen.accounts where id=$1)",[actors.MKT]);
+ assert.equal(await staffEmail(actors.MKT),'contact-pro@escen.university');checks++;
+ await run("update auth.users set email='mkt@escen.university',raw_app_meta_data='{}' where id=(select auth_user_id from escen.accounts where id=$1)",[actors.MKT]);
+ await run("update escen.people set email='mkt@example.test' where id=(select person_id from escen.accounts where id=$1)",[actors.MKT]);
  assert.equal((await rpc('escen_admissions_context',[actors.MKT,'MKT',year])).applications.length,1);checks++;
  await command('MKT','contact');
  assert.ok((await rpc('escen_admissions_context',[actors.MKT,'MKT',year])).applications[0].events.some(x=>x.action==='contact'));
@@ -136,5 +154,11 @@ try {
  assert.ok((await run("select count(*)::int n from escen.email_outbox where status='PENDING'"))[0].n>=8);checks++;
  const physical=await rpc('escen_application_submit',[actors.CC,'CC',year,'c'.repeat(64),JSON.stringify({...payload,identity:{...payload.identity,email:'physical@example.test'}}),'https://escen.example.test/candidature/suivi#access=physical']);
  assert.equal((await run('select entry_channel from escen.online_applications where id=$1',[physical.id]))[0].entry_channel,'ACCUEIL');checks++;
+ await db.exec('create role anon; create role authenticated;');
+ for(const role of ['anon','authenticated']){
+  assert.equal((await run("select has_function_privilege($1,'escen_private.staff_notification_email(uuid)','EXECUTE') allowed",[role]))[0].allowed,false);checks++;
+ }
+ await run('update escen.accounts set active=false where id=$1',[actors.MKT]);
+ assert.equal(await staffEmail(actors.MKT),null);checks++;
  console.log(JSON.stringify({admissionsChecks:checks,documentsOptionalAtSubmission:true,academicDecisionSeparateFromPayment:true,officialAdmissionAfterFullPayment:true,remoteWrites:0}));
 }catch(error){console.error('Recette admissions :',error.message);process.exitCode=1;}finally{await db.close();}
