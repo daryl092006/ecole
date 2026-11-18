@@ -1,6 +1,7 @@
 'use client';
 import { useState } from 'react';
 import Link from 'next/link';
+import { BookOpen, Download, Files, Plus, Search, UsersRound } from 'lucide-react';
 import { useSearchParams } from 'next/navigation';
 import { usePortal } from '@/hooks/usePortal';
 import { ASSESSMENT_LABELS, combinedAssessmentProgress, type AssessmentCategory } from '@/services/assessmentDisplayService';
@@ -130,33 +131,47 @@ export default function NativeAssessmentWorkspace({ category }: { category: Asse
   const source = selected && history.catalog?.references.evaluations?.find(row => row.id === selected.legacy_source_row_id);
   const candidates = allCandidates.filter(row => selectedMemberIds.has(String(row.evaluation_id)));
   if (copies && source) return <ExamCopies exam={source} onBack={() => setCopies(false)} backLabel="Revenir à l’épreuve" />;
-  return <div>
+  return <div className="assessment-dashboard workspace-stack">
     <PageHeader
       eyebrow="ÉVALUATIONS & EXAMENS"
       title={ASSESSMENT_LABELS[category]}
-      description="Gestion des épreuves, anonymat, surveillance et saisie des notes par matière et par groupe."
+      description="Organisez les épreuves et suivez les résultats, par matière et par groupe."
     >
       {perms.permissions.includes('evaluation.create') && (
         <button className="btn btn-primary" onClick={() => setCreatingEval(true)}>
-          Nouvelle évaluation
+          <Plus size={17} aria-hidden="true" /> Nouvelle évaluation
         </button>
       )}
     </PageHeader>
-    <DataPanel title="Liste des épreuves" meta={<span className="pill pill-default">{rows.length} épreuve(s)</span>}
+    <section className="assessment-overview" aria-label="Vue d’ensemble des épreuves">
+      <div className="assessment-overview-card assessment-overview-total">
+        <span className="assessment-overview-icon"><Files size={21} aria-hidden="true" /></span>
+        <div><span className="assessment-overview-label">Épreuves de la session</span><strong>{allGroupedItems.length.toLocaleString('fr-FR')}</strong><span className="assessment-overview-caption">{withdrawn ? 'Épreuves retirées' : 'Dans la catégorie consultée'}</span></div>
+      </div>
+      <div className="assessment-overview-card">
+        <span className="assessment-overview-icon"><UsersRound size={21} aria-hidden="true" /></span>
+        <div><span className="assessment-overview-label">Groupes concernés</span><strong>{availableGroups.length.toLocaleString('fr-FR')}</strong><span className="assessment-overview-caption">Groupes identifiés dans cette session</span></div>
+      </div>
+      <div className="assessment-overview-card">
+        <span className="assessment-overview-icon"><BookOpen size={21} aria-hidden="true" /></span>
+        <div><span className="assessment-overview-label">Notes saisies</span><strong>{gradeDataAvailable ? allGroupedItems.reduce((sum, item) => sum + item.notesCount, 0).toLocaleString('fr-FR') : '—'}</strong><span className="assessment-overview-caption">{gradeDataAvailable ? 'Notes renseignées pour ces épreuves' : 'Données de notes indisponibles'}</span></div>
+      </div>
+    </section>
+    <DataPanel title="Liste des épreuves" description="Retrouvez une épreuve, consultez son détail ou accédez à la gestion des notes." meta={<span className="pill pill-default">{rows.length} épreuve(s)</span>}
       footer={exported ? `${rows.length} épreuve(s) exportée(s).` : `${rows.length} épreuve(s) affichée(s) sur ${allGroupedItems.length}`}
-      toolbar={<><div className="panel-filter-grid">
-        <label className="form-group">Rechercher une épreuve<input className="input" type="search" value={query} onChange={event => { setQuery(event.target.value); setExported(false); }} placeholder="Matière, groupe ou état" /></label>
+      toolbar={<><div className="panel-filter-grid assessment-search-filters">
+        <label className="form-group">Rechercher une épreuve<span className="assessment-search-input"><Search size={18} aria-hidden="true" /><input className="input" type="search" value={query} onChange={event => { setQuery(event.target.value); setExported(false); }} placeholder="Matière, groupe ou état" /></span></label>
         {availableGroups.length > 0 && <label className="form-group">Filtrer par groupe<select className="select-input" value={groupFilter} onChange={e => { setGroupFilter(e.target.value); setSubjectFilter(''); setExported(false); }}><option value="">Tous les groupes ({availableGroups.length})</option>{availableGroups.map(g => <option key={g} value={g}>{g}</option>)}</select></label>}
         {availableSubjects.length > 0 && <label className="form-group">Filtrer par matière<select className="select-input" value={subjectFilter} onChange={e => { setSubjectFilter(e.target.value); setExported(false); }}><option value="">Toutes les matières ({availableSubjects.length})</option>{availableSubjects.map(s => <option key={s} value={s}>{s}</option>)}</select></label>}
         <label className="form-group">État de l’épreuve<select className="select-input" value={statusFilter} onChange={event => { setStatusFilter(event.target.value); setExported(false); }}><option value="">Tous les états</option>{[...new Set(allGroupedItems.map(item => item.statusLabel))].sort().map(status => <option key={status}>{status}</option>)}</select></label>
       </div><div className="panel-filter-options">
         {(withdrawn || allEvaluations.some(row => row.cancelled_at || row.archived_at)) && <label className="checkbox-field"><input type="checkbox" checked={withdrawn} onChange={event => { setWithdrawn(event.target.checked); setStatusFilter(''); setExported(false); }} /> Épreuves retirées</label>}
         <div className="btn-group">{(query || groupFilter || subjectFilter || statusFilter) && <button type="button" className="btn btn-outline" onClick={() => { setQuery(''); setGroupFilter(''); setSubjectFilter(''); setStatusFilter(''); setExported(false); }}>Réinitialiser les filtres</button>}
-        <button type="button" className="btn btn-outline" disabled={!rows.length} onClick={() => { downloadCsv('epreuves.csv', ['Épreuve', 'Matière', 'Groupe', 'Notes et moyenne', 'État de l’épreuve'], rows.map(item => [String(item.primary.name), item.subjectLabel, item.groupLabel, item.statsLabel, item.statusLabel])); setExported(true); }}>Exporter les épreuves</button></div>
+        <button type="button" className="btn btn-outline" disabled={!rows.length} onClick={() => { downloadCsv('epreuves.csv', ['Épreuve', 'Matière', 'Groupe', 'Notes et moyenne', 'État de l’épreuve'], rows.map(item => [String(item.primary.name), item.subjectLabel, item.groupLabel, item.statsLabel, item.statusLabel])); setExported(true); }}><Download size={15} aria-hidden="true" />Exporter les épreuves</button></div>
       </div></>}>
       {linkedKeys.size > 1 && <p role="status">Ce lien concerne plusieurs formations. Choisissez l’épreuve de la formation à consulter.</p>}
-      <div className="table-wrap"><ResponsiveTable className="data-table"><thead><tr><th>Épreuve</th><th>Matière</th><th>Groupe</th><th>Notes et moyenne</th><th>État de l’épreuve</th><th>Actions</th></tr></thead><tbody>
-        {rows.map(item => <tr key={item.primary.id}><td><strong>{String(item.primary.name)}</strong></td><td>{item.subjectLabel}</td><td>{item.groupLabel}</td><td>{item.statsLabel}</td><td>{item.statusLabel}</td><td>
+      <div className="table-wrap"><ResponsiveTable className="data-table assessment-table"><thead><tr><th>Épreuve</th><th>Matière</th><th>Groupe</th><th>Notes et moyenne</th><th>État de l’épreuve</th><th>Actions</th></tr></thead><tbody>
+        {rows.map(item => <tr key={item.primary.id}><td><strong>{String(item.primary.name)}</strong></td><td>{item.subjectLabel}</td><td>{item.groupLabel}</td><td><span className="assessment-result-label">{item.statsLabel}</span></td><td><span className={`assessment-state ${item.statusLabel === 'Résultats publiés' || item.statusLabel === 'Notes validées' ? 'assessment-state-success' : item.statusLabel === 'Brouillon' || item.statusLabel === 'Retirée' ? 'assessment-state-muted' : 'assessment-state-active'}`}>{item.statusLabel}</span></td><td>
           <div className="btn-group">
             <IconButton className="btn btn-sm btn-outline" label="Ouvrir le détail" onClick={() => { setSelectedId(item.primary.id); setCopies(false); }} />
             {(perms.permissions.includes('grade.enter') || perms.permissions.includes('grade.review') || perms.permissions.includes('grade.approve') || perms.permissions.includes('grade.publish')) && (
@@ -164,7 +179,7 @@ export default function NativeAssessmentWorkspace({ category }: { category: Asse
             )}
           </div>
         </td></tr>)}
-        {!rows.length && <tr><td colSpan={6}>Aucune épreuve pour cette catégorie et ces filtres.</td></tr>}
+        {!rows.length && <tr><td colSpan={6}><div className="assessment-empty"><Files size={28} aria-hidden="true" /><strong>Aucune épreuve pour cette catégorie et ces filtres.</strong><span>Choisissez une autre session ou ajustez les filtres de recherche.</span></div></td></tr>}
       </tbody></ResponsiveTable></div>
     </DataPanel>
     {selected && selectedMembers && (() => {

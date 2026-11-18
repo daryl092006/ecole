@@ -107,3 +107,31 @@ for (const width of [390, 1440]) {
     await expect(page.getByText('Épreuve seconde session', { exact: true })).toBeVisible();
   });
 }
+
+for (const width of [390, 1440]) {
+  test(`Présentation des examens : recherche et ouverture à ${width}px`, async ({ page }) => {
+    await page.setViewportSize({ width, height: 1050 });
+    await authenticateFixture(page);
+    const campus = structuredClone(snapshot);
+    campus.tables.groups = [{ id: 'FD', name: 'Master 2 FD' }, { id: 'MP', name: 'Master 2 MP & TD' }];
+    campus.tables.evaluations = [
+      { id: 'FINANCE', name: 'Examen · Management des Fintechs', group_id: 'FD', kind: 'EXAMEN', status: 'BROUILLON' },
+      { id: 'INNOVATION', name: 'Examen · Innovation et entrepreneuriat', group_id: 'MP', kind: 'EXAMEN', status: 'BROUILLON' },
+      { id: 'TRANSFORMATION', name: 'Examen · Transformation digitale', group_id: 'FD', kind: 'EXAMEN', status: 'VALIDEES' },
+    ];
+    await page.route('**/api/campus', route => route.fulfill({ json: campus }));
+    await page.goto('/academique/examens');
+    await expect(page.getByRole('region', { name: 'Vue d’ensemble des épreuves' })).toBeVisible();
+    await expect(page.getByRole('button', { name: 'Ouvrir le détail', exact: true })).toHaveCount(3);
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
+    await page.screenshot({ path: `tmp/screenshots/responsive-audit/examens-refonte-${width}.png`, fullPage: true });
+    await page.getByRole('searchbox', { name: 'Rechercher une épreuve', exact: true }).fill('innovation');
+    await expect(page.getByRole('button', { name: 'Ouvrir le détail', exact: true })).toHaveCount(1);
+    await expect(page.getByText('Examen · Innovation et entrepreneuriat', { exact: true })).toBeVisible();
+    await page.getByRole('button', { name: 'Réinitialiser les filtres', exact: true }).click();
+    await expect(page.getByRole('button', { name: 'Ouvrir le détail', exact: true })).toHaveCount(3);
+    await page.getByRole('combobox', { name: 'Filtrer par groupe', exact: true }).selectOption('Master 2 MP & TD');
+    await page.getByRole('button', { name: 'Ouvrir le détail', exact: true }).click();
+    await expect(page.getByRole('dialog', { name: 'Examen · Innovation et entrepreneuriat', exact: true })).toBeVisible();
+  });
+}
