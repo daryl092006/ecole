@@ -4,7 +4,7 @@ import {createDatabase,applyMigrations} from '../../scripts/database-engine.mjs'
 const db=createDatabase();
 try {
  await db.exec('create schema auth; create table auth.users(id uuid primary key); create role anon; create role authenticated; create role service_role;');
- await applyMigrations(db);
+ await applyMigrations(db,{before:'202611190118_optimize_campus_snapshot_assembly.sql'});
  const original=(await db.query("select pg_get_functiondef('public.escen_backend_snapshot_before_level_documents()'::regprocedure) definition")).rows[0].definition;
  const acl=async()=>(await db.query("select proacl,prosecdef,proconfig,proowner from pg_proc where oid='public.escen_backend_snapshot_before_level_documents()'::regprocedure")).rows[0];
  const beforeAcl=await acl();
@@ -12,7 +12,7 @@ try {
  for(let i=0;i<35;i++) await db.exec(`create table escen.perf_fixture_${i}(id integer, value text); insert into escen.perf_fixture_${i} select n,repeat('x',3000) from generate_series(1,20) n;`);
  const read=async()=>{const start=performance.now();const snapshot=(await db.query('select public.escen_backend_snapshot() snapshot')).rows[0].snapshot;return{snapshot,ms:Math.round(performance.now()-start)};};
  const baseline=await read();
- await db.exec(await readFile(new URL('./proposed.sql',import.meta.url),'utf8'));
+ await db.exec(await readFile(new URL('../../supabase/migrations/202611190118_optimize_campus_snapshot_assembly.sql',import.meta.url),'utf8'));
  const optimized=await read();
  assert.deepEqual(optimized.snapshot,baseline.snapshot);
  assert.deepEqual(await acl(),beforeAcl);
