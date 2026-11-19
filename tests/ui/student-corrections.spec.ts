@@ -122,8 +122,13 @@ test('Correction réelle : inscription corrigée et données financières, jury 
     const contents = async () => Object.fromEntries(await Promise.all(tables.map(async table => [table, await f.value(`select coalesce(jsonb_agg(to_jsonb(t) order by id),'[]') as value from escen.${table} t`)])));
     const before = await contents();
     const revision = await f.value('select revision as value from escen_private.portal_revision where singleton');
-    const request = (body: Record<string, unknown>) => f.dispatch(new Request('http://localhost/api/support', { method: 'POST', headers: { authorization: 'Bearer fixture-auth-token', 'x-escen-role': ROLES.LOG, 'x-escen-year': f.year.id }, body: JSON.stringify(body) }));
+    const request = (body: Record<string, unknown>, role: string = ROLES.LOG, yearId = f.year.id) => f.dispatch(new Request('http://localhost/api/support', { method: 'POST', headers: { authorization: 'Bearer fixture-auth-token', 'x-escen-role': role, 'x-escen-year': yearId }, body: JSON.stringify(body) }));
     const command = { action: 'correct_program', revision, ticketId: ticket.id, enrollmentId, offeringId: f.target.id, groupId: f.targetGroup.id, reason: 'Correction du rattachement erroné' };
+    expect((await request(command, ROLES.MKT)).status).toBe(403);
+    expect((await request(command, ROLES.LOG, f.nextYear.id)).status).toBe(404);
+    expect((await request({ ...command, enrollmentId: f.enrollment.id })).status).toBe(409);
+    expect((await request({ ...command, groupId: f.sourceGroup })).status).toBe(409);
+    expect(await f.value('select offering_id as value from escen.enrollments where id=$1', [enrollmentId])).toBe(f.source.id);
     const response = await request(command);
     expect(await response.json()).not.toHaveProperty('error');
     expect(response.status).toBe(200);
