@@ -1,0 +1,5 @@
+{
+  "chunk": "/_next/static/chunks/90-1aae1fe9a8f483ae.js",
+  "conditionalRefresh": true,
+  "code": "L.current||{action:e?\"submit\":\"save\",attemptId:t.attempt.id,revision:E.current.attempt.revision,saveId:crypto.randomUUID(),answers:Object.entries(I.current).map(e=>{let[s,t]=e;return{questionId:s,response:t}})};L.current=s,P(),k.current=(async()=>{T.current&&g(!0);try{let e=await s5(i.activeRole,s);return L.current=null,O(e),T.current&&S(\"\"),(\"submit\"===s.action||\"EN_COURS\"!==e.attempt.status)&&i.refreshCampus(),!1!==e.accepted}catch(e){return e instanceof s2&&[401,403,409,422].includes(e.status)&&(R.current=!0,T.current&&C(!0)),T.current&&S(e instanceof s2?e.message:\"Connexion interrompue. R\\xe9ponses con"
+}
