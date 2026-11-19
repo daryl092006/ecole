@@ -50,6 +50,18 @@ test('Première connexion : ordre obligatoire, états persistés et conservation
   expect(firstLoginState({ escen_first_login: { version: 1, profile_reviewed_at: 'date', profile_review: 'CONFIRM' } }, true).mustChangePassword).toBe(true);
 });
 
+test('Confirmation avec signalement : les métadonnées enregistrées débloquent le tableau de bord', async () => {
+  const f = fixture();
+  const { snapshot } = await (await f.get()).json();
+  const response = await f.post({ decision: 'CONFIRM', snapshot, programIssue: { details: 'Je suis en L2 Marketing.', yearId: securityIds.year } });
+  expect(response.status).toBe(200);
+  expect(f.tables.support_tickets).toHaveLength(1);
+  const metadata = f.writes[0].app_metadata as Record<string, unknown>;
+  expect(metadata.escen_first_login).toMatchObject({ profile_review: 'CONFIRM_WITH_REPORT' });
+  expect(firstLoginState(metadata, true)).toEqual({ firstLoginRequired: false, mustChangePassword: false, mustVerifyProfile: false });
+  expect(firstLoginState({ ...metadata, must_change_password: true }, true).mustChangePassword).toBe(true);
+});
+
 test('Serveur : les étapes de première connexion bloquent les API métier même par appel direct', async () => {
   const previous = process.env.ESCEN_FIRST_LOGIN_ENABLED;
   process.env.ESCEN_FIRST_LOGIN_ENABLED = 'true';
