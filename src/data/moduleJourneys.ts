@@ -7,7 +7,7 @@ export const MODULE_JOURNEYS: Record<string, JourneyStage[]> = {
     { title: 'Suivre les résultats', description: 'Retrouver les notes, les réclamations et les relevés, avec leurs états disponibles.', sections: ['acad_grades', 'acad_complaints', 'acad_jury'] },
   ],
   etudiants: [
-    { title: 'Inscrire et suivre', description: 'Commencer par l’identité de l’étudiant ; vérifier son parcours et ses pièces avant une opération.', sections: ['stud_list', 'stud_status', 'stud_cards'] },
+    { title: 'Inscrire et suivre', description: 'Commencer par l’identité de l’étudiant ; vérifier son parcours et ses pièces avant une opération.', sections: ['stud_list', 'stud_corrections', 'stud_status', 'stud_cards'] },
     { title: 'Accès étudiants', description: 'Le dossier de scolarité et le compte de connexion ont des fonctions distinctes.', sections: ['stud_accounts'] },
   ],
   finance: [

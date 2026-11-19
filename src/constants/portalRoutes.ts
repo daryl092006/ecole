@@ -1,5 +1,6 @@
 export interface PortalRoute { tab: string; section: string; href: string; title: string; studentId?: string; }
 export const PORTAL_ROUTES: PortalRoute[] = [
+  { tab: 'etudiants', section: 'stud_corrections', href: '/etudiants/corrections', title: 'Corrections scolaires' },
   { tab: 'espace', section: 'espace_exams', href: '/mon-espace/epreuves', title: 'Mes épreuves en ligne' },
   { tab: 'espace', section: 'espace_dashboard', href: '/mon-espace', title: 'Mon espace' },
   { tab: 'espace', section: 'espace_profile', href: '/mon-espace/profil', title: 'Mon profil' },

@@ -51,6 +51,7 @@ export default function PortalScreen({ section }: { tab: string; section: string
   const currentSubTab = section;
 
   if (state.session && section === 'espace_profile') return <ProfileWorkspace />;
+  if (state.session && section === 'stud_corrections') return <SupportWorkspace corrections key={`${activeRole}:${state.academicYearSelection}`} />;
   if (state.session && section === 'espace_attendance') return <StudentAttendancePanel matricule={state.session.matricule || ''} />;
   if (state.session && section === 'espace_exams') return <StudentExamsWorkspace />;
   if (state.session && ['espace_support', 'sys_support'].includes(section)) return <SupportWorkspace key={`${activeRole}:${state.academicYearSelection}`} />;

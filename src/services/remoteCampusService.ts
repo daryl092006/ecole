@@ -211,8 +211,8 @@ export async function loadTranscriptDocument(id: string, role: RoleName): Promis
   return issuedTranscriptSchema.parse(result);
 }
 
-export async function loadSupport(role: RoleName, signal?: AbortSignal): Promise<import('@/types/supportWorkspace').SupportDirectory> {
-  return readResponse(await fetch('/api/support', { headers: await headers(role), cache: 'no-store', signal }));
+export async function loadSupport(role: RoleName, signal?: AbortSignal, corrections = false): Promise<import('@/types/supportWorkspace').SupportDirectory> {
+  return readResponse(await fetch(corrections ? '/api/support?kind=school' : '/api/support', { headers: await headers(role), cache: 'no-store', signal }));
 }
 export async function manageSupport(command: import('./persistentSupportService').SupportCommand, role: RoleName): Promise<{ id: string; revision: number }> {
   return readResponse(await fetch('/api/support', { method: 'POST', headers: { ...await headers(role), 'Content-Type': 'application/json' }, body: JSON.stringify(command) }));

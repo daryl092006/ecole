@@ -29,4 +29,5 @@ export const PERMISSION_LABELS: Record<Permission, string> = {
   'email.view': 'Consulter le suivi des mails', 'email.retry': 'Reprendre les mails en échec',
   'system.audit.view': 'Consulter le journal d’activité', 'system.backup.manage': 'Exporter le journal',
   'system.support.manage': 'Prendre en charge les demandes de support',
+  'student.correction.manage': 'Traiter les demandes de correction scolaire',
 };

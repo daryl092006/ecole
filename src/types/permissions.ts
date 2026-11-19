@@ -19,6 +19,7 @@ export const ROLES = {
 export type RoleName = typeof ROLES[keyof typeof ROLES];
 
 export type Permission =
+  | 'student.correction.manage'
   | 'website.prospect.view'
   | 'application.view'
   | 'application.review'

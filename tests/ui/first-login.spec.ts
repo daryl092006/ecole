@@ -10,7 +10,7 @@ function fixture(options: { required?: boolean; failAuth?: boolean; failTicket?:
   const writes: Record<string, unknown>[] = []; let transactions = 0;
   const basePerson = options.emptyPerson ? { firstname: 'Alice', lastname: 'Exemple', email: null, phone: null, address: null, birth_date: null } : { firstname: 'Alice', lastname: 'Exemple', email: profile.email, phone: profile.phone, address: profile.address, birth_date: profile.birthDate };
   const personData = { ...basePerson, ...(options.nationality !== undefined ? { nationality: options.nationality } : {}), ...(options.nif !== undefined ? { nif: options.nif } : {}) };
-  const tables: Record<string, Record<string, unknown>[]> = { academic_years: [{ id: securityIds.year, name: '2026-2027', status: 'OUVERTE', starts_on: '2026-09-01', ends_on: '2027-08-31' }], support_tickets: [], people: [] };
+  const tables: Record<string, Record<string, unknown>[]> = { academic_years: [{ id: securityIds.year, name: '2026-2027', status: 'OUVERTE', starts_on: '2026-09-01', ends_on: '2027-08-31' }], support_categories: [{ id: uuid(77), code: 'STUDENT_PROGRAM_CORRECTION', name: 'Correction scolaire', active: true }], support_tickets: [], people: [] };
   let failAuth = !!options.failAuth;
   const client = { rpc: async (name: string, args?: Record<string, unknown>) => {
     if (name === 'escen_backend_snapshot') return { data: { revision: 5 + transactions, tables } };
@@ -56,6 +56,7 @@ test('Confirmation avec signalement : les métadonnées enregistrées débloquen
   const response = await f.post({ decision: 'CONFIRM', snapshot, programIssue: { details: 'Je suis en L2 Marketing.', yearId: securityIds.year } });
   expect(response.status).toBe(200);
   expect(f.tables.support_tickets).toHaveLength(1);
+  expect(f.tables.support_tickets[0].category_id).toBe(uuid(77));
   const metadata = f.writes[0].app_metadata as Record<string, unknown>;
   expect(metadata.escen_first_login).toMatchObject({ profile_review: 'CONFIRM_WITH_REPORT' });
   expect(firstLoginState(metadata, true)).toEqual({ firstLoginRequired: false, mustChangePassword: false, mustVerifyProfile: false });

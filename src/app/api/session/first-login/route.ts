@@ -3,7 +3,7 @@ import { z } from 'zod';
 import { requireAccount, RequestError, errorResponse } from '@/server/auth';
 import { resolveAcademicYear } from '@/server/academicYearContext';
 import { invalidateAuthCache } from '@/lib/supabase/server';
-import { planSupportCommand } from '@/services/persistentSupportService';
+import { planSupportCommand, STUDENT_CORRECTION_CATEGORY } from '@/services/persistentSupportService';
 import { isTogoleseNationality } from '@/services/firstLoginService';
 import { ROLES } from '@/types/permissions';
 import type { RelationalSnapshot } from '@/types/persistence';
@@ -112,7 +112,7 @@ export async function POST(request: Request) {
         if (!year.selectedYearId) throw new RequestError(409, 'L’année de travail doit être accessible pour transmettre ce signalement. Contactez l’administration.');
         const plan = planSupportCommand(snapshot, auth.context, year.selectedYearId, { action: 'create', revision: snapshot.revision,
           title: 'Première connexion · Filière, niveau ou dossier scolaire à corriger', description: issue.details,
-          categoryId: null, priority: 'MEDIUM' }, () => ticketId!);
+          categoryId: snapshot.tables.support_categories?.find(category => category.code === STUDENT_CORRECTION_CATEGORY && category.active === true)?.id || null, priority: 'MEDIUM' }, () => ticketId!);
         const saved = await auth.client.rpc('escen_backend_transaction', { p_actor_id: auth.context.accountId, p_expected_revision: snapshot.revision, p_changes: plan.changes });
         if (saved.error) throw new RequestError(409, 'Le signalement n’a pas été enregistré. Réessayez.');
       }

@@ -71,11 +71,11 @@ for (const width of [390, 1440]) test(`Support : création, confirmation, répon
     await page.goto('/systeme/support');
     async function selectIT() {
       await page.getByLabel('Mon compte et mon rôle').click();
-      await page.getByLabel('Rôle autorisé', { exact: true }).selectOption(ROLES.IT);
+      await page.getByRole('combobox', { name: 'Changer de rôle actif', exact: true }).selectOption(ROLES.IT);
       if (await page.locator('.account-control').getAttribute('open') !== null) await page.getByLabel('Mon compte et mon rôle').click();
     }
     await selectIT();
-    await page.getByRole('button', { name: 'Ouvrir une demande', exact: true }).click();
+    await page.getByRole('button', { name: '+ Ouvrir une demande', exact: true }).click();
     await page.getByLabel('Titre', { exact: true }).fill('Document manquant');
     await page.getByLabel('Description', { exact: true }).fill('Mon document est introuvable dans mon espace.');
     const before = fixture.requests.filter((entry: { method: string }) => entry.method === 'POST').length;

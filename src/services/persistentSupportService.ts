@@ -2,6 +2,13 @@ import { z } from 'zod';
 import type { PersistentChange, PersistentContext, RelationalSnapshot } from '@/types/persistence';
 
 const common = { revision: z.number().int().nonnegative() };
+export const STUDENT_CORRECTION_CATEGORY = 'STUDENT_PROGRAM_CORRECTION';
+export function isStudentCorrection(snapshot: RelationalSnapshot, ticket: Record<string, unknown>) {
+  return (snapshot.tables.support_categories || []).some(category => category.id === ticket.category_id && category.code === STUDENT_CORRECTION_CATEGORY);
+}
+export function canManageStudentCorrections(context: PersistentContext, yearId: string | null) {
+  return context.permissions.includes('student.correction.manage') && context.grants.some(grant => !grant.site_id && !grant.group_id && (!yearId || !grant.academic_year_id || grant.academic_year_id === yearId));
+}
 export const supportCommandSchema = z.discriminatedUnion('action', [
   z.object({ ...common, action: z.literal('create'), title: z.string().trim().min(1).max(160), description: z.string().trim().min(3).max(5000), categoryId: z.uuid().nullable(), priority: z.enum(['LOW', 'MEDIUM', 'HIGH', 'CRITICAL']) }).strict(),
   z.object({ ...common, action: z.literal('reply'), ticketId: z.uuid(), body: z.string().trim().min(3).max(5000) }).strict(),
@@ -18,7 +25,7 @@ export function canManageSupport(context: PersistentContext, yearId: string | nu
 export function visibleSupportTickets(snapshot: RelationalSnapshot, context: PersistentContext, yearId: string | null) {
   const manager = canManageSupport(context, yearId);
   return (snapshot.tables.support_tickets || []).filter(ticket => (!yearId || ticket.academic_year_id === yearId)
-    && (ticket.author_id === context.accountId || manager && context.grants.some(grant => !grant.site_id && !grant.group_id && (!grant.academic_year_id || grant.academic_year_id === ticket.academic_year_id))));
+    && (ticket.author_id === context.accountId || (manager || isStudentCorrection(snapshot, ticket) && canManageStudentCorrections(context, yearId)) && context.grants.some(grant => !grant.site_id && !grant.group_id && (!grant.academic_year_id || grant.academic_year_id === ticket.academic_year_id))));
 }
 export function planSupportCommand(snapshot: RelationalSnapshot, context: PersistentContext, yearId: string | null, command: SupportCommand, newId: () => string): { id: string; changes: PersistentChange[] } {
   if (!yearId) throw new SupportPolicyError(409, 'Choisissez une année scolaire précise.');
@@ -32,7 +39,8 @@ export function planSupportCommand(snapshot: RelationalSnapshot, context: Persis
   if (!ticket) throw new SupportPolicyError(404, 'Demande introuvable.');
   if (['RESOLVED', 'CLOSED'].includes(String(ticket.status))) throw new SupportPolicyError(409, 'Cette demande est terminée. Ouvrez une nouvelle demande si nécessaire.');
   if (command.action === 'reply') return { id: ticket.id, changes: [{ table: 'support_messages', operation: 'insert', record: { id: newId(), ticket_id: ticket.id, author_id: context.accountId, body: command.body } }] };
-  if (!canManageSupport(context, yearId)) throw new SupportPolicyError(403, 'Traitement réservé au support technique.');
+  if (!(isStudentCorrection(snapshot, ticket) ? canManageStudentCorrections(context, yearId) : canManageSupport(context, yearId))) throw new SupportPolicyError(403, 'Vous ne pouvez pas traiter cette demande.');
+  if (isStudentCorrection(snapshot, ticket) && command.toStatus === 'RESOLVED') throw new SupportPolicyError(409, 'La résolution nécessite une correction effective de l’inscription. La demande reste ouverte.');
   if (ticket.status !== command.fromStatus) throw new SupportPolicyError(409, 'L’état de la demande a changé. Actualisez.');
   if (!(command.fromStatus === 'OPEN' && command.toStatus === 'IN_PROGRESS' || command.fromStatus === 'IN_PROGRESS' && command.toStatus === 'RESOLVED')) throw new SupportPolicyError(409, 'Transition de support interdite.');
   return { id: ticket.id, changes: [

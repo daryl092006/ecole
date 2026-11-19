@@ -52,6 +52,7 @@ export const ALL_TABS = [
     icon: 'GraduationCap',
     subTabs: [
       { id: 'stud_list', name: 'Liste des Étudiants' },
+      { id: 'stud_corrections', name: 'Corrections scolaires' },
       { id: 'stud_accounts', name: 'Comptes étudiants' },
       { id: 'stud_cards', name: 'Cartes d\'Étudiant' },
       { id: 'stud_status', name: 'Réinscriptions & Abandons' },
@@ -152,6 +153,7 @@ const SUBTAB_PERMISSIONS: Record<string, Permission[]> = {
   acad_settings: ['academic.structure.manage'],
   fin_contracts: ['finance.view'],
   stud_list: ['student.view'],
+  stud_corrections: ['student.correction.manage'],
   stud_cards: ['student.card.print'],
   stud_status: ['student.lifecycle.manage'],
   fin_kpis: ['finance.view'],
