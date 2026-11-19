@@ -7,6 +7,25 @@ function formationKey(value: unknown) {
     .replace(/[^a-z0-9]+/g, ' ').trim().split(/\s+/).sort().join(' ');
 }
 
+function requestedFormation(value: unknown) {
+  const text = String(value || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().trim()
+    .replace(/^je suis (?:inscrit(?:e)?\s+)?en\s+/, '')
+    .split(/\s+et\s+non\s+(?:en\s+)?/)[0];
+  return formationKey(text);
+}
+
+function matchesRequestedFormation(snapshot: RelationalSnapshot, offeringId: string, requested: string) {
+  const offering = snapshot.tables.academic_offerings?.find(row => row.id === offeringId);
+  const level = snapshot.tables.levels?.find(row => row.id === offering?.level_id);
+  if (!level || !requested) return false;
+  const words = requested.split(' ');
+  const levelWords = formationKey(level.name).split(' ');
+  const labelWords = formationKey(offeringLabel(snapshot, offeringId)).split(' ');
+  return levelWords.every(word => words.includes(word))
+    && words.some(word => !levelWords.includes(word))
+    && words.every(word => labelWords.includes(word));
+}
+
 export function offeringLabel(snapshot: RelationalSnapshot, id: unknown) {
   const tables = snapshot.tables;
   const offering = tables.academic_offerings?.find(row => row.id === id);
@@ -40,8 +59,8 @@ export function studentProgramCorrectionDirectory(snapshot: RelationalSnapshot, 
   })).sort((a, b) => a.label.localeCompare(b.label, 'fr'));
   return { enrollments: enrollments.map(enrollment => {
     const ticket = tickets.find(row => row.id === enrollment.ticketId);
-    const requested = formationKey(ticket?.description);
-    const matches = offerings.filter(offering => offering.siteId === enrollment.siteId && formationKey(offering.label) === requested);
+    const requested = requestedFormation(ticket?.description);
+    const matches = offerings.filter(offering => offering.siteId === enrollment.siteId && matchesRequestedFormation(snapshot, offering.id, requested));
     if (matches.length !== 1) return enrollment;
     const suggested = matches[0];
     return { ...enrollment, suggestedOfferingId: suggested.id, ...(suggested.groups.length === 1 ? { suggestedGroupId: suggested.groups[0].id } : {}) };

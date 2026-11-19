@@ -27,6 +27,14 @@ test('Formation déclarée : correspondance automatique stricte, ordre et accent
   for (const text of ['Pas Finance Digitale Master 2', 'Finance Digitale Master 1', 'Finance digitale', 'Je ne suis pas en Master 2 Finance digitale']) {
     expect(directory(text).enrollments[0].suggestedOfferingId).toBeUndefined();
   }
+  snapshot.tables.levels[0].name = 'Licence 2';
+  for (const text of ['je suis inscrit en L2 Finance et non en L1 Finance', 'Je suis inscrite en Licence 2 Finance digitale et non en Licence 1 Finance digitale']) {
+    expect(directory(text).enrollments[0].suggestedOfferingId).toBe('offering');
+  }
+  for (const text of ['je ne suis pas inscrit en L2 Finance', 'je suis inscrit en L1 Finance et non en L2 Finance', 'L2', 'Finance', 'je suis inscrit en L2 Finance ou Marketing']) {
+    expect(directory(text).enrollments[0].suggestedOfferingId).toBeUndefined();
+  }
+  snapshot.tables.levels[0].name = 'Master 2';
   snapshot.tables.academic_offerings.push({ ...snapshot.tables.academic_offerings[0], id: 'duplicate' });
   expect(directory('Finance Digitale Master 2').enrollments[0].suggestedOfferingId).toBeUndefined();
 });
@@ -221,7 +229,7 @@ for (const width of [390, 1440]) test(`Formation déjà correcte : formulaire au
   const f = await fixture();
   try {
     const raw = await f.client.rpc('escen_backend_snapshot');
-    await f.db.query('update escen.support_tickets set description=$1 where id=$2', [offeringLabel(raw.data, f.source.id), f.report.id]);
+    await f.db.query('update escen.support_tickets set description=$1 where id=$2', [`je suis inscrit en ${offeringLabel(raw.data, f.source.id)} et non en Licence 1 Finance`, f.report.id]);
     await page.setViewportSize({ width, height: 960 });
     await authenticateFixture(page);
     await page.route('**/api/**', async route => {
