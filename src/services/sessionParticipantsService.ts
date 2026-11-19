@@ -21,7 +21,10 @@ export function enrollmentParticipates(snapshot: RelationalSnapshot, session: Da
   const links = (snapshot.tables.enrollment_groups || []).filter(link => link.enrollment_id === enrollmentId
     && link.group_id === participant.group_id && link.offering_id === participant.offering_id);
   if (!links.length) return false;
-  if (links.some(link => String(link.valid_from) <= day && (!link.valid_until || String(link.valid_until) > day))) return true;
+  if (links.every(link => link.historical_only === true)) {
+    return (snapshot.tables.attendances || []).some(row => row.enrollment_id === enrollmentId && row.session_id === session.id && row.offering_id === participant.offering_id);
+  }
+  if (links.some(link => link.historical_only !== true && String(link.valid_from) <= day && (!link.valid_until || String(link.valid_until) > day))) return true;
   // If the enrollment only has a single group membership with no prior groups,
   // administrative enrollment/regularization date should not hide courses in the current academic year:
   const allStudentLinks = (snapshot.tables.enrollment_groups || []).filter(link => link.enrollment_id === enrollmentId && link.offering_id === participant.offering_id);

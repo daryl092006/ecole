@@ -2,7 +2,7 @@
 
 Généré avec `npm run db:describe` en exécutant les migrations dans PostgreSQL local (PGlite). Aucun accès à Supabase ou aux données de la sauvegarde.
 
-124 tables métier, 14 tables privées, 1130 colonnes, 315 clés étrangères, 275 CHECK de tables et 5 exclusions. Les domaines ajoutent les bornes des notes, des montants FCFA et des textes obligatoires.
+126 tables métier, 14 tables privées, 1147 colonnes, 323 clés étrangères, 277 CHECK de tables et 5 exclusions. Les domaines ajoutent les bornes des notes, des montants FCFA et des textes obligatoires.
 
 Toutes les tables ont RLS activée, sans accès applicatif permis à ce stade. Les noms techniques ne sont pas des libellés à afficher dans l’interface.
 
@@ -52,7 +52,8 @@ Toutes les tables ont RLS activée, sans accès applicatif permis à ce stade. L
 | escen | document_types | 6 | 0 | Oui |
 | escen | email_outbox | 24 | 3 | Oui |
 | escen | enrollment_events | 7 | 2 | Oui |
-| escen | enrollment_groups | 9 | 4 | Oui |
+| escen | enrollment_groups | 10 | 4 | Oui |
+| escen | enrollment_offering_contexts | 4 | 2 | Oui |
 | escen | enrollments | 8 | 3 | Oui |
 | escen | evaluation_candidates | 7 | 2 | Oui |
 | escen | evaluation_transitions | 7 | 2 | Oui |
@@ -112,6 +113,7 @@ Toutes les tables ont RLS activée, sans accès applicatif permis à ce stade. L
 | escen | staff_contracts | 7 | 2 | Oui |
 | escen | student_contacts | 8 | 2 | Oui |
 | escen | student_documents | 9 | 6 | Oui |
+| escen | student_program_corrections | 12 | 6 | Oui |
 | escen | students | 12 | 1 | Oui |
 | escen | subjects | 7 | 1 | Oui |
 | escen | suppliers | 8 | 0 | Oui |
@@ -890,8 +892,8 @@ attendance_physical_session_fk: FOREIGN KEY (session_id) REFERENCES escen.sessio
 attendance_reason_length: CHECK (((reason IS NULL) OR ((char_length(btrim(reason)) >= 3) AND (char_length(btrim(reason)) <= 1000))))
 attendance_session_participant_fk: FOREIGN KEY (session_participant_id, session_id, offering_id) REFERENCES escen.session_participants(id, session_id, offering_id) ON DELETE RESTRICT
 attendances_check: CHECK (((left_at IS NULL) OR ((arrived_at IS NOT NULL) AND (left_at >= arrived_at))))
+attendances_context_fk: FOREIGN KEY (enrollment_id, offering_id) REFERENCES escen.enrollment_offering_contexts(enrollment_id, offering_id) ON DELETE RESTRICT
 attendances_enrollment_id_not_null: NOT NULL enrollment_id
-attendances_enrollment_id_offering_id_fkey: FOREIGN KEY (enrollment_id, offering_id) REFERENCES escen.enrollments(id, offering_id) ON DELETE RESTRICT
 attendances_id_not_null: NOT NULL id
 attendances_late_minutes_check: CHECK ((late_minutes >= 0))
 attendances_offering_id_not_null: NOT NULL offering_id
@@ -1937,6 +1939,7 @@ CREATE INDEX fk_17174 ON escen.enrollment_events USING btree (actor_id)
 | changed_by | uuid | NO | — | NEVER |
 | reason | escen.nonempty_text | NO | — | NEVER |
 | legacy_source_row_id | uuid | YES | — | NEVER |
+| historical_only | bool | NO | false | NEVER |
 
 Contraintes :
 
@@ -1945,11 +1948,12 @@ enrollment_group_period_conflict: EXCLUDE USING gist (enrollment_id WITH =, grou
 enrollment_groups_changed_by_fkey: FOREIGN KEY (changed_by) REFERENCES escen.accounts(id) ON DELETE RESTRICT
 enrollment_groups_changed_by_not_null: NOT NULL changed_by
 enrollment_groups_check: CHECK (((valid_until IS NULL) OR (valid_until > valid_from)))
+enrollment_groups_context_fk: FOREIGN KEY (enrollment_id, offering_id) REFERENCES escen.enrollment_offering_contexts(enrollment_id, offering_id) ON DELETE RESTRICT
 enrollment_groups_enrollment_id_group_id_valid_from_key: UNIQUE (enrollment_id, group_id, valid_from)
 enrollment_groups_enrollment_id_not_null: NOT NULL enrollment_id
-enrollment_groups_enrollment_id_offering_id_fkey: FOREIGN KEY (enrollment_id, offering_id) REFERENCES escen.enrollments(id, offering_id) ON DELETE RESTRICT
 enrollment_groups_group_id_not_null: NOT NULL group_id
 enrollment_groups_group_id_offering_id_fkey: FOREIGN KEY (group_id, offering_id) REFERENCES escen.group_offerings(group_id, offering_id) ON DELETE RESTRICT
+enrollment_groups_historical_only_not_null: NOT NULL historical_only
 enrollment_groups_id_not_null: NOT NULL id
 enrollment_groups_legacy_source_row_id_fkey: FOREIGN KEY (legacy_source_row_id) REFERENCES escen_private.legacy_rows(id) ON DELETE RESTRICT
 enrollment_groups_offering_id_not_null: NOT NULL offering_id
@@ -1962,11 +1966,42 @@ Index :
 
 ```sql
 CREATE INDEX enrollment_group_period_conflict ON escen.enrollment_groups USING gist (enrollment_id, group_id, daterange(valid_from, valid_until, '[)'::text))
+CREATE INDEX enrollment_groups_current ON escen.enrollment_groups USING btree (enrollment_id, historical_only)
 CREATE UNIQUE INDEX enrollment_groups_enrollment_id_group_id_valid_from_key ON escen.enrollment_groups USING btree (enrollment_id, group_id, valid_from)
 CREATE UNIQUE INDEX enrollment_groups_pkey ON escen.enrollment_groups USING btree (id)
 CREATE INDEX fk_17138 ON escen.enrollment_groups USING btree (changed_by)
 CREATE INDEX fk_17143 ON escen.enrollment_groups USING btree (enrollment_id, offering_id)
 CREATE INDEX fk_17148 ON escen.enrollment_groups USING btree (group_id, offering_id)
+```
+
+## escen.enrollment_offering_contexts
+
+| Attribut | Type | Nullable | Défaut | Généré |
+|---|---|---|---|---|
+| id | uuid | NO | gen_random_uuid() | NEVER |
+| enrollment_id | uuid | NO | — | NEVER |
+| offering_id | uuid | NO | — | NEVER |
+| created_at | timestamptz | NO | now() | NEVER |
+
+Contraintes :
+
+```sql
+enrollment_offering_contexts_created_at_not_null: NOT NULL created_at
+enrollment_offering_contexts_enrollment_id_fkey: FOREIGN KEY (enrollment_id) REFERENCES escen.enrollments(id) ON DELETE RESTRICT
+enrollment_offering_contexts_enrollment_id_not_null: NOT NULL enrollment_id
+enrollment_offering_contexts_enrollment_id_offering_id_key: UNIQUE (enrollment_id, offering_id)
+enrollment_offering_contexts_id_not_null: NOT NULL id
+enrollment_offering_contexts_offering_id_fkey: FOREIGN KEY (offering_id) REFERENCES escen.academic_offerings(id) ON DELETE RESTRICT
+enrollment_offering_contexts_offering_id_not_null: NOT NULL offering_id
+enrollment_offering_contexts_pkey: PRIMARY KEY (id)
+```
+
+Index :
+
+```sql
+CREATE UNIQUE INDEX enrollment_offering_contexts_enrollment_id_offering_id_key ON escen.enrollment_offering_contexts USING btree (enrollment_id, offering_id)
+CREATE INDEX enrollment_offering_contexts_offering ON escen.enrollment_offering_contexts USING btree (offering_id)
+CREATE UNIQUE INDEX enrollment_offering_contexts_pkey ON escen.enrollment_offering_contexts USING btree (id)
 ```
 
 ## escen.enrollments
@@ -2029,10 +2064,10 @@ Contraintes :
 
 ```sql
 evaluation_candidates_check: CHECK (((eligibility <> 'EXCLUDED'::text) OR ((eligibility_reason IS NOT NULL) AND (length(btrim(eligibility_reason)) > 0))))
+evaluation_candidates_context_fk: FOREIGN KEY (enrollment_id, offering_id) REFERENCES escen.enrollment_offering_contexts(enrollment_id, offering_id) ON DELETE RESTRICT
 evaluation_candidates_eligibility_check: CHECK ((eligibility = ANY (ARRAY['PENDING'::text, 'ELIGIBLE'::text, 'EXCLUDED'::text])))
 evaluation_candidates_eligibility_not_null: NOT NULL eligibility
 evaluation_candidates_enrollment_id_not_null: NOT NULL enrollment_id
-evaluation_candidates_enrollment_id_offering_id_fkey: FOREIGN KEY (enrollment_id, offering_id) REFERENCES escen.enrollments(id, offering_id) ON DELETE RESTRICT
 evaluation_candidates_evaluation_id_anonymous_code_key: UNIQUE (evaluation_id, anonymous_code)
 evaluation_candidates_evaluation_id_enrollment_id_key: UNIQUE (evaluation_id, enrollment_id)
 evaluation_candidates_evaluation_id_not_null: NOT NULL evaluation_id
@@ -3058,6 +3093,7 @@ Contraintes :
 jury_decisions_average_not_null: NOT NULL average
 jury_decisions_check: CHECK ((earned_credits <= required_credits))
 jury_decisions_check1: CHECK (((supersedes_id IS NULL) OR (supersedes_id <> id)))
+jury_decisions_context_fk: FOREIGN KEY (enrollment_id, offering_id) REFERENCES escen.enrollment_offering_contexts(enrollment_id, offering_id) ON DELETE RESTRICT
 jury_decisions_decided_at_not_null: NOT NULL decided_at
 jury_decisions_decided_by_fkey: FOREIGN KEY (decided_by) REFERENCES escen.accounts(id) ON DELETE RESTRICT
 jury_decisions_decided_by_not_null: NOT NULL decided_by
@@ -3066,7 +3102,6 @@ jury_decisions_decision_not_null: NOT NULL decision
 jury_decisions_earned_credits_check: CHECK ((earned_credits >= (0)::numeric))
 jury_decisions_earned_credits_not_null: NOT NULL earned_credits
 jury_decisions_enrollment_id_not_null: NOT NULL enrollment_id
-jury_decisions_enrollment_id_offering_id_fkey: FOREIGN KEY (enrollment_id, offering_id) REFERENCES escen.enrollments(id, offering_id) ON DELETE RESTRICT
 jury_decisions_id_not_null: NOT NULL id
 jury_decisions_jury_id_not_null: NOT NULL jury_id
 jury_decisions_jury_id_offering_semester_id_fkey: FOREIGN KEY (jury_id, offering_semester_id) REFERENCES escen.juries(id, offering_semester_id) ON DELETE RESTRICT
@@ -4359,6 +4394,61 @@ CREATE INDEX fk_18821 ON escen.student_documents USING btree (supersedes_id)
 CREATE INDEX fk_18826 ON escen.student_documents USING btree (enrollment_id, student_id)
 CREATE INDEX student_documents_academic_year_fk ON escen.student_documents USING btree (academic_year_id)
 CREATE UNIQUE INDEX student_documents_pkey ON escen.student_documents USING btree (id)
+```
+
+## escen.student_program_corrections
+
+| Attribut | Type | Nullable | Défaut | Généré |
+|---|---|---|---|---|
+| id | uuid | NO | gen_random_uuid() | NEVER |
+| ticket_id | uuid | NO | — | NEVER |
+| enrollment_id | uuid | NO | — | NEVER |
+| previous_offering_id | uuid | NO | — | NEVER |
+| offering_id | uuid | NO | — | NEVER |
+| group_id | uuid | NO | — | NEVER |
+| actor_id | uuid | NO | — | NEVER |
+| reason | text | NO | — | NEVER |
+| enrollment_before | jsonb | NO | — | NEVER |
+| membership_before | jsonb | YES | — | NEVER |
+| transaction_id | int8 | NO | txid_current() | NEVER |
+| created_at | timestamptz | NO | now() | NEVER |
+
+Contraintes :
+
+```sql
+student_program_corrections_actor_id_fkey: FOREIGN KEY (actor_id) REFERENCES escen.accounts(id) ON DELETE RESTRICT
+student_program_corrections_actor_id_not_null: NOT NULL actor_id
+student_program_corrections_check: CHECK ((previous_offering_id <> offering_id))
+student_program_corrections_created_at_not_null: NOT NULL created_at
+student_program_corrections_enrollment_before_not_null: NOT NULL enrollment_before
+student_program_corrections_enrollment_id_fkey: FOREIGN KEY (enrollment_id) REFERENCES escen.enrollments(id) ON DELETE RESTRICT
+student_program_corrections_enrollment_id_not_null: NOT NULL enrollment_id
+student_program_corrections_group_id_fkey: FOREIGN KEY (group_id) REFERENCES escen.groups(id) ON DELETE RESTRICT
+student_program_corrections_group_id_not_null: NOT NULL group_id
+student_program_corrections_id_not_null: NOT NULL id
+student_program_corrections_offering_id_fkey: FOREIGN KEY (offering_id) REFERENCES escen.academic_offerings(id) ON DELETE RESTRICT
+student_program_corrections_offering_id_not_null: NOT NULL offering_id
+student_program_corrections_pkey: PRIMARY KEY (id)
+student_program_corrections_previous_offering_id_fkey: FOREIGN KEY (previous_offering_id) REFERENCES escen.academic_offerings(id) ON DELETE RESTRICT
+student_program_corrections_previous_offering_id_not_null: NOT NULL previous_offering_id
+student_program_corrections_reason_check: CHECK (((length(btrim(reason)) >= 3) AND (length(btrim(reason)) <= 1000)))
+student_program_corrections_reason_not_null: NOT NULL reason
+student_program_corrections_ticket_id_fkey: FOREIGN KEY (ticket_id) REFERENCES escen.support_tickets(id) ON DELETE RESTRICT
+student_program_corrections_ticket_id_key: UNIQUE (ticket_id)
+student_program_corrections_ticket_id_not_null: NOT NULL ticket_id
+student_program_corrections_transaction_id_not_null: NOT NULL transaction_id
+```
+
+Index :
+
+```sql
+CREATE INDEX student_program_corrections_actor ON escen.student_program_corrections USING btree (actor_id)
+CREATE INDEX student_program_corrections_enrollment ON escen.student_program_corrections USING btree (enrollment_id)
+CREATE INDEX student_program_corrections_group ON escen.student_program_corrections USING btree (group_id)
+CREATE INDEX student_program_corrections_offering ON escen.student_program_corrections USING btree (offering_id)
+CREATE UNIQUE INDEX student_program_corrections_pkey ON escen.student_program_corrections USING btree (id)
+CREATE INDEX student_program_corrections_previous_offering ON escen.student_program_corrections USING btree (previous_offering_id)
+CREATE UNIQUE INDEX student_program_corrections_ticket_id_key ON escen.student_program_corrections USING btree (ticket_id)
 ```
 
 ## escen.students

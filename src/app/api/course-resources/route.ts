@@ -89,6 +89,15 @@ async function loadContext(request: Request) {
   const year = await resolveAcademicYear(request, auth.client, auth.context, snapshot);
   const annual = filterSnapshotForAcademicYear(snapshot, year.selectedYearId);
   const scoped = filterRelationalSnapshot(annual, auth.context);
+  if ([ROLES.STUD, ROLES.DEL].includes(auth.context.role as typeof ROLES.STUD)) {
+    const enrollmentIds = new Set((annual.tables.enrollments || []).filter(row => row.student_id === auth.context.studentId).map(row => row.id));
+    const links = (annual.tables.enrollment_groups || []).filter(row => enrollmentIds.has(String(row.enrollment_id)));
+    if (links.some(row => row.historical_only === true)) {
+      const currentAssignments = new Set((scoped.tables.teaching_assignments || []).filter(assignment => links.some(link => link.historical_only !== true && link.group_id === assignment.group_id && link.offering_id === assignment.offering_id)).map(row => row.id));
+      scoped.tables.teaching_assignments = (scoped.tables.teaching_assignments || []).filter(row => currentAssignments.has(row.id));
+      scoped.tables.course_resources = (scoped.tables.course_resources || []).filter(row => currentAssignments.has(String(row.assignment_id)));
+    }
+  }
   return { ...auth, snapshot, annual, scoped, year };
 }
 

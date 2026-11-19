@@ -10,6 +10,7 @@ export function canManageStudentCorrections(context: PersistentContext, yearId: 
   return context.permissions.includes('student.correction.manage') && context.grants.some(grant => !grant.site_id && !grant.group_id && (!yearId || !grant.academic_year_id || grant.academic_year_id === yearId));
 }
 export const supportCommandSchema = z.discriminatedUnion('action', [
+  z.object({ ...common, action: z.literal('correct_program'), ticketId: z.uuid(), enrollmentId: z.uuid(), offeringId: z.uuid(), groupId: z.uuid(), reason: z.string().trim().min(3).max(1000) }).strict(),
   z.object({ ...common, action: z.literal('create'), title: z.string().trim().min(1).max(160), description: z.string().trim().min(3).max(5000), categoryId: z.uuid().nullable(), priority: z.enum(['LOW', 'MEDIUM', 'HIGH', 'CRITICAL']) }).strict(),
   z.object({ ...common, action: z.literal('reply'), ticketId: z.uuid(), body: z.string().trim().min(3).max(5000) }).strict(),
   z.object({ ...common, action: z.literal('transition'), ticketId: z.uuid(), fromStatus: z.enum(['OPEN', 'IN_PROGRESS']), toStatus: z.enum(['IN_PROGRESS', 'RESOLVED']), reason: z.string().trim().min(3).max(1000) }).strict(),
@@ -30,6 +31,7 @@ export function visibleSupportTickets(snapshot: RelationalSnapshot, context: Per
 export function planSupportCommand(snapshot: RelationalSnapshot, context: PersistentContext, yearId: string | null, command: SupportCommand, newId: () => string): { id: string; changes: PersistentChange[] } {
   if (!yearId) throw new SupportPolicyError(409, 'Choisissez une année scolaire précise.');
   if (command.revision !== snapshot.revision) throw new SupportPolicyError(409, 'Les demandes ont changé. Actualisez avant de réessayer.');
+  if (command.action === 'correct_program') throw new SupportPolicyError(409, 'La correction nécessite la transaction dédiée.');
   if (command.action === 'create') {
     if (command.categoryId && !(snapshot.tables.support_categories || []).some(category => category.id === command.categoryId && category.active === true)) throw new SupportPolicyError(409, 'Cette catégorie n’est plus disponible.');
     const id = newId();

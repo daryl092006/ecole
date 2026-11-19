@@ -1,10 +1,10 @@
 {
   "stats": {
-    "businessTables": 124,
+    "businessTables": 126,
     "privateTables": 14,
-    "columns": 1130,
-    "foreignKeys": 315,
-    "checks": 275,
+    "columns": 1147,
+    "foreignKeys": 323,
+    "checks": 277,
     "exclusions": 5
   },
   "tables": [
@@ -231,6 +231,11 @@
     {
       "schema": "escen",
       "name": "enrollment_groups",
+      "rls": true
+    },
+    {
+      "schema": "escen",
+      "name": "enrollment_offering_contexts",
       "rls": true
     },
     {
@@ -526,6 +531,11 @@
     {
       "schema": "escen",
       "name": "student_documents",
+      "rls": true
+    },
+    {
+      "schema": "escen",
+      "name": "student_program_corrections",
       "rls": true
     },
     {
@@ -4154,6 +4164,51 @@
       "type": "uuid",
       "nullable": "YES",
       "default": null,
+      "generated": "NEVER"
+    },
+    {
+      "schema": "escen",
+      "table": "enrollment_groups",
+      "name": "historical_only",
+      "type": "bool",
+      "nullable": "NO",
+      "default": "false",
+      "generated": "NEVER"
+    },
+    {
+      "schema": "escen",
+      "table": "enrollment_offering_contexts",
+      "name": "id",
+      "type": "uuid",
+      "nullable": "NO",
+      "default": "gen_random_uuid()",
+      "generated": "NEVER"
+    },
+    {
+      "schema": "escen",
+      "table": "enrollment_offering_contexts",
+      "name": "enrollment_id",
+      "type": "uuid",
+      "nullable": "NO",
+      "default": null,
+      "generated": "NEVER"
+    },
+    {
+      "schema": "escen",
+      "table": "enrollment_offering_contexts",
+      "name": "offering_id",
+      "type": "uuid",
+      "nullable": "NO",
+      "default": null,
+      "generated": "NEVER"
+    },
+    {
+      "schema": "escen",
+      "table": "enrollment_offering_contexts",
+      "name": "created_at",
+      "type": "timestamptz",
+      "nullable": "NO",
+      "default": "now()",
       "generated": "NEVER"
     },
     {
@@ -8487,6 +8542,114 @@
     },
     {
       "schema": "escen",
+      "table": "student_program_corrections",
+      "name": "id",
+      "type": "uuid",
+      "nullable": "NO",
+      "default": "gen_random_uuid()",
+      "generated": "NEVER"
+    },
+    {
+      "schema": "escen",
+      "table": "student_program_corrections",
+      "name": "ticket_id",
+      "type": "uuid",
+      "nullable": "NO",
+      "default": null,
+      "generated": "NEVER"
+    },
+    {
+      "schema": "escen",
+      "table": "student_program_corrections",
+      "name": "enrollment_id",
+      "type": "uuid",
+      "nullable": "NO",
+      "default": null,
+      "generated": "NEVER"
+    },
+    {
+      "schema": "escen",
+      "table": "student_program_corrections",
+      "name": "previous_offering_id",
+      "type": "uuid",
+      "nullable": "NO",
+      "default": null,
+      "generated": "NEVER"
+    },
+    {
+      "schema": "escen",
+      "table": "student_program_corrections",
+      "name": "offering_id",
+      "type": "uuid",
+      "nullable": "NO",
+      "default": null,
+      "generated": "NEVER"
+    },
+    {
+      "schema": "escen",
+      "table": "student_program_corrections",
+      "name": "group_id",
+      "type": "uuid",
+      "nullable": "NO",
+      "default": null,
+      "generated": "NEVER"
+    },
+    {
+      "schema": "escen",
+      "table": "student_program_corrections",
+      "name": "actor_id",
+      "type": "uuid",
+      "nullable": "NO",
+      "default": null,
+      "generated": "NEVER"
+    },
+    {
+      "schema": "escen",
+      "table": "student_program_corrections",
+      "name": "reason",
+      "type": "text",
+      "nullable": "NO",
+      "default": null,
+      "generated": "NEVER"
+    },
+    {
+      "schema": "escen",
+      "table": "student_program_corrections",
+      "name": "enrollment_before",
+      "type": "jsonb",
+      "nullable": "NO",
+      "default": null,
+      "generated": "NEVER"
+    },
+    {
+      "schema": "escen",
+      "table": "student_program_corrections",
+      "name": "membership_before",
+      "type": "jsonb",
+      "nullable": "YES",
+      "default": null,
+      "generated": "NEVER"
+    },
+    {
+      "schema": "escen",
+      "table": "student_program_corrections",
+      "name": "transaction_id",
+      "type": "int8",
+      "nullable": "NO",
+      "default": "txid_current()",
+      "generated": "NEVER"
+    },
+    {
+      "schema": "escen",
+      "table": "student_program_corrections",
+      "name": "created_at",
+      "type": "timestamptz",
+      "nullable": "NO",
+      "default": "now()",
+      "generated": "NEVER"
+    },
+    {
+      "schema": "escen",
       "table": "students",
       "name": "id",
       "type": "uuid",
@@ -12478,16 +12641,16 @@
     {
       "schema": "escen",
       "table": "attendances",
-      "name": "attendances_enrollment_id_not_null",
-      "type": "n",
-      "definition": "NOT NULL enrollment_id"
+      "name": "attendances_context_fk",
+      "type": "f",
+      "definition": "FOREIGN KEY (enrollment_id, offering_id) REFERENCES escen.enrollment_offering_contexts(enrollment_id, offering_id) ON DELETE RESTRICT"
     },
     {
       "schema": "escen",
       "table": "attendances",
-      "name": "attendances_enrollment_id_offering_id_fkey",
-      "type": "f",
-      "definition": "FOREIGN KEY (enrollment_id, offering_id) REFERENCES escen.enrollments(id, offering_id) ON DELETE RESTRICT"
+      "name": "attendances_enrollment_id_not_null",
+      "type": "n",
+      "definition": "NOT NULL enrollment_id"
     },
     {
       "schema": "escen",
@@ -14767,6 +14930,13 @@
     {
       "schema": "escen",
       "table": "enrollment_groups",
+      "name": "enrollment_groups_context_fk",
+      "type": "f",
+      "definition": "FOREIGN KEY (enrollment_id, offering_id) REFERENCES escen.enrollment_offering_contexts(enrollment_id, offering_id) ON DELETE RESTRICT"
+    },
+    {
+      "schema": "escen",
+      "table": "enrollment_groups",
       "name": "enrollment_groups_enrollment_id_group_id_valid_from_key",
       "type": "u",
       "definition": "UNIQUE (enrollment_id, group_id, valid_from)"
@@ -14781,13 +14951,6 @@
     {
       "schema": "escen",
       "table": "enrollment_groups",
-      "name": "enrollment_groups_enrollment_id_offering_id_fkey",
-      "type": "f",
-      "definition": "FOREIGN KEY (enrollment_id, offering_id) REFERENCES escen.enrollments(id, offering_id) ON DELETE RESTRICT"
-    },
-    {
-      "schema": "escen",
-      "table": "enrollment_groups",
       "name": "enrollment_groups_group_id_not_null",
       "type": "n",
       "definition": "NOT NULL group_id"
@@ -14798,6 +14961,13 @@
       "name": "enrollment_groups_group_id_offering_id_fkey",
       "type": "f",
       "definition": "FOREIGN KEY (group_id, offering_id) REFERENCES escen.group_offerings(group_id, offering_id) ON DELETE RESTRICT"
+    },
+    {
+      "schema": "escen",
+      "table": "enrollment_groups",
+      "name": "enrollment_groups_historical_only_not_null",
+      "type": "n",
+      "definition": "NOT NULL historical_only"
     },
     {
       "schema": "escen",
@@ -14840,6 +15010,62 @@
       "name": "membership_date_evidence",
       "type": "c",
       "definition": "CHECK (((valid_from IS NOT NULL) OR (legacy_source_row_id IS NOT NULL)))"
+    },
+    {
+      "schema": "escen",
+      "table": "enrollment_offering_contexts",
+      "name": "enrollment_offering_contexts_created_at_not_null",
+      "type": "n",
+      "definition": "NOT NULL created_at"
+    },
+    {
+      "schema": "escen",
+      "table": "enrollment_offering_contexts",
+      "name": "enrollment_offering_contexts_enrollment_id_fkey",
+      "type": "f",
+      "definition": "FOREIGN KEY (enrollment_id) REFERENCES escen.enrollments(id) ON DELETE RESTRICT"
+    },
+    {
+      "schema": "escen",
+      "table": "enrollment_offering_contexts",
+      "name": "enrollment_offering_contexts_enrollment_id_not_null",
+      "type": "n",
+      "definition": "NOT NULL enrollment_id"
+    },
+    {
+      "schema": "escen",
+      "table": "enrollment_offering_contexts",
+      "name": "enrollment_offering_contexts_enrollment_id_offering_id_key",
+      "type": "u",
+      "definition": "UNIQUE (enrollment_id, offering_id)"
+    },
+    {
+      "schema": "escen",
+      "table": "enrollment_offering_contexts",
+      "name": "enrollment_offering_contexts_id_not_null",
+      "type": "n",
+      "definition": "NOT NULL id"
+    },
+    {
+      "schema": "escen",
+      "table": "enrollment_offering_contexts",
+      "name": "enrollment_offering_contexts_offering_id_fkey",
+      "type": "f",
+      "definition": "FOREIGN KEY (offering_id) REFERENCES escen.academic_offerings(id) ON DELETE RESTRICT"
+    },
+    {
+      "schema": "escen",
+      "table": "enrollment_offering_contexts",
+      "name": "enrollment_offering_contexts_offering_id_not_null",
+      "type": "n",
+      "definition": "NOT NULL offering_id"
+    },
+    {
+      "schema": "escen",
+      "table": "enrollment_offering_contexts",
+      "name": "enrollment_offering_contexts_pkey",
+      "type": "p",
+      "definition": "PRIMARY KEY (id)"
     },
     {
       "schema": "escen",
@@ -14949,6 +15175,13 @@
     {
       "schema": "escen",
       "table": "evaluation_candidates",
+      "name": "evaluation_candidates_context_fk",
+      "type": "f",
+      "definition": "FOREIGN KEY (enrollment_id, offering_id) REFERENCES escen.enrollment_offering_contexts(enrollment_id, offering_id) ON DELETE RESTRICT"
+    },
+    {
+      "schema": "escen",
+      "table": "evaluation_candidates",
       "name": "evaluation_candidates_eligibility_check",
       "type": "c",
       "definition": "CHECK ((eligibility = ANY (ARRAY['PENDING'::text, 'ELIGIBLE'::text, 'EXCLUDED'::text])))"
@@ -14966,13 +15199,6 @@
       "name": "evaluation_candidates_enrollment_id_not_null",
       "type": "n",
       "definition": "NOT NULL enrollment_id"
-    },
-    {
-      "schema": "escen",
-      "table": "evaluation_candidates",
-      "name": "evaluation_candidates_enrollment_id_offering_id_fkey",
-      "type": "f",
-      "definition": "FOREIGN KEY (enrollment_id, offering_id) REFERENCES escen.enrollments(id, offering_id) ON DELETE RESTRICT"
     },
     {
       "schema": "escen",
@@ -17224,6 +17450,13 @@
     {
       "schema": "escen",
       "table": "jury_decisions",
+      "name": "jury_decisions_context_fk",
+      "type": "f",
+      "definition": "FOREIGN KEY (enrollment_id, offering_id) REFERENCES escen.enrollment_offering_contexts(enrollment_id, offering_id) ON DELETE RESTRICT"
+    },
+    {
+      "schema": "escen",
+      "table": "jury_decisions",
       "name": "jury_decisions_decided_at_not_null",
       "type": "n",
       "definition": "NOT NULL decided_at"
@@ -17276,13 +17509,6 @@
       "name": "jury_decisions_enrollment_id_not_null",
       "type": "n",
       "definition": "NOT NULL enrollment_id"
-    },
-    {
-      "schema": "escen",
-      "table": "jury_decisions",
-      "name": "jury_decisions_enrollment_id_offering_id_fkey",
-      "type": "f",
-      "definition": "FOREIGN KEY (enrollment_id, offering_id) REFERENCES escen.enrollments(id, offering_id) ON DELETE RESTRICT"
     },
     {
       "schema": "escen",
@@ -20020,6 +20246,153 @@
       "name": "student_documents_version_not_null",
       "type": "n",
       "definition": "NOT NULL version"
+    },
+    {
+      "schema": "escen",
+      "table": "student_program_corrections",
+      "name": "student_program_corrections_actor_id_fkey",
+      "type": "f",
+      "definition": "FOREIGN KEY (actor_id) REFERENCES escen.accounts(id) ON DELETE RESTRICT"
+    },
+    {
+      "schema": "escen",
+      "table": "student_program_corrections",
+      "name": "student_program_corrections_actor_id_not_null",
+      "type": "n",
+      "definition": "NOT NULL actor_id"
+    },
+    {
+      "schema": "escen",
+      "table": "student_program_corrections",
+      "name": "student_program_corrections_check",
+      "type": "c",
+      "definition": "CHECK ((previous_offering_id <> offering_id))"
+    },
+    {
+      "schema": "escen",
+      "table": "student_program_corrections",
+      "name": "student_program_corrections_created_at_not_null",
+      "type": "n",
+      "definition": "NOT NULL created_at"
+    },
+    {
+      "schema": "escen",
+      "table": "student_program_corrections",
+      "name": "student_program_corrections_enrollment_before_not_null",
+      "type": "n",
+      "definition": "NOT NULL enrollment_before"
+    },
+    {
+      "schema": "escen",
+      "table": "student_program_corrections",
+      "name": "student_program_corrections_enrollment_id_fkey",
+      "type": "f",
+      "definition": "FOREIGN KEY (enrollment_id) REFERENCES escen.enrollments(id) ON DELETE RESTRICT"
+    },
+    {
+      "schema": "escen",
+      "table": "student_program_corrections",
+      "name": "student_program_corrections_enrollment_id_not_null",
+      "type": "n",
+      "definition": "NOT NULL enrollment_id"
+    },
+    {
+      "schema": "escen",
+      "table": "student_program_corrections",
+      "name": "student_program_corrections_group_id_fkey",
+      "type": "f",
+      "definition": "FOREIGN KEY (group_id) REFERENCES escen.groups(id) ON DELETE RESTRICT"
+    },
+    {
+      "schema": "escen",
+      "table": "student_program_corrections",
+      "name": "student_program_corrections_group_id_not_null",
+      "type": "n",
+      "definition": "NOT NULL group_id"
+    },
+    {
+      "schema": "escen",
+      "table": "student_program_corrections",
+      "name": "student_program_corrections_id_not_null",
+      "type": "n",
+      "definition": "NOT NULL id"
+    },
+    {
+      "schema": "escen",
+      "table": "student_program_corrections",
+      "name": "student_program_corrections_offering_id_fkey",
+      "type": "f",
+      "definition": "FOREIGN KEY (offering_id) REFERENCES escen.academic_offerings(id) ON DELETE RESTRICT"
+    },
+    {
+      "schema": "escen",
+      "table": "student_program_corrections",
+      "name": "student_program_corrections_offering_id_not_null",
+      "type": "n",
+      "definition": "NOT NULL offering_id"
+    },
+    {
+      "schema": "escen",
+      "table": "student_program_corrections",
+      "name": "student_program_corrections_pkey",
+      "type": "p",
+      "definition": "PRIMARY KEY (id)"
+    },
+    {
+      "schema": "escen",
+      "table": "student_program_corrections",
+      "name": "student_program_corrections_previous_offering_id_fkey",
+      "type": "f",
+      "definition": "FOREIGN KEY (previous_offering_id) REFERENCES escen.academic_offerings(id) ON DELETE RESTRICT"
+    },
+    {
+      "schema": "escen",
+      "table": "student_program_corrections",
+      "name": "student_program_corrections_previous_offering_id_not_null",
+      "type": "n",
+      "definition": "NOT NULL previous_offering_id"
+    },
+    {
+      "schema": "escen",
+      "table": "student_program_corrections",
+      "name": "student_program_corrections_reason_check",
+      "type": "c",
+      "definition": "CHECK (((length(btrim(reason)) >= 3) AND (length(btrim(reason)) <= 1000)))"
+    },
+    {
+      "schema": "escen",
+      "table": "student_program_corrections",
+      "name": "student_program_corrections_reason_not_null",
+      "type": "n",
+      "definition": "NOT NULL reason"
+    },
+    {
+      "schema": "escen",
+      "table": "student_program_corrections",
+      "name": "student_program_corrections_ticket_id_fkey",
+      "type": "f",
+      "definition": "FOREIGN KEY (ticket_id) REFERENCES escen.support_tickets(id) ON DELETE RESTRICT"
+    },
+    {
+      "schema": "escen",
+      "table": "student_program_corrections",
+      "name": "student_program_corrections_ticket_id_key",
+      "type": "u",
+      "definition": "UNIQUE (ticket_id)"
+    },
+    {
+      "schema": "escen",
+      "table": "student_program_corrections",
+      "name": "student_program_corrections_ticket_id_not_null",
+      "type": "n",
+      "definition": "NOT NULL ticket_id"
+    },
+    {
+      "schema": "escen",
+      "table": "student_program_corrections",
+      "name": "student_program_corrections_transaction_id_not_null",
+      "type": "n",
+      "definition": "NOT NULL transaction_id"
     },
     {
       "schema": "escen",
@@ -23911,6 +24284,12 @@
     {
       "schema": "escen",
       "table": "enrollment_groups",
+      "name": "enrollment_groups_current",
+      "definition": "CREATE INDEX enrollment_groups_current ON escen.enrollment_groups USING btree (enrollment_id, historical_only)"
+    },
+    {
+      "schema": "escen",
+      "table": "enrollment_groups",
       "name": "enrollment_groups_enrollment_id_group_id_valid_from_key",
       "definition": "CREATE UNIQUE INDEX enrollment_groups_enrollment_id_group_id_valid_from_key ON escen.enrollment_groups USING btree (enrollment_id, group_id, valid_from)"
     },
@@ -23937,6 +24316,24 @@
       "table": "enrollment_groups",
       "name": "fk_17148",
       "definition": "CREATE INDEX fk_17148 ON escen.enrollment_groups USING btree (group_id, offering_id)"
+    },
+    {
+      "schema": "escen",
+      "table": "enrollment_offering_contexts",
+      "name": "enrollment_offering_contexts_enrollment_id_offering_id_key",
+      "definition": "CREATE UNIQUE INDEX enrollment_offering_contexts_enrollment_id_offering_id_key ON escen.enrollment_offering_contexts USING btree (enrollment_id, offering_id)"
+    },
+    {
+      "schema": "escen",
+      "table": "enrollment_offering_contexts",
+      "name": "enrollment_offering_contexts_offering",
+      "definition": "CREATE INDEX enrollment_offering_contexts_offering ON escen.enrollment_offering_contexts USING btree (offering_id)"
+    },
+    {
+      "schema": "escen",
+      "table": "enrollment_offering_contexts",
+      "name": "enrollment_offering_contexts_pkey",
+      "definition": "CREATE UNIQUE INDEX enrollment_offering_contexts_pkey ON escen.enrollment_offering_contexts USING btree (id)"
     },
     {
       "schema": "escen",
@@ -25659,6 +26056,48 @@
       "table": "student_documents",
       "name": "student_documents_pkey",
       "definition": "CREATE UNIQUE INDEX student_documents_pkey ON escen.student_documents USING btree (id)"
+    },
+    {
+      "schema": "escen",
+      "table": "student_program_corrections",
+      "name": "student_program_corrections_actor",
+      "definition": "CREATE INDEX student_program_corrections_actor ON escen.student_program_corrections USING btree (actor_id)"
+    },
+    {
+      "schema": "escen",
+      "table": "student_program_corrections",
+      "name": "student_program_corrections_enrollment",
+      "definition": "CREATE INDEX student_program_corrections_enrollment ON escen.student_program_corrections USING btree (enrollment_id)"
+    },
+    {
+      "schema": "escen",
+      "table": "student_program_corrections",
+      "name": "student_program_corrections_group",
+      "definition": "CREATE INDEX student_program_corrections_group ON escen.student_program_corrections USING btree (group_id)"
+    },
+    {
+      "schema": "escen",
+      "table": "student_program_corrections",
+      "name": "student_program_corrections_offering",
+      "definition": "CREATE INDEX student_program_corrections_offering ON escen.student_program_corrections USING btree (offering_id)"
+    },
+    {
+      "schema": "escen",
+      "table": "student_program_corrections",
+      "name": "student_program_corrections_pkey",
+      "definition": "CREATE UNIQUE INDEX student_program_corrections_pkey ON escen.student_program_corrections USING btree (id)"
+    },
+    {
+      "schema": "escen",
+      "table": "student_program_corrections",
+      "name": "student_program_corrections_previous_offering",
+      "definition": "CREATE INDEX student_program_corrections_previous_offering ON escen.student_program_corrections USING btree (previous_offering_id)"
+    },
+    {
+      "schema": "escen",
+      "table": "student_program_corrections",
+      "name": "student_program_corrections_ticket_id_key",
+      "definition": "CREATE UNIQUE INDEX student_program_corrections_ticket_id_key ON escen.student_program_corrections USING btree (ticket_id)"
     },
     {
       "schema": "escen",

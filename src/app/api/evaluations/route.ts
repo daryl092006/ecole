@@ -129,6 +129,7 @@ export async function POST(request: Request) {
       // Candidats : étudiants inscrits dans le groupe de l'affectation (aligné sur guard_candidate SQL)
       const today = new Date().toISOString().slice(0, 10);
       const groupLinks = (data.scoped.tables.enrollment_groups || []).filter(eg =>
+        eg.historical_only !== true &&
         eg.group_id === assignment.group_id &&
         (!eg.valid_from || String(eg.valid_from).slice(0, 10) <= today) &&
         (!eg.valid_until || String(eg.valid_until).slice(0, 10) > today)

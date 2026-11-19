@@ -3,7 +3,10 @@ import references from '@/data/relationalReferences.json';
 import type { DatabaseRow, PersistentContext, RelationalSnapshot } from '@/types/persistence';
 import type { AcademicYearOption } from '@/types/academicYearContext';
 import { ROLES } from '@/types/permissions';
-const map: Record<string, Record<string, string>> = references;
+const map: Record<string, Record<string, string>> = {
+  ...references,
+  enrollment_offering_contexts: { enrollment_id: 'enrollments', offering_id: 'academic_offerings' },
+};
 const id = (row: DatabaseRow, field: string) => String(row[field] || '');
 
 export function accessibleAcademicYears(snapshot: RelationalSnapshot, context: PersistentContext): AcademicYearOption[] {

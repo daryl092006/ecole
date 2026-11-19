@@ -52,7 +52,7 @@ export async function GET(request:Request,{params}:Params){try{
   }):[];
   const enrichedEnrollments=enrollments.map(row=>{
     const activeGroupRows=(scoped.tables.enrollment_groups || [])
-      .filter(eg=>eg.enrollment_id===row.id && !eg.valid_until)
+      .filter(eg=>eg.enrollment_id===row.id && eg.historical_only!==true && !eg.valid_until)
       .sort((a,b)=>String(b.valid_from || '').localeCompare(String(a.valid_from || '')));
     const currentGroupRow=activeGroupRows[0];
     const currentGroup=currentGroupRow ? (snapshot.tables.groups || []).find(g=>g.id===currentGroupRow.group_id) : undefined;
@@ -156,7 +156,7 @@ export async function POST(request:Request,{params}:Params){try{
     const offeringLinks=availableEnrollmentGroupLinks(data.snapshot,(data.snapshot.tables.academic_offerings || []).filter(o=>o.id===enrollment.offering_id));
     if(!offeringLinks.some(link=>link.group_id===body.groupId))throw new RequestError(409,'Choisissez un groupe actif rattaché à la même formation et au même niveau.');
     const activeGroupRows=(data.snapshot.tables.enrollment_groups || [])
-      .filter(eg=>eg.enrollment_id===enrollment.id && !eg.valid_until)
+      .filter(eg=>eg.enrollment_id===enrollment.id && eg.historical_only!==true && !eg.valid_until)
       .sort((a,b)=>String(b.valid_from || '').localeCompare(String(a.valid_from || '')));
     const currentGroupRow=activeGroupRows[0];
     if(currentGroupRow?.group_id===body.groupId)throw new RequestError(409,'L’étudiant est déjà affecté à ce groupe.');

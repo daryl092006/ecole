@@ -9,7 +9,7 @@ const field = (row: DatabaseRow, name: string) => typeof row[name] === 'string' 
 const ownRole = (context: PersistentContext) => context.role === ROLES.STUD || context.role === ROLES.DEL;
 const domainTables: Array<{ permission: Permission; tables: string[] }> = [
   { permission: 'academic.view', tables: ['cycles','levels','programs','tracks','subjects','curricula','curriculum_semesters','teaching_units','curriculum_components','academic_offerings','offering_semesters','group_offerings','teaching_assignments','assessment_weights','syllabuses','teachers','course_resources'] },
-  { permission: 'student.view', tables: ['students','enrollments','enrollment_groups','enrollment_events','student_contacts','delegate_mandates','student_documents','document_types','document_requirements','document_reviews','generated_documents'] },
+  { permission: 'student.view', tables: ['students','enrollments','enrollment_groups','enrollment_offering_contexts','enrollment_events','student_contacts','delegate_mandates','student_documents','document_types','document_requirements','document_reviews','generated_documents'] },
   { permission: 'schedule.view', tables: ['sites','rooms','groups','academic_years','blocked_periods','schedule_series','sessions','session_participants','session_supervisors'] },
   { permission: 'attendance.view', tables: ['attendances','teacher_attendances','absence_justifications'] },
   { permission: 'grade.view', tables: ['evaluations','evaluation_candidates','evaluation_transitions','exam_deliveries','exam_papers','exam_parts','exam_questions','exam_options','exam_attempts','exam_answers','answer_corrections','grades','grade_revisions','academic_rule_versions','juries','jury_members','jury_decisions','jury_grade_inputs','credit_awards','exam_rooms','exam_room_candidates','exam_room_supervisors'] },
@@ -43,6 +43,9 @@ export function filterRelationalSnapshot(snapshot: RelationalSnapshot, context: 
     (!grant.site_id || grant.site_id === offering.site_id) && (!grant.academic_year_id || grant.academic_year_id === offering.academic_year_id)
     && (!grant.group_id || (groupId !== undefined ? grant.group_id === groupId : rows('group_offerings').some(link => link.group_id === grant.group_id && link.offering_id === offering.id))));
   const personalEnrollments = new Set(rows('enrollments').filter(row => row.student_id === context.studentId).map(row => row.id));
+  const personalEvaluationIds = new Set(rows('evaluation_candidates').filter(row => personalEnrollments.has(field(row, 'enrollment_id'))).map(row => row.evaluation_id));
+  const personalHistoricalAssignmentIds = new Set(rows('evaluations').filter(row => personalEvaluationIds.has(row.id)).map(row => row.assignment_id));
+  const personalCurrentGroupIds = new Set(rows('enrollment_groups').filter(row => personalEnrollments.has(field(row, 'enrollment_id')) && row.historical_only !== true).map(row => row.group_id));
   const assignedSessionIds = new Set(rows('session_supervisors').filter(row => row.account_id === context.accountId).map(row => field(row,'session_id')));
   for (const link of rows('exam_room_supervisors').filter(row => row.account_id === context.accountId)) {
     const room = rows('exam_rooms').find(row => row.id === link.exam_room_id);
@@ -52,10 +55,10 @@ export function filterRelationalSnapshot(snapshot: RelationalSnapshot, context: 
   const supervisor = context.role === ROLES.SURV && assignedSessionIds.size > 0;
   const assignments = rows('teaching_assignments').filter(row => teacher ? !!context.teacherId && (row.teacher_id === context.teacherId || sessionAssignmentIds.has(row.id))
     : supervisor ? sessionAssignmentIds.has(row.id)
-    : self ? rows('enrollment_groups').some(link => personalEnrollments.has(field(link,'enrollment_id')) && link.group_id === row.group_id && rows('enrollments').some(enrollment => enrollment.id === link.enrollment_id && enrollment.offering_id === row.offering_id))
+    : self ? personalHistoricalAssignmentIds.has(row.id) || sessionAssignmentIds.has(row.id) || rows('enrollment_groups').some(link => link.historical_only !== true && personalEnrollments.has(field(link,'enrollment_id')) && link.group_id === row.group_id && rows('enrollments').some(enrollment => enrollment.id === link.enrollment_id && enrollment.offering_id === row.offering_id))
     : rows('academic_offerings').some(offering => offering.id === row.offering_id && grantsOffering(offering,row.group_id))).filter(row => rows('academic_offerings').some(offering => offering.id === row.offering_id && grantsOffering(offering, row.group_id)));
   const assignmentIds = new Set(assignments.map(row => row.id));
-  const offeringIds = new Set(rows('academic_offerings').filter(row => self ? rows('enrollments').some(link => personalEnrollments.has(link.id) && link.offering_id === row.id)
+  const offeringIds = new Set(rows('academic_offerings').filter(row => self ? rows('enrollments').some(link => personalEnrollments.has(link.id) && link.offering_id === row.id) || rows('enrollment_offering_contexts').some(link => personalEnrollments.has(field(link, 'enrollment_id')) && link.offering_id === row.id)
     : teacher || supervisor ? assignments.some(link => link.offering_id === row.id) : grantsOffering(row)).map(row => row.id));
   const groupIds = new Set(rows('group_offerings').filter(row => offeringIds.has(field(row,'offering_id')) && (self || teacher || supervisor || rows('academic_offerings').some(offering => offering.id === row.offering_id && grantsOffering(offering,row.group_id))) && (!teacher && !supervisor && !self
     || (self ? rows('enrollment_groups').some(link => personalEnrollments.has(field(link,'enrollment_id')) && link.group_id === row.group_id)
@@ -67,6 +70,11 @@ export function filterRelationalSnapshot(snapshot: RelationalSnapshot, context: 
     : teacher || supervisor ? rows('enrollment_groups').some(link => link.enrollment_id === row.id && groupIds.has(field(link,'group_id')))
     : offeringIds.has(field(row,'offering_id')) && (unscoped || rows('enrollment_groups').some(link => link.enrollment_id === row.id && groupIds.has(field(link,'group_id')))));
   const enrollmentIds = new Set(enrollments.map(row => row.id));
+  // Keep the current offering as ancestry for an already authorized historical
+  // candidate; assignments and groups remain restricted to the teacher's scope.
+  if ((teacher || supervisor) && can('student.view')) {
+    enrollments.forEach(enrollment => offeringIds.add(field(enrollment, 'offering_id')));
+  }
   const studentIds = new Set((self || can('student.view') || can('attendance.view') ? enrollments : []).map(row => field(row,'student_id')));
   if (self && context.studentId) studentIds.add(context.studentId);
   if (can('student.view') && unscoped && !self && !teacher && !supervisor) rows('students').forEach(row => studentIds.add(row.id));
@@ -97,7 +105,7 @@ export function filterRelationalSnapshot(snapshot: RelationalSnapshot, context: 
     && (can('communication.manage') || context.role === ROLES.DG || context.role === ROLES.IT);
   const now = Date.now();
   const communicationRoleIds = new Set(rows('roles').filter(row => row.code === context.roleCode && row.active !== false).map(row => row.id));
-  const groupInCommunicationYear = (groupId: string, communication: DatabaseRow) => groupIds.has(groupId)
+  const groupInCommunicationYear = (groupId: string, communication: DatabaseRow) => groupIds.has(groupId) && (!self || personalCurrentGroupIds.has(groupId))
     && (!communication.academic_year_id || rows('groups').some(group => group.id === groupId && group.academic_year_id === communication.academic_year_id)
       || rows('group_offerings').some(link => link.group_id === groupId && offeringIds.has(field(link,'offering_id')) && rows('academic_offerings').some(offering => offering.id === link.offering_id && offering.academic_year_id === communication.academic_year_id)));
   const audienceMatches = (audience: DatabaseRow, communication: DatabaseRow) => context.grants.some(grant => {
@@ -134,7 +142,7 @@ export function filterRelationalSnapshot(snapshot: RelationalSnapshot, context: 
   for (const [name, collection] of Object.entries(tables)) {
     const permitted = name === 'people' || name === 'file_objects' || name === 'support_tickets' || name === 'support_messages' || name === 'support_categories' || name === 'support_files'
       || !!policy.get(name) && can(policy.get(name)!)
-      || self && (financial.has(name) || academic.has(name) || ['students','enrollments','enrollment_groups','student_documents','document_types','document_reviews','generated_documents','communications','communication_audiences','communication_reads','communication_files'].includes(name));
+      || self && (financial.has(name) || academic.has(name) || ['students','enrollments','enrollment_groups','enrollment_offering_contexts','student_documents','document_types','document_reviews','generated_documents','communications','communication_audiences','communication_reads','communication_files'].includes(name));
     if (!permitted || (teacher || supervisor || self) && ['academic_rule_versions','juries','jury_members','jury_decisions','jury_grade_inputs','credit_awards'].includes(name)) continue;
     source[name] = collection.filter(row => {
       if (name === 'purchases') return purchaseIds.has(row.id);
@@ -162,6 +170,7 @@ export function filterRelationalSnapshot(snapshot: RelationalSnapshot, context: 
       if (name === 'curriculum_semesters') return unscoped && !self && !teacher && !supervisor || semesterIds.has(row.id);
       if (name === 'students') return studentIds.has(row.id);
       if (name === 'enrollments') return enrollmentIds.has(row.id);
+      if (name === 'enrollment_offering_contexts') return enrollmentIds.has(field(row, 'enrollment_id')) && offeringIds.has(field(row, 'offering_id'));
       if (name === 'sessions') return !!sessionScopes.get(row.id)?.length;
       if (name === 'session_participants') return sessionScopes.get(field(row, 'session_id'))?.some(participant => participant.id === row.id) || false;
       if (name === 'session_supervisors') return supervisor ? row.account_id === context.accountId : !!sessionScopes.get(field(row, 'session_id'))?.length;

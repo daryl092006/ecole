@@ -7,6 +7,7 @@ export interface SupportDirectory {
   canManageCorrections?: boolean;
   correctionTicketIds?: string[];
   students?: { ticketId: string; matricule: string; name: string }[];
+  programCorrection?: import('./studentCorrections').StudentProgramCorrectionDirectory;
   yearId: string | null;
   tickets: DatabaseRow[];
   messages: DatabaseRow[];
