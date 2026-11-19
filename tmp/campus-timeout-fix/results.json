@@ -1,0 +1,8 @@
+{
+  "baselineMs": 45,
+  "optimizedMs": 18,
+  "restoredMs": 33,
+  "bytes": 2176564,
+  "tables": 147,
+  "checks": "Snapshots identiques ; ACL, propriétaire et SECURITY DEFINER préservés ; tables sensibles exclues ; accès navigateur refusé ; accès serveur autorisé ; restauration testée."
+}
