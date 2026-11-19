@@ -34,27 +34,23 @@ const reviewSchema = z.discriminatedUnion('decision', [
     yearId: z.uuid(),
   }).strict(),
 ]);
-async function ownProfile(auth: Awaited<ReturnType<typeof requireAccount>>) {
+async function ownProfile(auth: Awaited<ReturnType<typeof requireAccount>>, request: Request) {
   const person = auth.profile.person;
   let programName: string | null = null;
   if (auth.context.studentId) {
-    try {
-      const result = await auth.client.rpc('escen_backend_snapshot');
-      if (result.data?.tables) {
-        const tables = result.data.tables;
-        const enrollment = (tables.enrollments || []).find((e: { student_id: string; archived_at?: string | null }) => e.student_id === auth.context.studentId && !e.archived_at);
-        if (enrollment) {
-          const offering = (tables.academic_offerings || []).find((o: { id: string }) => o.id === enrollment.offering_id);
-          const curriculum = (tables.curricula || []).find((c: { id: string }) => c.id === offering?.curriculum_id);
-          const program = (tables.programs || []).find((p: { id: string }) => p.id === curriculum?.program_id);
-          const level = (tables.levels || []).find((l: { id: string }) => l.id === offering?.level_id);
-          if (program) {
-            programName = level?.name ? `${program.name} — ${level.name}` : program.name;
-          }
-        }
-      }
-    } catch {
-      // Snapshot optional for non-academic or error fallback
+    const result = await auth.client.rpc('escen_backend_snapshot');
+    if (result.error || !result.data?.tables) throw new RequestError(503, 'Votre inscription ne peut pas être vérifiée. Réessayez.');
+    const snapshot = result.data as RelationalSnapshot;
+    const tables = snapshot.tables;
+    const year = await resolveAcademicYear(new Request(request.url), auth.client, auth.context, snapshot);
+    const offerings = (tables.academic_offerings || []).filter(offering => offering.academic_year_id === year.currentYearId);
+    const enrollment = (tables.enrollments || []).find(row => row.student_id === auth.context.studentId && !row.archived_at && offerings.some(offering => offering.id === row.offering_id));
+    if (enrollment) {
+      const offering = offerings.find(row => row.id === enrollment.offering_id);
+      const curriculum = (tables.curricula || []).find(row => row.id === offering?.curriculum_id);
+      const program = (tables.programs || []).find(row => row.id === curriculum?.program_id);
+      const level = (tables.levels || []).find(row => row.id === offering?.level_id);
+      if (program) programName = level?.name ? `${program.name} — ${level.name}` : String(program.name);
     }
   }
 
@@ -87,7 +83,7 @@ export async function GET(request: Request) {
       const year = await resolveAcademicYear(new Request(request.url), auth.client, auth.context, result.data as RelationalSnapshot);
       return Response.json({ years: year.years.map(item => ({ id: item.id, name: item.name })), currentYearId: year.currentYearId }, { headers: { 'Cache-Control': 'no-store' } });
     }
-    return Response.json(await ownProfile(auth), { headers: { 'Cache-Control': 'no-store' } });
+    return Response.json(await ownProfile(auth, request), { headers: { 'Cache-Control': 'no-store' } });
   } catch (error) { return errorResponse(error); }
 }
 export async function POST(request: Request) {
@@ -95,7 +91,7 @@ export async function POST(request: Request) {
     const auth = await requireAccount(request);
     if (!auth.mustVerifyProfile) throw new RequestError(409, 'Aucune vérification de première connexion n’est en attente.');
     const body = reviewSchema.parse(await request.json().catch(() => { throw new RequestError(400, 'Demande de vérification invalide.'); }));
-    const current = await ownProfile(auth);
+    const current = await ownProfile(auth, request);
     if (body.snapshot !== current.snapshot) throw new RequestError(409, 'Vos informations ont changé. Actualisez cette page pour les vérifier.');
     let ticketId: string | null = null;
     const reportIssue = async (issue: { details: string; yearId: string }) => {

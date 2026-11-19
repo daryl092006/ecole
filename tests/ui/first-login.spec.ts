@@ -5,12 +5,20 @@ import { authenticateFixture, fixtureCapabilities, ACCOUNT_IDS, snapshot as camp
 import { ROLES } from '../../src/types/permissions';
 
 const profile = { firstname: 'Alice', lastname: 'Exemple', email: 'alice@example.test', personalEmail: 'alice@example.test', phone: '+22890000000', address: 'Quartier Test, Lomé', birthDate: '2000-01-01', programName: null };
-function fixture(options: { required?: boolean; failAuth?: boolean; failTicket?: boolean; otherCurrentYear?: boolean; emptyPerson?: boolean; isTeacher?: boolean; nationality?: string | null; nif?: string | null } = {}) {
-  const context = securityContext();
+function fixture(options: { required?: boolean; failAuth?: boolean; failTicket?: boolean; otherCurrentYear?: boolean; emptyPerson?: boolean; isTeacher?: boolean; nationality?: string | null; nif?: string | null; annualStudent?: boolean } = {}) {
+  const context = securityContext(options.annualStudent ? ROLES.STUD : ROLES.IT, { studentId: options.annualStudent ? uuid(40) : null });
   const writes: Record<string, unknown>[] = []; let transactions = 0;
   const basePerson = options.emptyPerson ? { firstname: 'Alice', lastname: 'Exemple', email: null, phone: null, address: null, birth_date: null } : { firstname: 'Alice', lastname: 'Exemple', email: profile.email, phone: profile.phone, address: profile.address, birth_date: profile.birthDate };
   const personData = { ...basePerson, ...(options.nationality !== undefined ? { nationality: options.nationality } : {}), ...(options.nif !== undefined ? { nif: options.nif } : {}) };
   const tables: Record<string, Record<string, unknown>[]> = { academic_years: [{ id: securityIds.year, name: '2026-2027', status: 'OUVERTE', starts_on: '2026-09-01', ends_on: '2027-08-31' }], support_categories: [{ id: uuid(77), code: 'STUDENT_PROGRAM_CORRECTION', name: 'Correction scolaire', active: true }], support_tickets: [], people: [] };
+  if (options.annualStudent) {
+    tables.academic_years.push({ id: securityIds.otherYear, name: '2025-2026', status: 'EN_CLOTURE', starts_on: '2025-09-01', ends_on: '2026-08-31' });
+    tables.programs = [{ id: uuid(50), name: 'Finance Digitale' }];
+    tables.curricula = [{ id: uuid(51), program_id: uuid(50) }, { id: uuid(56), program_id: uuid(50) }];
+    tables.levels = [{ id: uuid(52), name: 'Master 1' }, { id: uuid(53), name: 'Master 2' }];
+    tables.academic_offerings = [{ id: uuid(54), academic_year_id: securityIds.otherYear, curriculum_id: uuid(51), level_id: uuid(52) }, { id: uuid(55), academic_year_id: securityIds.year, curriculum_id: uuid(56), level_id: uuid(53) }];
+    tables.enrollments = [{ id: uuid(57), student_id: uuid(40), offering_id: uuid(54), status: 'INSCRIT' }, { id: uuid(58), student_id: uuid(40), offering_id: uuid(55), status: 'REINSCRIT' }];
+  }
   let failAuth = !!options.failAuth;
   const client = { rpc: async (name: string, args?: Record<string, unknown>) => {
     if (name === 'escen_backend_snapshot') return { data: { revision: 5 + transactions, tables } };
@@ -34,7 +42,7 @@ function fixture(options: { required?: boolean; failAuth?: boolean; failTicket?:
     mustVerifyProfile: options.required !== false, profile: { person: personData, ...(options.isTeacher ? { teacher: { id: uuid(20) } } : {}) }, email: profile.email,
     user: { app_metadata: { provider: 'email', escen_first_login: { version: 1, password_changed_at: '2026-10-28T10:00:00Z' } } },
   }) as { GET: (request: Request) => Promise<Response>; POST: (request: Request) => Promise<Response> };
-  const get = (query = '') => route.GET(new Request(`http://local.test/api/session/first-login${query}`));
+  const get = (query = '', selectedYear?: string) => route.GET(new Request(`http://local.test/api/session/first-login${query}`, { headers: selectedYear ? { 'x-escen-year': selectedYear } : {} }));
   const post = (body: unknown) => route.POST(new Request('http://local.test/api/session/first-login', { method: 'POST', body: JSON.stringify(body) }));
   return { get, post, writes, tables, transactions: () => transactions };
 }
@@ -48,6 +56,18 @@ test('Première connexion : ordre obligatoire, états persistés et conservation
   expect(firstLoginState({ must_change_password: true, escen_first_login: { version: 1, exempt: true } }, true).mustChangePassword).toBe(true);
   expect(firstLoginState({}, false).mustChangePassword).toBe(false);
   expect(firstLoginState({ escen_first_login: { version: 1, profile_reviewed_at: 'date', profile_review: 'CONFIRM' } }, true).mustChangePassword).toBe(true);
+});
+
+test('Première connexion : la réinscription M2 de l’année de travail est affichée avant l’ancien M1', async () => {
+  const f = fixture({ annualStudent: true });
+  const before = structuredClone(f.tables.enrollments);
+  const response = await f.get('', securityIds.otherYear);
+  expect(response.status).toBe(200);
+  const page = await response.json();
+  expect(page.profile.programName).toBe('Finance Digitale — Master 2');
+  expect((await f.post({ decision: 'CONFIRM', snapshot: page.snapshot })).status).toBe(200);
+  expect(f.tables.support_tickets).toHaveLength(0);
+  expect(f.tables.enrollments).toEqual(before);
 });
 
 test('Confirmation avec signalement : les métadonnées enregistrées débloquent le tableau de bord', async () => {
