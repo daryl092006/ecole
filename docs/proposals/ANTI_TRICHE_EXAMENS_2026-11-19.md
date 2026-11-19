@@ -45,3 +45,13 @@ Après validation du dispositif : présenter le SQL de la nouvelle migration et 
 
 - Page Visibility API : https://developer.mozilla.org/en-US/docs/Web/API/Page_Visibility_API
 - Fullscreen API : https://developer.mozilla.org/en-US/docs/Web/API/Fullscreen_API
+
+## Première version confirmée dans la conversation
+
+Le mode strict vise les prochaines épreuves : plein écran pour composer, questions masquées lors d’une sortie, avertissements et journal des incidents, restrictions de copie/collage/impression dans la page. Les captures système ne peuvent pas être garanties bloquées et aucun écran n’est enregistré. Les copies déjà ouvertes et l’épreuve actuellement en cours restent exemptées. Les sauvegardes et brouillons restent indépendants du journal.
+
+Le journal est audité et consultable avec les droits existants du journal d’activité (DG/IT) ; aucun accès enseignant ou surveillant supplémentaire n’est accordé automatiquement. Le mélange des questions et le contrôle exclusif de session restent des évolutions distinctes de cette première version.
+
+SQL proposé avant implémentation : `docs/sql-proposals/20261119_exam_strict_mode.sql`. L’activation attend la validation explicite de ce SQL, conformément à AGENTS.md.
+
+Le schéma est installé avec le mode désactivé (`activated_at = infinity`). Après déploiement et vérification de l’interface, le SQL séparé `docs/sql-proposals/20261119_activate_exam_strict_mode.sql` fixe la date d’activation. Aucune copie déjà commencée ne change de mode.
