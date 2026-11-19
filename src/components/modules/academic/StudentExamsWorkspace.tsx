@@ -182,10 +182,13 @@ function OnlineExamEditor({ initial, onBack }: { initial: OnlineExamView; onBack
         if (pending.current && 'saveId' in pending.current && pending.current.saveId === next.attempt.lastSaveId) {
           pending.current = null;
         } else {
-          blocked.current = true;
-          setConflict(true);
-          setError('Une autre session a modifié cette copie. Rechargez la version enregistrée avant de continuer.');
-          return;
+          pending.current = null;
+          draft.current = next.answers;
+          setAnswers(next.answers);
+          blocked.current = false;
+          setConflict(false);
+          setError('');
+          setNotice('Copie synchronisée automatiquement avec la dernière version enregistrée.');
         }
       }
       apply(next);
@@ -233,6 +236,24 @@ function OnlineExamEditor({ initial, onBack }: { initial: OnlineExamView; onBack
         if (command.action === 'submit' || next.attempt.status !== 'EN_COURS') void portal.refreshCampus();
         return next.accepted !== false;
       } catch (cause) {
+        if (cause instanceof OnlineExamError && cause.status === 409) {
+          try {
+            const latest = await readOnlineExam(portal.activeRole, initial.attempt.id);
+            pending.current = null;
+            draft.current = latest.answers;
+            if (mounted.current) {
+              setAnswers(latest.answers);
+              setConflict(false);
+              setError('');
+              setNotice('Copie synchronisée automatiquement avec la dernière version enregistrée.');
+            }
+            blocked.current = false;
+            apply(latest);
+            return false;
+          } catch {
+            /* Fall back to manual reload if the automatic refresh also fails. */
+          }
+        }
         if (cause instanceof OnlineExamError && [401, 403, 409, 422].includes(cause.status)) {
           blocked.current = true;
           if (mounted.current) setConflict(true);
@@ -269,15 +290,13 @@ function OnlineExamEditor({ initial, onBack }: { initial: OnlineExamView; onBack
         ) {
           draft.current = local.answers;
           setAnswers(local.answers);
-          setNotice(
-            'Brouillon de cet appareil retrouvé. Les changements seront enregistrés avant l’échéance si la connexion est disponible.'
-          );
+          if (!examAnswersEqual(local.answers, initial.answers)) {
+            setNotice(
+              'Brouillon de cet appareil retrouvé. Les changements seront enregistrés avant l’échéance si la connexion est disponible.'
+            );
+          }
         } else if (initial.attempt.status === 'EN_COURS') {
-          blocked.current = true;
-          setConflict(true);
-          setError(
-            'Le brouillon local ne correspond plus à la copie enregistrée. Rechargez la version enregistrée pour éviter de l’écraser.'
-          );
+          persist();
         } else {
           localStorage.removeItem(storageKey);
         }

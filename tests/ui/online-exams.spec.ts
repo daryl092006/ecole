@@ -138,15 +138,14 @@ test('Coupure avant la fin : ne jamais ajouter les réponses locales après éch
   await expect(page.getByText(/Des changements locaux non enregistrés/)).toBeVisible();
 });
 
-test('Deux onglets : conflit visible, la version distante ne peut pas être écrasée', async ({ page }) => {
+test('Deux onglets : synchronisation automatique, la version distante ne peut pas être écrasée', async ({ page }) => {
   const fixture = await setup(page);
   fixture.concurrentUpdate();
   await page.getByRole('textbox', { name: 'Votre réponse' }).first().fill('Mon brouillon');
-  await expect(page.getByRole('alert').filter({ hasText: 'autre onglet' })).toContainText('autre onglet');
-  await expect(page.getByRole('textbox', { name: 'Votre réponse' }).first()).toBeDisabled();
-  expect(fixture.view.answers).toEqual({});
-  await page.getByRole('button', { name: 'Recharger la version enregistrée' }).click();
+  await expect(page.getByRole('status').filter({ hasText: 'synchronisée automatiquement' })).toBeVisible();
   await expect(page.getByRole('textbox', { name: 'Votre réponse' }).first()).toBeEnabled();
+  await expect(page.getByRole('button', { name: 'Remettre ma copie', exact: true })).toBeEnabled();
+  expect(fixture.view.answers).toEqual({});
   await expect(page.getByRole('textbox', { name: 'Votre réponse' }).first()).toHaveValue('');
 });
 
