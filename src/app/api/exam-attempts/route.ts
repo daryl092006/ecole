@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import { requireAccount, requirePermission, RequestError, errorResponse } from '@/server/auth';
+import type { RelationalSnapshot } from '@/types/persistence';
 
 export const dynamic = 'force-dynamic';
 const answers = z.array(z.object({
@@ -20,7 +21,15 @@ async function execute(request: Request, params: Record<string, unknown>) {
     if (['23514', '23502', '23503', '22P02'].includes(result.error.code ?? '')) throw new RequestError(422, 'L’épreuve est fermée, indisponible ou les réponses sont invalides. Actualisez la copie pour vérifier son état.');
     throw new RequestError(503, 'Enregistrement indisponible. Vos réponses locales sont conservées ; réessayez avant la fin de l’épreuve.');
   }
-  return Response.json(result.data, { headers: { 'Cache-Control': 'no-store' } });
+  let data = result.data;
+  if (['read', 'start'].includes(String(params.p_action)) && data?.paper?.id) {
+    const snapshot = await client.rpc('escen_backend_snapshot');
+    if (snapshot.error) throw new RequestError(503, 'Le contexte du sujet est indisponible. Rechargez la copie.');
+    const paper = (snapshot.data as RelationalSnapshot | null)?.tables?.exam_papers?.find(row => row.id === data.paper.id);
+    if (!paper) throw new RequestError(503, 'Le contexte du sujet est indisponible. Rechargez la copie.');
+    data = { ...data, paper: { ...data.paper, instructions: typeof paper.instructions === 'string' ? paper.instructions : null } };
+  }
+  return Response.json(data, { headers: { 'Cache-Control': 'no-store' } });
 }
 export async function GET(request: Request) {
   try {

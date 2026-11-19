@@ -14,6 +14,7 @@ export async function verifyOnlineExams(db, check, { year, actor, teaching, offe
     await insert('role_grants', { account_id: account.id, role_id: roleId, granted_by: actor.id, valid_from: new Date().toISOString(), reason: 'Passage de recette' });
     const context = { accountId: account.id, personId: student.person_id, authUserId: authId, roleCode: 'STUD', role: 'Étudiant', permissions: ['exam.take'], studentId: student.id, teacherId: null, grants: [] };
     const client = { async rpc(name, args) {
+      if (name === 'escen_backend_snapshot') return { data: await scalar('select public.escen_backend_snapshot() as value'), error: null };
       assert.equal(name, 'escen_online_exam');
       try {
         const data = await scalar('select public.escen_online_exam($1,$2,$3,$4,$5,$6,$7,$8,$9::jsonb) as value', [args.p_actor_id, args.p_role_code, args.p_action, args.p_year_id ?? null, args.p_evaluation_id ?? null, args.p_attempt_id ?? null, args.p_expected_revision ?? null, args.p_save_id ?? null, JSON.stringify(args.p_answers ?? [])]);
@@ -34,7 +35,8 @@ export async function verifyOnlineExams(db, check, { year, actor, teaching, offe
   const evaluation = await insert('evaluations', { assignment_id: teaching.id, offering_id: offering.id, component_id: teaching.component_id, name: 'Remise persistante', kind: 'DEVOIR', created_by: actor.id });
   await insert('exam_deliveries', { evaluation_id: evaluation.id, session_id: session.id, access_opens_at: new Date(now - 500).toISOString(), access_closes_at: closes, duration_minutes: 30 });
   for (const person of people) await insert('evaluation_candidates', { evaluation_id: evaluation.id, enrollment_id: person.enrollment.id, offering_id: offering.id, eligibility: 'ELIGIBLE' });
-  const paper = await insert('exam_papers', { evaluation_id: evaluation.id, version: 1 });
+  const instructions = '<p>Contexte général du cas.</p><table><tr><th>KPI</th><th>Valeur</th></tr><tr><td>Activation</td><td>54 %</td></tr></table>';
+  const paper = await insert('exam_papers', { evaluation_id: evaluation.id, version: 1, instructions });
   const part = await insert('exam_parts', { paper_id: paper.id, title: 'Réponses', instructions: 'Conserver toutes les réponses reçues', position: 1 });
   const q1 = await insert('exam_questions', { paper_id: paper.id, part_id: part.id, kind: 'TEXTE', prompt: 'Expliquez', configuration: { correction: 'SECRET_CORRECTION' }, points: 10, position: 1 });
   const q2 = await insert('exam_questions', { paper_id: paper.id, part_id: part.id, kind: 'QCM_SIMPLE', prompt: 'Choisissez', points: 10, position: 2 });
@@ -52,6 +54,7 @@ export async function verifyOnlineExams(db, check, { year, actor, teaching, offe
     assert.equal(Date.parse(first.attempt.deadlineAt), Date.parse(closes));
     assert.equal((await get(await people[0].request({ action: 'start', evaluationId: evaluation.id }))).attempt.id, first.attempt.id);
     assert.ok(!JSON.stringify(first).includes('SECRET_CORRECTION'));
+    assert.equal(first.paper.instructions, instructions);
     assert.ok(!JSON.stringify(first).includes('is_correct'));
     assert.equal(first.paper.parts[0].questions.length, 2);
     assert.equal((await people[0].request({ action: 'start', evaluationId: evaluation.id, deadlineAt: '2099-01-01' })).status, 400);

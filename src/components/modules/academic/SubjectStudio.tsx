@@ -1,6 +1,7 @@
 'use client';
 import SubjectConstructor from './SubjectConstructor';
 import SubjectRichText from '@/components/ui/SubjectRichText';
+import SubjectRichEditor from '@/components/ui/SubjectRichEditor';
 import { sanitizeSubjectMarkup } from '@/utils/subjectMarkup';
 import IconButton from '@/components/ui/IconButton';
 import LoadingState from '@/components/ui/LoadingState';
@@ -138,7 +139,7 @@ export default function SubjectStudio() {
   const print = () =>
     printDocument(
       subject.title || 'Sujet',
-      `<div class="document-heading"><h1>ESCEN</h1><h2>${h(subject.title)}</h2></div><p>${subject.authorize ? 'Épreuve autorisée' : 'Brouillon de'} ${h(purposes[subject.purpose].toLowerCase())} · ${subject.durationMinutes} minutes · ${subjectPoints(subject)} points</p><p>${h(subject.instructions).replace(/\n/g, '<br>')}</p>${subject.parts.map(part => `<h3>${h(part.title)}</h3><p>${h(part.instructions).replace(/\n/g, '<br>')}</p>${part.questions.map((q, index) => `<h4>Question ${index + 1} · ${q.points} point(s)</h4><p>${sanitizeSubjectMarkup(q.prompt)}</p>${q.options.length ? `<ol>${q.options.map(option => `<li>${h(option.label)}</li>`).join('')}</ol>` : '<p>Réponse : __________________________________________________</p>'}`).join('')}`).join('')}`
+      `<div class="document-heading"><h1>ESCEN</h1><h2>${h(subject.title)}</h2></div><p>${subject.authorize ? 'Épreuve autorisée' : 'Brouillon de'} ${h(purposes[subject.purpose].toLowerCase())} · ${subject.durationMinutes} minutes · ${subjectPoints(subject)} points</p><div>${sanitizeSubjectMarkup(subject.instructions)}</div>${subject.parts.map(part => `<h3>${h(part.title)}</h3><div>${sanitizeSubjectMarkup(part.instructions)}</div>${part.questions.map((q, index) => `<h4>Question ${index + 1} · ${q.points} point(s)</h4><div>${sanitizeSubjectMarkup(q.prompt)}</div>${q.options.length ? `<ol>${q.options.map(option => `<li>${h(option.label)}</li>`).join('')}</ol>` : '<p>Réponse : __________________________________________________</p>'}`).join('')}`).join('')}`
     );
 
   const exams = useMemo(() => directory?.exams || [], [directory?.exams]);
@@ -278,10 +279,7 @@ export default function SubjectStudio() {
                 </div>
               )}
 
-              <label className="form-group">
-                Consignes générales
-                <textarea className="input" maxLength={8000} value={subject.instructions} onChange={event => setSubject({ ...subject, instructions: event.target.value })} />
-              </label>
+              <SubjectRichEditor label="Consignes générales" value={subject.instructions} onChange={instructions => setSubject({ ...subject, instructions })} disabled={saving} maxLength={8000} />
 
               <SubjectConstructor subject={subject} onChange={setSubject} disabled={saving} allowJustification={directory.features?.qcmJustification === true} />
               <footer className="subject-save">
@@ -334,11 +332,11 @@ export default function SubjectStudio() {
             <p>
               {purposes[subject.purpose]} · {subject.durationMinutes} minutes · {subjectPoints(subject)} points
             </p>
-            <p className="subject-text">{subject.instructions}</p>
+            <SubjectRichText value={subject.instructions} />
             {subject.parts.map((part, index) => (
               <section key={index}>
                 <h3>{part.title}</h3>
-                <p className="subject-text">{part.instructions}</p>
+                <SubjectRichText value={part.instructions} />
                 {part.questions.map((q, qIndex) => (
                   <article key={qIndex}>
                     <h4>

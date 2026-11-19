@@ -146,6 +146,9 @@ function OnlineExamEditor({ initial, onBack }: { initial: OnlineExamView; onBack
   };
 
   const apply = (next: OnlineExamView) => {
+    if (next.paper.id === current.current.paper.id && next.paper.instructions === undefined) {
+      next = { ...next, paper: { ...next.paper, instructions: current.current.paper.instructions } };
+    }
     current.current = next;
     clock.current = { server: Date.parse(next.serverNow), local: performance.now() };
     if (!mounted.current) return;
@@ -378,10 +381,11 @@ function OnlineExamEditor({ initial, onBack }: { initial: OnlineExamView; onBack
           Recharger la version enregistrée
         </button>
       )}
+      {view.paper.instructions && <SubjectRichText value={view.paper.instructions} />}
       {view.paper.parts.map(part => (
         <section key={part.id}>
           <h2>{part.caseStudy ? `Étude de cas : ${part.title}` : part.title}</h2>
-          {part.instructions && <p className="subject-text">{part.instructions}</p>}
+          {part.instructions && <SubjectRichText value={part.instructions} />}
           {part.questions.map(question => {
             const answer = answers[question.id] || emptyExamAnswer();
             const isTrueFalse = question.presentation === 'TRUE_FALSE';

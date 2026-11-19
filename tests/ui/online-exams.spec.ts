@@ -42,7 +42,9 @@ async function setup(page: Page, seconds = 180, paper?: OnlineExamView['paper'])
         if (dropResponse) { dropResponse = false; return route.abort('failed'); }
       }
     }
-    return route.fulfill({ json: { ...view, accepted: true } });
+    const responsePaper = { ...view.paper };
+    if (req.method() === 'POST') delete responsePaper.instructions;
+    return route.fulfill({ json: { ...view, paper: responsePaper, accepted: true } });
   });
   await page.goto('/mon-espace/epreuves');
   await page.getByRole('button', { name: 'Reprendre ma copie' }).click();
@@ -51,14 +53,17 @@ async function setup(page: Page, seconds = 180, paper?: OnlineExamView['paper'])
 
 for (const width of [390, 1440]) test(`Étude de cas, types de réponses et justification conservés à ${width}px`, async ({ page }) => {
   await page.setViewportSize({ width, height: 950 });
-  const fixture = await setup(page, 180, { id: 'paper', title: 'Cas de finance', parts: [{ id: 'part', title: 'Décision de financement',
-    caseStudy: true, instructions: 'Analysez les deux options avant de répondre.', questions: [
+  const fixture = await setup(page, 180, { id: 'paper', title: 'Cas de finance', instructions: '<p>Contexte général de l’entreprise.</p><table><thead><tr><th>KPI</th><th>Période 1</th><th>Période 2</th></tr></thead><tbody><tr><td>Activation</td><td>68 %</td><td>54 %</td></tr></tbody></table><script>window.unsafeSubject = true</script>', parts: [{ id: 'part', title: 'Décision de financement',
+    caseStudy: true, instructions: '<p>Analysez les deux options avant de répondre.</p>', questions: [
       { id: 'q1', kind: 'QCM_SIMPLE', prompt: 'Quel financement retenir ?', points: 10, requiresJustification: true,
         options: [{ id: 'a', label: 'Option A' }, { id: 'b', label: 'Option B' }] },
       { id: 'q2', kind: 'TEXTE', prompt: 'Définissez le risque.', presentation: 'SHORT_TEXT', points: 5, options: [] },
       { id: 'q3', kind: 'TEXTE', prompt: 'Développez votre analyse.', presentation: 'LONG_TEXT', points: 5, options: [] },
     ] }] });
   await expect(page.getByRole('heading', { name: 'Étude de cas : Décision de financement' })).toBeVisible();
+  await expect(page.getByRole('cell', { name: '54 %', exact: true })).toBeVisible();
+  await expect(page.getByText('Contexte général de l’entreprise.', { exact: true })).toBeVisible();
+  expect(await page.evaluate(() => 'unsafeSubject' in window)).toBe(false);
   await page.getByRole('radio', { name: 'Option A', exact: true }).check();
   await page.getByRole('textbox', { name: 'Justifiez votre réponse' }).fill('Ce choix conserve la trésorerie.');
   await page.getByRole('radio', { name: 'Option B', exact: true }).check();
@@ -66,6 +71,7 @@ for (const width of [390, 1440]) test(`Étude de cas, types de réponses et just
   await expect(page.getByRole('textbox', { name: 'Votre réponse', exact: true }).nth(0)).toHaveAttribute('rows', '2');
   await expect(page.getByRole('textbox', { name: 'Votre réponse', exact: true }).nth(1)).toHaveAttribute('rows', '6');
   await expect.poll(() => fixture.view.answers.q1).toEqual({ text: 'Ce choix conserve la trésorerie.', option_ids: ['b'] });
+  await expect(page.getByRole('cell', { name: '54 %', exact: true })).toBeVisible();
   await page.reload();
   await page.getByRole('button', { name: 'Reprendre ma copie' }).click();
   await expect(page.getByRole('radio', { name: 'Option B', exact: true })).toBeChecked();

@@ -34,7 +34,7 @@ export default function SubjectConstructor({ subject, onChange, disabled, allowJ
         {part && <section className="subject-constructor-part-form">
           <label className="form-group">Titre de la partie<input className="input" required maxLength={160} value={part.title} onChange={event => updatePart({ title: event.target.value })} /></label>
           <label className="checkbox-field"><input type="checkbox" checked={!!part.caseStudy} onChange={event => updatePart({ caseStudy: event.target.checked })} />C’est une étude de cas</label>
-          <label className="form-group">{part.caseStudy ? 'Présentation du cas' : 'Consignes de la partie'}<textarea className="input" maxLength={4000} value={part.instructions} onChange={event => updatePart({ instructions: event.target.value })} /></label>
+          <SubjectRichEditor label={part.caseStudy ? 'Présentation du cas' : 'Consignes de la partie'} value={part.instructions} onChange={instructions => updatePart({ instructions })} disabled={disabled} maxLength={4000} />
           <button type="button" className="btn btn-outline" onClick={() => setRemoval('part')}>Retirer cette partie</button>
         </section>}
       </aside>

@@ -15,7 +15,7 @@ export interface OnlineExamView {
     submissionKind: 'MANUAL' | 'AUTO_DEADLINE' | null;
     completionStatus: 'NON_TRAITE' | 'PARTIELLE' | 'COMPLETE' | null;
   };
-  paper: { id: string; title: string; parts: { id: string; title: string; instructions: string | null; caseStudy?: boolean; questions: OnlineExamQuestion[] }[] };
+  paper: { id: string; title: string; instructions?: string | null; parts: { id: string; title: string; instructions: string | null; caseStudy?: boolean; questions: OnlineExamQuestion[] }[] };
   answers: Record<string, OnlineExamAnswer>;
   lastSavedAt: string | null;
 }
