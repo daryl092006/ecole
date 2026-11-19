@@ -1,4 +1,9 @@
--- PROPOSITION NON APPLIQUEE : seconde étape, à approuver séparément.
+-- PROPOSITION REFUSEE PAR L'UTILISATEUR LE 19 NOVEMBRE 2026 : NE PAS APPLIQUER.
+-- Conservée pour traçabilité ; la présence de notes, présences, contrats ou
+-- paiements ne doit pas bloquer systématiquement la correction.
+-- Cette proposition doit être remplacée par un circuit conservant les liens
+-- historiques et prenant en charge les inscriptions déjà utilisées.
+-- Aucun accord de création de migration ou d'application n'a été donné.
 -- Correction d'une erreur d'inscription sans activité pédagogique ni finance.
 -- Les autres dossiers restent ouverts pour régularisation explicite.
 begin;

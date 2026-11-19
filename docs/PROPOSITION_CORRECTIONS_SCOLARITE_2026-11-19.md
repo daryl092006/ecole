@@ -36,7 +36,27 @@ SQL complet de la première étape de routage : `docs/sql-proposals/20261119_stu
 - Validation : TypeScript sans incrémental, ESLint, `npm test`, six tests support/corrections (dont parcours à 390 et 1440 px) et sept tests ciblés de première connexion réussis. Deux sélecteurs historiques des tests support ont été adaptés aux libellés actuels. Schéma documentaire régénéré avec `npm run db:describe` sans différence structurelle.
 - Aucun push, déploiement ou changement de base distante.
 
-## Seconde étape à approuver
+## Seconde étape — proposition refusée, à revoir
+
+L'utilisateur a refusé le blocage systématique le 19 novembre 2026. La présence de notes, présences, contrats, paiements ou historique doit être prise en charge par le circuit de correction et ne doit pas rendre le dossier non traitable. Les paragraphes et le SQL ci-dessous décrivent la proposition refusée, conservée pour traçabilité ; ils ne constituent pas une règle approuvée.
+
+La nouvelle conception distingue la formation corrigée et les rattachements historiques. Après le « go » utilisateur, l'option retenue est la conservation des notes, présences, contrats et paiements, sans recalcul automatique ni transfert des notes vers d'autres matières. Les pièces officielles déjà émises restent inchangées. Le SQL révisé doit encore recevoir un accord explicite avant création de migration.
+
+### Proposition révisée sans blocage des dossiers utilisés
+
+SQL complet : `docs/sql-proposals/20261119_student_program_correction_with_history.sql`, non exécuté et non créé en migration.
+
+- L'identifiant d'inscription est conservé : les contrats, paiements, remboursements, affectations et pièces restent liés au même dossier. Aucun montant n'est recalculé.
+- Une table de contextes conserve les formations successives de cette inscription. Les références composites des groupes, présences, candidats et décisions de jury pointent vers ces contextes : les données anciennes gardent leur formation d'origine.
+- La formation courante est corrigée. Les anciens groupes sont signalés comme historiques, sans réécrire leurs dates ni invalider les anciennes présences. Une affectation au groupe cible est créée ou réactivée sous contrôle transactionnel.
+- Les droits DA/LOG/IT, le contrôle de révision, l'année et le site de l'inscription restent vérifiés. Une correction est auditée avec l'état précédent et le motif, puis le ticket est résolu dans la même transaction.
+- La présence de notes, présences, contrats, paiements, documents officiels ou historique de groupes n'est plus un motif de refus.
+
+Adaptations applicatives nécessaires après validation du SQL : bouton et récapitulatif de correction ; choix de la formation et du groupe ; filtres distincts des groupes actuels et historiques ; visibilité des notes et présences anciennes sans élargissement des droits ; nouvelles activités sur la formation courante ; conservation des capacités personnelles et des soldes financiers.
+
+Tests à ajouter : correction d'une inscription peuplée avec notes publiées, présences, contrat approuvé, paiement affecté, document officiel et jury ; comparaison des données avant/après ; lecture étudiante et enseignant après correction ; accès au nouveau groupe et exclusion des nouveaux contenus de l'ancien groupe ; corrections successives et retour à une formation précédente ; révision périmée, autre étudiant, autre année/site et rôle non habilité ; échec tardif annulant formation, groupe, historique, message et résolution.
+
+### Ancienne proposition refusée (conservée pour traçabilité)
 
 SQL complet : `docs/sql-proposals/20261119_student_program_correction.sql`. Ce fichier est une proposition, pas une migration et n'a pas été exécuté.
 
