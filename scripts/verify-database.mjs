@@ -43,7 +43,7 @@ const scalar = async (sql, params = []) => (await db.query(sql, params)).rows[0]
 
 try {
   await db.exec('create schema auth; create table auth.users(id uuid primary key);');
-  await applyMigrations(db);
+  await applyMigrations(db, { uncachedFixtureSnapshots: true });
   await check('Ancienne migration conservée et nouvelle base créée', async () => {
     assert.equal(await scalar('select count(*)::integer as value from public.academic_levels'), 5);
     assert.ok(await scalar("select count(*)::integer as value from pg_tables where schemaname = 'escen'") > 70);

@@ -4,7 +4,7 @@ import { createDatabase, applyMigrations } from './database-engine.mjs';
 const db=createDatabase(); let checks=0;
 try {
  await db.exec("create schema auth; create table auth.users(id uuid primary key,email text,raw_app_meta_data jsonb not null default '{}');");
- await applyMigrations(db);
+ await applyMigrations(db, { uncachedFixtureSnapshots: true });
  assert.equal((await db.query("select 1 from information_schema.columns where table_schema='escen' and table_name='online_applications' and column_name='workflow_stage'")).rows.length,1,'Le circuit doit être installé par les migrations');
  const run=async(sql,args=[])=> (await db.query(sql,args)).rows;
  const rpc=async(name,args)=> (await run(`select public.${name}(${args.map((_,i)=>'$'+(i+1)).join(',')}) result`,args))[0].result;

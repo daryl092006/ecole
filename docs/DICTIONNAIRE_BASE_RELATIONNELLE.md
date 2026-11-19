@@ -2,7 +2,7 @@
 
 Généré avec `npm run db:describe` en exécutant les migrations dans PostgreSQL local (PGlite). Aucun accès à Supabase ou aux données de la sauvegarde.
 
-126 tables métier, 14 tables privées, 1147 colonnes, 323 clés étrangères, 277 CHECK de tables et 5 exclusions. Les domaines ajoutent les bornes des notes, des montants FCFA et des textes obligatoires.
+126 tables métier, 15 tables privées, 1151 colonnes, 323 clés étrangères, 278 CHECK de tables et 5 exclusions. Les domaines ajoutent les bornes des notes, des montants FCFA et des textes obligatoires.
 
 Toutes les tables ont RLS activée, sans accès applicatif permis à ce stade. Les noms techniques ne sont pas des libellés à afficher dans l’interface.
 
@@ -137,6 +137,7 @@ Toutes les tables ont RLS activée, sans accès applicatif permis à ce stade. L
 | escen_private | application_access | 3 | 1 | Oui |
 | escen_private | archive_objects | 11 | 1 | Oui |
 | escen_private | audit_events | 13 | 1 | Oui |
+| escen_private | campus_snapshot_cache | 4 | 0 | Oui |
 | escen_private | candidate_credentials | 6 | 1 | Oui |
 | escen_private | history_catalog | 2 | 0 | Oui |
 | escen_private | import_batches | 6 | 0 | Oui |
@@ -5386,6 +5387,32 @@ Index :
 ```sql
 CREATE UNIQUE INDEX audit_events_pkey ON escen_private.audit_events USING btree (id)
 CREATE INDEX fk_20239 ON escen_private.audit_events USING btree (actor_id)
+```
+
+## escen_private.campus_snapshot_cache
+
+| Attribut | Type | Nullable | Défaut | Généré |
+|---|---|---|---|---|
+| singleton | bool | NO | true | NEVER |
+| revision | int8 | NO | — | NEVER |
+| refreshed_at | timestamptz | NO | — | NEVER |
+| snapshot | jsonb | NO | — | NEVER |
+
+Contraintes :
+
+```sql
+campus_snapshot_cache_pkey: PRIMARY KEY (singleton)
+campus_snapshot_cache_refreshed_at_not_null: NOT NULL refreshed_at
+campus_snapshot_cache_revision_not_null: NOT NULL revision
+campus_snapshot_cache_singleton_check: CHECK (singleton)
+campus_snapshot_cache_singleton_not_null: NOT NULL singleton
+campus_snapshot_cache_snapshot_not_null: NOT NULL snapshot
+```
+
+Index :
+
+```sql
+CREATE UNIQUE INDEX campus_snapshot_cache_pkey ON escen_private.campus_snapshot_cache USING btree (singleton)
 ```
 
 ## escen_private.candidate_credentials

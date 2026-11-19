@@ -37,7 +37,7 @@ function localAuth(db) {
 
 async function seed(db, snapshot, plan) {
   await db.exec('create schema auth; create table auth.users(id uuid primary key);');
-  await applyMigrations(db);
+  await applyMigrations(db, { uncachedFixtureSnapshots: true });
   const insert = async (table, rows, columns) => {
     if (!rows.length) return;
     // All identifiers come from the fixed lists below, never from the snapshot.

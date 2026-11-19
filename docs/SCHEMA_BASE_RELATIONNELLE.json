@@ -1,10 +1,10 @@
 {
   "stats": {
     "businessTables": 126,
-    "privateTables": 14,
-    "columns": 1147,
+    "privateTables": 15,
+    "columns": 1151,
     "foreignKeys": 323,
-    "checks": 277,
+    "checks": 278,
     "exclusions": 5
   },
   "tables": [
@@ -651,6 +651,11 @@
     {
       "schema": "escen_private",
       "name": "audit_events",
+      "rls": true
+    },
+    {
+      "schema": "escen_private",
+      "name": "campus_snapshot_cache",
       "rls": true
     },
     {
@@ -10455,6 +10460,42 @@
       "type": "int8",
       "nullable": "NO",
       "default": "txid_current()",
+      "generated": "NEVER"
+    },
+    {
+      "schema": "escen_private",
+      "table": "campus_snapshot_cache",
+      "name": "singleton",
+      "type": "bool",
+      "nullable": "NO",
+      "default": "true",
+      "generated": "NEVER"
+    },
+    {
+      "schema": "escen_private",
+      "table": "campus_snapshot_cache",
+      "name": "revision",
+      "type": "int8",
+      "nullable": "NO",
+      "default": null,
+      "generated": "NEVER"
+    },
+    {
+      "schema": "escen_private",
+      "table": "campus_snapshot_cache",
+      "name": "refreshed_at",
+      "type": "timestamptz",
+      "nullable": "NO",
+      "default": null,
+      "generated": "NEVER"
+    },
+    {
+      "schema": "escen_private",
+      "table": "campus_snapshot_cache",
+      "name": "snapshot",
+      "type": "jsonb",
+      "nullable": "NO",
+      "default": null,
       "generated": "NEVER"
     },
     {
@@ -22482,6 +22523,48 @@
     },
     {
       "schema": "escen_private",
+      "table": "campus_snapshot_cache",
+      "name": "campus_snapshot_cache_pkey",
+      "type": "p",
+      "definition": "PRIMARY KEY (singleton)"
+    },
+    {
+      "schema": "escen_private",
+      "table": "campus_snapshot_cache",
+      "name": "campus_snapshot_cache_refreshed_at_not_null",
+      "type": "n",
+      "definition": "NOT NULL refreshed_at"
+    },
+    {
+      "schema": "escen_private",
+      "table": "campus_snapshot_cache",
+      "name": "campus_snapshot_cache_revision_not_null",
+      "type": "n",
+      "definition": "NOT NULL revision"
+    },
+    {
+      "schema": "escen_private",
+      "table": "campus_snapshot_cache",
+      "name": "campus_snapshot_cache_singleton_check",
+      "type": "c",
+      "definition": "CHECK (singleton)"
+    },
+    {
+      "schema": "escen_private",
+      "table": "campus_snapshot_cache",
+      "name": "campus_snapshot_cache_singleton_not_null",
+      "type": "n",
+      "definition": "NOT NULL singleton"
+    },
+    {
+      "schema": "escen_private",
+      "table": "campus_snapshot_cache",
+      "name": "campus_snapshot_cache_snapshot_not_null",
+      "type": "n",
+      "definition": "NOT NULL snapshot"
+    },
+    {
+      "schema": "escen_private",
       "table": "candidate_credentials",
       "name": "candidate_credentials_application_id_fkey",
       "type": "f",
@@ -26656,6 +26739,12 @@
       "table": "audit_events",
       "name": "fk_20239",
       "definition": "CREATE INDEX fk_20239 ON escen_private.audit_events USING btree (actor_id)"
+    },
+    {
+      "schema": "escen_private",
+      "table": "campus_snapshot_cache",
+      "name": "campus_snapshot_cache_pkey",
+      "definition": "CREATE UNIQUE INDEX campus_snapshot_cache_pkey ON escen_private.campus_snapshot_cache USING btree (singleton)"
     },
     {
       "schema": "escen_private",

@@ -10,7 +10,7 @@ export async function rehearseOperationalReferences({ plan, snapshot, index, bas
   let checks = 0;
   const check = async work => { await work(); checks++; };
   try {
-    await applyMigrations(db);
+    await applyMigrations(db, { uncachedFixtureSnapshots: true });
     const t = snapshot.tables;
     const insert = async (table, records) => {
       for (const row of records) {
@@ -82,7 +82,7 @@ async function selfTest() {
   const db = createDatabase();
   let fixture;
   try {
-    await applyMigrations(db);
+    await applyMigrations(db, { uncachedFixtureSnapshots: true });
     const tables = {};
     for (const name of ['roles', 'permissions', 'role_permissions']) tables[name] = (await db.query(`select * from escen.${name}`)).rows;
     const actor = randomUUID(); const person = randomUUID(); const grant = randomUUID();

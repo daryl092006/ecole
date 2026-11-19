@@ -1,0 +1,23 @@
+[
+  {
+    "attempt": 1,
+    "status": 200,
+    "elapsedMs": 4170,
+    "revision": 263,
+    "tables": 110
+  },
+  {
+    "attempt": 2,
+    "status": 200,
+    "elapsedMs": 3506,
+    "revision": 263,
+    "tables": 110
+  },
+  {
+    "attempt": 3,
+    "status": 200,
+    "elapsedMs": 2166,
+    "revision": 263,
+    "tables": 110
+  }
+]
