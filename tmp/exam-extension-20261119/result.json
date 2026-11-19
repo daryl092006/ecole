@@ -1,0 +1,17 @@
+{
+  "evaluation": "Management des fintechs",
+  "evaluationId": "d1ae524b-5cf6-4c08-9f53-e18ed74df2cd",
+  "extendedMinutes": 45,
+  "activeCopies": 9,
+  "durationMinutes": 225,
+  "accessClosesAt": "2026-11-19T23:15:00Z",
+  "firstDeadline": "2026-11-19T22:15:22.338872Z",
+  "lastDeadline": "2026-11-19T22:30:50.965474Z",
+  "answersPreserved": true,
+  "saveRevisionsPreserved": true,
+  "tests": {
+    "typescript": 0,
+    "eslint": 0,
+    "npmTest": 0
+  }
+}
