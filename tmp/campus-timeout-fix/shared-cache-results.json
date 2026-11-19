@@ -1,0 +1,4 @@
+{
+  "checks": "Résultat inchangé ; cache réutilisé ; nouvelle révision visible immédiatement ; expiration et reconstruction après vidage ; RLS et droits serveur/navigateur ; exclusions sensibles ; aucune mutation métier par installation.",
+  "remoteWrites": 0
+}
