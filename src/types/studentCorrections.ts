@@ -5,6 +5,8 @@ export interface StudentCorrectionEnrollment {
   siteId: string;
   label: string;
   groupLabel: string;
+  suggestedOfferingId?: string;
+  suggestedGroupId?: string;
 }
 export interface StudentCorrectionOffering {
   id: string;

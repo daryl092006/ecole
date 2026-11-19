@@ -39,13 +39,22 @@ export async function POST(request: Request) {
   try {
     const { client, context, snapshot, year } = await load(request);
     const command = supportCommandSchema.parse(await request.json());
-    if (command.action === 'correct_program') {
+    if (command.action === 'correct_program' || command.action === 'confirm_program') {
       requirePermission(context, 'student.correction.manage');
       if (!year.selectedYearId || !canManageStudentCorrections(context, year.selectedYearId)) throw new RequestError(403, 'Choisissez une année autorisée pour corriger une inscription.');
       const ticket = visibleSupportTickets(snapshot, context, year.selectedYearId).find(row => row.id === command.ticketId && isStudentCorrection(snapshot, row));
       if (!ticket) throw new RequestError(404, 'Demande scolaire introuvable.');
       const directory = studentProgramCorrectionDirectory(snapshot, [ticket], year.selectedYearId);
       const enrollment = directory.enrollments.find(row => row.id === command.enrollmentId);
+      if (command.action === 'confirm_program') {
+        if (!enrollment || enrollment.suggestedOfferingId !== enrollment.offeringId || command.revision !== snapshot.revision) throw new RequestError(409, 'La formation actuelle ne correspond pas à la demande ou les données ont changé. Actualisez avant de confirmer.');
+        const saved = await client.rpc('escen_backend_transaction', { p_actor_id: context.accountId, p_expected_revision: command.revision, p_changes: [
+          { table: 'support_tickets', operation: 'update', record: { id: ticket.id, status: 'RESOLVED', assigned_to: context.accountId } },
+          { table: 'support_messages', operation: 'insert', record: { id: crypto.randomUUID(), ticket_id: ticket.id, author_id: context.accountId, body: `Formation vérifiée conforme à la demande : ${enrollment.label}. Aucune modification de l’inscription. ${command.reason}` } },
+        ] });
+        if (saved.error) throw new RequestError(409, 'Vérification refusée. Actualisez la demande avant de réessayer.');
+        return Response.json({ id: ticket.id, revision: saved.data }, { headers: { 'Cache-Control': 'no-store' } });
+      }
       const offering = directory.offerings.find(row => row.id === command.offeringId && row.siteId === enrollment?.siteId);
       if (!enrollment || !offering?.groups.some(group => group.id === command.groupId)) throw new RequestError(409, 'Inscription, formation ou groupe incompatible avec cette demande et cette année.');
       const saved = await client.rpc('escen_student_program_correction', { p_actor_id: context.accountId, p_role_code: context.roleCode, p_expected_revision: command.revision,

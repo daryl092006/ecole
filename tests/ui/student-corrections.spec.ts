@@ -9,6 +9,50 @@ import { ROLES } from '../../src/types/permissions';
 import { ROLE_ACCESS } from '../../src/permissions/rolePermissions';
 import { filterRelationalSnapshot } from '../../src/services/persistentPermissionsService';
 import { filterSnapshotForAcademicYear } from '../../src/services/academicYearScopeService';
+import { offeringLabel, studentProgramCorrectionDirectory } from '../../src/services/studentProgramCorrectionService';
+
+test('Formation déclarée : correspondance automatique stricte, ordre et accents, sans approximation', () => {
+  const snapshot = { revision: 1, tables: {
+    academic_years: [{ id: 'year', status: 'OUVERTE' }],
+    accounts: [{ id: 'account', person_id: 'person' }], students: [{ id: 'student', person_id: 'person' }],
+    programs: [{ id: 'program', name: 'Finance Digitale' }], curricula: [{ id: 'curriculum', program_id: 'program' }],
+    levels: [{ id: 'level', name: 'Master 2' }],
+    academic_offerings: [{ id: 'offering', curriculum_id: 'curriculum', level_id: 'level', academic_year_id: 'year', site_id: null }],
+    enrollments: [{ id: 'enrollment', student_id: 'student', offering_id: 'offering', status: 'REINSCRIT' }],
+  } };
+  const directory = (description: string) => studentProgramCorrectionDirectory(snapshot, [{ id: 'ticket', author_id: 'account', status: 'OPEN', description }], 'year');
+  for (const text of ['FINANCE DIGITALE - MASTER 2', 'Finance Digitale Master 2', 'Master 2  Finance digitale', 'Finance digitale M2']) {
+    expect(directory(text).enrollments[0].suggestedOfferingId).toBe('offering');
+  }
+  for (const text of ['Pas Finance Digitale Master 2', 'Finance Digitale Master 1', 'Finance digitale', 'Je ne suis pas en Master 2 Finance digitale']) {
+    expect(directory(text).enrollments[0].suggestedOfferingId).toBeUndefined();
+  }
+  snapshot.tables.academic_offerings.push({ ...snapshot.tables.academic_offerings[0], id: 'duplicate' });
+  expect(directory('Finance Digitale Master 2').enrollments[0].suggestedOfferingId).toBeUndefined();
+});
+
+test('Formation déjà correcte : vérification autorisée et tracée sans mutation scolaire ni financière', async () => {
+  const f = await fixture();
+  try {
+    const raw = await f.client.rpc('escen_backend_snapshot');
+    const label = offeringLabel(raw.data, f.source.id);
+    await f.db.query('update escen.support_tickets set description=$1 where id=$2', [label, f.report.id]);
+    const content = async () => Object.fromEntries(await Promise.all(['enrollments', 'enrollment_groups', 'grades', 'payments', 'financial_contracts', 'student_program_corrections'].map(async table => [table, await f.value(`select coalesce(jsonb_agg(to_jsonb(t) order by id),'[]') as value from escen.${table} t`)])));
+    const before = await content();
+    const request = (body?: Record<string, unknown>, role: string = ROLES.LOG, yearId = f.year.id) => f.dispatch(new Request('http://localhost/api/support?kind=school', { method: body ? 'POST' : 'GET', headers: { authorization: 'Bearer fixture-auth-token', 'x-escen-role': role, 'x-escen-year': yearId }, ...(body ? { body: JSON.stringify(body) } : {}) }));
+    const directory = await (await request()).json();
+    expect(directory.programCorrection.enrollments[0].suggestedOfferingId).toBe(f.source.id);
+    const command = { action: 'confirm_program', revision: directory.revision, ticketId: f.report.id, enrollmentId: f.enrollment.id, reason: 'Formation actuelle vérifiée avec la demande' };
+    expect((await request(command, ROLES.MKT)).status).toBe(403);
+    expect((await request(command, ROLES.LOG, f.nextYear.id)).status).toBe(404);
+    expect((await request({ ...command, revision: command.revision - 1 })).status).toBe(409);
+    expect((await request(command)).status).toBe(200);
+    expect(await content()).toEqual(before);
+    expect(await f.value('select status as value from escen.support_tickets where id=$1', [f.report.id])).toBe('RESOLVED');
+    expect(await f.value('select body as value from escen.support_messages where ticket_id=$1', [f.report.id])).toContain('Aucune modification de l’inscription');
+    expect((await request(command)).status).toBe(409);
+  } finally { await f.close(); }
+});
 
 async function fixture() {
   const nativeImport = new Function('url', 'return import(url)') as (url: string) => Promise<{ localBusinessFixture: typeof LocalFixture }>;
@@ -170,6 +214,39 @@ test('Correction réelle : inscription corrigée et données financières, jury 
     expect(await f.value('select offering_id as value from escen.enrollments where id=$1', [enrollmentId])).toBe(f.source.id);
     expect(await f.value('select count(*) as value from escen.enrollment_groups where enrollment_id=$1 and not historical_only and valid_until is null', [enrollmentId])).toBe(1);
     expect(await contents()).toEqual(before);
+  } finally { await f.close(); }
+});
+
+for (const width of [390, 1440]) test(`Formation déjà correcte : formulaire automatique et confirmation à ${width}px`, async ({ page }) => {
+  const f = await fixture();
+  try {
+    const raw = await f.client.rpc('escen_backend_snapshot');
+    await f.db.query('update escen.support_tickets set description=$1 where id=$2', [offeringLabel(raw.data, f.source.id), f.report.id]);
+    await page.setViewportSize({ width, height: 960 });
+    await authenticateFixture(page);
+    await page.route('**/api/**', async route => {
+      const original = route.request();
+      const response = await f.dispatch(new Request(original.url(), { method: original.method(), headers: original.headers(), ...(original.method() === 'GET' ? {} : { body: original.postData() }) }));
+      await route.fulfill({ status: response.status, contentType: 'application/json', body: await response.text() });
+    });
+    await page.goto('/etudiants/corrections');
+    await page.getByLabel('Mon compte et mon rôle').click();
+    await page.getByRole('combobox', { name: 'Changer de rôle actif', exact: true }).selectOption(ROLES.LOG);
+    if (await page.locator('.account-control').getAttribute('open') !== null) await page.getByLabel('Mon compte et mon rôle').click();
+    await page.getByRole('button', { name: 'Ouvrir le suivi' }).click();
+    await page.getByRole('button', { name: 'Corriger la formation', exact: true }).click();
+    await expect(page.getByRole('combobox', { name: 'Filière et niveau corrects', exact: true })).toHaveValue(f.source.id);
+    await expect(page.getByText('La formation demandée par l’étudiant est déjà enregistrée', { exact: false })).toBeVisible();
+    await expect(page.getByRole('combobox', { name: 'Groupe correct', exact: true })).toHaveCount(0);
+    await page.getByRole('textbox', { name: 'Motif de la correction', exact: true }).fill('Formation vérifiée conforme au dossier actuel.');
+    const before = f.requests.filter((entry: { method: string }) => entry.method === 'POST').length;
+    await page.getByRole('button', { name: 'Vérifier la correction', exact: true }).click();
+    await expect(page.getByRole('region', { name: 'Vérification avant enregistrement' })).toContainText('La formation demandée est déjà enregistrée');
+    expect(f.requests.filter((entry: { method: string }) => entry.method === 'POST').length).toBe(before);
+    await page.getByRole('button', { name: 'Confirmer la vérification', exact: true }).click();
+    await expect(page.getByRole('status').filter({ hasText: 'La formation est déjà correcte.' })).toBeVisible();
+    expect(await f.value('select offering_id as value from escen.enrollments where id=$1', [f.enrollment.id])).toBe(f.source.id);
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
   } finally { await f.close(); }
 });
 

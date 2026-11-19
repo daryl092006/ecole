@@ -1,6 +1,12 @@
 import type { DatabaseRow, RelationalSnapshot } from '@/types/persistence';
 import type { StudentProgramCorrectionDirectory } from '@/types/studentCorrections';
 
+function formationKey(value: unknown) {
+  return String(value || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase()
+    .replace(/\bm\s*([12])\b/g, 'master $1').replace(/\bl\s*([123])\b/g, 'licence $1')
+    .replace(/[^a-z0-9]+/g, ' ').trim().split(/\s+/).sort().join(' ');
+}
+
 export function offeringLabel(snapshot: RelationalSnapshot, id: unknown) {
   const tables = snapshot.tables;
   const offering = tables.academic_offerings?.find(row => row.id === id);
@@ -32,5 +38,12 @@ export function studentProgramCorrectionDirectory(snapshot: RelationalSnapshot, 
       return group ? [{ id: group.id, label: String(group.name) }] : [];
     }),
   })).sort((a, b) => a.label.localeCompare(b.label, 'fr'));
-  return { enrollments, offerings };
+  return { enrollments: enrollments.map(enrollment => {
+    const ticket = tickets.find(row => row.id === enrollment.ticketId);
+    const requested = formationKey(ticket?.description);
+    const matches = offerings.filter(offering => offering.siteId === enrollment.siteId && formationKey(offering.label) === requested);
+    if (matches.length !== 1) return enrollment;
+    const suggested = matches[0];
+    return { ...enrollment, suggestedOfferingId: suggested.id, ...(suggested.groups.length === 1 ? { suggestedGroupId: suggested.groups[0].id } : {}) };
+  }), offerings };
 }
