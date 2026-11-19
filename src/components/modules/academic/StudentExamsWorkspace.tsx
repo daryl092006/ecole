@@ -230,7 +230,7 @@ function OnlineExamEditor({ initial, onBack }: { initial: OnlineExamView; onBack
         pending.current = null;
         apply(next);
         if (mounted.current) setError('');
-        void portal.refreshCampus();
+        if (command.action === 'submit' || next.attempt.status !== 'EN_COURS') void portal.refreshCampus();
         return next.accepted !== false;
       } catch (cause) {
         if (cause instanceof OnlineExamError && [401, 403, 409, 422].includes(cause.status)) {

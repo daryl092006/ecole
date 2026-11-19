@@ -6,7 +6,8 @@ import type { OnlineExamCommand, OnlineExamView } from '../../src/types/onlineEx
 async function setup(page: Page, seconds = 180, paper?: OnlineExamView['paper']) {
   await authenticateFixture(page);
   await page.route('**/api/session', route => route.fulfill({ json: { capabilities: fixtureCapabilities, accountId: 'exam-account', name: 'Candidat Test', email: 'student@example.test', role: ROLES.STUD, availableRoles: [ROLES.STUD], studentId: 'S1', teacherId: null, matricule: 'EXAM', mustChangePassword: false } }));
-  await page.route('**/api/campus', route => route.fulfill({ json: snapshot }));
+  let campusRequests = 0;
+  await page.route('**/api/campus', route => { campusRequests++; return route.fulfill({ json: snapshot }); });
   const deadline = Date.now() + seconds * 1000;
   let view: OnlineExamView = {
     serverNow: new Date().toISOString(), lastSavedAt: null,
@@ -48,7 +49,7 @@ async function setup(page: Page, seconds = 180, paper?: OnlineExamView['paper'])
   });
   await page.goto('/mon-espace/epreuves');
   await page.getByRole('button', { name: 'Reprendre ma copie' }).click();
-  return { commands, get view() { return view; }, setOffline(value: boolean) { fail = value; }, dropNextResponse() { dropResponse = true; }, concurrentUpdate() { view = { ...view, attempt: { ...view.attempt, revision: view.attempt.revision + 1, lastSaveId: 'other-tab' } }; } };
+  return { commands, get campusRequests() { return campusRequests; }, get view() { return view; }, setOffline(value: boolean) { fail = value; }, dropNextResponse() { dropResponse = true; }, concurrentUpdate() { view = { ...view, attempt: { ...view.attempt, revision: view.attempt.revision + 1, lastSaveId: 'other-tab' } }; } };
 }
 
 for (const width of [390, 1440]) test(`Étude de cas, types de réponses et justification conservés à ${width}px`, async ({ page }) => {
@@ -147,4 +148,25 @@ test('Deux onglets : conflit visible, la version distante ne peut pas être écr
   await page.getByRole('button', { name: 'Recharger la version enregistrée' }).click();
   await expect(page.getByRole('textbox', { name: 'Votre réponse' }).first()).toBeEnabled();
   await expect(page.getByRole('textbox', { name: 'Votre réponse' }).first()).toHaveValue('');
+});
+
+
+test('La sauvegarde automatique conserve les réponses sans recharger le campus avant la remise', async ({ page }) => {
+  const fixture = await setup(page);
+  // L’ouverture de la copie actualise encore le portail avant les sauvegardes.
+  await expect.poll(() => fixture.campusRequests).toBe(2);
+  const initialRequests = fixture.campusRequests;
+  const input = page.getByRole('textbox', { name: 'Votre réponse' }).first();
+  await input.fill('Première réponse sauvegardée automatiquement');
+  await expect.poll(() => fixture.view.answers.q1?.text).toBe('Première réponse sauvegardée automatiquement');
+  await input.fill('Réponse complétée et sauvegardée automatiquement');
+  await expect.poll(() => fixture.view.answers.q1?.text).toBe('Réponse complétée et sauvegardée automatiquement');
+  await page.waitForTimeout(1000);
+  expect(fixture.commands.filter(command => command.action === 'save').length).toBeGreaterThanOrEqual(2);
+  expect(fixture.campusRequests).toBe(initialRequests);
+  await page.getByRole('button', { name: 'Remettre ma copie', exact: true }).click();
+  await page.getByRole('button', { name: 'Confirmer la remise de ma copie', exact: true }).click();
+  await expect(page.getByRole('status').filter({ hasText: /Copie remise/ })).toBeVisible();
+  await expect.poll(() => fixture.campusRequests).toBeGreaterThan(initialRequests);
+  expect(fixture.view.answers.q1?.text).toBe('Réponse complétée et sauvegardée automatiquement');
 });
