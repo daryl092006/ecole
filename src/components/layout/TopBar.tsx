@@ -161,7 +161,7 @@ export default function TopBar({ userName, userEmail, activeRole, availableRoles
 
           <div className="account-popover-role-card">
             <div className="role-pill">
-              <span className="role-dot" style={{ backgroundColor: ROLE_COLORS[activeRole] || '#2563eb' }} />
+              <span className="role-dot" style={{ backgroundColor: ROLE_COLORS[activeRole] || '#202a51' }} />
               <span className="role-pill-label">{activeRole}</span>
             </div>
             {availableRoles.length > 1 && (

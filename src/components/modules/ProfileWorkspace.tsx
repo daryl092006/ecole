@@ -173,8 +173,8 @@ export default function ProfileWorkspace() {
           <div className="profile-identity-details">
             <div className="profile-identity-title-row">
               <h2 className="profile-identity-fullname">{displayFullname}</h2>
-              <span className="role-pill" style={{ borderColor: ROLE_COLORS[activeRole] || '#2563eb' }}>
-                <span className="role-dot" style={{ backgroundColor: ROLE_COLORS[activeRole] || '#2563eb' }} />
+              <span className="role-pill" style={{ borderColor: ROLE_COLORS[activeRole] || '#202a51' }}>
+                <span className="role-dot" style={{ backgroundColor: ROLE_COLORS[activeRole] || '#202a51' }} />
                 <span>{activeRole}</span>
               </span>
             </div>

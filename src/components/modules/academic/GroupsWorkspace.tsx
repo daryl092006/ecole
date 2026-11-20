@@ -237,7 +237,7 @@ export default function GroupsWorkspace() {
                         <td>
                           <Link
                             href={`/etudiants/${encodeURIComponent(student.matricule)}`}
-                            style={{ fontWeight: 600, color: 'var(--primary, #2563eb)', textDecoration: 'none' }}
+                            style={{ fontWeight: 600, color: 'var(--primary, #202a51)', textDecoration: 'none' }}
                           >
                             <code>{student.matricule}</code>
                           </Link>
@@ -420,7 +420,7 @@ export default function GroupsWorkspace() {
                           onClick={() => setSelectedGroupId(group.id)}
                         >
                           <td>
-                            <strong style={{ fontSize: '14px', color: 'var(--primary, #2563eb)' }}>
+                            <strong style={{ fontSize: '14px', color: 'var(--primary, #202a51)' }}>
                               {group.name}
                             </strong>
                           </td>
@@ -505,7 +505,7 @@ export default function GroupsWorkspace() {
                       <td>
                         <Link
                           href={`/etudiants/${encodeURIComponent(student.matricule)}`}
-                          style={{ fontWeight: 600, color: 'var(--primary, #2563eb)' }}
+                          style={{ fontWeight: 600, color: 'var(--primary, #202a51)' }}
                         >
                           <code>{student.matricule}</code>
                         </Link>

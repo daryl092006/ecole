@@ -14,7 +14,7 @@ interface Props {
   available?: boolean;
   children?: ReactNode;
 }
-const COLORS = ['#2563eb', '#0f766e', '#b45309', '#7c3aed', '#be185d', '#475569'];
+const COLORS = ['var(--brand-navy)', 'var(--brand-cyan)', '#b45309', '#7c3aed', '#be185d', '#475569'];
 const display = (value: number, currency: boolean) => `${value.toLocaleString('fr-FR', { maximumFractionDigits: currency ? 0 : 2 })}${currency ? ' FCFA' : ''}`;
 
 /** Values remain readable without hover, color perception or access to the drawing. */
