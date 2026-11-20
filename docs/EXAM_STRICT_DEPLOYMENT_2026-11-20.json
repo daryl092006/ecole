@@ -1,0 +1,69 @@
+{
+  "checkedAt": "2026-11-20T10:13:33.120Z",
+  "sourceCommit": "38f45af71df69ab89e769cbde23545e77084bd9a",
+  "portal": "https://portail.escen.university",
+  "deploymentId": "dpl_2B2hoRfkKC54cbLmBwCgHBGy8coz",
+  "previousDeploymentId": "dpl_BKZ7AG8AC7xYbcS9ezmsDff7r91k",
+  "migration": {
+    "version": "202611190120",
+    "alreadyInstalled": true,
+    "reapplied": false,
+    "installedSqlMd5": "919216a7d0e37cb6b44269b6fdbf32ac",
+    "exactLocalSqlMatch": true
+  },
+  "activation": {
+    "sql": "docs/sql-proposals/20261119_activate_exam_strict_mode.sql",
+    "activated_at": "2026-11-20 10:12:27.983934+00",
+    "activation_audit_updates": 1,
+    "existing_attempts": 10,
+    "integrity_events": 0,
+    "ongoing_attempts": 0,
+    "strict_attempts": 0
+  },
+  "security": {
+    "rls": [
+      {
+        "rls": true,
+        "table": "exam_integrity_events"
+      },
+      {
+        "rls": true,
+        "table": "exam_integrity_activation"
+      }
+    ],
+    "browserCanRecord": false,
+    "serverCanRecord": true
+  },
+  "verification": {
+    "productionBuild": true,
+    "typeScript": true,
+    "eslint": true,
+    "backendTests": true,
+    "publishedBrowserTests": 15,
+    "publishedBrowserApiMode": "intercepted fixtures; no authenticated live exam created",
+    "anonymousHttp": [
+      {
+        "path": "/connexion",
+        "method": "GET",
+        "status": 200
+      },
+      {
+        "path": "/api/exam-attempts",
+        "method": "GET",
+        "status": 401
+      },
+      {
+        "path": "/api/exam-integrity",
+        "method": "POST",
+        "status": 401
+      },
+      {
+        "path": "/api/audit",
+        "method": "GET",
+        "status": 401
+      }
+    ]
+  },
+  "gitPushed": false,
+  "evidenceDirectory": "tmp/exam-integrity/release-38f45af/"
+}
