@@ -443,5 +443,9 @@
     "offering_id": "academic_offerings",
     "group_id": "groups",
     "teacher_id": "teachers"
+  },
+  "exam_integrity_events": {
+    "attempt_id": "exam_attempts",
+    "actor_id": "accounts"
   }
 }

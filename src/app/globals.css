@@ -6229,3 +6229,16 @@ textarea.input { height: auto !important; min-height: 112px !important; line-hei
   .workspace-action strong { font-size: .8rem; }
   .workspace-action div > span { font-size: .72rem; }
 }
+
+/* Mode strict des copies : périmètre limité à l’espace d’examen. */
+.online-exams-fullscreen-root:fullscreen { box-sizing: border-box; width: 100%; height: 100%; overflow: auto; padding: 24px; background: var(--bg, #f5f7fa); color: var(--text-primary); }
+.online-exam-integrity-rules { margin: 12px 0; }
+.online-exam-integrity-rules p, .online-exam-integrity-gate p { line-height: 1.6; }
+.online-exam-print-notice { display: none; }
+@media (max-width: 768px) {
+  .online-exams-fullscreen-root:fullscreen { padding: 12px; }
+}
+@media print {
+  .online-exam-protected-content { display: none !important; }
+  .online-exam-print-notice { display: block; }
+}

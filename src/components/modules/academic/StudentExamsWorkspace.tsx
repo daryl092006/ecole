@@ -1,7 +1,8 @@
 'use client';
 import SubjectRichText from '@/components/ui/SubjectRichText';
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState, type RefObject } from 'react';
 import { usePortal } from '@/hooks/usePortal';
+import { enterExamFullscreen, useExamIntegrity } from '@/hooks/useExamIntegrity';
 import LoadingState from '@/components/ui/LoadingState';
 import PageHeader from '@/components/ui/PageHeader';
 import ReviewedForm from '@/components/ui/ReviewedForm';
@@ -17,6 +18,8 @@ export default function StudentExamsWorkspace() {
   const [selected, setSelected] = useState<OnlineExamView | null>(null);
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
+  const examRoot = useRef<HTMLDivElement>(null);
+  const [acceptedRules, setAcceptedRules] = useState<Record<string, boolean>>({});
 
   const load = useCallback(async () => {
     try {
@@ -36,19 +39,23 @@ export default function StudentExamsWorkspace() {
   }
   if (selected) {
     return (
+      <div ref={examRoot} className="online-exams-fullscreen-root">
       <OnlineExamEditor
+        fullscreenRoot={examRoot}
         key={selected.attempt.id}
         initial={selected}
         onBack={() => {
+          if (document.fullscreenElement === examRoot.current) void document.exitFullscreen().catch(() => {});
           setSelected(null);
           void load();
         }}
       />
+      </div>
     );
   }
 
   return (
-    <div className="domain-workspace workspace-stack">
+    <div ref={examRoot} className="domain-workspace workspace-stack online-exams-fullscreen-root">
       <PageHeader
         eyebrow="ESPACE ÉTUDIANT"
         title="Mes épreuves en ligne"
@@ -68,10 +75,24 @@ export default function StudentExamsWorkspace() {
               {dateLabel(exam.opensAt)} — {dateLabel(exam.closesAt)} · {exam.durationMinutes} minutes
             </p>
             <p>{exam.status ? (exam.status === 'EN_COURS' ? 'Copie en cours' : 'Copie fermée') : 'Épreuve à passer'}</p>
+            {exam.strictMode && (!exam.attemptId || exam.status === 'EN_COURS') && (
+              <div className="restricted-box online-exam-integrity-rules">
+                <strong>Mode strict pour cette épreuve</strong>
+                <p>Le plein écran est requis. Les questions seront masquées si vous quittez l’épreuve. Les sorties et les actions de copie, collage ou impression seront signalées dans le journal.</p>
+                <p>La sauvegarde automatique reste active et le temps continue pendant une sortie. Aucun écran n’est enregistré. Le blocage des captures système ne peut pas être garanti.</p>
+                {!exam.attemptId && (
+                  <label className="checkbox-field">
+                    <input type="checkbox" checked={acceptedRules[exam.evaluationId] === true} onChange={event => setAcceptedRules(previous => ({ ...previous, [exam.evaluationId]: event.target.checked }))} />
+                    J’ai lu et j’accepte les règles du mode strict.
+                  </label>
+                )}
+              </div>
+            )}
             <button
               className="btn btn-primary"
               disabled={
                 busy ||
+                (!!exam.strictMode && !exam.attemptId && !acceptedRules[exam.evaluationId]) ||
                 (!exam.attemptId &&
                   (Date.parse(directory.serverNow) < Date.parse(exam.opensAt) ||
                     Date.parse(directory.serverNow) >= Date.parse(exam.closesAt)))
@@ -80,10 +101,11 @@ export default function StudentExamsWorkspace() {
                 setBusy(true);
                 setError('');
                 try {
+                  if (exam.strictMode && (!exam.attemptId || exam.status === 'EN_COURS')) await enterExamFullscreen(examRoot.current);
                   setSelected(
                     exam.attemptId
                       ? await readOnlineExam(portal.activeRole, exam.attemptId)
-                      : await writeOnlineExam(portal.activeRole, { action: 'start', evaluationId: exam.evaluationId })
+                      : await writeOnlineExam(portal.activeRole, { action: 'start', evaluationId: exam.evaluationId, integrityAccepted: acceptedRules[exam.evaluationId] === true })
                   );
                   void portal.refreshCampus();
                 } catch (cause) {
@@ -107,7 +129,7 @@ export default function StudentExamsWorkspace() {
   );
 }
 
-function OnlineExamEditor({ initial, onBack }: { initial: OnlineExamView; onBack: () => void }) {
+function OnlineExamEditor({ initial, onBack, fullscreenRoot }: { initial: OnlineExamView; onBack: () => void; fullscreenRoot: RefObject<HTMLDivElement | null> }) {
   const portal = usePortal();
   const [view, setView] = useState(initial);
   const [answers, setAnswers] = useState(initial.answers);
@@ -128,6 +150,8 @@ function OnlineExamEditor({ initial, onBack }: { initial: OnlineExamView; onBack
   const clock = useRef({ server: Date.parse(initial.serverNow), local: performance.now() });
   const storageKey = `escen:exam:${portal.session?.accountId}:${initial.attempt.id}`;
   const serverTime = () => clock.current.server + performance.now() - clock.current.local;
+  const strictActive = view.strictMode === true && view.attempt.status === 'EN_COURS';
+  const integrity = useExamIntegrity({ enabled: view.strictMode === true, active: strictActive, attemptId: initial.attempt.id, accountId: portal.session?.accountId, role: portal.activeRole, root: fullscreenRoot });
 
   const persist = () => {
     try {
@@ -146,6 +170,7 @@ function OnlineExamEditor({ initial, onBack }: { initial: OnlineExamView; onBack
   };
 
   const apply = (next: OnlineExamView) => {
+    if (next.strictMode === undefined) next = { ...next, strictMode: current.current.strictMode };
     if (next.paper.id === current.current.paper.id && next.paper.instructions === undefined) {
       next = { ...next, paper: { ...next.paper, instructions: current.current.paper.instructions } };
     }
@@ -338,7 +363,7 @@ function OnlineExamEditor({ initial, onBack }: { initial: OnlineExamView; onBack
   }, [storageKey]);
 
   const terminal = view.attempt.status !== 'EN_COURS';
-  const locked = terminal || remaining <= 0 || submitting || review || conflict;
+  const locked = terminal || remaining <= 0 || submitting || review || conflict || !integrity.allowed;
   const dirty = !examAnswersEqual(answers, view.answers);
   const questions = view.paper.parts.flatMap(part => part.questions);
 
@@ -400,6 +425,16 @@ function OnlineExamEditor({ initial, onBack }: { initial: OnlineExamView; onBack
           Recharger la version enregistrée
         </button>
       )}
+      {integrity.warning && <p role="status" className="restricted-box">{integrity.warning}</p>}
+      {integrity.syncPending && <p role="status">Le journal est en attente de synchronisation. Cela ne modifie pas vos réponses enregistrées.</p>}
+      {strictActive && !integrity.allowed ? (
+        <div className="restricted-box online-exam-integrity-gate" role="alert">
+          <h2>Questions masquées : revenez dans l’épreuve</h2>
+          <p>Le temps continue et la sauvegarde automatique reste active. Les sorties sont journalisées et examinées par un responsable, sans sanction automatique.</p>
+          <button className="btn btn-primary" onClick={() => void enterExamFullscreen(fullscreenRoot.current).catch(cause => setError(cause instanceof Error ? cause.message : 'Le plein écran est requis.'))}>Revenir au plein écran</button>
+        </div>
+      ) : (
+      <div className={strictActive ? 'online-exam-protected-content' : undefined}>
       {view.paper.instructions && <SubjectRichText value={view.paper.instructions} />}
       {view.paper.parts.map(part => (
         <section key={part.id}>
@@ -506,6 +541,9 @@ function OnlineExamEditor({ initial, onBack }: { initial: OnlineExamView; onBack
           </button>
         )}
       </div>
+      </div>
+      )}
+      {strictActive && <p className="online-exam-print-notice">L’impression de la copie est indisponible pendant cette épreuve.</p>}
     </section>
   );
 }

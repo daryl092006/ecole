@@ -2,7 +2,7 @@
 
 Généré avec `npm run db:describe` en exécutant les migrations dans PostgreSQL local (PGlite). Aucun accès à Supabase ou aux données de la sauvegarde.
 
-126 tables métier, 15 tables privées, 1151 colonnes, 323 clés étrangères, 278 CHECK de tables et 5 exclusions. Les domaines ajoutent les bornes des notes, des montants FCFA et des textes obligatoires.
+127 tables métier, 16 tables privées, 1165 colonnes, 325 clés étrangères, 282 CHECK de tables et 5 exclusions. Les domaines ajoutent les bornes des notes, des montants FCFA et des textes obligatoires.
 
 Toutes les tables ont RLS activée, sans accès applicatif permis à ce stade. Les noms techniques ne sont pas des libellés à afficher dans l’interface.
 
@@ -59,8 +59,9 @@ Toutes les tables ont RLS activée, sans accès applicatif permis à ce stade. L
 | escen | evaluation_transitions | 7 | 2 | Oui |
 | escen | evaluations | 17 | 6 | Oui |
 | escen | exam_answers | 6 | 2 | Oui |
-| escen | exam_attempts | 14 | 3 | Oui |
+| escen | exam_attempts | 15 | 3 | Oui |
 | escen | exam_deliveries | 7 | 2 | Oui |
+| escen | exam_integrity_events | 9 | 2 | Oui |
 | escen | exam_options | 5 | 1 | Oui |
 | escen | exam_papers | 16 | 5 | Oui |
 | escen | exam_parts | 6 | 1 | Oui |
@@ -139,6 +140,7 @@ Toutes les tables ont RLS activée, sans accès applicatif permis à ce stade. L
 | escen_private | audit_events | 13 | 1 | Oui |
 | escen_private | campus_snapshot_cache | 4 | 0 | Oui |
 | escen_private | candidate_credentials | 6 | 1 | Oui |
+| escen_private | exam_integrity_activation | 4 | 0 | Oui |
 | escen_private | history_catalog | 2 | 0 | Oui |
 | escen_private | import_batches | 6 | 0 | Oui |
 | escen_private | import_issues | 7 | 2 | Oui |
@@ -2240,6 +2242,7 @@ CREATE INDEX fk_17861 ON escen.exam_answers USING btree (question_id, paper_id)
 | started_by | uuid | YES | — | NEVER |
 | submission_kind | text | YES | — | NEVER |
 | completion_status | text | YES | — | NEVER |
+| strict_mode | bool | NO | false | NEVER |
 
 Contraintes :
 
@@ -2266,6 +2269,7 @@ exam_attempts_started_at_not_null: NOT NULL started_at
 exam_attempts_started_by_fkey: FOREIGN KEY (started_by) REFERENCES escen.accounts(id) ON DELETE RESTRICT
 exam_attempts_status_check: CHECK ((status = ANY (ARRAY['EN_COURS'::text, 'REMISE'::text, 'EXPIREE'::text, 'INTERROMPUE'::text])))
 exam_attempts_status_not_null: NOT NULL status
+exam_attempts_strict_mode_not_null: NOT NULL strict_mode
 exam_attempts_submission_kind_check: CHECK ((submission_kind = ANY (ARRAY['MANUAL'::text, 'AUTO_DEADLINE'::text])))
 ```
 
@@ -2320,6 +2324,50 @@ CREATE UNIQUE INDEX exam_deliveries_pkey ON escen.exam_deliveries USING btree (i
 CREATE UNIQUE INDEX exam_deliveries_session_id_key ON escen.exam_deliveries USING btree (session_id)
 CREATE INDEX fk_17660 ON escen.exam_deliveries USING btree (evaluation_id)
 CREATE INDEX fk_17665 ON escen.exam_deliveries USING btree (session_id)
+```
+
+## escen.exam_integrity_events
+
+| Attribut | Type | Nullable | Défaut | Généré |
+|---|---|---|---|---|
+| id | uuid | NO | gen_random_uuid() | NEVER |
+| attempt_id | uuid | NO | — | NEVER |
+| client_event_id | uuid | NO | — | NEVER |
+| kind | text | NO | — | NEVER |
+| observed_at | timestamptz | YES | — | NEVER |
+| received_at | timestamptz | NO | clock_timestamp() | NEVER |
+| actor_id | uuid | NO | — | NEVER |
+| role_code | text | NO | — | NEVER |
+| reason | text | NO | — | NEVER |
+
+Contraintes :
+
+```sql
+exam_integrity_events_actor_id_fkey: FOREIGN KEY (actor_id) REFERENCES escen.accounts(id) ON DELETE RESTRICT
+exam_integrity_events_actor_id_not_null: NOT NULL actor_id
+exam_integrity_events_attempt_id_client_event_id_key: UNIQUE (attempt_id, client_event_id)
+exam_integrity_events_attempt_id_fkey: FOREIGN KEY (attempt_id) REFERENCES escen.exam_attempts(id) ON DELETE RESTRICT
+exam_integrity_events_attempt_id_not_null: NOT NULL attempt_id
+exam_integrity_events_client_event_id_not_null: NOT NULL client_event_id
+exam_integrity_events_id_not_null: NOT NULL id
+exam_integrity_events_kind_check: CHECK ((kind = ANY (ARRAY['RULES_ACCEPTED'::text, 'FULLSCREEN_EXIT'::text, 'WINDOW_HIDDEN'::text, 'WINDOW_RETURNED'::text, 'FOCUS_LOST'::text, 'FOCUS_RETURNED'::text, 'COPY_BLOCKED'::text, 'CUT_BLOCKED'::text, 'PASTE_BLOCKED'::text, 'PRINT_BLOCKED'::text, 'CONTEXT_MENU_BLOCKED'::text, 'CAPTURE_SHORTCUT'::text])))
+exam_integrity_events_kind_not_null: NOT NULL kind
+exam_integrity_events_pkey: PRIMARY KEY (id)
+exam_integrity_events_reason_check: CHECK (((length(reason) >= 3) AND (length(reason) <= 1000)))
+exam_integrity_events_reason_not_null: NOT NULL reason
+exam_integrity_events_received_at_not_null: NOT NULL received_at
+exam_integrity_events_role_code_check: CHECK ((role_code = ANY (ARRAY['STUD'::text, 'DEL'::text])))
+exam_integrity_events_role_code_not_null: NOT NULL role_code
+```
+
+Index :
+
+```sql
+CREATE INDEX exam_integrity_events_actor ON escen.exam_integrity_events USING btree (actor_id)
+CREATE UNIQUE INDEX exam_integrity_events_attempt_id_client_event_id_key ON escen.exam_integrity_events USING btree (attempt_id, client_event_id)
+CREATE INDEX exam_integrity_events_attempt_received ON escen.exam_integrity_events USING btree (attempt_id, received_at DESC)
+CREATE UNIQUE INDEX exam_integrity_events_pkey ON escen.exam_integrity_events USING btree (id)
+CREATE UNIQUE INDEX exam_integrity_rules_once ON escen.exam_integrity_events USING btree (attempt_id) WHERE (kind = 'RULES_ACCEPTED'::text)
 ```
 
 ## escen.exam_options
@@ -5442,6 +5490,34 @@ Index :
 
 ```sql
 CREATE UNIQUE INDEX candidate_credentials_pkey ON escen_private.candidate_credentials USING btree (application_id)
+```
+
+## escen_private.exam_integrity_activation
+
+| Attribut | Type | Nullable | Défaut | Généré |
+|---|---|---|---|---|
+| id | uuid | NO | gen_random_uuid() | NEVER |
+| singleton | bool | NO | true | NEVER |
+| activated_at | timestamptz | NO | 'infinity'::timestamp with time zone | NEVER |
+| reason | text | NO | 'Préparation du mode strict ; activation après déploiement et vérification de l’interface'::text | NEVER |
+
+Contraintes :
+
+```sql
+exam_integrity_activation_activated_at_not_null: NOT NULL activated_at
+exam_integrity_activation_id_not_null: NOT NULL id
+exam_integrity_activation_pkey: PRIMARY KEY (id)
+exam_integrity_activation_reason_not_null: NOT NULL reason
+exam_integrity_activation_singleton_check: CHECK (singleton)
+exam_integrity_activation_singleton_key: UNIQUE (singleton)
+exam_integrity_activation_singleton_not_null: NOT NULL singleton
+```
+
+Index :
+
+```sql
+CREATE UNIQUE INDEX exam_integrity_activation_pkey ON escen_private.exam_integrity_activation USING btree (id)
+CREATE UNIQUE INDEX exam_integrity_activation_singleton_key ON escen_private.exam_integrity_activation USING btree (singleton)
 ```
 
 ## escen_private.history_catalog

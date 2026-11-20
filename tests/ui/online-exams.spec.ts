@@ -3,20 +3,29 @@ import { authenticateFixture, fixtureCapabilities, snapshot } from './persistent
 import { ROLES } from '../../src/types/permissions';
 import type { OnlineExamCommand, OnlineExamView } from '../../src/types/onlineExam';
 
-async function setup(page: Page, seconds = 180, paper?: OnlineExamView['paper']) {
+async function setup(page: Page, seconds = 180, paper?: OnlineExamView['paper'], strictMode = false, newAttempt = false) {
   await authenticateFixture(page);
   await page.route('**/api/session', route => route.fulfill({ json: { capabilities: fixtureCapabilities, accountId: 'exam-account', name: 'Candidat Test', email: 'student@example.test', role: ROLES.STUD, availableRoles: [ROLES.STUD], studentId: 'S1', teacherId: null, matricule: 'EXAM', mustChangePassword: false } }));
   let campusRequests = 0;
   await page.route('**/api/campus', route => { campusRequests++; return route.fulfill({ json: snapshot }); });
   const deadline = Date.now() + seconds * 1000;
   let view: OnlineExamView = {
-    serverNow: new Date().toISOString(), lastSavedAt: null,
+    serverNow: new Date().toISOString(), lastSavedAt: null, strictMode,
     attempt: { id: 'attempt', evaluationId: 'eval', paperId: 'paper', revision: 0, lastSaveId: null, status: 'EN_COURS', startedAt: new Date().toISOString(), deadlineAt: new Date(deadline).toISOString(), submittedAt: null, submissionKind: null, completionStatus: null },
     paper: { id: 'paper', title: 'Examen persistant', parts: [{ id: 'part', title: 'Questions', instructions: 'Rédigez vos réponses.', questions: [{ id: 'q1', kind: 'TEXTE', prompt: 'Première question', points: 10, options: [] }, { id: 'q2', kind: 'TEXTE', prompt: 'Deuxième question', points: 10, options: [] }] }] },
     answers: {},
   };
   const commands: OnlineExamCommand[] = [];
   if (paper) view.paper = paper;
+  let started = !newAttempt;
+  let journalOffline = false;
+  const incidents: { id: string; kind: string; observedAt: string }[] = [];
+  await page.route('**/api/exam-integrity', route => {
+    if (journalOffline) return route.fulfill({ status: 503, json: { error: 'Journal indisponible' } });
+    const body = route.request().postDataJSON();
+    for (const event of body.events) if (!incidents.some(item => item.id === event.id)) incidents.push(event);
+    return route.fulfill({ json: { accepted: body.events.length, recorded: body.events.length } });
+  });
   let fail = false;
   let dropResponse = false;
   function seal() {
@@ -29,9 +38,10 @@ async function setup(page: Page, seconds = 180, paper?: OnlineExamView['paper'])
     if (fail) return route.abort('failed');
     seal();
     const req = route.request();
-    if (req.method() === 'GET' && !new URL(req.url()).searchParams.has('attemptId')) return route.fulfill({ json: { serverNow: view.serverNow, exams: [{ evaluationId: 'eval', name: view.paper.title, kind: 'DEVOIR', opensAt: view.attempt.startedAt, closesAt: view.attempt.deadlineAt, durationMinutes: 30, attemptId: view.attempt.id, status: view.attempt.status, deadlineAt: view.attempt.deadlineAt, submittedAt: view.attempt.submittedAt, completionStatus: view.attempt.completionStatus }] } });
+    if (req.method() === 'GET' && !new URL(req.url()).searchParams.has('attemptId')) return route.fulfill({ json: { serverNow: view.serverNow, exams: [{ evaluationId: 'eval', name: view.paper.title, kind: 'DEVOIR', opensAt: view.attempt.startedAt, closesAt: view.attempt.deadlineAt, durationMinutes: 30, strictMode, attemptId: started ? view.attempt.id : null, status: started ? view.attempt.status : null, deadlineAt: view.attempt.deadlineAt, submittedAt: view.attempt.submittedAt, completionStatus: view.attempt.completionStatus }] } });
     if (req.method() === 'POST') {
       const command = req.postDataJSON() as OnlineExamCommand; commands.push(command);
+      if (command.action === 'start') started = true;
       if (command.action !== 'start') {
         if (view.attempt.status !== 'EN_COURS') return route.fulfill({ json: { ...view, accepted: false } });
         if (command.saveId !== view.attempt.lastSaveId) {
@@ -48,8 +58,8 @@ async function setup(page: Page, seconds = 180, paper?: OnlineExamView['paper'])
     return route.fulfill({ json: { ...view, paper: responsePaper, accepted: true } });
   });
   await page.goto('/mon-espace/epreuves');
-  await page.getByRole('button', { name: 'Reprendre ma copie' }).click();
-  return { commands, get campusRequests() { return campusRequests; }, get view() { return view; }, setOffline(value: boolean) { fail = value; }, dropNextResponse() { dropResponse = true; }, concurrentUpdate() { view = { ...view, attempt: { ...view.attempt, revision: view.attempt.revision + 1, lastSaveId: 'other-tab' } }; } };
+  if (!newAttempt) await page.getByRole('button', { name: 'Reprendre ma copie' }).click();
+  return { commands, incidents, setJournalOffline(value: boolean) { journalOffline = value; }, get campusRequests() { return campusRequests; }, get view() { return view; }, setOffline(value: boolean) { fail = value; }, dropNextResponse() { dropResponse = true; }, concurrentUpdate() { view = { ...view, attempt: { ...view.attempt, revision: view.attempt.revision + 1, lastSaveId: 'other-tab' } }; } };
 }
 
 for (const width of [390, 1440]) test(`Étude de cas, types de réponses et justification conservés à ${width}px`, async ({ page }) => {
@@ -168,4 +178,102 @@ test('La sauvegarde automatique conserve les réponses sans recharger le campus 
   await expect(page.getByRole('status').filter({ hasText: /Copie remise/ })).toBeVisible();
   await expect.poll(() => fixture.campusRequests).toBeGreaterThan(initialRequests);
   expect(fixture.view.answers.q1?.text).toBe('Réponse complétée et sauvegardée automatiquement');
+});
+
+
+test('Mode strict : engagement et plein écran avant le démarrage', async ({ page }) => {
+  const fixture = await setup(page, 180, undefined, true, true);
+  const start = page.getByRole('button', { name: 'Commencer l’épreuve', exact: true });
+  await expect(start).toBeDisabled();
+  await page.getByRole('checkbox', { name: 'J’ai lu et j’accepte les règles du mode strict.' }).check();
+  await start.click();
+  await expect(page.getByRole('textbox', { name: 'Votre réponse' }).first()).toBeVisible();
+  expect(await page.evaluate(() => !!document.fullscreenElement)).toBe(true);
+  expect(fixture.commands.find(command => command.action === 'start')).toMatchObject({ integrityAccepted: true });
+});
+
+test('Mode strict : sortie masquée, journalisée et reprise sans perdre la réponse', async ({ page }) => {
+  const fixture = await setup(page, 180, undefined, true);
+  await page.getByRole('textbox', { name: 'Votre réponse' }).first().fill('Réponse protégée et sauvegardée');
+  await expect.poll(() => fixture.view.answers.q1?.text).toBe('Réponse protégée et sauvegardée');
+  await page.evaluate(() => document.exitFullscreen());
+  await expect(page.getByRole('heading', { name: 'Questions masquées : revenez dans l’épreuve' })).toBeVisible();
+  await expect(page.getByRole('textbox', { name: 'Votre réponse' })).toHaveCount(0);
+  await page.evaluate(() => window.dispatchEvent(new Event('online')));
+  await expect.poll(() => fixture.incidents.some(event => event.kind === 'FULLSCREEN_EXIT')).toBe(true);
+  await page.getByRole('button', { name: 'Revenir au plein écran', exact: true }).click();
+  await expect(page.getByRole('textbox', { name: 'Votre réponse' }).first()).toHaveValue('Réponse protégée et sauvegardée');
+});
+
+test('Mode strict : collage et impression restreints sans contenu du presse-papiers dans le journal', async ({ page }) => {
+  const fixture = await setup(page, 180, undefined, true);
+  const input = page.getByRole('textbox', { name: 'Votre réponse' }).first();
+  await input.fill('Texte saisi normalement');
+  const allowed = await input.evaluate(element => {
+    const data = new DataTransfer(); data.setData('text/plain', 'CONTENU_PRIVE_DU_PRESSE_PAPIERS');
+    return element.dispatchEvent(new ClipboardEvent('paste', { bubbles: true, cancelable: true, clipboardData: data }));
+  });
+  expect(allowed).toBe(false);
+  await expect(input).toHaveValue('Texte saisi normalement');
+  await page.keyboard.press('Control+p');
+  await page.emulateMedia({ media: 'print' });
+  await expect(input).toBeHidden();
+  await expect(page.getByText('L’impression de la copie est indisponible pendant cette épreuve.')).toBeVisible();
+  await page.emulateMedia({ media: 'screen' });
+  await page.evaluate(() => window.dispatchEvent(new Event('online')));
+  await expect.poll(() => fixture.incidents.some(event => event.kind === 'PASTE_BLOCKED')).toBe(true);
+  await expect.poll(() => fixture.incidents.some(event => event.kind === 'PRINT_BLOCKED')).toBe(true);
+  expect(JSON.stringify(fixture.incidents)).not.toContain('CONTENU_PRIVE_DU_PRESSE_PAPIERS');
+});
+
+test('Mode strict : perte de focus, sauvegarde en arrière-plan et retour sans perte', async ({ page }) => {
+  const fixture = await setup(page, 180, undefined, true);
+  await page.getByRole('textbox', { name: 'Votre réponse' }).first().fill('Brouillon avant changement de fenêtre');
+  await page.evaluate(() => window.dispatchEvent(new Event('blur')));
+  await expect(page.getByRole('heading', { name: 'Questions masquées : revenez dans l’épreuve' })).toBeVisible();
+  await expect(page.getByRole('textbox', { name: 'Votre réponse' })).toHaveCount(0);
+  await expect.poll(() => fixture.view.answers.q1?.text).toBe('Brouillon avant changement de fenêtre');
+  await page.evaluate(() => {
+    window.dispatchEvent(new Event('focus'));
+    window.dispatchEvent(new Event('online'));
+  });
+  await expect(page.getByRole('textbox', { name: 'Votre réponse' }).first()).toHaveValue('Brouillon avant changement de fenêtre');
+  await expect.poll(() => fixture.incidents.some(event => event.kind === 'FOCUS_LOST')).toBe(true);
+  await expect.poll(() => fixture.incidents.some(event => event.kind === 'FOCUS_RETURNED')).toBe(true);
+});
+
+test('Mode strict : panne du journal indépendante de la sauvegarde automatique', async ({ page }) => {
+  const fixture = await setup(page, 180, undefined, true);
+  fixture.setJournalOffline(true);
+  await page.getByRole('textbox', { name: 'Votre réponse' }).first().evaluate(element => element.dispatchEvent(new ClipboardEvent('copy', { bubbles: true, cancelable: true })));
+  await page.evaluate(() => window.dispatchEvent(new Event('online')));
+  await expect(page.getByText('Le journal est en attente de synchronisation. Cela ne modifie pas vos réponses enregistrées.')).toBeVisible();
+  await page.getByRole('textbox', { name: 'Votre réponse' }).first().fill('Sauvegarde indépendante du journal');
+  await expect.poll(() => fixture.view.answers.q1?.text).toBe('Sauvegarde indépendante du journal');
+  fixture.setJournalOffline(false);
+  await page.evaluate(() => window.dispatchEvent(new Event('online')));
+  await expect.poll(() => fixture.incidents.some(event => event.kind === 'COPY_BLOCKED')).toBe(true);
+});
+
+test('Mode strict : plein écran refusé avant tout démarrage de copie', async ({ page }) => {
+  await page.addInitScript(() => { Element.prototype.requestFullscreen = async () => { throw new Error('Plein écran refusé par ce navigateur'); }; });
+  const fixture = await setup(page, 180, undefined, true, true);
+  await page.getByRole('checkbox', { name: 'J’ai lu et j’accepte les règles du mode strict.' }).check();
+  await page.getByRole('button', { name: 'Commencer l’épreuve', exact: true }).click();
+  await expect(page.getByRole('alert').filter({ hasText: 'Plein écran refusé' })).toBeVisible();
+  expect(fixture.commands.filter(command => command.action === 'start')).toHaveLength(0);
+});
+
+
+test('Mode strict : le journal différé est vidé par lots après remise', async ({ page }) => {
+  const fixture = await setup(page, 180, undefined, true);
+  fixture.setJournalOffline(true);
+  await page.getByRole('textbox', { name: 'Votre réponse' }).first().evaluate(element => {
+    for (let i = 0; i < 40; i++) element.dispatchEvent(new ClipboardEvent('copy', { bubbles: true, cancelable: true }));
+  });
+  fixture.setJournalOffline(false);
+  await page.getByRole('button', { name: 'Remettre ma copie', exact: true }).click();
+  await page.getByRole('button', { name: 'Confirmer la remise de ma copie', exact: true }).click();
+  await expect(page.getByRole('status').filter({ hasText: /Copie remise/ })).toBeVisible();
+  await expect.poll(() => fixture.incidents.filter(event => event.kind === 'COPY_BLOCKED').length).toBe(40);
 });

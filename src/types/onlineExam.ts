@@ -7,6 +7,7 @@ export interface OnlineExamQuestion {
 }
 export interface OnlineExamView {
   serverNow: string;
+  strictMode?: boolean;
   accepted?: boolean;
   attempt: {
     id: string; evaluationId: string; paperId: string; revision: number; lastSaveId: string | null;
@@ -22,12 +23,16 @@ export interface OnlineExamView {
 export interface OnlineExamDirectory {
   serverNow: string;
   exams: {
+    strictMode?: boolean;
     evaluationId: string; name: string; kind: string; opensAt: string; closesAt: string; durationMinutes: number;
     attemptId: string | null; status: OnlineExamView['attempt']['status'] | null;
     deadlineAt: string | null; submittedAt: string | null; completionStatus: string | null;
   }[];
 }
-export type OnlineExamCommand = { action: 'start'; evaluationId: string } | {
+export type OnlineExamCommand = { action: 'start'; evaluationId: string; integrityAccepted?: boolean } | {
   action: 'save' | 'submit'; attemptId: string; revision: number; saveId: string;
   answers: { questionId: string; response: OnlineExamAnswer }[];
 };
+
+export type ExamIntegrityEventKind = 'FULLSCREEN_EXIT' | 'WINDOW_HIDDEN' | 'WINDOW_RETURNED' | 'FOCUS_LOST' | 'FOCUS_RETURNED' | 'COPY_BLOCKED' | 'CUT_BLOCKED' | 'PASTE_BLOCKED' | 'PRINT_BLOCKED' | 'CONTEXT_MENU_BLOCKED' | 'CAPTURE_SHORTCUT';
+export interface ExamIntegrityEvent { id: string; kind: ExamIntegrityEventKind; observedAt: string; }

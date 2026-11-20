@@ -1,10 +1,10 @@
 {
   "stats": {
-    "businessTables": 126,
-    "privateTables": 15,
-    "columns": 1151,
-    "foreignKeys": 323,
-    "checks": 278,
+    "businessTables": 127,
+    "privateTables": 16,
+    "columns": 1165,
+    "foreignKeys": 325,
+    "checks": 282,
     "exclusions": 5
   },
   "tables": [
@@ -271,6 +271,11 @@
     {
       "schema": "escen",
       "name": "exam_deliveries",
+      "rls": true
+    },
+    {
+      "schema": "escen",
+      "name": "exam_integrity_events",
       "rls": true
     },
     {
@@ -661,6 +666,11 @@
     {
       "schema": "escen_private",
       "name": "candidate_credentials",
+      "rls": true
+    },
+    {
+      "schema": "escen_private",
+      "name": "exam_integrity_activation",
       "rls": true
     },
     {
@@ -4749,6 +4759,15 @@
     },
     {
       "schema": "escen",
+      "table": "exam_attempts",
+      "name": "strict_mode",
+      "type": "bool",
+      "nullable": "NO",
+      "default": "false",
+      "generated": "NEVER"
+    },
+    {
+      "schema": "escen",
       "table": "exam_deliveries",
       "name": "id",
       "type": "uuid",
@@ -4807,6 +4826,87 @@
       "name": "reason",
       "type": "text",
       "nullable": "YES",
+      "default": null,
+      "generated": "NEVER"
+    },
+    {
+      "schema": "escen",
+      "table": "exam_integrity_events",
+      "name": "id",
+      "type": "uuid",
+      "nullable": "NO",
+      "default": "gen_random_uuid()",
+      "generated": "NEVER"
+    },
+    {
+      "schema": "escen",
+      "table": "exam_integrity_events",
+      "name": "attempt_id",
+      "type": "uuid",
+      "nullable": "NO",
+      "default": null,
+      "generated": "NEVER"
+    },
+    {
+      "schema": "escen",
+      "table": "exam_integrity_events",
+      "name": "client_event_id",
+      "type": "uuid",
+      "nullable": "NO",
+      "default": null,
+      "generated": "NEVER"
+    },
+    {
+      "schema": "escen",
+      "table": "exam_integrity_events",
+      "name": "kind",
+      "type": "text",
+      "nullable": "NO",
+      "default": null,
+      "generated": "NEVER"
+    },
+    {
+      "schema": "escen",
+      "table": "exam_integrity_events",
+      "name": "observed_at",
+      "type": "timestamptz",
+      "nullable": "YES",
+      "default": null,
+      "generated": "NEVER"
+    },
+    {
+      "schema": "escen",
+      "table": "exam_integrity_events",
+      "name": "received_at",
+      "type": "timestamptz",
+      "nullable": "NO",
+      "default": "clock_timestamp()",
+      "generated": "NEVER"
+    },
+    {
+      "schema": "escen",
+      "table": "exam_integrity_events",
+      "name": "actor_id",
+      "type": "uuid",
+      "nullable": "NO",
+      "default": null,
+      "generated": "NEVER"
+    },
+    {
+      "schema": "escen",
+      "table": "exam_integrity_events",
+      "name": "role_code",
+      "type": "text",
+      "nullable": "NO",
+      "default": null,
+      "generated": "NEVER"
+    },
+    {
+      "schema": "escen",
+      "table": "exam_integrity_events",
+      "name": "reason",
+      "type": "text",
+      "nullable": "NO",
       "default": null,
       "generated": "NEVER"
     },
@@ -10554,6 +10654,42 @@
     },
     {
       "schema": "escen_private",
+      "table": "exam_integrity_activation",
+      "name": "id",
+      "type": "uuid",
+      "nullable": "NO",
+      "default": "gen_random_uuid()",
+      "generated": "NEVER"
+    },
+    {
+      "schema": "escen_private",
+      "table": "exam_integrity_activation",
+      "name": "singleton",
+      "type": "bool",
+      "nullable": "NO",
+      "default": "true",
+      "generated": "NEVER"
+    },
+    {
+      "schema": "escen_private",
+      "table": "exam_integrity_activation",
+      "name": "activated_at",
+      "type": "timestamptz",
+      "nullable": "NO",
+      "default": "'infinity'::timestamp with time zone",
+      "generated": "NEVER"
+    },
+    {
+      "schema": "escen_private",
+      "table": "exam_integrity_activation",
+      "name": "reason",
+      "type": "text",
+      "nullable": "NO",
+      "default": "'Préparation du mode strict ; activation après déploiement et vérification de l’interface'::text",
+      "generated": "NEVER"
+    },
+    {
+      "schema": "escen_private",
       "table": "history_catalog",
       "name": "table_name",
       "type": "text",
@@ -15762,6 +15898,13 @@
     {
       "schema": "escen",
       "table": "exam_attempts",
+      "name": "exam_attempts_strict_mode_not_null",
+      "type": "n",
+      "definition": "NOT NULL strict_mode"
+    },
+    {
+      "schema": "escen",
+      "table": "exam_attempts",
       "name": "exam_attempts_submission_kind_check",
       "type": "c",
       "definition": "CHECK ((submission_kind = ANY (ARRAY['MANUAL'::text, 'AUTO_DEADLINE'::text])))"
@@ -15863,6 +16006,111 @@
       "name": "exam_delivery_reason_length",
       "type": "c",
       "definition": "CHECK (((reason IS NULL) OR ((char_length(btrim(reason)) >= 3) AND (char_length(btrim(reason)) <= 1000))))"
+    },
+    {
+      "schema": "escen",
+      "table": "exam_integrity_events",
+      "name": "exam_integrity_events_actor_id_fkey",
+      "type": "f",
+      "definition": "FOREIGN KEY (actor_id) REFERENCES escen.accounts(id) ON DELETE RESTRICT"
+    },
+    {
+      "schema": "escen",
+      "table": "exam_integrity_events",
+      "name": "exam_integrity_events_actor_id_not_null",
+      "type": "n",
+      "definition": "NOT NULL actor_id"
+    },
+    {
+      "schema": "escen",
+      "table": "exam_integrity_events",
+      "name": "exam_integrity_events_attempt_id_client_event_id_key",
+      "type": "u",
+      "definition": "UNIQUE (attempt_id, client_event_id)"
+    },
+    {
+      "schema": "escen",
+      "table": "exam_integrity_events",
+      "name": "exam_integrity_events_attempt_id_fkey",
+      "type": "f",
+      "definition": "FOREIGN KEY (attempt_id) REFERENCES escen.exam_attempts(id) ON DELETE RESTRICT"
+    },
+    {
+      "schema": "escen",
+      "table": "exam_integrity_events",
+      "name": "exam_integrity_events_attempt_id_not_null",
+      "type": "n",
+      "definition": "NOT NULL attempt_id"
+    },
+    {
+      "schema": "escen",
+      "table": "exam_integrity_events",
+      "name": "exam_integrity_events_client_event_id_not_null",
+      "type": "n",
+      "definition": "NOT NULL client_event_id"
+    },
+    {
+      "schema": "escen",
+      "table": "exam_integrity_events",
+      "name": "exam_integrity_events_id_not_null",
+      "type": "n",
+      "definition": "NOT NULL id"
+    },
+    {
+      "schema": "escen",
+      "table": "exam_integrity_events",
+      "name": "exam_integrity_events_kind_check",
+      "type": "c",
+      "definition": "CHECK ((kind = ANY (ARRAY['RULES_ACCEPTED'::text, 'FULLSCREEN_EXIT'::text, 'WINDOW_HIDDEN'::text, 'WINDOW_RETURNED'::text, 'FOCUS_LOST'::text, 'FOCUS_RETURNED'::text, 'COPY_BLOCKED'::text, 'CUT_BLOCKED'::text, 'PASTE_BLOCKED'::text, 'PRINT_BLOCKED'::text, 'CONTEXT_MENU_BLOCKED'::text, 'CAPTURE_SHORTCUT'::text])))"
+    },
+    {
+      "schema": "escen",
+      "table": "exam_integrity_events",
+      "name": "exam_integrity_events_kind_not_null",
+      "type": "n",
+      "definition": "NOT NULL kind"
+    },
+    {
+      "schema": "escen",
+      "table": "exam_integrity_events",
+      "name": "exam_integrity_events_pkey",
+      "type": "p",
+      "definition": "PRIMARY KEY (id)"
+    },
+    {
+      "schema": "escen",
+      "table": "exam_integrity_events",
+      "name": "exam_integrity_events_reason_check",
+      "type": "c",
+      "definition": "CHECK (((length(reason) >= 3) AND (length(reason) <= 1000)))"
+    },
+    {
+      "schema": "escen",
+      "table": "exam_integrity_events",
+      "name": "exam_integrity_events_reason_not_null",
+      "type": "n",
+      "definition": "NOT NULL reason"
+    },
+    {
+      "schema": "escen",
+      "table": "exam_integrity_events",
+      "name": "exam_integrity_events_received_at_not_null",
+      "type": "n",
+      "definition": "NOT NULL received_at"
+    },
+    {
+      "schema": "escen",
+      "table": "exam_integrity_events",
+      "name": "exam_integrity_events_role_code_check",
+      "type": "c",
+      "definition": "CHECK ((role_code = ANY (ARRAY['STUD'::text, 'DEL'::text])))"
+    },
+    {
+      "schema": "escen",
+      "table": "exam_integrity_events",
+      "name": "exam_integrity_events_role_code_not_null",
+      "type": "n",
+      "definition": "NOT NULL role_code"
     },
     {
       "schema": "escen",
@@ -22614,6 +22862,55 @@
     },
     {
       "schema": "escen_private",
+      "table": "exam_integrity_activation",
+      "name": "exam_integrity_activation_activated_at_not_null",
+      "type": "n",
+      "definition": "NOT NULL activated_at"
+    },
+    {
+      "schema": "escen_private",
+      "table": "exam_integrity_activation",
+      "name": "exam_integrity_activation_id_not_null",
+      "type": "n",
+      "definition": "NOT NULL id"
+    },
+    {
+      "schema": "escen_private",
+      "table": "exam_integrity_activation",
+      "name": "exam_integrity_activation_pkey",
+      "type": "p",
+      "definition": "PRIMARY KEY (id)"
+    },
+    {
+      "schema": "escen_private",
+      "table": "exam_integrity_activation",
+      "name": "exam_integrity_activation_reason_not_null",
+      "type": "n",
+      "definition": "NOT NULL reason"
+    },
+    {
+      "schema": "escen_private",
+      "table": "exam_integrity_activation",
+      "name": "exam_integrity_activation_singleton_check",
+      "type": "c",
+      "definition": "CHECK (singleton)"
+    },
+    {
+      "schema": "escen_private",
+      "table": "exam_integrity_activation",
+      "name": "exam_integrity_activation_singleton_key",
+      "type": "u",
+      "definition": "UNIQUE (singleton)"
+    },
+    {
+      "schema": "escen_private",
+      "table": "exam_integrity_activation",
+      "name": "exam_integrity_activation_singleton_not_null",
+      "type": "n",
+      "definition": "NOT NULL singleton"
+    },
+    {
+      "schema": "escen_private",
       "table": "history_catalog",
       "name": "history_catalog_definition_not_null",
       "type": "n",
@@ -24645,6 +24942,36 @@
       "table": "exam_deliveries",
       "name": "fk_17665",
       "definition": "CREATE INDEX fk_17665 ON escen.exam_deliveries USING btree (session_id)"
+    },
+    {
+      "schema": "escen",
+      "table": "exam_integrity_events",
+      "name": "exam_integrity_events_actor",
+      "definition": "CREATE INDEX exam_integrity_events_actor ON escen.exam_integrity_events USING btree (actor_id)"
+    },
+    {
+      "schema": "escen",
+      "table": "exam_integrity_events",
+      "name": "exam_integrity_events_attempt_id_client_event_id_key",
+      "definition": "CREATE UNIQUE INDEX exam_integrity_events_attempt_id_client_event_id_key ON escen.exam_integrity_events USING btree (attempt_id, client_event_id)"
+    },
+    {
+      "schema": "escen",
+      "table": "exam_integrity_events",
+      "name": "exam_integrity_events_attempt_received",
+      "definition": "CREATE INDEX exam_integrity_events_attempt_received ON escen.exam_integrity_events USING btree (attempt_id, received_at DESC)"
+    },
+    {
+      "schema": "escen",
+      "table": "exam_integrity_events",
+      "name": "exam_integrity_events_pkey",
+      "definition": "CREATE UNIQUE INDEX exam_integrity_events_pkey ON escen.exam_integrity_events USING btree (id)"
+    },
+    {
+      "schema": "escen",
+      "table": "exam_integrity_events",
+      "name": "exam_integrity_rules_once",
+      "definition": "CREATE UNIQUE INDEX exam_integrity_rules_once ON escen.exam_integrity_events USING btree (attempt_id) WHERE (kind = 'RULES_ACCEPTED'::text)"
     },
     {
       "schema": "escen",
@@ -26751,6 +27078,18 @@
       "table": "candidate_credentials",
       "name": "candidate_credentials_pkey",
       "definition": "CREATE UNIQUE INDEX candidate_credentials_pkey ON escen_private.candidate_credentials USING btree (application_id)"
+    },
+    {
+      "schema": "escen_private",
+      "table": "exam_integrity_activation",
+      "name": "exam_integrity_activation_pkey",
+      "definition": "CREATE UNIQUE INDEX exam_integrity_activation_pkey ON escen_private.exam_integrity_activation USING btree (id)"
+    },
+    {
+      "schema": "escen_private",
+      "table": "exam_integrity_activation",
+      "name": "exam_integrity_activation_singleton_key",
+      "definition": "CREATE UNIQUE INDEX exam_integrity_activation_singleton_key ON escen_private.exam_integrity_activation USING btree (singleton)"
     },
     {
       "schema": "escen_private",

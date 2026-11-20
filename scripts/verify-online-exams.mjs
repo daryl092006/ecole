@@ -15,6 +15,10 @@ export async function verifyOnlineExams(db, check, { year, actor, teaching, offe
     const context = { accountId: account.id, personId: student.person_id, authUserId: authId, roleCode: 'STUD', role: 'Étudiant', permissions: ['exam.take'], studentId: student.id, teacherId: null, grants: [] };
     const client = { async rpc(name, args) {
       if (name === 'escen_backend_snapshot') return { data: await scalar('select public.escen_backend_snapshot() as value'), error: null };
+      if (name === 'escen_start_online_exam_checked') {
+        try { return { data: await scalar('select public.escen_start_online_exam_checked($1,$2,$3,$4) as value', [args.p_actor_id,args.p_role_code,args.p_evaluation_id,args.p_integrity_accepted ?? false]), error: null }; }
+        catch (error) { return { data: null, error: { code: error.code, message: error.message } }; }
+      }
       assert.equal(name, 'escen_online_exam');
       try {
         const data = await scalar('select public.escen_online_exam($1,$2,$3,$4,$5,$6,$7,$8,$9::jsonb) as value', [args.p_actor_id, args.p_role_code, args.p_action, args.p_year_id ?? null, args.p_evaluation_id ?? null, args.p_attempt_id ?? null, args.p_expected_revision ?? null, args.p_save_id ?? null, JSON.stringify(args.p_answers ?? [])]);

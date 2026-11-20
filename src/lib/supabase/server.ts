@@ -113,7 +113,7 @@ export function getSupabaseServerClient(): SupabaseClient {
   client.rpc = ((fn: string, args?: Record<string, unknown>, options?: unknown) => {
     const readOnly = isReadOnlyRpc(fn, args);
     if (!readOnly) {
-      if (fn !== 'escen_website_rate') {
+      if (fn !== 'escen_website_rate' && fn !== 'escen_record_exam_integrity_events') {
         cacheState.readCacheGeneration++;
         if (fn === 'escen_catalog_resume') {
           cacheState.readCache.clear();

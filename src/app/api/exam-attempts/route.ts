@@ -8,14 +8,18 @@ const answers = z.array(z.object({
   response: z.object({ text: z.string().max(20000), option_ids: z.array(z.uuid()).max(100).refine(ids => new Set(ids).size === ids.length) }).strict(),
 }).strict()).max(500).refine(items => new Set(items.map(item => item.questionId)).size === items.length);
 const bodySchema = z.discriminatedUnion('action', [
-  z.object({ action: z.literal('start'), evaluationId: z.uuid() }).strict(),
+  z.object({ action: z.literal('start'), evaluationId: z.uuid(), integrityAccepted: z.boolean().optional() }).strict(),
   z.object({ action: z.enum(['save', 'submit']), attemptId: z.uuid(), revision: z.number().int().nonnegative(), saveId: z.uuid(), answers }).strict(),
 ]);
-async function execute(request: Request, params: Record<string, unknown>) {
+async function execute(request: Request, params: Record<string, unknown>, integrityAccepted = false) {
   const { client, context } = await requireAccount(request);
   requirePermission(context, 'exam.take');
-  const result = await client.rpc('escen_online_exam', { ...params, p_actor_id: context.accountId, p_role_code: context.roleCode });
+  if (!['STUD', 'DEL'].includes(context.roleCode)) throw new RequestError(403, 'Sélectionnez votre rôle étudiant pour passer une épreuve personnelle.');
+  const result = params.p_action === 'start'
+    ? await client.rpc('escen_start_online_exam_checked', { p_actor_id: context.accountId, p_role_code: context.roleCode, p_evaluation_id: params.p_evaluation_id, p_integrity_accepted: integrityAccepted })
+    : await client.rpc('escen_online_exam', { ...params, p_actor_id: context.accountId, p_role_code: context.roleCode });
   if (result.error) {
+    if (result.error.code === '23514' && result.error.message?.includes('mode strict')) throw new RequestError(422, 'Acceptez les règles du mode strict avant de commencer. Actualisez la page si les règles ne sont pas affichées.');
     if (result.error.code === '42501') throw new RequestError(403, 'Cette copie ne vous est pas accessible.');
     if (['40001', 'PT409'].includes(result.error.code)) throw new RequestError(409, 'Cette copie a été modifiée dans un autre onglet. Vos réponses locales sont conservées. Rechargez la copie pour reprendre la version enregistrée.');
     if (['23514', '23502', '23503', '22P02'].includes(result.error.code ?? '')) throw new RequestError(422, 'L’épreuve est fermée, indisponible ou les réponses sont invalides. Actualisez la copie pour vérifier son état.');
@@ -44,6 +48,6 @@ export async function POST(request: Request) {
     const body = bodySchema.parse(await request.json());
     return await execute(request, body.action === 'start'
       ? { p_action: 'start', p_evaluation_id: body.evaluationId }
-      : { p_action: body.action, p_attempt_id: body.attemptId, p_expected_revision: body.revision, p_save_id: body.saveId, p_answers: body.answers });
+      : { p_action: body.action, p_attempt_id: body.attemptId, p_expected_revision: body.revision, p_save_id: body.saveId, p_answers: body.answers }, body.action === 'start' && body.integrityAccepted === true);
   } catch (error) { return errorResponse(error); }
 }
