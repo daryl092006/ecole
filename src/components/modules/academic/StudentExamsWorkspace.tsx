@@ -65,7 +65,7 @@ export default function StudentExamsWorkspace() {
           Actualiser
         </button>
       </PageHeader>
-      <section className="card card-full">
+      <section className="online-exam-directory" aria-label="Épreuves disponibles">
         {error && <p role="alert" className="restricted-box">{error}</p>}
         {!directory && !error && <LoadingState label="Chargement des épreuves…" />}
         {directory?.exams.map(exam => (

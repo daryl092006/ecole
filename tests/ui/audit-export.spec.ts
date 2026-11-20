@@ -41,13 +41,15 @@ for (const width of [390, 1440]) test(`Export complet CSV et JSON, filtres et ar
   expect(json).toMatchObject({ total: 1, yearId: auditYearId, filters: { query: 'payment-50' } });
   expect(json.records[0].entityId).toBe('payment-50');
   await page.getByLabel('Année consultée', { exact: true }).selectOption('all');
+  // The year context remounts the workspace; wait before changing its source.
+  await expect(page.getByRole('heading', { name: 'Opérations actuelles (51)', exact: true })).toBeVisible();
   await page.getByRole('combobox', { name: 'Source du journal', exact: true }).selectOption('history');
   await expect(page.getByRole('heading', { name: 'Journal historique (1)', exact: true })).toBeVisible();
   const historical = page.waitForEvent('download'); await page.getByRole('button', { name: 'Télécharger le JSON', exact: true }).click();
   const history = JSON.parse(await readFile((await (await historical).path())!, 'utf8'));
   expect(history).toMatchObject({ source: 'history', yearId: null, total: 1, records: [{ actorId: '42', actorName: null, sourceId: '77', oldValue: null }] });
   await expectWorkspaceFits(page);
-  await page.screenshot({ path: `.tmp/interface/audit-export-${width}.png`, fullPage: true });
+  await page.screenshot({ path: `tmp/screenshots/workspace-style/audit/audit-export-${width}.png`, fullPage: true });
 });
 
 for (const failure of ['error', 'changed'] as const) test(`Export sans fichier partiel : ${failure}`, async ({ page }) => {

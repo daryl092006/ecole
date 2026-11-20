@@ -73,7 +73,7 @@ for (const width of [390, 1440]) test(`Achats : demande, décision et deux livra
     await page.goto('/logistique/achats');
     async function selectIT() {
       await page.getByLabel('Mon compte et mon rôle').click();
-      await page.getByLabel('Rôle autorisé', { exact: true }).selectOption(ROLES.IT);
+      await page.getByRole('combobox', { name: 'Changer de rôle actif', exact: true }).selectOption(ROLES.IT);
       if (await page.locator('.account-control').getAttribute('open') !== null) await page.getByLabel('Mon compte et mon rôle').click();
     }
     await selectIT();
@@ -113,8 +113,11 @@ for (const width of [390, 1440]) test(`Achats : demande, décision et deux livra
     await expect(page.locator('td').getByText('Reçue', { exact: true })).toBeVisible();
     await expect(page.getByRole('button', { name: 'Réceptionner', exact: true })).toHaveCount(0);
     await page.getByRole('button', { name: 'Ouvrir le détail', exact: true }).click();
-    await expect(page.getByText('Première livraison vérifiée', { exact: true })).toBeVisible();
-    await expect(page.getByRole('dialog').locator('.card').getByText('Livraison du solde vérifiée', { exact: true })).toHaveCount(2);
+    const detail = page.getByRole('dialog');
+    await expect(detail.getByText('Papier : 1', { exact: true })).toBeVisible();
+    await expect(detail.getByText('Papier : 2', { exact: true })).toBeVisible();
+    await expect(detail.getByText('Stylos : 2', { exact: true })).toBeVisible();
+    await expect(detail.getByText('Reçu : 3 · Reste à recevoir : 0', { exact: true })).toBeVisible();
     await page.screenshot({ path: `tmp/screenshots/purchases-completion-${width}.png`, fullPage: true });
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1)).toBe(true);
   } finally { await local.close(); }

@@ -28,6 +28,11 @@ async function inspect(page: Page) {
       if (bounds.left < -1 || bounds.right > innerWidth + 1) issues.push(`Hors écran : ${el.tagName}.${el.className} (${Math.round(bounds.left)}–${Math.round(bounds.right)})`);
     }
     if (innerWidth <= 768) {
+      for (const copy of document.querySelectorAll('.data-panel-header > div:first-child')) {
+        if (!visible(copy)) continue;
+        const contentHeight = [...copy.children].filter(visible).reduce((sum, child) => sum + child.getBoundingClientRect().height, 0);
+        if (copy.getBoundingClientRect().height > contentHeight + 32) issues.push('En-tête de liste : espace vide excessif autour du titre');
+      }
       if ([...document.querySelectorAll('.mobile-record-row')].some(row => visible(row) && getComputedStyle(row).display === 'table-row')) issues.push('Tableau sans adaptation en fiches');
       const calendar = document.querySelector('.schedule-calendar-scroll');
       if (calendar && visible(calendar)) issues.push('Calendrier en grille sur mobile');

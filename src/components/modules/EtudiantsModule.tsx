@@ -5,6 +5,7 @@ import ResponsiveTable from '@/components/ui/ResponsiveTable';
 import ActionPanel from '@/components/ui/ActionPanel';
 import StudentRecordDialog from './StudentRecordDialog';
 import PageHeader from '@/components/ui/PageHeader';
+import DataPanel from '@/components/ui/DataPanel';
 
 import { useState } from 'react';
 import StudentCrudActions from './StudentCrudActions';
@@ -64,7 +65,7 @@ export default function EtudiantsModule({
 
       {/* ── SUBTAB: stud_list (Liste des Étudiants & Dossiers) ── */}
       {currentSubTab === 'stud_list' && (
-        <div>
+        <div className="domain-workspace workspace-stack">
           <PageHeader
             eyebrow="SCOLARITÉ & ADMISSIONS"
             title="Dossiers étudiants"
@@ -170,9 +171,8 @@ export default function EtudiantsModule({
             </ActionPanel>
           )}
 
-          <StudentFiltersPanel students={students} filters={filters} onChange={setFilters} role={activeRole} />
-
-          <div className="card card-full">
+          <DataPanel title="Dossiers et inscriptions" meta={<span className="data-panel-title-count">{filteredStudents.length} / {students.length} dossier(s)</span>}
+            toolbar={<StudentFiltersPanel embedded students={students} filters={filters} onChange={setFilters} role={activeRole} />}>
             <div className="table-wrap">
               <ResponsiveTable className="data-table">
                 <thead>
@@ -256,7 +256,7 @@ export default function EtudiantsModule({
                 </tbody>
               </ResponsiveTable>
             </div>
-          </div>
+          </DataPanel>
         </div>
       )}
 

@@ -1,0 +1,101 @@
+{
+  "reviewedAt": "2026-11-20T14:31:50.464Z",
+  "published": false,
+  "reference": "docs/INTERFACE_COMMUNE_2026-11-18.md",
+  "changes": [
+    "Shared headers, action wrapping and section spacing",
+    "Common list panels for students, teachers, accounts, contracts, audit, prospects, purchases and support",
+    "Consistent filters and input heights; full-width account filters on mobile",
+    "Compact mobile list headings; regression check for excess empty space",
+    "Exam directory cards without a redundant enclosing card"
+  ],
+  "responsive": {
+    "casesPassed": 17,
+    "results": [
+      {
+        "width": 320,
+        "screens": 62,
+        "issues": 0
+      },
+      {
+        "width": 390,
+        "screens": 62,
+        "issues": 0
+      },
+      {
+        "width": 480,
+        "screens": 62,
+        "issues": 0
+      },
+      {
+        "width": 768,
+        "screens": 62,
+        "issues": 0
+      },
+      {
+        "width": 820,
+        "screens": 62,
+        "issues": 0
+      },
+      {
+        "width": 1024,
+        "screens": 62,
+        "issues": 0
+      },
+      {
+        "width": 1440,
+        "screens": 62,
+        "issues": 0
+      },
+      {
+        "width": 2560,
+        "screens": 62,
+        "issues": 0
+      }
+    ],
+    "transitions": [
+      479,
+      481,
+      600,
+      767,
+      769,
+      1023,
+      1025,
+      1280,
+      1920
+    ],
+    "mobileHeaderWhitespaceChecked": true
+  },
+  "interactionChecks": {
+    "passed": 50,
+    "areas": [
+      "audit and export",
+      "online exams",
+      "teachers and assignments",
+      "scholarships",
+      "purchases",
+      "support",
+      "prospect API"
+    ],
+    "scope": "Persistent portal fixtures and local PostgreSQL; no remote business mutations",
+    "excluded": [
+      "Legacy personnel demo scenario",
+      "Separate public website browser flow requiring its own server"
+    ]
+  },
+  "visualReview": {
+    "widths": [
+      390,
+      1440
+    ],
+    "pages": 8,
+    "accountFiltersFillAvailableWidth": true,
+    "captures": "tmp/screenshots/workspace-style/after"
+  },
+  "testMaintenance": [
+    "Audit waits for year context remount before changing source",
+    "Audit captures stored under tmp/screenshots",
+    "Purchases use the current role switcher and verify receipt quantities",
+    "Support waits for confirmation to close before checking saved messages"
+  ]
+}

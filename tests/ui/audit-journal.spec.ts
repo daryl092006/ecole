@@ -45,10 +45,12 @@ for (const width of [390, 1440]) test(`Journal actuel, pagination, filtres et ar
   await expect(dialog.getByRole('heading', { name: 'Anciennes valeurs', exact: true })).toBeVisible();
   await expect(dialog.getByRole('heading', { name: 'Nouvelles valeurs', exact: true })).toBeVisible();
   await expect(dialog.getByText('150', { exact: true })).toBeVisible();
-  await page.screenshot({ path: `.tmp/interface/audit-detail-${width}.png`, fullPage: true });
+  await page.screenshot({ path: `tmp/screenshots/workspace-style/audit/audit-detail-${width}.png`, fullPage: true });
   await dialog.getByRole('button', { name: 'Fermer le détail', exact: true }).click();
   await expectWorkspaceFits(page);
   await page.getByLabel('Année consultée', { exact: true }).selectOption('all');
+  // The year context remounts the workspace; wait before changing its source.
+  await expect(page.getByRole('heading', { name: 'Opérations actuelles (51)', exact: true })).toBeVisible();
   await page.getByRole('combobox', { name: 'Source du journal', exact: true }).selectOption('history');
   await expect(page.getByRole('heading', { name: 'Journal historique (1)', exact: true })).toBeVisible();
   await expect(page.getByText('Auteur source #42', { exact: true })).toBeVisible();
@@ -57,7 +59,7 @@ for (const width of [390, 1440]) test(`Journal actuel, pagination, filtres et ar
   await expect(dialog.getByText('archive-batch', { exact: true })).toBeVisible();
   await expect(dialog.getByRole('heading', { name: 'Anciennes valeurs', exact: true })).toHaveCount(0);
   await dialog.getByRole('button', { name: 'Fermer le détail', exact: true }).click();
-  await page.screenshot({ path: `.tmp/interface/audit-history-${width}.png`, fullPage: true });
+  await page.screenshot({ path: `tmp/screenshots/workspace-style/audit/audit-history-${width}.png`, fullPage: true });
   await expectWorkspaceFits(page);
 });
 

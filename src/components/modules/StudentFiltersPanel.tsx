@@ -3,8 +3,8 @@ import type { RoleName, Student } from '@/types';
 import { EMPTY_STUDENT_FILTERS, type StudentFilters } from '@/services/studentQueryService';
 import { filterRegisteredStudents, studentGroupFilterKey, studentFilterValue, MISSING_STUDENT_VALUE } from '@/services/studentQueryService';
 import { downloadCsv } from '@/utils/csv';
-interface Props { students: Student[]; filters: StudentFilters; onChange: (filters: StudentFilters) => void; role: RoleName; }
-export default function StudentFiltersPanel({ students, filters, onChange, role }: Props) {
+interface Props { students: Student[]; filters: StudentFilters; onChange: (filters: StudentFilters) => void; role: RoleName; embedded?: boolean; }
+export default function StudentFiltersPanel({ students, filters, onChange, role, embedded = false }: Props) {
   const results = filterRegisteredStudents(students, filters, role);
   const programs = [...new Set(students.map(item => item.filiere))].sort();
   const levels = [...new Set(students.map(item => item.niveau))].sort();
@@ -16,7 +16,7 @@ export default function StudentFiltersPanel({ students, filters, onChange, role 
     if (options.length <= 1 && !filters[key]) return null;
     return <label className="form-group">{label}<select className="select-input" value={filters[key]} onChange={event => onChange({ ...filters, [key]: event.target.value })}><option value="">{all}</option>{options.map(([value, text]) => <option key={value} value={value}>{value === MISSING_STUDENT_VALUE ? missing : text}</option>)}</select></label>;
   };
-  return <div className="card card-full mb-2 student-filters"><div className="student-search-row">
+  return <div className={embedded ? 'student-filters' : 'card card-full mb-2 student-filters'}><div className="student-search-row">
     <label className="form-group">Recherche<input className="input" type="search" value={filters.search} onChange={event => onChange({ ...filters, search: event.target.value })} placeholder="Nom, matricule, email…" /></label>
     {demographicFilter('nationality', 'Nationalité', 'Toutes les nationalités', 'Non renseignée')}
   </div><section className="workspace-filter-panel" aria-label="Filtrer les dossiers"><div className="form-row filter-grid">

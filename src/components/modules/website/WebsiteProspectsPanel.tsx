@@ -1,6 +1,7 @@
 'use client';
 import { useEffect, useRef, useState } from 'react';
 import PageHeader from '@/components/ui/PageHeader';
+import DataPanel from '@/components/ui/DataPanel';
 import LoadingState from '@/components/ui/LoadingState';
 import ErrorState from '@/components/ui/ErrorState';
 import ResponsiveTable from '@/components/ui/ResponsiveTable';
@@ -48,11 +49,12 @@ export default function WebsiteProspectsPanel() {
     }
   }
 
-  return <section>
+  return <section className="domain-workspace workspace-stack">
     <PageHeader eyebrow="Site web" title="Prospects" description="Coordonnées laissées lors d’une demande de brochure, pour le suivi par ESCEN.">
       <button className="btn btn-outline" type="button" disabled={loading || loadingMore} onClick={() => setRevision(value => value + 1)}>Actualiser</button>
     </PageHeader>
-    {loading ? <LoadingState label="Chargement des prospects…" /> : error ? <ErrorState message={error} onRetry={() => setRevision(value => value + 1)} /> : <div className="card">
+    {loading ? <LoadingState label="Chargement des prospects…" /> : error ? <ErrorState message={error} onRetry={() => setRevision(value => value + 1)} /> : <DataPanel title="Demandes de brochure" meta={<span className="data-panel-title-count">{page.prospects.length} demande(s) affichée(s)</span>}
+      footer={<>{moreError && <p role="alert">{moreError}</p>}{page.nextCursor && <button className="btn btn-outline" type="button" disabled={loadingMore} onClick={() => void more()}>{loadingMore ? 'Chargement…' : moreError ? 'Réessayer le chargement' : 'Afficher les demandes précédentes'}</button>}</>}>
       {!page.prospects.length ? <p role="status">Aucune demande de brochure pour l’année consultée.</p> : <div className="table-wrap">
         <ResponsiveTable className="data-table" aria-label="Prospects des demandes de brochures">
           <thead><tr><th>Nom complet</th><th>Email</th><th>Téléphone</th><th>Demande reçue le</th></tr></thead>
@@ -64,8 +66,6 @@ export default function WebsiteProspectsPanel() {
           </tr>)}</tbody>
         </ResponsiveTable>
       </div>}
-      {moreError && <p role="alert">{moreError}</p>}
-      {page.nextCursor && <button className="btn btn-outline" type="button" disabled={loadingMore} onClick={() => void more()}>{loadingMore ? 'Chargement…' : moreError ? 'Réessayer le chargement' : 'Afficher les demandes précédentes'}</button>}
-    </div>}
+    </DataPanel>}
   </section>;
 }

@@ -11,6 +11,7 @@ import LoadingState from '@/components/ui/LoadingState';
 import ErrorState from '@/components/ui/ErrorState';
 import ResponsiveTable from '@/components/ui/ResponsiveTable';
 import PageHeader from '@/components/ui/PageHeader';
+import DataPanel from '@/components/ui/DataPanel';
 import WorkPage from '@/components/ui/WorkPage';
 import ReviewedForm, { type ReviewField } from '@/components/ui/ReviewedForm';
 import DrawerActions from '@/components/ui/DrawerActions';
@@ -93,12 +94,14 @@ export default function TeachersWorkspace() {
       description="Gestion des profils enseignants, compétences et attributions de cours par filière et groupe."
     >
       {directory.canManageProfiles && <button className="btn btn-primary" onClick={() => open({ kind: 'create_profile' })}>Créer un profil enseignant</button>}
-      {directory.canManageAssignments && <button className="btn btn-primary" onClick={() => open({ kind: 'create_assignment' })}>Nouvelle affectation</button>}
+      {directory.canManageAssignments && <button className={`btn ${directory.canManageProfiles ? 'btn-outline' : 'btn-primary'}`} onClick={() => open({ kind: 'create_assignment' })}>Nouvelle affectation</button>}
     </PageHeader>
     {success && <p className="card" role="status">{success}</p>}
     {!directory.selectedYearId && <p className="restricted-box">Choisissez une année scolaire précise pour consulter et gérer ses affectations.</p>}
-    <nav className="record-sections" aria-label="Données enseignants"><button className={section === 'teachers' ? 'selected' : ''} aria-pressed={section === 'teachers'} onClick={() => setSection('teachers')}>Enseignants ({directory.teachers.length})</button><button className={section === 'assignments' ? 'selected' : ''} aria-pressed={section === 'assignments'} onClick={() => setSection('assignments')}>Affectations ({directory.assignments.length})</button></nav>
-    {section === 'teachers' ? <section className="card card-full"><label className="form-group">Rechercher un enseignant<input className="input" type="search" value={query} onChange={event => setQuery(event.target.value)} /></label>
+    <nav className="workspace-section-tabs" aria-label="Données enseignants"><button aria-pressed={section === 'teachers'} onClick={() => setSection('teachers')}>Enseignants ({directory.teachers.length})</button><button aria-pressed={section === 'assignments'} onClick={() => setSection('assignments')}>Affectations ({directory.assignments.length})</button></nav>
+    {section === 'teachers' ? <DataPanel title="Annuaire des enseignants" meta={<span className="data-panel-title-count">{filtered.length} / {directory.teachers.length} enseignant(s)</span>}
+      toolbar={<div className="panel-filter-grid"><label className="form-group">Rechercher un enseignant<input className="input" type="search" value={query} onChange={event => setQuery(event.target.value)} /></label></div>}
+      footer={directory.canManageProfiles ? <Link href="/personnel">Ouvrir les dossiers du personnel pour créer ou modifier une identité</Link> : undefined}>
       <ResponsiveTable className="data-table"><thead><tr><th>Enseignant</th><th>Matières enseignées</th><th>Statut</th><th>Actions</th></tr></thead><tbody>{filtered.map(teacher => {
         const teacherAssignments = directory.assignments.filter(a => a.teacherId === teacher.id);
         const teacherAssignmentIds = new Set(teacherAssignments.map(a => a.id));
@@ -149,8 +152,7 @@ export default function TeachersWorkspace() {
             {directory.canManageAssignments && teacher.active && <button className="btn btn-sm btn-outline" onClick={() => open({ kind: 'create_assignment' }, teacher.id)}>Affecter</button>}
           </div></td></tr>;
       })}{!filtered.length && <tr><td colSpan={4}>Aucun enseignant pour cette recherche.</td></tr>}</tbody></ResponsiveTable>
-      {directory.canManageProfiles && <p><Link href="/personnel">Ouvrir les dossiers du personnel pour créer ou modifier une identité</Link></p>}
-    </section> : <section className="card card-full"><ResponsiveTable className="data-table"><thead><tr><th>Enseignant</th><th>Groupe et formation</th><th>Matière</th><th>Dates</th><th>Actions</th></tr></thead><tbody>{directory.assignments.map(assignment => {
+    </DataPanel> : <DataPanel title="Affectations pédagogiques" meta={<span className="data-panel-title-count">{directory.assignments.length} affectation(s)</span>}><ResponsiveTable className="data-table"><thead><tr><th>Enseignant</th><th>Groupe et formation</th><th>Matière</th><th>Dates</th><th>Actions</th></tr></thead><tbody>{directory.assignments.map(assignment => {
       const assignmentSessions = (portal.relationalSnapshot.tables.sessions || []).filter(
         s => s.assignment_id === assignment.id,
       ).length;
@@ -173,7 +175,7 @@ export default function TeachersWorkspace() {
         <td>{assignment.validFrom} → {assignment.validUntil || 'Sans date de fin'}</td>
         <td>{directory.canManageAssignments && <button className="btn btn-sm btn-outline" onClick={() => open({ kind: 'end_assignment', assignment })}>Terminer l’affectation</button>}</td>
       </tr>;
-    })}{!directory.assignments.length && <tr><td colSpan={5}>Aucune affectation dans cette année et ce périmètre.</td></tr>}</tbody></ResponsiveTable></section>}
+    })}{!directory.assignments.length && <tr><td colSpan={5}>Aucune affectation dans cette année et ce périmètre.</td></tr>}</tbody></ResponsiveTable></DataPanel>}
     {operation && <WorkPage busy={saving} title={title} onClose={() => setOperation(null)}><ReviewedForm busy={saving} error={saveError}
       confirmLabel={`Confirmer : ${title.toLocaleLowerCase('fr')}`} fields={fields} consequence={consequence}
       validate={() => operation.kind === 'create_profile' && !teacherPersonalEmailSchema.safeParse(form.personalEmail).success ? 'Indiquez un e-mail personnel valide, différent du compte ESCEN.' : operation.kind === 'create_assignment' && form.validUntil && form.validUntil < form.validFrom ? 'La date de fin ne peut pas précéder la date de début.' : null}

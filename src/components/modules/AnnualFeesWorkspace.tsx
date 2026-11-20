@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { usePortal } from '@/hooks/usePortal';
 import { studentPath } from '@/constants/portalRoutes';
 import PageHeader from '@/components/ui/PageHeader';
+import DataPanel from '@/components/ui/DataPanel';
 import ResponsiveTable from '@/components/ui/ResponsiveTable';
 import WorkPage from '@/components/ui/WorkPage';
 import ReviewedForm from '@/components/ui/ReviewedForm';
@@ -237,7 +238,7 @@ export default function AnnualFeesWorkspace() {
         title="Contrats étudiants & Bourses"
         description="Configuration des frais annuels, du catalogue des bourses et du suivi de leur effet sur les contrats étudiants."
       >
-        <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
+        <>
           {canEdit && (
             <button type="button" className="btn btn-primary" onClick={() => openAwardScholarship()}>
               + Attribuer une bourse
@@ -253,7 +254,7 @@ export default function AnnualFeesWorkspace() {
               + Nouvelle bourse catalogue
             </button>
           )}
-        </div>
+        </>
       </PageHeader>
 
       {notice && (
@@ -310,21 +311,9 @@ export default function AnnualFeesWorkspace() {
 
       {/* TAB 1: CONTRATS ÉTUDIANTS & BOURSES */}
       {activeTab === 'contracts' && (
-        <section className="card">
-          <div
-            className="card-header"
-            style={{
-              display: 'flex',
-              justifyContent: 'space-between',
-              alignItems: 'center',
-              flexWrap: 'wrap',
-              gap: '1rem',
-              padding: '1rem 1.25rem',
-              borderBottom: '1px solid var(--border)',
-            }}
-          >
+        <DataPanel title="Contrats étudiants" meta={<span className="data-panel-title-count">{filteredContracts.length} contrat(s)</span>} toolbar={<div className="contract-list-toolbar">
             {/* Filtres d'état */}
-            <div style={{ display: 'flex', gap: '0.4rem', flexWrap: 'wrap', alignItems: 'center' }}>
+            <div className="btn-group">
               <button
                 type="button"
                 className={`btn btn-sm ${contractsFilter === 'all' ? 'btn-primary' : 'btn-outline'}`}
@@ -349,17 +338,16 @@ export default function AnnualFeesWorkspace() {
             </div>
 
             {/* Barre de recherche */}
-            <div style={{ maxWidth: '320px', width: '100%' }}>
+            <label className="form-group">Rechercher un contrat
               <input
                 type="search"
-                className="search-input"
+                className="input"
                 placeholder="Rechercher par nom, matricule…"
                 value={contractsQuery}
                 onChange={e => setContractsQuery(e.target.value)}
               />
-            </div>
-          </div>
-
+            </label>
+          </div>}>
           <div className="table-wrap">
             <ResponsiveTable className="data-table">
               <thead>
@@ -448,7 +436,7 @@ export default function AnnualFeesWorkspace() {
               </tbody>
             </ResponsiveTable>
           </div>
-        </section>
+        </DataPanel>
       )}
 
       {/* TAB 2: TARIFS & TRANCHES */}

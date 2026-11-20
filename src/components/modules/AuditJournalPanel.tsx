@@ -13,6 +13,7 @@ import ResponsiveTable from '@/components/ui/ResponsiveTable';
 import WorkPage from '@/components/ui/WorkPage';
 import IconButton from '@/components/ui/IconButton';
 import PageHeader from '@/components/ui/PageHeader';
+import DataPanel from '@/components/ui/DataPanel';
 
 interface AuditRecord {
   id: string; date: string | null; actorId: string | null; actorName: string | null;
@@ -107,28 +108,31 @@ export default function AuditJournalPanel({ exportMode = false }: { exportMode?:
   const values = (value: Record<string, unknown> | null) => value === null ? <p>Aucune valeur disponible.</p> : !Object.keys(value).length ? <p>Aucun champ affichable dans cette vue.</p> : <dl className="record-details-grid">{Object.entries(value).map(([key, item]) => <div key={key}><dt>{connectedFieldLabel(key)}</dt><dd className="audit-values">{item === null ? 'Non renseigné' : typeof item === 'boolean' ? item ? 'Oui' : 'Non' : String(item)}</dd></div>)}</dl>;
 
   if (!allowed) return <section className="card"><h1>Journal d’activité</h1><p role="alert">Cette consultation est réservée au DG et à l’Informaticien avec accès global et permission d’audit.</p></section>;
-  return <div>
+  return <div className="domain-workspace workspace-stack">
     <PageHeader
       eyebrow="AUDIT & CONTRÔLE SYSTÈME"
       title={exportMode ? 'Export du journal d’audit' : 'Journal d’activité & audit'}
       description="Consultez séparément les opérations actuelles et les événements conservés de l’ancien système avec traçabilité intégrale."
-    />
+    >
     <button type="button" className="btn btn-outline" onClick={() => { const next = { ...emptyFilters, table: 'exam_integrity_events' }; setSource('current'); setDraft(next); setFilters(next); resetPage(); }}>Incidents des épreuves</button>
-    <label className="workspace-picker">Source du journal<select className="select-input" value={source} onChange={event => { setSource(event.target.value as typeof source); setDraft(emptyFilters); setFilters(emptyFilters); resetPage(); }}><option value="current">Opérations actuelles</option><option value="history">Journal historique</option></select></label>
+    </PageHeader>
+
     <p className="info-box">{source === 'history' ? 'Les auteurs sont des références de l’ancien système, sans correspondance de compte supposée. Les dates sont celles de la source. Ce journal sans rattachement annuel confirmé est consultable avec « Toutes les années ».' : portal.academicYearContext?.selectedYearId ? 'Seuls les événements reliés à l’année consultée par leurs références sont affichés. Choisissez « Toutes les années » pour les identités, paramètres communs et événements sans année confirmée.' : 'Consultation de toutes les années, y compris les identités, paramètres communs et événements sans année confirmée.'}</p>
-    <form className="card card-full mb-2" onSubmit={event => { event.preventDefault(); setFilters({ ...draft }); resetPage(); }}>
-      <div className="form-grid">
+    <DataPanel title={`${source === 'current' ? 'Opérations actuelles' : 'Journal historique'}${page ? ` (${page.total})` : ''}`}
+      toolbar={<form onSubmit={event => { event.preventDefault(); setFilters({ ...draft }); resetPage(); }}>
+      <div className="panel-filter-grid">
+        <label className="form-group">Source du journal<select className="select-input" value={source} onChange={event => { setSource(event.target.value as typeof source); setDraft(emptyFilters); setFilters(emptyFilters); resetPage(); }}><option value="current">Opérations actuelles</option><option value="history">Journal historique</option></select></label>
         {([{ key: 'query', label: 'Rechercher un événement', max: 160 }, { key: 'author', label: 'Auteur : nom ou référence', max: 160 }, { key: 'table', label: source === 'history' ? 'Type d’entité exact' : 'Table exacte', max: 160 }, { key: 'action', label: 'Action exacte', max: 80 }] as const).map(field => <label className="form-group" key={field.key}>{field.label}<input className="input" type={field.key === 'query' ? 'search' : 'text'} maxLength={field.max} value={draft[field.key]} onChange={event => setDraft({ ...draft, [field.key]: event.target.value })} /></label>)}
         <label className="form-group">Du<input className="input" type="date" value={draft.start} onChange={event => setDraft({ ...draft, start: event.target.value })} /></label>
         <label className="form-group">Au<input className="input" type="date" min={draft.start || undefined} value={draft.end} onChange={event => setDraft({ ...draft, end: event.target.value })} /></label>
       </div>
-      <div className="btn-group"><button className="btn btn-primary">Appliquer les filtres</button><button className="btn btn-outline" type="button" onClick={() => { setDraft(emptyFilters); setFilters({ ...emptyFilters }); resetPage(); }}>Effacer les filtres</button><button className="btn btn-outline" type="button" onClick={() => { setPage(null); setRetry(value => value + 1); }}>Actualiser le journal</button></div>
-    </form>
-    {error ? <ErrorState title="Journal indisponible" message={error} onRetry={() => setRetry(value => value + 1)} /> : !page ? <LoadingState label="Chargement du journal…" variant="table" /> : <section className="card card-full">
-      <h2>{source === 'current' ? 'Opérations actuelles' : 'Journal historique'} ({page.total})</h2>
+      <div className="btn-group data-panel-filter-actions"><button className="btn btn-primary">Appliquer les filtres</button><button className="btn btn-outline" type="button" onClick={() => { setDraft(emptyFilters); setFilters({ ...emptyFilters }); resetPage(); }}>Effacer les filtres</button><button className="btn btn-outline" type="button" onClick={() => { setPage(null); setRetry(value => value + 1); }}>Actualiser le journal</button></div>
+    </form>}>
+    {error ? <ErrorState title="Journal indisponible" message={error} onRetry={() => setRetry(value => value + 1)} /> : !page ? <LoadingState label="Chargement du journal…" variant="table" /> : <>
       <ResponsiveTable pageSize={0} className="data-table"><thead><tr><th>Date et heure</th><th>Auteur</th><th>Action</th><th>Entité</th><th>Détail</th></tr></thead><tbody>{page.records.map(record => <tr key={record.id}><td>{date(record.date)}</td><td>{actor(record)}</td><td>{record.action || 'Action non trouvée'}</td><td>{record.table === 'exam_integrity_events' ? 'Incidents des épreuves' : record.table || 'Type non trouvé'}<div className="cell-sub audit-values">{record.entityId || 'Référence non trouvée'}</div></td><td><IconButton className="btn btn-outline" label="Consulter l’événement" onClick={() => setSelected(record)} /></td></tr>)}{!page.records.length && <tr><td colSpan={5}>{source === 'history' && page.yearId ? 'Choisissez Toutes les années pour consulter les événements historiques sans rattachement annuel confirmé.' : 'Aucun événement pour cette source et ces filtres.'}</td></tr>}</tbody></ResponsiveTable>
       {page.total > page.limit && <div className="browser-pagination"><span>{offset + 1}–{Math.min(offset + page.limit, page.total)} sur {page.total}</span><div className="btn-group"><button className="btn btn-outline" disabled={!offset} onClick={() => { setPage(null); setOffset(value => Math.max(0, value - page.limit)); }}>Précédent</button><button className="btn btn-outline" disabled={offset + page.limit >= page.total} onClick={() => { setPage(null); setOffset(value => value + page.limit); }}>Suivant</button></div></div>}
-    </section>}
+    </>}
+    </DataPanel>
     {exportMode && <section className="card card-full" aria-busy={exporting}>
       <h2>Télécharger les résultats filtrés</h2>
       <p>La liste ci-dessus prévisualise le périmètre. Le fichier inclut toutes les pages de la source et de l’année sélectionnées, avec les filtres appliqués. Les champs sensibles restent exclus. Ce téléchargement ne constitue pas une sauvegarde de la base.</p>

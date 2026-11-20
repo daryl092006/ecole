@@ -93,8 +93,9 @@ for (const width of [390, 1440]) test(`Support : création, confirmation, répon
       await page.getByRole('dialog').last().getByRole('textbox').fill(message);
       await page.getByRole('button', { name: 'Vérifier les informations' }).click();
       await page.getByRole('dialog').last().getByRole('button', { name: label === 'Répondre' ? 'Envoyer la réponse' : label, exact: true }).click();
+      await expect(page.getByRole('region', { name: 'Vérification avant enregistrement' })).toHaveCount(0);
       await expect(page.getByRole('dialog')).toHaveCount(1);
-      await expect(page.getByText(message, { exact: false })).toBeVisible();
+      await expect(page.getByRole('dialog').getByText(message, { exact: false })).toBeVisible();
     }
     await expect(page.getByRole('button', { name: 'Répondre', exact: true })).toHaveCount(0);
     await page.screenshot({ path: `tmp/screenshots/support-completion-${width}.png`, fullPage: true });

@@ -133,6 +133,8 @@
   --brand-pale: #dbeff7;
   --workspace-gap: 24px;
   --workspace-panel-radius: 14px;
+  --workspace-control-height: 40px;
+  --workspace-panel-padding: 24px;
   --workspace-accent: var(--brand-navy);
   --workspace-accent-hover: var(--accent-hover);
   --workspace-primary-surface: var(--brand-navy);
@@ -4058,7 +4060,7 @@ body.transcript-print-body { page: transcript; display: block; width: 190mm; hei
 
 /* Findings from the individual page review: spacing, reading order and density. */
 @media screen {
-  .workspace-stack > :is(.card, .btn, details) + .card { margin-top: 1.25rem; }
+  .workspace-stack > :is(.card, .btn, details) + .card { margin-top: 0; }
   .attendance-workspace > .card > p { color: var(--text-secondary); line-height: 1.7; margin-bottom: .85rem; }
   .attendance-workspace > .card > .btn { margin-bottom: 1rem; }
   .roles-overview > .roles-mobile-selector { display: none; }
@@ -4100,7 +4102,7 @@ body.transcript-print-body { page: transcript; display: block; width: 190mm; hei
   .academic-year-actions > .btn-group { flex-direction: row; justify-content: flex-start; gap: .5rem; width: 100%; }
   .academic-year-actions > .btn-group > .btn:not(.icon-action) { flex: 1 1 145px; }
   .academic-year-actions > .btn-group > .icon-action { width: 44px; flex: 0 0 44px; }
-  .workspace-stack > :is(.card, .btn, details) + .card { margin-top: 1rem; }
+  .workspace-stack > :is(.card, .btn, details) + .card { margin-top: 0; }
   .evaluation-grade-workspace .kpi-grid { grid-template-columns: 1fr; }
   .evaluation-grade-workspace .kpi-card { flex-direction: row; align-items: center; gap: 1rem; }
   .evaluation-grade-workspace .kpi-value { flex-shrink: 0; }
@@ -5967,8 +5969,8 @@ form > .drawer-form-actions,
 }
 .input,
 .select-input {
-  min-height: 36px !important;
-  height: 36px !important;
+  min-height: var(--workspace-control-height) !important;
+  height: var(--workspace-control-height) !important;
   font-size: 0.83rem !important;
   border-color: #cbd5e1 !important;
   border-radius: 6px !important;
@@ -6132,6 +6134,12 @@ form > .drawer-form-actions,
 .page-intro, .module-header { display: flex; flex-wrap: wrap; align-items: flex-start; justify-content: space-between; gap: 16px 24px; }
 .page-intro > div:first-child, .module-header > div:first-child { flex: 1 1 280px; min-width: 0; }
 .page-intro > .btn-group, .module-header > .btn-group { flex: 0 1 auto; display: flex; flex-wrap: wrap; align-items: center; justify-content: flex-end; gap: 8px; min-width: 0; max-width: 100%; }
+.workspace-stack > :is(.page-intro, .module-header, .section-tabs, .record-sections) { margin-block: 0 !important; }
+.page-intro > .page-header-copy:first-child { flex: 1 1 340px; }
+.page-intro > .page-header-actions { flex: 0 1 auto; min-width: 0; align-self: flex-start; }
+.page-header-actions > .btn { max-width: 100%; min-width: 0; flex: 0 1 auto; overflow-wrap: anywhere; }
+.page-header-actions > div { display: flex; flex-wrap: wrap; gap: 8px; min-width: 0; max-width: 100%; }
+.page-header-actions > div > .btn { min-width: 0; max-width: 100%; white-space: normal; }
 .page-intro h1, .module-header h1, .app-wrapper .page-intro h1, .app-wrapper .module-header h1 { font-size: clamp(1.4rem, 1.6vw, 1.9rem) !important; line-height: 1.3 !important; overflow-wrap: anywhere; }
 .page-eyebrow { color: var(--workspace-accent) !important; letter-spacing: .1em !important; font-size: .68rem !important; }
 .page-intro p, .module-header p { line-height: 1.65 !important; overflow-wrap: anywhere; }
@@ -6153,6 +6161,33 @@ form > .drawer-form-actions,
 .panel-filter-options .btn-group { display: flex; flex-wrap: wrap; gap: 8px; max-width: 100%; }
 .panel-filter-options .checkbox-field { min-width: 0; overflow-wrap: anywhere; line-height: 1.6; }
 .data-panel-content { padding: 0; }
+.data-panel-content > p { padding: var(--workspace-panel-padding); margin: 0; }
+.data-panel-toolbar:empty, .data-panel-footer:empty { display: none; }
+.data-panel-toolbar .list-filters { margin: 0; }
+.data-panel-toolbar > .student-filters { padding: 0; border: 0; border-radius: 0; background: transparent; box-shadow: none; }
+.data-panel-toolbar .form-row { margin: 0; }
+.data-panel-toolbar .directory-toolbar { padding: 0 !important; margin-bottom: 0; }
+.data-panel-filter-actions { margin-top: 16px; justify-content: flex-start; }
+.data-panel-content .data-table { margin-top: 0; }
+.data-panel-content > .browser-pagination { padding: 16px var(--workspace-panel-padding); }
+.contract-list-toolbar { display: grid; grid-template-columns: minmax(0, 1fr) minmax(220px, 360px); align-items: end; gap: 16px; }
+.contract-list-toolbar .form-group { margin: 0; }
+.contract-list-toolbar .btn-group { align-self: end; }
+.contract-list-toolbar .input { width: 100%; }
+.section-tabs > .btn:is(.btn-primary, [aria-pressed="true"], [aria-selected="true"]) { background: var(--brand-pale); border-color: var(--brand-sky); color: var(--brand-navy); box-shadow: none; }
+.data-panel-footer > :first-child { margin-top: 0; }
+.data-panel-footer > :last-child { margin-bottom: 0; }
+.data-panel-footer .btn-group { margin-top: 12px; }
+.data-panel-title-count { color: var(--text-muted); font-size: .78rem; font-weight: 500; white-space: nowrap; }
+.workspace-section-tabs { display: flex; flex-wrap: wrap; gap: 8px; min-width: 0; }
+.workspace-section-tabs > button { min-height: var(--workspace-control-height); padding: 8px 14px; border: 1px solid var(--border); border-radius: 8px; background: var(--bg-card); color: var(--text-secondary); font: inherit; font-size: .82rem; font-weight: 600; cursor: pointer; }
+.workspace-section-tabs > button[aria-pressed="true"] { background: var(--brand-pale); border-color: var(--brand-sky); color: var(--brand-navy); }
+.workspace-section-tabs > button:hover { background: var(--brand-pale); color: var(--brand-navy); }
+.online-exam-directory { display: grid; gap: 16px; }
+.online-exam-directory .online-exam-entry { margin: 0; box-shadow: none; padding: var(--workspace-panel-padding); }
+.online-exam-directory .online-exam-entry h2 { font-size: 1.05rem; line-height: 1.5; }
+.online-exam-directory .online-exam-entry p { margin-top: 8px; color: var(--text-secondary); font-size: .86rem; line-height: 1.6; }
+.online-exam-directory .online-exam-entry > .btn { margin-top: 16px; }
 .data-panel-content > :is(.empty-state, .error-state, .loading-state) { padding: 32px 24px; }
 .data-panel-content > .table-wrap { border: 0 !important; border-radius: 0 !important; }
 .data-panel-footer { padding: 14px 24px; border-top: 1px solid var(--border); background: var(--bg-primary); font-size: .76rem; color: var(--text-muted); line-height: 1.6; overflow-wrap: anywhere; }
@@ -6194,12 +6229,16 @@ textarea.input { height: auto !important; min-height: 112px !important; line-hei
 }
 @media (max-width: 768px) {
   .workspace-stack, .domain-workspace, .workspace-home { gap: 18px; }
+  .contract-list-toolbar { grid-template-columns: minmax(0, 1fr); }
+  .workspace-section-tabs > button { min-height: 44px; flex: 1 1 140px; }
+  .online-exam-directory .online-exam-entry { padding: 18px; }
   .page-intro, .module-header { flex-direction: column; align-items: stretch; gap: 12px; }
-  .page-intro > div:first-child, .module-header > div:first-child { flex-basis: auto; }
+  .page-intro > div:first-child, .module-header > div:first-child, .page-intro > .page-header-copy:first-child { flex-basis: auto; }
   .page-intro > .btn-group, .module-header > .btn-group { width: 100%; justify-content: flex-start; }
   .page-intro > .btn-group > .btn, .module-header > .btn-group > .btn { flex: 1 1 140px; }
   .page-intro > .btn-group > .btn-primary, .module-header > .btn-group > .btn-primary { flex-basis: 100%; }
-  .card.data-panel > .data-panel-header { padding: 18px !important; }
+  .card.data-panel > .data-panel-header { flex-direction: column; align-items: stretch; gap: 8px; padding: 18px !important; }
+  .data-panel-header > div:first-child { flex: none; }
   .card.data-panel > .data-panel-toolbar { padding: 18px; }
   .panel-filter-grid, .admissions-dashboard .admissions-search-filters, .assessment-dashboard .assessment-search-filters { grid-template-columns: minmax(0, 1fr); }
   :where(.app-wrapper, .detail-drawer, .auth-layout, .candidate-public-page) :is(input:not([type="checkbox"]):not([type="radio"]), select, textarea) { font-size: 16px !important; }
