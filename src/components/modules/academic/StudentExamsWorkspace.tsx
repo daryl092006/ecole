@@ -524,13 +524,19 @@ function OnlineExamEditor({ initial, onBack, fullscreenRoot }: { initial: Online
           }}
         />
       )}
+      {!terminal && !review && (
+        <div className="info-box mt-2" role="note">
+          <strong>Sauvegarde automatique active :</strong> vos réponses sont enregistrées automatiquement au fil de votre saisie.
+          Lorsque vous avez terminé toute l’épreuve, cliquez sur <strong>« Remettre ma copie »</strong> puis confirmez pour envoyer définitivement votre copie à l’enseignant.
+        </div>
+      )}
       <div className="online-exam-actions">
         {!terminal && !review && (
           <button className="btn btn-primary" disabled={locked} onClick={() => setReview(true)}>
             Remettre ma copie
           </button>
         )}
-        {!terminal && (
+        {!terminal && !review && (
           <button className="btn btn-outline" disabled={saving || submitting} onClick={() => void pumpRef.current()}>
             Enregistrer maintenant
           </button>

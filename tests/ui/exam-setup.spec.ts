@@ -57,12 +57,12 @@ test('Modifier le sujet enregistré conserve ses questions', async ({ page }) =>
   await page.goto('/academique/sujets?sujet=existing-paper');
   await expect(page.getByRole('heading', { name: 'Modifier le sujet', exact: true })).toBeVisible();
   await expect(page.getByText('Examen de finance programmé', { exact: true })).toBeVisible();
-  await expect(page.locator('.subject-prompt')).toHaveValue('Question déjà rédigée');
+  await expect(page.getByRole('textbox', { name: 'Énoncé' })).toHaveValue('Question déjà rédigée');
   await page.getByRole('button', { name: 'Enregistrer le brouillon', exact: true }).click();
   await page.getByRole('button', { name: 'Confirmer la sauvegarde du brouillon', exact: true }).click();
   await expect(page).toHaveURL(/sujet=saved-paper/);
   await page.reload();
-  await expect(page.locator('.subject-prompt')).toHaveValue('Question déjà rédigée');
+  await expect(page.getByRole('textbox', { name: 'Énoncé' })).toHaveValue('Question déjà rédigée');
 });
 
 for (const stage of ['create', 'schedule_delivery'] as const) test(`Création d’épreuve : reprise après conflit ${stage} sans doublon`, async ({ page }) => {

@@ -182,9 +182,10 @@ export default function NativeAssessmentWorkspace({ category }: { category: Asse
       const selectedSession = selectedDelivery && (data.tables.sessions || []).find(row => row.id === selectedDelivery.session_id);
       const selectedRoom = selectedSession?.room_id ? (data.tables.rooms || []).find(row => row.id === selectedSession.room_id) : null;
       const isPaper = selectedSession ? selectedSession.mode === 'PAPIER' : false;
+      const selectedAttempts = (data.tables.exam_attempts || []).filter(row => selectedMemberIds.has(String(row.evaluation_id)));
       const compositionAvailable = !subjectExamIssue(subjectExams(data).find(exam => exam.id === selected.id));
       const today = new Intl.DateTimeFormat('en-CA', { timeZone: 'Africa/Lome', year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date());
-      const preparationAvailable = selectedMembers.every(member =>
+      const preparationAvailable = selectedAttempts.length === 0 && selectedMembers.every(member =>
         !['SOUMISES', 'VALIDEES', 'PUBLIEES'].includes(String(member.status))
         && (!member.held_on || String(member.held_on).slice(0, 10) >= today));
       const planningQuery = new URLSearchParams({ affectation: String(selected.assignment_id), mode: 'PAPIER', epreuve: String(selected.id), nature: category });
@@ -230,7 +231,7 @@ export default function NativeAssessmentWorkspace({ category }: { category: Asse
                     <span className={`pill ${selectedPaper.status === 'AUTORISE' ? 'pill-success' : 'pill-warning'}`}>
                       {selectedPaper.status === 'AUTORISE' ? 'Autorisé' : 'Brouillon'} (v{String(selectedPaper.version)})
                     </span>{' '}
-                    {String(selectedPaper.title || '')} · {String(selectedPaper.duration_minutes)} min
+                    {String(selectedPaper.title || '')} · {String(selectedDelivery?.duration_minutes ?? selectedPaper.duration_minutes)} min
                   </span>
                 ) : isPaper ? (
                   <span className="cell-sub">Sujet distribué sur table (papier)</span>
@@ -290,7 +291,7 @@ export default function NativeAssessmentWorkspace({ category }: { category: Asse
                 {selectedPaper ? 'Modifier le sujet' : 'Composer le sujet'}
               </Link>
             )}
-            {preparationAvailable && perms.permissions.includes('schedule.create') && <Link className="btn btn-outline" href={`/academique/emploi-du-temps?${planningQuery}`}>Planifier la date et la salle</Link>}
+            {preparationAvailable && (!selectedDelivery || isPaper) && perms.permissions.includes('schedule.create') && <Link className="btn btn-outline" href={`/academique/emploi-du-temps?${planningQuery}`}>Planifier la date et la salle</Link>}
             {preparationAvailable && perms.permissions.includes('evaluation.create') && (
               <button className="btn btn-outline" onClick={() => setSchedulingDelivery(selected)}>
                 {selectedDelivery ? (isPaper ? 'Modifier la séance' : 'Modifier la diffusion') : (isPaper ? 'Programmer la séance' : 'Programmer la diffusion')}
