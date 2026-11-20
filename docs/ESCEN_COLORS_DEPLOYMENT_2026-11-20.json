@@ -1,0 +1,65 @@
+{
+  "checkedAt": "2026-11-20T10:52:54.671Z",
+  "portal": "https://portail.escen.university",
+  "sourceCommit": "4f20d344dab6bcfef5e3ea874d0c00501b6c467b",
+  "deploymentId": "dpl_9i2twmwgtybRZmQ4di94kz3Jn9U6",
+  "previousDeploymentId": "dpl_9iJTEC3Lc3f7ZedS2y3WzajLtkbF",
+  "palette": {
+    "--brand-navy": "#202a51",
+    "--brand-cyan": "#00b3d4",
+    "--brand-sky": "#6cc6e2",
+    "--brand-pale": "#dbeff7"
+  },
+  "browserVerification": [
+    {
+      "width": 390,
+      "palette": {
+        "--brand-navy": "#202a51",
+        "--brand-cyan": "#00b3d4",
+        "--brand-sky": "#6cc6e2",
+        "--brand-pale": "#dbeff7"
+      },
+      "buttonBackground": "rgb(32, 42, 81)",
+      "brandBackground": "rgb(219, 239, 247)",
+      "footerLink": "rgb(32, 42, 81)",
+      "overflow": false
+    },
+    {
+      "width": 1440,
+      "palette": {
+        "--brand-navy": "#202a51",
+        "--brand-cyan": "#00b3d4",
+        "--brand-sky": "#6cc6e2",
+        "--brand-pale": "#dbeff7"
+      },
+      "buttonBackground": "rgb(32, 42, 81)",
+      "brandBackground": "rgb(219, 239, 247)",
+      "footerLink": "rgb(32, 42, 81)",
+      "overflow": false
+    }
+  ],
+  "publishedInteractionTests": {
+    "passed": 9,
+    "apiMode": "intercepted fixtures; no business mutations"
+  },
+  "httpVerification": [
+    {
+      "path": "/connexion",
+      "method": "GET",
+      "status": 200
+    },
+    {
+      "path": "/api/exam-attempts",
+      "method": "GET",
+      "status": 401
+    },
+    {
+      "path": "/api/exam-integrity",
+      "method": "POST",
+      "status": 401
+    }
+  ],
+  "databaseChanges": false,
+  "gitPushed": false,
+  "evidenceDirectory": "tmp/escen-colors-release-4f20d34/"
+}
