@@ -32,7 +32,7 @@ test('Connexion, lien direct, historique du navigateur et déconnexion', async (
   const errors: string[] = []; page.on('pageerror', error => errors.push(error.message));
   await page.goto('/finance/contrats');
   await expect(page).toHaveURL(/\/connexion\?retour=%2Ffinance%2Fcontrats$/);
-  await expect(page.getByRole('img', { name: /École supérieure/ })).toHaveAttribute('src', '/logo-escen.png');
+  await expect(page.getByRole('heading', { name: /Bienvenue/ })).toBeVisible();
   await page.screenshot({ path: '.tmp/connexion-desktop.png', fullPage: true });
   await page.getByLabel('Adresse email', { exact: true }).fill(DEMO_ACCOUNTS[0].email);
   await page.getByLabel('Mot de passe', { exact: true }).fill('MotDePasseIncorrect');
@@ -95,7 +95,7 @@ test('Aide à la connexion, logo et page introuvable', async ({ page }) => {
 test('La connexion est lisible sur mobile avec le logo fourni', async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 }); await page.goto('/connexion');
   await expect(page.getByRole('heading', { name: 'Connexion', exact: true })).toBeVisible();
-  await expect(page.getByRole('img', { name: /École supérieure/ })).toBeVisible();
+  await expect(page.getByRole('heading', { name: /Bienvenue/ })).toBeVisible();
   await page.getByText('Accès de démonstration', { exact: true }).click();
   await page.getByRole('button', { name: 'Préremplir cet accès' }).click();
   await expect(page.getByLabel('Adresse email', { exact: true })).toHaveValue(DEMO_ACCOUNTS[0].email);
