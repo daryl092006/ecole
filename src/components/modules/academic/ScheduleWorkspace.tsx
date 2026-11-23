@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
 import { usePortal } from '@/hooks/usePortal';
-import { loadSchedule, manageSchedule, updateScheduledTeacherContact } from '@/services/remoteCampusService';
+import { loadSchedule, manageSchedule, updateScheduledTeacherContact, loadCourseRecordingPlayback } from '@/services/remoteCampusService';
 import { teacherPersonalEmailSchema, teacherAccessMessage } from '@/services/teacherIdentityService';
 import { shiftExamAccess } from '@/services/scheduleManagementService';
 import type { ManagedSession, ScheduleCommand, ScheduleDirectory, SessionMode } from '@/types/scheduleManagement';
@@ -70,6 +70,7 @@ function ScheduleManager() {
   const openedRequest = useRef('');
   const [assigning, setAssigning] = useState<{ groupId: string; offeringId: string; componentId: string } | null>(null);
   const [creatingExamSession, setCreatingExamSession] = useState<ManagedSession | null>(null);
+  const [playback, setPlayback] = useState<{ sessionId: string; title: string; url: string | null; inline: boolean; error: string } | null>(null);
   const { activeRole, academicYearSelection } = portal;
   const [directory, setDirectory] = useState<ScheduleDirectory | null>(null);
   const [loading, setLoading] = useState(true), [error, setError] = useState(''), [success, setSuccess] = useState('');
@@ -323,7 +324,14 @@ function ScheduleManager() {
       {detail.mode === 'EN_LIGNE' && (
         <>
           <div><dt>Lien du cours en ligne</dt><dd>{detail.meetingUrl ? <a href={detail.meetingUrl} target="_blank" rel="noopener noreferrer" className="btn btn-sm btn-primary">Rejoindre le cours Teams</a> : 'Non généré'}</dd></div>
-          <div><dt>Enregistrement (Replay)</dt><dd>{detail.recordingUrl ? <a href={detail.recordingUrl} target="_blank" rel="noopener noreferrer" className="btn btn-sm btn-outline">Accéder à l’enregistrement</a> : 'En attente d’enregistrement'}</dd></div>
+          <div><dt>Enregistrement (Replay)</dt><dd>{detail.recordingUrl ? <a href={detail.recordingUrl} onClick={event => {
+            event.preventDefault();
+            const target = detail;
+            setPlayback({ sessionId: target.id, title: `Enregistrement · ${componentName(target.assignmentId)}`, url: null, inline: false, error: '' });
+            void loadCourseRecordingPlayback(activeRole, { sessionId: target.id })
+              .then(result => setPlayback(current => current?.sessionId === target.id ? { ...current, url: result.url, inline: Boolean(result.inline) } : current))
+              .catch(cause => setPlayback(current => current?.sessionId === target.id ? { ...current, error: cause instanceof Error ? cause.message : 'Lecture impossible.' } : current));
+          }} target="_blank" rel="noopener noreferrer" className="btn btn-sm btn-outline">Accéder à l’enregistrement</a> : 'En attente d’enregistrement'}</dd></div>
         </>
       )}
       <div><dt>Statut</dt><dd>{detail.status}</dd></div><div><dt>Motif</dt><dd>{detail.reason || 'Non renseigné'}</dd></div></dl>
@@ -358,6 +366,16 @@ function ScheduleManager() {
         {!detail.hasAttendance && <button className="btn btn-danger" onClick={() => open('cancel_session', detail)}>Annuler la séance</button>}
       </div>}
     </WorkPage>}
+    {playback && (
+      <WorkPage title={playback.title} onClose={() => setPlayback(null)}>
+        {playback.error ? <p role="alert">{playback.error}</p> : playback.url && playback.inline ? (
+          <video className="course-recording-player" controls playsInline preload="metadata" src={playback.url}>
+            Votre navigateur ne prend pas en charge la lecture vidéo.
+          </video>
+        ) : playback.url ? <a className="btn btn-primary" href={playback.url} target="_blank" rel="noopener noreferrer">Ouvrir l’enregistrement</a>
+          : <LoadingState label="Préparation de l’enregistrement…" />}
+      </WorkPage>
+    )}
     {operation && <WorkPage title={titles[operation.action]} busy={saving} onClose={() => setOperation(null)}>{missingContact && contactStep ? <ReviewedForm key={`contact-${missingContact.id}`} busy={saving} error={saveError}
       fields={[{ label: 'Enseignant', value: missingContact.name }, { label: 'E-mail personnel', value: contactEmail }]}
       consequence="L’e-mail personnel sera enregistré dans le dossier enseignant et les instructions d’accès seront envoyées à cette adresse. Vous pourrez ensuite poursuivre la programmation de la séance. Le compte Microsoft 365 et son mot de passe seront conservés."

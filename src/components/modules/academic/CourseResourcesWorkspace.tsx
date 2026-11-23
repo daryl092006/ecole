@@ -236,6 +236,20 @@ export default function CourseResourcesWorkspace() {
   };
 
   const handleOpenResource = async (res: CourseResourceItem) => {
+    if (res.kind === 'ENREGISTREMENT') {
+      const playbackKey = res.sessionId || res.id;
+      setPlayback({ sessionId: playbackKey, title: res.title || `Enregistrement · ${res.subjectName}`, url: null, inline: false, error: '' });
+      try {
+        const endpoint = res.sessionId
+          ? `/api/course-resources?playbackSessionId=${encodeURIComponent(res.sessionId)}`
+          : `/api/course-resources?downloadId=${encodeURIComponent(res.id)}`;
+        const result = await apiFetch<{ url: string; inline?: boolean }>(activeRole, endpoint);
+        setPlayback(current => current?.sessionId === playbackKey ? { ...current, url: result.url, inline: Boolean(result.inline) } : current);
+      } catch (cause) {
+        setPlayback(current => current?.sessionId === playbackKey ? { ...current, error: cause instanceof Error ? cause.message : 'Lecture impossible.' } : current);
+      }
+      return;
+    }
     try {
       if (res.hasStorageFile) {
         const { url } = await apiFetch<{ url: string }>(activeRole, `/api/course-resources?downloadId=${encodeURIComponent(res.id)}`);

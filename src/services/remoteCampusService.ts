@@ -204,6 +204,16 @@ export async function manageSchedule(role: RoleName, command: import('@/types/sc
   return readResponse(await fetch('/api/schedule', { method: 'POST', headers: { ...await headers(role), 'Content-Type': 'application/json' }, body: JSON.stringify(command) }));
 }
 
+export async function loadCourseRecordingPlayback(
+  role: RoleName,
+  params: { sessionId?: string | null; resourceId?: string | null }
+): Promise<{ url: string; inline?: boolean }> {
+  const query = params.sessionId
+    ? `playbackSessionId=${encodeURIComponent(params.sessionId)}`
+    : `downloadId=${encodeURIComponent(params.resourceId || '')}`;
+  return readResponse(await fetch(`/api/course-resources?${query}`, { headers: await headers(role), cache: 'no-store' }));
+}
+
 
 export async function loadTranscriptDocument(id: string, role: RoleName): Promise<import('@/services/transcriptDocumentService').TranscriptDocument> {
   const { issuedTranscriptSchema } = await import('@/services/transcriptDocumentService');

@@ -26,6 +26,8 @@ import TranscriptPrintAction from './academic/TranscriptPrintAction';
 import ReceiptPrintAction from './finance/ReceiptPrintAction';
 import PageHeader from '@/components/ui/PageHeader';
 import { confirmedMeetingUrl } from '@/utils/meetingLinks';
+import { loadCourseRecordingPlayback } from '@/services/remoteCampusService';
+import LoadingState from '@/components/ui/LoadingState';
 
 export default function ConnectedDomainWorkspace({ section, studentMatricule, onlyCollection }: { section: string; studentMatricule?: string; onlyCollection?: string }) {
   const portal = usePortal(); const base = DOMAIN_WORKSPACES[section]; const definition = onlyCollection ? { ...base, collections: base.collections.filter(item => item.table === onlyCollection) } : base; const snapshot = portal.relationalSnapshot;
@@ -43,6 +45,17 @@ export default function ConnectedDomainWorkspace({ section, studentMatricule, on
   const contextual = !!studentMatricule || ['acad_grades', 'acad_jury', 'stud_cards'].includes(section);
   const [dossier, setDossier] = useState(studentMatricule || '');
   const [paymentPicker, setPaymentPicker] = useState(false);
+  const [playback, setPlayback] = useState<{ sessionId: string; title: string; url: string | null; inline: boolean; error: string } | null>(null);
+  const playSessionRecording = async (sessionRow: DatabaseRow) => {
+    const sessionId = String(sessionRow.id);
+    setPlayback({ sessionId, title: `Enregistrement · ${connectedRecordName('sessions', sessionRow, snapshot)}`, url: null, inline: false, error: '' });
+    try {
+      const result = await loadCourseRecordingPlayback(portal.activeRole, { sessionId });
+      setPlayback(current => current?.sessionId === sessionId ? { ...current, url: result.url, inline: Boolean(result.inline) } : current);
+    } catch (cause) {
+      setPlayback(current => current?.sessionId === sessionId ? { ...current, error: cause instanceof Error ? cause.message : 'Lecture impossible.' } : current);
+    }
+  };
   const [paymentDossier, setPaymentDossier] = useState('');
   const student = portal.students.find(item => item.matricule === dossier);
   const nativeStudent = snapshot.tables.students?.find(item => item.matricule === dossier);
@@ -262,7 +275,17 @@ export default function ConnectedDomainWorkspace({ section, studentMatricule, on
         const mat = studentObj?.matricule || studentMatricule || dossier || portal.session?.matricule;
         if (receiptObj && mat) return <ReceiptPrintAction key={receiptObj.id} matricule={String(mat)} receiptId={String(receiptObj.id)} />;
         return null;
-      })()}<dl className="record-details-grid">{Object.entries(selected).filter(([key]) => [...(config?.columns || []), 'reference', 'reason', 'comment', 'description', 'content'].includes(key)).map(([key, value]) => <div key={key}><dt>{connectedFieldLabel(key)}</dt><dd>{collection === 'sessions' && key === 'group_id' ? [...new Set(sessionParticipants(snapshot, selected).map(participant => connectedRecordValue('sessions', 'group_id', participant.group_id, snapshot)))].join(' + ') : collection === 'sessions' && key === 'room_id' && selected.mode === 'EN_LIGNE' && !value ? 'En ligne (Microsoft Teams)' : connectedRecordValue(collection, key, value, snapshot)}</dd></div>)}{collection === 'sessions' && (selected.mode === 'EN_LIGNE' || Boolean(selected.meeting_url) || Boolean(selected.recording_url)) && (<><div><dt>Lien du cours en ligne</dt><dd>{selectedMeetingUrl ? <a href={selectedMeetingUrl} target="_blank" rel="noopener noreferrer" className="btn btn-sm btn-primary">Rejoindre le cours Teams</a> : 'Lien non encore généré'}</dd></div>{Boolean(selected.recording_url) && <div><dt>Enregistrement (Replay)</dt><dd><a href={String(selected.recording_url)} target="_blank" rel="noopener noreferrer" className="btn btn-sm btn-outline">Accéder à l’enregistrement</a></dd></div>}</>)}</dl>{!studentMatricule && portal.perms.permissions.includes('student.view') && (() => { const paymentRow = selected.payment_id ? snapshot.tables.payments?.find(p => p.id === selected.payment_id) : undefined; const versionRow = selected.version_id ? snapshot.tables.contract_versions?.find(v => v.id === selected.version_id) : undefined; const contractRow = (selected.contract_id || versionRow?.contract_id) ? snapshot.tables.financial_contracts?.find(c => c.id === (selected.contract_id || versionRow?.contract_id)) : undefined; const enrId = selected.enrollment_id || paymentRow?.enrollment_id || contractRow?.enrollment_id || (collection === 'enrollments' ? selected.id : undefined); const studId = selected.student_id || (enrId ? snapshot.tables.enrollments?.find(e => e.id === enrId)?.student_id : undefined); const mat = studId ? snapshot.tables.students?.find(s => s.id === studId)?.matricule : undefined; return mat ? <div className="btn-group">{canOpenFinancialDossier && <button type="button" className="btn btn-primary" onClick={() => { setSelected(null); setPaymentDossier(String(mat)); }}>{section === 'fin_contracts' ? 'Gérer le contrat' : 'Gérer les versements'}</button>}<Link className="btn btn-outline" href={`/etudiants/${encodeURIComponent(String(mat))}`}>Ouvrir le dossier étudiant ({String(mat)})</Link></div> : null; })()}</WorkPage>}
+      })()}<dl className="record-details-grid">{Object.entries(selected).filter(([key]) => [...(config?.columns || []), 'reference', 'reason', 'comment', 'description', 'content'].includes(key)).map(([key, value]) => <div key={key}><dt>{connectedFieldLabel(key)}</dt><dd>{collection === 'sessions' && key === 'group_id' ? [...new Set(sessionParticipants(snapshot, selected).map(participant => connectedRecordValue('sessions', 'group_id', participant.group_id, snapshot)))].join(' + ') : collection === 'sessions' && key === 'room_id' && selected.mode === 'EN_LIGNE' && !value ? 'En ligne (Microsoft Teams)' : connectedRecordValue(collection, key, value, snapshot)}</dd></div>)}{collection === 'sessions' && (selected.mode === 'EN_LIGNE' || Boolean(selected.meeting_url) || Boolean(selected.recording_url)) && (<><div><dt>Lien du cours en ligne</dt><dd>{selectedMeetingUrl ? <a href={selectedMeetingUrl} target="_blank" rel="noopener noreferrer" className="btn btn-sm btn-primary">Rejoindre le cours Teams</a> : 'Lien non encore généré'}</dd></div>{Boolean(selected.recording_url) && <div><dt>Enregistrement (Replay)</dt><dd><a href={String(selected.recording_url)} onClick={event => { event.preventDefault(); void playSessionRecording(selected); }} target="_blank" rel="noopener noreferrer" className="btn btn-sm btn-outline">Accéder à l’enregistrement</a></dd></div>}</>)}</dl>{!studentMatricule && portal.perms.permissions.includes('student.view') && (() => { const paymentRow = selected.payment_id ? snapshot.tables.payments?.find(p => p.id === selected.payment_id) : undefined; const versionRow = selected.version_id ? snapshot.tables.contract_versions?.find(v => v.id === selected.version_id) : undefined; const contractRow = (selected.contract_id || versionRow?.contract_id) ? snapshot.tables.financial_contracts?.find(c => c.id === (selected.contract_id || versionRow?.contract_id)) : undefined; const enrId = selected.enrollment_id || paymentRow?.enrollment_id || contractRow?.enrollment_id || (collection === 'enrollments' ? selected.id : undefined); const studId = selected.student_id || (enrId ? snapshot.tables.enrollments?.find(e => e.id === enrId)?.student_id : undefined); const mat = studId ? snapshot.tables.students?.find(s => s.id === studId)?.matricule : undefined; return mat ? <div className="btn-group">{canOpenFinancialDossier && <button type="button" className="btn btn-primary" onClick={() => { setSelected(null); setPaymentDossier(String(mat)); }}>{section === 'fin_contracts' ? 'Gérer le contrat' : 'Gérer les versements'}</button>}<Link className="btn btn-outline" href={`/etudiants/${encodeURIComponent(String(mat))}`}>Ouvrir le dossier étudiant ({String(mat)})</Link></div> : null; })()}</WorkPage>}
+      {playback && (
+        <WorkPage title={playback.title} onClose={() => setPlayback(null)}>
+          {playback.error ? <p role="alert">{playback.error}</p> : playback.url && playback.inline ? (
+            <video className="course-recording-player" controls playsInline preload="metadata" src={playback.url}>
+              Votre navigateur ne prend pas en charge la lecture vidéo.
+            </video>
+          ) : playback.url ? <a className="btn btn-primary" href={playback.url} target="_blank" rel="noopener noreferrer">Ouvrir l’enregistrement</a>
+            : <LoadingState label="Préparation de l’enregistrement…" />}
+        </WorkPage>
+      )}
     </>}
 
     </div>

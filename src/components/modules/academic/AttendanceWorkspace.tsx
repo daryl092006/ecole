@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 import { ROLES } from '@/types/permissions';
 import { usePortal } from '@/hooks/usePortal';
-import { loadAttendances, manageAttendance, loadAttendanceJustification } from '@/services/remoteCampusService';
+import { loadAttendances, manageAttendance, loadAttendanceJustification, loadCourseRecordingPlayback } from '@/services/remoteCampusService';
 import { ATTENDANCE_LABELS, ATTENDANCE_STATUSES, type AttendanceDirectory, type AttendanceEntry, type AttendanceJustification, type AttendanceStatus, type AttendanceCommand } from '@/types/attendanceManagement';
 import LoadingState from '@/components/ui/LoadingState';
 import ErrorState from '@/components/ui/ErrorState';
@@ -38,6 +38,7 @@ export default function AttendanceWorkspace() {
   const [reason, setReason] = useState('');
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState('');
+  const [playback, setPlayback] = useState<{ sessionId: string; title: string; url: string | null; inline: boolean; error: string } | null>(null);
   const [success, setSuccess] = useState('');
   const [fileError, setFileError] = useState('');
   const [archives, setArchives] = useState(false);
@@ -130,9 +131,26 @@ export default function AttendanceWorkspace() {
       <div className="card-header"><div><h2>{session.label} {session.mode === 'EN_LIGNE' && <span className="pill pill-info">Cours en ligne</span>}</h2><p>{date(session.startsAt)} → {date(session.endsAt)} · {session.teacherName} · {session.status}</p>
         {session.mode === 'EN_LIGNE' && (session.meetingUrl || session.recordingUrl) && <div className="btn-group mt-1">
           {session.meetingUrl && <a className="btn btn-sm btn-outline" href={session.meetingUrl} target="_blank" rel="noopener noreferrer">Lien du cours en ligne</a>}
-          {session.recordingUrl && <a className="btn btn-sm btn-outline" href={session.recordingUrl} target="_blank" rel="noopener noreferrer">Voir l’enregistrement</a>}
+          {session.recordingUrl && <a className="btn btn-sm btn-outline" href={session.recordingUrl} onClick={event => {
+            event.preventDefault();
+            const target = session;
+            setPlayback({ sessionId: target.id, title: `Enregistrement · ${target.label}`, url: null, inline: false, error: '' });
+            void loadCourseRecordingPlayback(activeRole, { sessionId: target.id })
+              .then(result => setPlayback(current => current?.sessionId === target.id ? { ...current, url: result.url, inline: Boolean(result.inline) } : current))
+              .catch(cause => setPlayback(current => current?.sessionId === target.id ? { ...current, error: cause instanceof Error ? cause.message : 'Lecture impossible.' } : current));
+          }} target="_blank" rel="noopener noreferrer">Voir l’enregistrement</a>}
         </div>}
       </div>
+      {playback && (
+        <WorkPage title={playback.title} onClose={() => setPlayback(null)}>
+          {playback.error ? <p role="alert">{playback.error}</p> : playback.url && playback.inline ? (
+            <video className="course-recording-player" controls playsInline preload="metadata" src={playback.url}>
+              Votre navigateur ne prend pas en charge la lecture vidéo.
+            </video>
+          ) : playback.url ? <a className="btn btn-primary" href={playback.url} target="_blank" rel="noopener noreferrer">Ouvrir l’enregistrement</a>
+            : <LoadingState label="Préparation de l’enregistrement…" />}
+        </WorkPage>
+      )}
         {session.canRecordStudents && <button className="btn btn-primary" onClick={() => open({ kind: 'students' })}>Saisir ou corriger les présences</button>}</div>
         <ResponsiveTable className="data-table"><thead><tr><th>Étudiant</th><th>Présence</th><th>Horaires</th><th>Commentaire</th></tr></thead><tbody>{session.students.map(student => {
           const attendance = session.attendances.find(row => row.enrollmentId === student.enrollmentId);
