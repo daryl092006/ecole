@@ -21,7 +21,16 @@ const session = {
   recordingUrl: z.string().trim().min(5).max(2048).nullable().optional(),
 };
 const schema = z.discriminatedUnion('action', [
-  z.object({ ...common, ...times, action: z.literal('create_shared_course'), assignmentIds: z.array(z.uuid()).min(2).max(30), roomId: z.uuid() }).strict(),
+  z.object({
+    ...common,
+    ...times,
+    action: z.literal('create_shared_course'),
+    assignmentIds: z.array(z.uuid()).min(2).max(30).optional(),
+    groupIds: z.array(z.uuid()).min(2).max(30).optional(),
+    componentId: z.uuid().optional(),
+    teacherId: z.uuid().optional(),
+    roomId: z.uuid(),
+  }).strict(),
   z.object({ ...common, ...session, action: z.literal('create_session'), slots: z.array(slotSchema).min(1).max(60).optional() }).strict(),
   z.object({ ...common, ...session, action: z.literal('update_session'), sessionId: z.uuid() }).strict(),
   z.object({ ...common, ...times, action: z.literal('move_session'), sessionId: z.uuid() }).strict(),
@@ -69,15 +78,212 @@ export async function POST(request: Request) {
     let id = '';
     const changes: PersistentChange[] = [];
     if (body.action === 'create_shared_course') {
-      if (new Set(body.assignmentIds).size !== body.assignmentIds.length) throw new RequestError(400, 'Chaque affectation ne peut être choisie qu’une fois.');
-      if (!body.assignmentIds.every(assignmentId => data.directory.assignments.some(assignment => assignment.id === assignmentId))) {
-        throw new RequestError(404, 'Une affectation est absente de votre périmètre ou de l’année sélectionnée.');
-      }
       if (!data.directory.rooms.some(room => room.id === body.roomId && room.available)) throw new RequestError(409, 'Choisissez une salle disponible.');
-      for (const assignmentId of body.assignmentIds) requireTeacherContact(data.directory.assignments.find(row => row.id === assignmentId)!.teacherId);
+      let resolvedAssignmentIds = body.assignmentIds || [];
+      let currentRevision = body.revision;
+
+      if (body.groupIds && body.groupIds.length >= 2) {
+        if (new Set(body.groupIds).size !== body.groupIds.length) {
+          throw new RequestError(400, 'Chaque groupe ne peut être choisi qu’une fois.');
+        }
+        if (!body.componentId || !body.teacherId) {
+          throw new RequestError(400, 'Choisissez la matière et l’enseignant du cours commun.');
+        }
+        if (!body.groupIds.every(gid => data.directory.groups.some(group => group.id === gid))) {
+          throw new RequestError(404, 'Un groupe sélectionné est absent de votre périmètre ou de l’année sélectionnée.');
+        }
+        const teacher = data.directory.teachers.find(row => row.id === body.teacherId);
+        if (!teacher || !teacher.active) {
+          throw new RequestError(409, 'L’enseignant sélectionné doit être actif.');
+        }
+        requireTeacherContact(teacher.id);
+
+        const sourceComp = rows('curriculum_components').find(c => c.id === body.componentId && !c.archived_at);
+        if (!sourceComp) {
+          throw new RequestError(404, 'Matière introuvable dans cette année.');
+        }
+        const subjectId = String(sourceComp.subject_id);
+        const sessionStartDate = new Date(body.startsAt).toISOString().slice(0, 10);
+        const sessionEndDate = new Date(body.endsAt).toISOString().slice(0, 10);
+        const yearRow = rows('academic_years').find(y => y.id === data.year.selectedYearId);
+        if (!yearRow || sessionStartDate < String(yearRow.starts_on) || sessionEndDate > String(yearRow.ends_on)) {
+          throw new RequestError(400, 'Le créneau doit appartenir à l’année scolaire sélectionnée.');
+        }
+
+        const prepChanges: PersistentChange[] = [];
+        resolvedAssignmentIds = [];
+        let primarySiteId: string | null = null;
+
+        for (const gid of body.groupIds) {
+          const groupOfferings = rows('group_offerings')
+            .filter(go => !go.archived_at && go.group_id === gid)
+            .map(go => rows('academic_offerings').find(o => !o.archived_at && o.id === go.offering_id && o.academic_year_id === data.year.selectedYearId))
+            .filter((o): o is DatabaseRow => Boolean(o));
+
+          const compatibleOfferings: DatabaseRow[] = primarySiteId
+            ? groupOfferings.filter(o => String(o.site_id) === primarySiteId)
+            : groupOfferings;
+          if (!compatibleOfferings.length) {
+            throw new RequestError(409, 'Les groupes du cours commun doivent appartenir au même site et avoir une formation active.');
+          }
+          const groupOffering: DatabaseRow =
+            compatibleOfferings.find((o: DatabaseRow) =>
+              rows('curriculum_components').some(c => !c.archived_at && c.curriculum_id === o.curriculum_id && String(c.subject_id) === subjectId)
+            ) || compatibleOfferings[0];
+          if (!primarySiteId) primarySiteId = String(groupOffering.site_id);
+
+          const currId = String(groupOffering.curriculum_id);
+          let targetComp = rows('curriculum_components').find(
+            c => !c.archived_at && String(c.curriculum_id) === currId && String(c.subject_id) === subjectId && c.unit_id != null
+          );
+          let targetSemId = targetComp
+            ? String(rows('teaching_units').find(u => u.id === targetComp!.unit_id)?.semester_id || '')
+            : '';
+
+          if (!targetComp) {
+            let sem = rows('curriculum_semesters')
+              .filter(s => !s.archived_at && String(s.curriculum_id) === currId)
+              .sort((a, b) => Number(a.position || 1) - Number(b.position || 1))[0];
+            if (!sem) {
+              const semId = crypto.randomUUID();
+              sem = { id: semId, curriculum_id: currId, position: 1, name: 'Semestre 1', target_credits: 30 };
+              prepChanges.push({ table: 'curriculum_semesters', operation: 'insert', record: sem });
+            }
+            targetSemId = String(sem.id);
+
+            let unit = rows('teaching_units').find(u => !u.archived_at && String(u.semester_id) === targetSemId);
+            if (!unit) {
+              const unitId = crypto.randomUUID();
+              unit = {
+                id: unitId,
+                semester_id: targetSemId,
+                curriculum_id: currId,
+                code: `UE-COM-${String(sem.position || 1)}`,
+                name: 'Unité d’enseignement commune',
+                credits: Math.max(Number(sourceComp.credits) || 3, 1),
+              };
+              prepChanges.push({ table: 'teaching_units', operation: 'insert', record: unit });
+            }
+
+            const existingCodes = new Set(
+              rows('curriculum_components')
+                .filter(c => String(c.unit_id) === String(unit.id))
+                .map(c => String(c.code))
+            );
+            let compCode = String(sourceComp.code || 'COM101');
+            if (existingCodes.has(compCode)) {
+              compCode = `${compCode}-${gid.slice(0, 4).toUpperCase()}`;
+            }
+            const compId = crypto.randomUUID();
+            targetComp = {
+              id: compId,
+              subject_id: subjectId,
+              unit_id: String(unit.id),
+              curriculum_id: currId,
+              code: compCode,
+              coefficient: Math.max(Number(sourceComp.coefficient) || 1, 0.001),
+              credits: Math.max(Number(sourceComp.credits) || 0, 0),
+            };
+            prepChanges.push({ table: 'curriculum_components', operation: 'insert', record: targetComp });
+          }
+
+          if (targetSemId) {
+            const existingOs = rows('offering_semesters').find(
+              os => String(os.offering_id) === String(groupOffering.id) && String(os.curriculum_semester_id) === targetSemId
+            );
+            if (!existingOs) {
+              prepChanges.push({
+                table: 'offering_semesters',
+                operation: 'insert',
+                record: {
+                  id: crypto.randomUUID(),
+                  offering_id: String(groupOffering.id),
+                  curriculum_id: currId,
+                  curriculum_semester_id: targetSemId,
+                  starts_on: String(yearRow.starts_on),
+                  ends_on: String(yearRow.ends_on),
+                },
+              });
+            } else if (String(existingOs.starts_on) > sessionStartDate || String(existingOs.ends_on) < sessionEndDate) {
+              prepChanges.push({
+                table: 'offering_semesters',
+                operation: 'update',
+                record: {
+                  id: String(existingOs.id),
+                  starts_on: String(existingOs.starts_on) > sessionStartDate ? String(yearRow.starts_on) : String(existingOs.starts_on),
+                  ends_on: String(existingOs.ends_on) < sessionEndDate ? String(yearRow.ends_on) : String(existingOs.ends_on),
+                },
+              });
+            }
+          }
+
+          const existingAssign = rows('teaching_assignments').find(
+            a =>
+              String(a.group_id) === gid &&
+              String(a.offering_id) === String(groupOffering.id) &&
+              String(a.component_id) === String(targetComp!.id) &&
+              String(a.teacher_id) === teacher.id
+          );
+          if (existingAssign) {
+            const needStart = String(existingAssign.valid_from) > sessionStartDate;
+            const needEnd = Boolean(existingAssign.valid_until && String(existingAssign.valid_until) < sessionEndDate);
+            if (needStart || needEnd) {
+              prepChanges.push({
+                table: 'teaching_assignments',
+                operation: 'update',
+                record: {
+                  id: String(existingAssign.id),
+                  ...(needStart ? { valid_from: sessionStartDate } : {}),
+                  ...(needEnd ? { valid_until: sessionEndDate } : {}),
+                  reason: body.reason,
+                },
+              });
+            }
+            resolvedAssignmentIds.push(String(existingAssign.id));
+          } else {
+            const newAssignId = crypto.randomUUID();
+            prepChanges.push({
+              table: 'teaching_assignments',
+              operation: 'insert',
+              record: {
+                id: newAssignId,
+                teacher_id: teacher.id,
+                group_id: gid,
+                offering_id: String(groupOffering.id),
+                curriculum_id: currId,
+                component_id: String(targetComp.id),
+                valid_from: sessionStartDate < String(yearRow.starts_on) ? sessionStartDate : String(yearRow.starts_on),
+                valid_until: null,
+                reason: body.reason,
+              },
+            });
+            resolvedAssignmentIds.push(newAssignId);
+          }
+        }
+
+        if (prepChanges.length > 0) {
+          const prepSaved = await data.client.rpc('escen_backend_transaction', {
+            p_actor_id: data.context.accountId,
+            p_expected_revision: currentRevision,
+            p_changes: prepChanges,
+          });
+          if (prepSaved.error) throw new RequestError(409, scheduleDatabaseError(prepSaved.error));
+          currentRevision = Number(prepSaved.data);
+        }
+      } else {
+        if (resolvedAssignmentIds.length < 2) {
+          throw new RequestError(400, 'Choisissez au moins 2 groupes pour programmer un cours commun.');
+        }
+        if (new Set(resolvedAssignmentIds).size !== resolvedAssignmentIds.length) throw new RequestError(400, 'Chaque affectation ne peut être choisie qu’une fois.');
+        if (!resolvedAssignmentIds.every(assignmentId => data.directory.assignments.some(assignment => assignment.id === assignmentId))) {
+          throw new RequestError(404, 'Une affectation est absente de votre périmètre ou de l’année sélectionnée.');
+        }
+        for (const assignmentId of resolvedAssignmentIds) requireTeacherContact(data.directory.assignments.find(row => row.id === assignmentId)!.teacherId);
+      }
+
       id = crypto.randomUUID();
       const saved = await data.client.rpc('escen_shared_course_create', { p_actor_id: data.context.accountId, p_role_code: data.context.roleCode,
-        p_expected_revision: body.revision, p_session_id: id, p_assignment_ids: body.assignmentIds, p_room_id: body.roomId,
+        p_expected_revision: currentRevision, p_session_id: id, p_assignment_ids: resolvedAssignmentIds, p_room_id: body.roomId,
         p_starts_at: body.startsAt, p_ends_at: body.endsAt, p_reason: body.reason });
       if (saved.error) throw new RequestError(409, scheduleDatabaseError(saved.error));
       return Response.json({ id, count: 1, revision: saved.data }, { status: 201, headers: { 'Cache-Control': 'no-store' } });

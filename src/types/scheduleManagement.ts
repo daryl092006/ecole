@@ -32,7 +32,16 @@ export interface SessionInput {
   meetingUrl?: string | null; recordingUrl?: string | null; slots?: SessionSlotInput[];
 }
 export type ScheduleCommand = Common & (
-  | { action: 'create_shared_course'; assignmentIds: string[]; roomId: string; startsAt: string; endsAt: string }
+  | {
+      action: 'create_shared_course';
+      assignmentIds?: string[];
+      groupIds?: string[];
+      componentId?: string;
+      teacherId?: string;
+      roomId: string;
+      startsAt: string;
+      endsAt: string;
+    }
   | ({ action: 'create_session' } & SessionInput)
   | ({ action: 'update_session'; sessionId: string } & SessionInput)
   | { action: 'move_session'; sessionId: string; startsAt: string; endsAt: string }

@@ -84,7 +84,9 @@ function ScheduleManager() {
   // Explicit dates share the same time range and are sent in one transaction.
   const [cadence, setCadence] = useState<ScheduleCadence>('single');
   const [selectedDates, setSelectedDates] = useState<string[]>([]);
-  const [sharedAssignmentIds, setSharedAssignmentIds] = useState<string[]>([]);
+  const [sharedGroupIds, setSharedGroupIds] = useState<string[]>([]);
+  const [sharedComponentId, setSharedComponentId] = useState('');
+  const [sharedTeacherId, setSharedTeacherId] = useState('');
   const [multiStartTime, setMultiStartTime] = useState('08:00');
   const [multiEndTime, setMultiEndTime] = useState('12:00');
 
@@ -141,7 +143,10 @@ function ScheduleManager() {
         : 'Salle non précisée';
 
   const open = (action: Action, session?: ManagedSession) => {
-    setDetail(null); setSaveError(''); setSharedAssignmentIds([]); setOperation({ action, session });
+    setDetail(null); setSaveError(''); setOperation({ action, session });
+    setSharedGroupIds(requestedGroup ? [requestedGroup] : groupId ? [groupId] : []);
+    setSharedComponentId(requestedComponent || '');
+    setSharedTeacherId('');
     setContactEmail(''); setContactStep(false); setContactMessage('');
     setCadence('single');
     setSelectedDates([]);
@@ -187,23 +192,60 @@ function ScheduleManager() {
     && (Date.parse(iso(effectiveStartsAt)) !== Date.parse(current.startsAt) || Date.parse(iso(effectiveEndsAt)) !== Date.parse(current.endsAt)) ? current.exam : null;
   const nextAccess = movingExam && current ? shiftExamAccess(movingExam, current.startsAt, iso(effectiveStartsAt)) : null;
   const assignment = directory.assignments.find(row => row.id === form.assignmentId);
+  const sharedComponent = directory.components.find(row => row.id === sharedComponentId);
+  const sharedPrimaryGroup = directory.groups.find(group => group.id === sharedGroupIds[0]);
+  const sharedPrimaryOffering = directory.offerings.find(offering => sharedPrimaryGroup?.offeringIds.includes(offering.id));
   const programmingTeacherId = action === 'replace_teacher' ? form.teacherId || current?.teacherId
     : action === 'move_session' ? current?.replacementTeacherId || current?.teacherId
-      : editing ? (action === 'update_session' ? current?.replacementTeacherId : null) || assignment?.teacherId : null;
+      : sharedCreate ? sharedTeacherId || null
+        : editing ? (action === 'update_session' ? current?.replacementTeacherId : null) || assignment?.teacherId : null;
   const missingContact = directory.teachers.find(teacher => teacher.id === programmingTeacherId && teacher.requiresPersonalEmail);
-  const siteId = directory.offerings.find(offering => offering.id === assignment?.offeringId)?.siteId;
-  const sharedChoices = directory.assignments.filter(candidate => candidate.id !== assignment?.id && candidate.teacherId === assignment?.teacherId
-    && directory.components.some(component => component.id === candidate.componentId && !!component.subjectId
-      && component.subjectId === directory.components.find(item => item.id === assignment?.componentId)?.subjectId)
-    && directory.offerings.find(offering => offering.id === candidate.offeringId)?.siteId === siteId);
+  const siteId = sharedCreate
+    ? sharedPrimaryOffering?.siteId
+    : directory.offerings.find(offering => offering.id === assignment?.offeringId)?.siteId;
+
+  const sharedGroupOfferingCurricula = new Set(
+    directory.groups
+      .filter(group => sharedGroupIds.includes(group.id))
+      .flatMap(group => group.offeringIds)
+      .map(offId => directory.offerings.find(o => o.id === offId)?.curriculumId)
+      .filter((cid): cid is string => Boolean(cid))
+  );
+  const candidateComponentsForShared = sharedGroupOfferingCurricula.size > 0
+    ? [
+        ...directory.components.filter(c => sharedGroupOfferingCurricula.has(c.curriculumId)),
+        ...directory.components.filter(c => !sharedGroupOfferingCurricula.has(c.curriculumId)),
+      ]
+    : directory.components;
+  const seenSharedSubjects = new Set<string>();
+  const sharedAvailableComponents = candidateComponentsForShared.filter(comp => {
+    const key = comp.subjectId || comp.id;
+    if (seenSharedSubjects.has(key)) return false;
+    seenSharedSubjects.add(key);
+    return true;
+  });
+  const sharedSubjectAssignedTeacherIds = new Set(
+    directory.assignments
+      .filter(a => {
+        const comp = directory.components.find(c => c.id === a.componentId);
+        return comp && sharedComponent && (comp.subjectId === sharedComponent.subjectId || comp.id === sharedComponent.id);
+      })
+      .map(a => a.teacherId)
+  );
   const selectedYear = portal.academicYearContext?.years.find(year => year.id === directory.selectedYearId);
-  const dateMin = [selectedYear?.starts_on, assignment?.validFrom].filter((date): date is string => Boolean(date)).sort().at(-1);
-  const dateMax = [selectedYear?.ends_on, assignment?.validUntil].filter((date): date is string => Boolean(date)).sort()[0];
+  const dateMin = [selectedYear?.starts_on, !sharedCreate ? assignment?.validFrom : undefined].filter((date): date is string => Boolean(date)).sort().at(-1);
+  const dateMax = [selectedYear?.ends_on, !sharedCreate ? assignment?.validUntil : undefined].filter((date): date is string => Boolean(date)).sort()[0];
 
   const fields: ReviewField[] = [
-    ...(sharedCreate ? [{ label: 'Groupes et formations participants', value: [form.assignmentId, ...sharedAssignmentIds].map(assignmentName).join(' ; ') }] : []),
+    ...(sharedCreate ? [
+      { label: 'Groupes participants', value: sharedGroupIds.map(groupName).join(' + ') },
+      { label: 'Matière', value: sharedComponent?.label || '' },
+      { label: 'Enseignant', value: teacherName(sharedTeacherId) },
+      { label: 'Type de séance', value: 'COURS' },
+      { label: 'Salle prévue', value: roomName(form.roomId || null, 'COURS') },
+    ] : []),
     ...(current?.shared ? [{ label: 'Tous les groupes concernés', value: sessionGroupNames(current) }] : []),
-    ...(editing ? [{ label: 'Cours', value: assignmentName(form.assignmentId), ...(current ? { previous: assignmentName(current.assignmentId) } : {}) },
+    ...(editing && !sharedCreate ? [{ label: 'Cours', value: assignmentName(form.assignmentId), ...(current ? { previous: assignmentName(current.assignmentId) } : {}) },
       { label: 'Type de séance', value: form.mode, previous: current?.mode }, { label: 'Salle prévue', value: roomName(form.roomId || null, form.mode), ...(current ? { previous: roomName(current.roomId, current.mode) } : {}) }] : []),
     ...(isMultiCreate ? [
       { label: 'Nombre de séances', value: String(multiSlots.length) },
@@ -344,8 +386,14 @@ function ScheduleManager() {
       confirmLabel={`Confirmer : ${titles[operation.action].toLocaleLowerCase('fr')}`} danger={action === 'cancel_session'}
       validate={() => {
         if (missingContact) return 'Complétez d’abord l’e-mail personnel de l’enseignant pour programmer cette séance.';
-        if (editing && !assignment) return 'Choisissez le groupe, la matière et l’enseignant du cours.';
-        if (sharedCreate && (sharedAssignmentIds.length < 1 || sharedAssignmentIds.length > 29 || sharedAssignmentIds.some(id => !sharedChoices.some(choice => choice.id === id)))) return 'Choisissez de 2 à 30 affectations compatibles pour ce cours commun.';
+        if (sharedCreate) {
+          if (sharedGroupIds.length < 2 || sharedGroupIds.length > 30) return 'Choisissez au moins 2 groupes pour programmer un cours commun.';
+          if (!sharedComponent) return 'Choisissez la matière du cours commun.';
+          if (!sharedTeacherId) return 'Choisissez l’enseignant du cours commun.';
+          if (!form.roomId) return 'Choisissez une salle disponible pour ce cours commun.';
+        } else if (editing && !assignment) {
+          return 'Choisissez le groupe, la matière et l’enseignant du cours.';
+        }
         if (isMultiCreate) {
           if (!multiSlots.length) return 'Sélectionnez au moins une date et des heures cohérentes.';
           if (multiSlots.length > 60) return 'Sélectionnez au maximum 60 dates par enregistrement.';
@@ -359,7 +407,7 @@ function ScheduleManager() {
         event.preventDefault(); setSaving(true); setSaveError('');
         const common = { revision: directory.revision, reason: effectiveReason };
         const sessionId = current?.id || '';
-        const command: ScheduleCommand = operation.action === 'create_shared_course' ? { ...common, action: 'create_shared_course', assignmentIds: [form.assignmentId, ...sharedAssignmentIds], roomId: form.roomId, startsAt: iso(form.startsAt), endsAt: iso(form.endsAt) }
+        const command: ScheduleCommand = operation.action === 'create_shared_course' ? { ...common, action: 'create_shared_course', groupIds: sharedGroupIds, componentId: sharedComponentId, teacherId: sharedTeacherId, roomId: form.roomId, startsAt: iso(form.startsAt), endsAt: iso(form.endsAt) }
           : operation.action === 'block_period' ? { ...common, action: 'block_period', name: form.name, kind: form.kind, siteId: form.siteId || null, startsAt: iso(form.startsAt), endsAt: iso(form.endsAt) }
           : operation.action === 'cancel_session' ? { ...common, action: 'cancel_session', sessionId }
             : operation.action === 'replace_teacher' ? { ...common, action: 'replace_teacher', sessionId, teacherId: form.teacherId || null }
@@ -388,10 +436,156 @@ function ScheduleManager() {
       {contactMessage && <p className="review-notice" role="status">{contactMessage}</p>}
       {missingContact && <div className="review-notice"><p>L’e-mail personnel de {missingContact.name} est obligatoire avant de programmer cette séance.</p><button type="button" className="btn btn-outline" onClick={() => { setSaveError(''); setContactStep(true); }}>Renseigner l’e-mail personnel</button></div>}
       {editing && <>
-        {(action === 'create_session' || sharedCreate) ? <ScheduleCourseSelector directory={directory} assignmentId={form.assignmentId} initialGroupId={requestedGroup || groupId} initialComponentId={params.get('matiere') || ''} canAssign={portal.perms.permissions.includes('academic.assignment.manage')} onChange={id => { setSharedAssignmentIds([]); setForm({ ...form, assignmentId: id, roomId: '' }); }} onAssign={setAssigning} /> : <label className="form-group">Affectation<select className="select-input" required value={form.assignmentId} onChange={event => setForm({ ...form, assignmentId: event.target.value, roomId: '' })}><option value="">Choisir une affectation</option>{directory.assignments.filter(assignment => assignment.id === current?.assignmentId || directory.teachers.some(teacher => teacher.id === assignment.teacherId && teacher.active)).map(assignment => <option key={assignment.id} value={assignment.id}>{assignmentName(assignment.id)}</option>)}</select></label>}
-        {sharedCreate && assignment && <fieldset className="card"><legend>Autres groupes et formations du cours commun</legend>{sharedChoices.map(choice => <label className="form-group" key={choice.id}><input type="checkbox" checked={sharedAssignmentIds.includes(choice.id)} onChange={event => setSharedAssignmentIds(ids => event.target.checked ? [...ids, choice.id] : ids.filter(id => id !== choice.id))} />{assignmentName(choice.id)}</label>)}{!sharedChoices.length && <p>Aucune autre affectation compatible : vérifiez la matière, l’enseignant et le site des groupes à réunir.</p>}</fieldset>}
+        {(action === 'create_session' || sharedCreate) && (
+          <div className="form-group">
+            <span className="form-label">Portée du cours</span>
+            <div className="btn-group">
+              <button
+                type="button"
+                className={`btn btn-sm ${action === 'create_session' ? 'btn-primary' : 'btn-outline'}`}
+                onClick={() => setOperation({ action: 'create_session' })}
+              >
+                Un seul groupe
+              </button>
+              <button
+                type="button"
+                className={`btn btn-sm ${sharedCreate ? 'btn-primary' : 'btn-outline'}`}
+                onClick={() => setOperation({ action: 'create_shared_course' })}
+              >
+                Cours en commun (plusieurs groupes)
+              </button>
+            </div>
+          </div>
+        )}
+        {action === 'create_session' ? (
+          <ScheduleCourseSelector
+            directory={directory}
+            assignmentId={form.assignmentId}
+            initialGroupId={requestedGroup || groupId}
+            initialComponentId={params.get('matiere') || ''}
+            canAssign={portal.perms.permissions.includes('academic.assignment.manage')}
+            onChange={id => setForm({ ...form, assignmentId: id, roomId: '' })}
+            onAssign={setAssigning}
+          />
+        ) : sharedCreate ? (
+          <fieldset>
+            <legend>Quel cours commun programmer ?</legend>
+            <p>Cochez tous les groupes qui suivent ce cours ensemble, puis choisissez la matière et l’enseignant.</p>
+            <fieldset className="offering-levels-box mb-1">
+              <legend>Groupes du cours commun (cochez au moins 2 groupes)</legend>
+              <p className="cell-sub" style={{ margin: '0 0 10px' }}>
+                {sharedGroupIds.length} groupe(s) sélectionné(s)
+                {sharedGroupIds.length < 2
+                  ? ' — sélectionnez au moins 2 groupes à réunir.'
+                  : ` : ${sharedGroupIds.map(groupName).join(' + ')}`}
+              </p>
+              <div className="offering-modes-grid">
+                {directory.groups.map(group => {
+                  const checked = sharedGroupIds.includes(group.id);
+                  return (
+                    <label className="offering-mode-option" key={group.id}>
+                      <input
+                        type="checkbox"
+                        checked={checked}
+                        onChange={event => {
+                          const nextGroups = event.target.checked
+                            ? [...sharedGroupIds, group.id]
+                            : sharedGroupIds.filter(id => id !== group.id);
+                          setSharedGroupIds(nextGroups);
+                        }}
+                      />
+                      <span>{group.label}</span>
+                    </label>
+                  );
+                })}
+              </div>
+              {!directory.groups.length && (
+                <p>
+                  Aucun groupe disponible. <Link href="/academique/referentiel?collection=groups">Créer une classe / un groupe</Link>.
+                </p>
+              )}
+            </fieldset>
+            <label className="form-group">
+              Matière du cours
+              <select
+                aria-label="Matière du cours"
+                className="select-input"
+                required
+                disabled={sharedGroupIds.length < 2}
+                value={sharedComponentId}
+                onChange={event => {
+                  const nextCompId = event.target.value;
+                  setSharedComponentId(nextCompId);
+                  const nextComp = directory.components.find(c => c.id === nextCompId);
+                  const matchingAssign = directory.assignments.find(a => {
+                    const comp = directory.components.find(c => c.id === a.componentId);
+                    return (
+                      sharedGroupIds.includes(a.groupId) &&
+                      comp &&
+                      nextComp &&
+                      (comp.subjectId === nextComp.subjectId || comp.id === nextComp.id) &&
+                      directory.teachers.some(t => t.id === a.teacherId && t.active)
+                    );
+                  }) || directory.assignments.find(a => {
+                    const comp = directory.components.find(c => c.id === a.componentId);
+                    return (
+                      comp &&
+                      nextComp &&
+                      (comp.subjectId === nextComp.subjectId || comp.id === nextComp.id) &&
+                      directory.teachers.some(t => t.id === a.teacherId && t.active)
+                    );
+                  });
+                  if (matchingAssign) setSharedTeacherId(matchingAssign.teacherId);
+                }}
+              >
+                <option value="">{sharedGroupIds.length < 2 ? 'Cochez d’abord au moins 2 groupes' : 'Choisir une matière'}</option>
+                {sharedAvailableComponents.map(row => (
+                  <option key={row.id} value={row.id}>{row.label}</option>
+                ))}
+              </select>
+            </label>
+            <label className="form-group">
+              Enseignant du cours
+              <select
+                aria-label="Enseignant du cours"
+                className="select-input"
+                required
+                disabled={sharedGroupIds.length < 2 || !sharedComponentId}
+                value={sharedTeacherId}
+                onChange={event => setSharedTeacherId(event.target.value)}
+              >
+                <option value="">Choisir l’enseignant</option>
+                {directory.teachers
+                  .filter(teacher => teacher.active)
+                  .sort((a, b) => Number(sharedSubjectAssignedTeacherIds.has(b.id)) - Number(sharedSubjectAssignedTeacherIds.has(a.id)) || a.name.localeCompare(b.name, 'fr'))
+                  .map(teacher => (
+                    <option key={teacher.id} value={teacher.id}>
+                      {teacher.name}{sharedSubjectAssignedTeacherIds.has(teacher.id) ? ' · Affecté à cette matière' : ''}
+                    </option>
+                  ))}
+              </select>
+            </label>
+          </fieldset>
+        ) : (
+          <label className="form-group">
+            Affectation
+            <select
+              className="select-input"
+              required
+              value={form.assignmentId}
+              onChange={event => setForm({ ...form, assignmentId: event.target.value, roomId: '' })}
+            >
+              <option value="">Choisir une affectation</option>
+              {directory.assignments
+                .filter(assignment => assignment.id === current?.assignmentId || directory.teachers.some(teacher => teacher.id === assignment.teacherId && teacher.active))
+                .map(assignment => (
+                  <option key={assignment.id} value={assignment.id}>{assignmentName(assignment.id)}</option>
+                ))}
+            </select>
+          </label>
+        )}
         {!sharedCreate && <label className="form-group">Type de séance<select className="select-input" value={form.mode} onChange={event => setForm({ ...form, mode: event.target.value as SessionMode, roomId: '' })}><option value="COURS">Cours en présentiel</option><option value="PAPIER">Épreuve sur papier</option><option value="EN_LIGNE">En ligne</option></select></label>}
-        {form.mode !== 'EN_LIGNE' && <label className="form-group">Salle prévue<select className="select-input" required disabled={!assignment} value={form.roomId} onChange={event => setForm({ ...form, roomId: event.target.value })}><option value="">Choisir une salle disponible</option>{directory.rooms.filter(room => room.available && (!room.siteId || room.siteId === siteId)).map(room => <option key={room.id} value={room.id}>{room.name}</option>)}</select></label>}
+        {form.mode !== 'EN_LIGNE' && <label className="form-group">Salle prévue<select className="select-input" required disabled={sharedCreate ? (sharedGroupIds.length < 2 || !sharedComponentId || !sharedTeacherId) : !assignment} value={form.roomId} onChange={event => setForm({ ...form, roomId: event.target.value })}><option value="">Choisir une salle disponible</option>{directory.rooms.filter(room => room.available && (!room.siteId || !siteId || room.siteId === siteId)).map(room => <option key={room.id} value={room.id}>{room.name}</option>)}</select></label>}
         {form.mode === 'EN_LIGNE' && (
           <div className="form-group">
             <label className="form-label">Lien Microsoft Teams (créé automatiquement si laissé vide)</label>
