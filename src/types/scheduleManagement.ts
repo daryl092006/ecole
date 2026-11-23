@@ -43,6 +43,7 @@ export type ScheduleCommand = Common & (
       meetingUrl?: string | null;
       startsAt: string;
       endsAt: string;
+      slots?: SessionSlotInput[];
     }
   | ({ action: 'create_session' } & SessionInput)
   | ({ action: 'update_session'; sessionId: string } & SessionInput)

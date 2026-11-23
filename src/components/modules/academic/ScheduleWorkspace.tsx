@@ -175,10 +175,12 @@ function ScheduleManager() {
   const sharedCreate = action === 'create_shared_course';
   const editing = action === 'create_session' || action === 'update_session' || sharedCreate;
   const timed = editing || action === 'move_session' || action === 'block_period';
-  const isMultiCreate = action === 'create_session' && cadence === 'multi';
+  const isMultiCreate = (action === 'create_session' || sharedCreate) && cadence === 'multi';
   const effectiveStartsAt = isMultiCreate ? (multiSlots[0] ? localTime(multiSlots[0].startsAt) : '') : form.startsAt;
   const effectiveEndsAt = isMultiCreate ? (multiSlots[0] ? localTime(multiSlots[0].endsAt) : '') : form.endsAt;
-  const effectiveReason = form.reason.trim() || (sharedCreate ? 'Programmation du cours commun aux groupes sélectionnés' : action === 'create_session'
+  const effectiveReason = form.reason.trim() || (sharedCreate
+    ? (isMultiCreate && multiSlots.length > 1 ? `Programmation groupée de ${multiSlots.length} séances de cours commun aux groupes sélectionnés` : 'Programmation du cours commun aux groupes sélectionnés')
+    : action === 'create_session'
     ? (isMultiCreate && multiSlots.length > 1 ? `Programmation groupée de ${multiSlots.length} séances de cours` : 'Programmation pédagogique du cours')
     : action === 'update_session' ? 'Mise à jour des horaires ou de la salle du cours'
     : action === 'move_session' ? 'Déplacement de séance de cours'
@@ -428,7 +430,19 @@ function ScheduleManager() {
         event.preventDefault(); setSaving(true); setSaveError('');
         const common = { revision: directory.revision, reason: effectiveReason };
         const sessionId = current?.id || '';
-        const command: ScheduleCommand = operation.action === 'create_shared_course' ? { ...common, action: 'create_shared_course', groupIds: sharedGroupIds, componentId: sharedComponentId, teacherId: sharedTeacherId, roomId: form.mode === 'EN_LIGNE' ? null : form.roomId, mode: form.mode as 'COURS' | 'EN_LIGNE', ...(form.mode === 'EN_LIGNE' && form.meetingUrl.trim() ? { meetingUrl: form.meetingUrl.trim() } : {}), startsAt: iso(form.startsAt), endsAt: iso(form.endsAt) }
+        const command: ScheduleCommand = operation.action === 'create_shared_course' ? {
+          ...common,
+          action: 'create_shared_course',
+          groupIds: sharedGroupIds,
+          componentId: sharedComponentId,
+          teacherId: sharedTeacherId,
+          roomId: form.mode === 'EN_LIGNE' ? null : form.roomId,
+          mode: form.mode as 'COURS' | 'EN_LIGNE',
+          ...(form.mode === 'EN_LIGNE' && form.meetingUrl.trim() ? { meetingUrl: form.meetingUrl.trim() } : {}),
+          startsAt: isMultiCreate ? multiSlots[0].startsAt : iso(form.startsAt),
+          endsAt: isMultiCreate ? multiSlots[0].endsAt : iso(form.endsAt),
+          ...(isMultiCreate ? { slots: multiSlots.map(slot => ({ startsAt: slot.startsAt, endsAt: slot.endsAt })) } : {}),
+        }
           : operation.action === 'block_period' ? { ...common, action: 'block_period', name: form.name, kind: form.kind, siteId: form.siteId || null, startsAt: iso(form.startsAt), endsAt: iso(form.endsAt) }
           : operation.action === 'cancel_session' ? { ...common, action: 'cancel_session', sessionId }
             : operation.action === 'replace_teacher' ? { ...common, action: 'replace_teacher', sessionId, teacherId: form.teacherId || null }
@@ -621,7 +635,7 @@ function ScheduleManager() {
         <label className="form-group">Type de période<select className="select-input" value={form.kind} onChange={event => setForm({ ...form, kind: event.target.value as typeof form.kind })}>{['AUTRE', 'JOUR_FERIE', 'VACANCES', 'FERMETURE', 'EXAMEN'].map(kind => <option key={kind} value={kind}>{kind}</option>)}</select></label>
         <label className="form-group">Site<select className="select-input" required={!directory.canBlockAllSites} value={form.siteId} onChange={event => setForm({ ...form, siteId: event.target.value })}>{directory.canBlockAllSites ? <option value="">Tous les sites</option> : <option value="">Choisir un site</option>}{directory.sites.map(site => <option key={site.id} value={site.id}>{site.name}</option>)}</select></label>
       </>}
-      {action === 'create_session' && (
+      {(action === 'create_session' || sharedCreate) && (
         <div className="form-group">
           <span className="form-label">Mode de programmation</span>
           <div className="btn-group">

@@ -32,6 +32,7 @@ const schema = z.discriminatedUnion('action', [
     roomId: z.uuid().nullable(),
     mode: z.enum(['COURS', 'EN_LIGNE']).default('COURS'),
     meetingUrl: session.meetingUrl,
+    slots: z.array(slotSchema).min(1).max(60).optional(),
   }).strict(),
   z.object({ ...common, ...session, action: z.literal('create_session'), slots: z.array(slotSchema).min(1).max(60).optional() }).strict(),
   z.object({ ...common, ...session, action: z.literal('update_session'), sessionId: z.uuid() }).strict(),
@@ -82,6 +83,16 @@ export async function POST(request: Request) {
     if (body.action === 'create_shared_course') {
       if ((body.mode === 'EN_LIGNE') !== (body.roomId === null)) throw new RequestError(400, 'Une séance en ligne ne réserve pas de salle ; une séance en présentiel exige une salle.');
       if (body.roomId && !data.directory.rooms.some(room => room.id === body.roomId && room.available)) throw new RequestError(409, 'Choisissez une salle disponible.');
+      const slotList = body.slots?.length ? body.slots : [{ startsAt: body.startsAt, endsAt: body.endsAt }];
+      for (let i = 0; i < slotList.length; i++) {
+        const slot = slotList[i];
+        if (Date.parse(slot.endsAt) <= Date.parse(slot.startsAt)) {
+          throw new RequestError(400, 'La fin doit être postérieure au début.');
+        }
+        if (slotList.slice(0, i).some(prev => Date.parse(slot.startsAt) < Date.parse(prev.endsAt) && Date.parse(slot.endsAt) > Date.parse(prev.startsAt))) {
+          throw new RequestError(400, 'Deux séances programmées dans la même série se chevauchent.');
+        }
+      }
       let resolvedAssignmentIds = body.assignmentIds || [];
       let currentRevision = body.revision;
 
@@ -106,8 +117,8 @@ export async function POST(request: Request) {
           throw new RequestError(404, 'Matière introuvable dans cette année.');
         }
         const subjectId = String(sourceComp.subject_id);
-        const sessionStartDate = new Date(body.startsAt).toISOString().slice(0, 10);
-        const sessionEndDate = new Date(body.endsAt).toISOString().slice(0, 10);
+        const sessionStartDate = slotList.map(s => new Date(s.startsAt).toISOString().slice(0, 10)).sort()[0];
+        const sessionEndDate = slotList.map(s => new Date(s.endsAt).toISOString().slice(0, 10)).sort().at(-1)!;
         const yearRow = rows('academic_years').find(y => y.id === data.year.selectedYearId);
         if (!yearRow || sessionStartDate < String(yearRow.starts_on) || sessionEndDate > String(yearRow.ends_on)) {
           throw new RequestError(400, 'Le créneau doit appartenir à l’année scolaire sélectionnée.');
@@ -293,34 +304,39 @@ export async function POST(request: Request) {
         for (const assignmentId of resolvedAssignmentIds) requireTeacherContact(data.directory.assignments.find(row => row.id === assignmentId)!.teacherId);
       }
 
-      id = crypto.randomUUID();
-      let onlineParams: Record<string, string | null> = {};
-      if (body.mode === 'EN_LIGNE') {
-        const teacherId = data.directory.assignments.find(row => row.id === resolvedAssignmentIds[0])?.teacherId || body.teacherId;
-        if (body.meetingUrl) {
-          onlineParams = { p_mode: body.mode, p_meeting_url: body.meetingUrl, p_meeting_id: null,
-            p_meeting_provider: body.meetingUrl.includes('teams.microsoft.com') ? 'TEAMS' : 'LIEN' };
-        } else {
-          const teacherRow = rows('teachers').find(row => row.id === teacherId);
-          const staffRow = rows('staff').find(row => row.id === teacherRow?.staff_id);
-          const personRow = rows('people').find(row => row.id === staffRow?.person_id);
-          const assignment = data.directory.assignments.find(row => row.id === resolvedAssignmentIds[0]);
-          const component = data.directory.components.find(row => row.id === (body.componentId || assignment?.componentId));
-          const groupIds = body.groupIds || resolvedAssignmentIds.map(assignmentId => data.directory.assignments.find(row => row.id === assignmentId)!.groupId);
-          const groupNames = data.directory.groups.filter(row => groupIds.includes(row.id)).map(row => row.label).join(' + ');
-          const online = await createTeamsOnlineMeeting({ sessionId: id,
-            subject: `${component?.label || 'Cours commun'} · ${groupNames || 'ESCEN'}`,
-            startDateTime: body.startsAt, endDateTime: body.endsAt,
-            organizerEmail: await teacherMicrosoftEmail(data.client, data.snapshot, personRow),
-          });
-          onlineParams = { p_mode: body.mode, p_meeting_url: online.meetingUrl, p_meeting_id: online.meetingId, p_meeting_provider: online.provider };
+      const teacherId = data.directory.assignments.find(row => row.id === resolvedAssignmentIds[0])?.teacherId || body.teacherId;
+      const teacherRow = rows('teachers').find(row => row.id === teacherId);
+      const staffRow = rows('staff').find(row => row.id === teacherRow?.staff_id);
+      const personRow = rows('people').find(row => row.id === staffRow?.person_id);
+      const assignment = data.directory.assignments.find(row => row.id === resolvedAssignmentIds[0]);
+      const component = data.directory.components.find(row => row.id === (body.componentId || assignment?.componentId));
+      const groupIds = body.groupIds || resolvedAssignmentIds.map(assignmentId => data.directory.assignments.find(row => row.id === assignmentId)!.groupId);
+      const groupNames = data.directory.groups.filter(row => groupIds.includes(row.id)).map(row => row.label).join(' + ');
+
+      for (const slot of slotList) {
+        const slotId = crypto.randomUUID();
+        if (!id) id = slotId;
+        let onlineParams: Record<string, string | null> = {};
+        if (body.mode === 'EN_LIGNE') {
+          if (body.meetingUrl) {
+            onlineParams = { p_mode: body.mode, p_meeting_url: body.meetingUrl, p_meeting_id: null,
+              p_meeting_provider: body.meetingUrl.includes('teams.microsoft.com') ? 'TEAMS' : 'LIEN' };
+          } else {
+            const online = await createTeamsOnlineMeeting({ sessionId: slotId,
+              subject: `${component?.label || 'Cours commun'} · ${groupNames || 'ESCEN'}`,
+              startDateTime: slot.startsAt, endDateTime: slot.endsAt,
+              organizerEmail: await teacherMicrosoftEmail(data.client, data.snapshot, personRow),
+            });
+            onlineParams = { p_mode: body.mode, p_meeting_url: online.meetingUrl, p_meeting_id: online.meetingId, p_meeting_provider: online.provider };
+          }
         }
+        const saved = await data.client.rpc('escen_shared_course_create', { p_actor_id: data.context.accountId, p_role_code: data.context.roleCode,
+          p_expected_revision: currentRevision, p_session_id: slotId, p_assignment_ids: resolvedAssignmentIds, p_room_id: body.roomId,
+          p_starts_at: slot.startsAt, p_ends_at: slot.endsAt, p_reason: body.reason, ...onlineParams });
+        if (saved.error) throw new RequestError(409, scheduleDatabaseError(saved.error));
+        currentRevision = Number(saved.data);
       }
-      const saved = await data.client.rpc('escen_shared_course_create', { p_actor_id: data.context.accountId, p_role_code: data.context.roleCode,
-        p_expected_revision: currentRevision, p_session_id: id, p_assignment_ids: resolvedAssignmentIds, p_room_id: body.roomId,
-        p_starts_at: body.startsAt, p_ends_at: body.endsAt, p_reason: body.reason, ...onlineParams });
-      if (saved.error) throw new RequestError(409, scheduleDatabaseError(saved.error));
-      return Response.json({ id, count: 1, revision: saved.data }, { status: 201, headers: { 'Cache-Control': 'no-store' } });
+      return Response.json({ id, count: slotList.length, revision: currentRevision }, { status: 201, headers: { 'Cache-Control': 'no-store' } });
     } else if (body.action === 'block_period') {
       if (!canBlockSite(data.context, data.year.selectedYearId, body.siteId)
         || body.siteId && !data.directory.sites.some(site => site.id === body.siteId)) throw new RequestError(403, 'Bloquer une période exige une attribution couvrant tous les groupes du site concerné.');
