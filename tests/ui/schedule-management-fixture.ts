@@ -23,7 +23,8 @@ export function scheduleFixture(context: PersistentContext = securityContext(), 
       const assignments = (args.p_assignment_ids as string[]).map(id => tables.teaching_assignments.find(row => row.id === id)!);
       const first = assignments[0];
       changes = [{ table: 'sessions', operation: 'insert', record: { id: args.p_session_id, assignment_id: first.id, offering_id: first.offering_id,
-        group_id: first.group_id, teacher_id: first.teacher_id, room_id: args.p_room_id, mode: 'COURS', status: 'PLANIFIE',
+        group_id: first.group_id, teacher_id: first.teacher_id, room_id: args.p_room_id, mode: args.p_mode || 'COURS', status: 'PLANIFIE',
+        meeting_url: args.p_meeting_url || null, meeting_id: args.p_meeting_id || null, meeting_provider: args.p_meeting_provider || null,
         starts_at: args.p_starts_at, ends_at: args.p_ends_at, reason: args.p_reason } },
       ...assignments.map(assignment => ({ table: 'session_participants', operation: 'insert' as const, record: { id: crypto.randomUUID(), session_id: args.p_session_id,
         assignment_id: assignment.id, offering_id: assignment.offering_id, group_id: assignment.group_id, teacher_id: assignment.teacher_id } }))];

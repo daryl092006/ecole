@@ -29,7 +29,9 @@ const schema = z.discriminatedUnion('action', [
     groupIds: z.array(z.uuid()).min(2).max(30).optional(),
     componentId: z.uuid().optional(),
     teacherId: z.uuid().optional(),
-    roomId: z.uuid(),
+    roomId: z.uuid().nullable(),
+    mode: z.enum(['COURS', 'EN_LIGNE']).default('COURS'),
+    meetingUrl: session.meetingUrl,
   }).strict(),
   z.object({ ...common, ...session, action: z.literal('create_session'), slots: z.array(slotSchema).min(1).max(60).optional() }).strict(),
   z.object({ ...common, ...session, action: z.literal('update_session'), sessionId: z.uuid() }).strict(),
@@ -78,7 +80,8 @@ export async function POST(request: Request) {
     let id = '';
     const changes: PersistentChange[] = [];
     if (body.action === 'create_shared_course') {
-      if (!data.directory.rooms.some(room => room.id === body.roomId && room.available)) throw new RequestError(409, 'Choisissez une salle disponible.');
+      if ((body.mode === 'EN_LIGNE') !== (body.roomId === null)) throw new RequestError(400, 'Une séance en ligne ne réserve pas de salle ; une séance en présentiel exige une salle.');
+      if (body.roomId && !data.directory.rooms.some(room => room.id === body.roomId && room.available)) throw new RequestError(409, 'Choisissez une salle disponible.');
       let resolvedAssignmentIds = body.assignmentIds || [];
       let currentRevision = body.revision;
 
@@ -291,9 +294,31 @@ export async function POST(request: Request) {
       }
 
       id = crypto.randomUUID();
+      let onlineParams: Record<string, string | null> = {};
+      if (body.mode === 'EN_LIGNE') {
+        const teacherId = data.directory.assignments.find(row => row.id === resolvedAssignmentIds[0])?.teacherId || body.teacherId;
+        if (body.meetingUrl) {
+          onlineParams = { p_mode: body.mode, p_meeting_url: body.meetingUrl, p_meeting_id: null,
+            p_meeting_provider: body.meetingUrl.includes('teams.microsoft.com') ? 'TEAMS' : 'LIEN' };
+        } else {
+          const teacherRow = rows('teachers').find(row => row.id === teacherId);
+          const staffRow = rows('staff').find(row => row.id === teacherRow?.staff_id);
+          const personRow = rows('people').find(row => row.id === staffRow?.person_id);
+          const assignment = data.directory.assignments.find(row => row.id === resolvedAssignmentIds[0]);
+          const component = data.directory.components.find(row => row.id === (body.componentId || assignment?.componentId));
+          const groupIds = body.groupIds || resolvedAssignmentIds.map(assignmentId => data.directory.assignments.find(row => row.id === assignmentId)!.groupId);
+          const groupNames = data.directory.groups.filter(row => groupIds.includes(row.id)).map(row => row.label).join(' + ');
+          const online = await createTeamsOnlineMeeting({ sessionId: id,
+            subject: `${component?.label || 'Cours commun'} · ${groupNames || 'ESCEN'}`,
+            startDateTime: body.startsAt, endDateTime: body.endsAt,
+            organizerEmail: await teacherMicrosoftEmail(data.client, data.snapshot, personRow),
+          });
+          onlineParams = { p_mode: body.mode, p_meeting_url: online.meetingUrl, p_meeting_id: online.meetingId, p_meeting_provider: online.provider };
+        }
+      }
       const saved = await data.client.rpc('escen_shared_course_create', { p_actor_id: data.context.accountId, p_role_code: data.context.roleCode,
         p_expected_revision: currentRevision, p_session_id: id, p_assignment_ids: resolvedAssignmentIds, p_room_id: body.roomId,
-        p_starts_at: body.startsAt, p_ends_at: body.endsAt, p_reason: body.reason });
+        p_starts_at: body.startsAt, p_ends_at: body.endsAt, p_reason: body.reason, ...onlineParams });
       if (saved.error) throw new RequestError(409, scheduleDatabaseError(saved.error));
       return Response.json({ id, count: 1, revision: saved.data }, { status: 201, headers: { 'Cache-Control': 'no-store' } });
     } else if (body.action === 'block_period') {

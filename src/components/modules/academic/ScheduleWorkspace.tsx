@@ -242,8 +242,9 @@ function ScheduleManager() {
       { label: 'Groupes participants', value: sharedGroupIds.map(groupName).join(' + ') },
       { label: 'Matière', value: sharedComponent?.label || '' },
       { label: 'Enseignant', value: teacherName(sharedTeacherId) },
-      { label: 'Type de séance', value: 'COURS' },
-      { label: 'Salle prévue', value: roomName(form.roomId || null, 'COURS') },
+      { label: 'Type de séance', value: form.mode },
+      { label: 'Salle prévue', value: roomName(form.roomId || null, form.mode) },
+      ...(form.mode === 'EN_LIGNE' ? [{ label: 'Lien de visioconférence', value: form.meetingUrl.trim() || 'Génération automatique Microsoft Teams (@escen.university)' }] : []),
     ] : []),
     ...(current?.shared ? [{ label: 'Tous les groupes concernés', value: sessionGroupNames(current) }] : []),
     ...(editing && !sharedCreate ? [{ label: 'Cours', value: assignmentName(form.assignmentId), ...(current ? { previous: assignmentName(current.assignmentId) } : {}) },
@@ -270,7 +271,9 @@ function ScheduleManager() {
     ...(action === 'block_period' ? [{ label: 'Intitulé', value: form.name }, { label: 'Type de période', value: form.kind }, { label: 'Site', value: directory.sites.find(site => site.id === form.siteId)?.name || 'Tous les sites' }] : []),
   ];
 
-  const consequence = sharedCreate ? 'Un seul cours sera créé pour tous les groupes sélectionnés. La salle et l’enseignant seront réservés une seule fois ; chaque groupe conservera ses présences et sa formation.'
+  const consequence = sharedCreate ? (form.mode === 'EN_LIGNE'
+    ? 'Un seul cours en ligne et un même lien de réunion seront partagés par tous les groupes sélectionnés. Aucune salle ne sera réservée ; chaque groupe conservera ses présences et sa formation.'
+    : 'Un seul cours sera créé pour tous les groupes sélectionnés. La salle et l’enseignant seront réservés une seule fois ; chaque groupe conservera ses présences et sa formation.')
     : current?.shared ? 'Cette opération concerne tous les groupes de ce cours commun. Le déplacement, le remplacement de l’enseignant ou l’annulation s’applique à leur séance unique ; leurs rattachements pédagogiques restent conservés.'
     : action === 'block_period' ? 'La période bloquera toute nouvelle séance sur ce créneau et ce périmètre dans l’année sélectionnée. Les séances existantes doivent être traitées avant ce blocage.'
     : action === 'cancel_session' ? 'La séance sera marquée annulée avec son motif et restera dans l’historique. Les émargements et les examens avec copies ou résultats protègent son annulation.'
@@ -408,7 +411,7 @@ function ScheduleManager() {
           if (sharedGroupIds.length < 2 || sharedGroupIds.length > 30) return 'Choisissez au moins 2 groupes pour programmer un cours commun.';
           if (!sharedComponent) return 'Choisissez la matière du cours commun.';
           if (!sharedTeacherId) return 'Choisissez l’enseignant du cours commun.';
-          if (!form.roomId) return 'Choisissez une salle disponible pour ce cours commun.';
+          if (form.mode !== 'EN_LIGNE' && !form.roomId) return 'Choisissez une salle disponible pour ce cours commun.';
         } else if (editing && !assignment) {
           return 'Choisissez le groupe, la matière et l’enseignant du cours.';
         }
@@ -425,7 +428,7 @@ function ScheduleManager() {
         event.preventDefault(); setSaving(true); setSaveError('');
         const common = { revision: directory.revision, reason: effectiveReason };
         const sessionId = current?.id || '';
-        const command: ScheduleCommand = operation.action === 'create_shared_course' ? { ...common, action: 'create_shared_course', groupIds: sharedGroupIds, componentId: sharedComponentId, teacherId: sharedTeacherId, roomId: form.roomId, startsAt: iso(form.startsAt), endsAt: iso(form.endsAt) }
+        const command: ScheduleCommand = operation.action === 'create_shared_course' ? { ...common, action: 'create_shared_course', groupIds: sharedGroupIds, componentId: sharedComponentId, teacherId: sharedTeacherId, roomId: form.mode === 'EN_LIGNE' ? null : form.roomId, mode: form.mode as 'COURS' | 'EN_LIGNE', ...(form.mode === 'EN_LIGNE' && form.meetingUrl.trim() ? { meetingUrl: form.meetingUrl.trim() } : {}), startsAt: iso(form.startsAt), endsAt: iso(form.endsAt) }
           : operation.action === 'block_period' ? { ...common, action: 'block_period', name: form.name, kind: form.kind, siteId: form.siteId || null, startsAt: iso(form.startsAt), endsAt: iso(form.endsAt) }
           : operation.action === 'cancel_session' ? { ...common, action: 'cancel_session', sessionId }
             : operation.action === 'replace_teacher' ? { ...common, action: 'replace_teacher', sessionId, teacherId: form.teacherId || null }
@@ -605,12 +608,12 @@ function ScheduleManager() {
             </select>
           </label>
         )}
-        {!sharedCreate && <label className="form-group">Type de séance<select className="select-input" value={form.mode} onChange={event => setForm({ ...form, mode: event.target.value as SessionMode, roomId: '' })}><option value="COURS">Cours en présentiel</option><option value="PAPIER">Épreuve sur papier</option><option value="EN_LIGNE">En ligne</option></select></label>}
-        {(sharedCreate || form.mode !== 'EN_LIGNE') && <label className="form-group">Salle prévue<select className="select-input" required disabled={sharedCreate ? (sharedGroupIds.length < 2 || !sharedComponentId || !sharedTeacherId) : !assignment} value={form.roomId} onChange={event => setForm({ ...form, roomId: event.target.value })}><option value="">Choisir une salle disponible</option>{directory.rooms.filter(room => room.available && (!room.siteId || !siteId || room.siteId === siteId)).map(room => <option key={room.id} value={room.id}>{room.name}</option>)}</select></label>}
-        {!sharedCreate && form.mode === 'EN_LIGNE' && (
+        <label className="form-group">Type de séance<select className="select-input" value={form.mode} onChange={event => setForm({ ...form, mode: event.target.value as SessionMode, roomId: '' })}><option value="COURS">Cours en présentiel</option>{!sharedCreate && <option value="PAPIER">Épreuve sur papier</option>}<option value="EN_LIGNE">En ligne</option></select></label>
+        {form.mode !== 'EN_LIGNE' && <label className="form-group">Salle prévue<select className="select-input" required disabled={sharedCreate ? (sharedGroupIds.length < 2 || !sharedComponentId || !sharedTeacherId) : !assignment} value={form.roomId} onChange={event => setForm({ ...form, roomId: event.target.value })}><option value="">Choisir une salle disponible</option>{directory.rooms.filter(room => room.available && (!room.siteId || !siteId || room.siteId === siteId)).map(room => <option key={room.id} value={room.id}>{room.name}</option>)}</select></label>}
+        {form.mode === 'EN_LIGNE' && (
           <div className="form-group">
-            <label className="form-label">Lien Microsoft Teams (créé automatiquement si laissé vide)</label>
-            <input className="input" type="url" placeholder="Automatique via Microsoft 365 (@escen.university) ou saisir une URL..." value={form.meetingUrl} onChange={event => setForm({ ...form, meetingUrl: event.target.value })} />
+            <label className="form-label" htmlFor="schedule-meeting-url">Lien Microsoft Teams (créé automatiquement si laissé vide)</label>
+            <input id="schedule-meeting-url" className="input" type="url" placeholder="Automatique via Microsoft 365 (@escen.university) ou saisir une URL..." value={form.meetingUrl} onChange={event => setForm({ ...form, meetingUrl: event.target.value })} />
           </div>
         )}
       </>}

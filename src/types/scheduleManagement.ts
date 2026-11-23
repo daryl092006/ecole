@@ -38,7 +38,9 @@ export type ScheduleCommand = Common & (
       groupIds?: string[];
       componentId?: string;
       teacherId?: string;
-      roomId: string;
+      roomId: string | null;
+      mode?: 'COURS' | 'EN_LIGNE';
+      meetingUrl?: string | null;
       startsAt: string;
       endsAt: string;
     }

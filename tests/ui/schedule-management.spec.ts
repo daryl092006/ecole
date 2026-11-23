@@ -517,3 +517,38 @@ test('Cours commun : sélectionner plusieurs groupes par cases à cocher et conf
   await dialog.getByRole('button', { name: /^Confirmer/ }).click();
   await expect(dialog).not.toBeVisible();
 });
+
+
+for (const width of [390, 1440]) test(`Cours commun en ligne : confirmation sans salle et lien partagé à ${width}px`, async ({ page }) => {
+  await page.setViewportSize({ width, height: 950 });
+  const fixture = await connectedSchedule(page);
+  await page.goto('/academique/emploi-du-temps');
+  await page.getByRole('button', { name: 'Programmer un cours commun', exact: true }).click();
+  const dialog = page.getByRole('dialog', { name: 'Nouveau cours commun', exact: true });
+  await dialog.getByRole('checkbox', { name: 'Groupe 1', exact: true }).check();
+  await dialog.getByRole('checkbox', { name: 'Groupe 2', exact: true }).check();
+  const assignment = fixture.snapshot.tables.teaching_assignments.find(row => row.id === id.assignment(0))!;
+  await dialog.getByLabel('Matière du cours', { exact: true }).selectOption(String(assignment.component_id));
+  const mode = dialog.getByRole('combobox', { name: 'Type de séance', exact: true });
+  await expect(mode.locator('option[value="PAPIER"]')).toHaveCount(0);
+  await dialog.getByRole('combobox', { name: 'Salle prévue', exact: true }).selectOption(uuid(950));
+  await mode.selectOption('EN_LIGNE');
+  await expect(dialog.getByRole('combobox', { name: 'Salle prévue', exact: true })).toHaveCount(0);
+  await mode.selectOption('COURS');
+  await expect(dialog.getByRole('combobox', { name: 'Salle prévue', exact: true })).toHaveValue('');
+  await mode.selectOption('EN_LIGNE');
+  const meetingUrl = 'https://teams.microsoft.com/l/meetup-join/shared-course';
+  await dialog.getByLabel('Lien Microsoft Teams (créé automatiquement si laissé vide)', { exact: true }).fill(meetingUrl);
+  await dialog.getByLabel('Début (heure de Lomé)', { exact: true }).fill('2026-10-21T08:00');
+  await dialog.getByLabel('Fin (heure de Lomé)', { exact: true }).fill('2026-10-21T10:00');
+  await dialog.getByRole('button', { name: 'Vérifier les informations', exact: true }).click();
+  await expect(dialog).toContainText('Groupe 1 + Groupe 2');
+  await expect(dialog).toContainText('En ligne (Microsoft Teams)');
+  await expect(dialog).toContainText(meetingUrl);
+  expect(fixture.transactions).toEqual([]);
+  await dialog.getByRole('button', { name: /^Confirmer/ }).click();
+  await expect(dialog).not.toBeVisible();
+  const session = fixture.snapshot.tables.sessions.find(row => row.meeting_url === meetingUrl)!;
+  expect(session).toMatchObject({ mode: 'EN_LIGNE', room_id: null, meeting_provider: 'TEAMS' });
+  expect(fixture.snapshot.tables.session_participants.filter(row => row.session_id === session.id)).toHaveLength(2);
+});

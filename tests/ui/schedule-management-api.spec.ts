@@ -263,3 +263,25 @@ test('Cours commun : création multi-affectations, déplacement et annulation sy
   expect(cancel.status).toBe(200);
   expect(fixture.snapshot.tables.sessions.find(s => s.id === sessionId)).toMatchObject({ status: 'ANNULE' });
 });
+
+
+test('Cours commun en ligne : lien unique, absence de salle et modes contradictoires refusés', async () => {
+  const fixture = scheduleFixture(securityContext(), true);
+  const command = { action: 'create_shared_course', assignmentIds: [id.assignment(0), id.assignment(4)],
+    mode: 'EN_LIGNE', roomId: null, meetingUrl: 'https://teams.microsoft.com/l/meetup-join/shared-course',
+    startsAt: createSession.startsAt, endsAt: createSession.endsAt };
+  for (const patch of [{ roomId: uuid(950) }, { mode: 'COURS' }, { mode: 'PAPIER' }]) {
+    expect((await fixture.post({ ...command, ...patch })).status).toBe(400);
+  }
+  expect(fixture.transactions).toEqual([]);
+  const response = await fixture.post(command);
+  expect(response.status).toBe(201);
+  const { id: sessionId } = await response.json();
+  expect(fixture.snapshot.tables.sessions.find(row => row.id === sessionId)).toMatchObject({
+    mode: 'EN_LIGNE', room_id: null, meeting_url: command.meetingUrl, meeting_provider: 'TEAMS',
+  });
+  const directory = await (await fixture.get()).json();
+  expect(directory.sessions.find((row: { id: string }) => row.id === sessionId)).toMatchObject({ shared: true, mode: 'EN_LIGNE', roomId: null });
+  expect((await fixture.post({ action: 'move_session', sessionId, startsAt: '2026-10-22T08:00:00Z', endsAt: '2026-10-22T10:00:00Z' })).status).toBe(200);
+  expect((await fixture.post({ action: 'cancel_session', sessionId })).status).toBe(200);
+});
