@@ -490,3 +490,30 @@ test('Épreuve liée : ouverture arrivée pendant la confirmation, refus visible
   await page.getByRole('button', { name: 'Abandonner les modifications', exact: true }).click();
   await expect(dialog).not.toBeVisible();
 });
+
+test('Cours commun : sélectionner plusieurs groupes par cases à cocher et confirmer la séance', async ({ page }) => {
+  await page.setViewportSize({ width: 1440, height: 900 });
+  const fixture = await connectedSchedule(page);
+  await page.goto('/academique/emploi-du-temps');
+  await page.getByRole('button', { name: 'Programmer un cours commun', exact: true }).click();
+  const dialog = page.getByRole('dialog', { name: 'Nouveau cours commun', exact: true });
+  await expect(dialog).toBeVisible();
+  await expect(dialog.getByText('Groupes du cours commun (cochez au moins 2 groupes)')).toBeVisible();
+  const firstGroupCheckbox = dialog.getByRole('checkbox', { name: 'Groupe 1' });
+  const secondGroupCheckbox = dialog.getByRole('checkbox', { name: 'Groupe 2' });
+  await firstGroupCheckbox.check();
+  await expect(dialog.getByLabel('Matière du cours', { exact: true })).toBeDisabled();
+  await secondGroupCheckbox.check();
+  await expect(dialog.getByText(/2 groupe\(s\) sélectionné\(s\)/)).toBeVisible();
+  await expect(dialog.getByLabel('Matière du cours', { exact: true })).toBeEnabled();
+  const plannedAssignment = fixture.snapshot.tables.teaching_assignments.find(row => row.id === id.assignment(0))!;
+  await dialog.getByLabel('Matière du cours', { exact: true }).selectOption(String(plannedAssignment.component_id));
+  await expect(dialog.getByLabel('Enseignant du cours', { exact: true })).toHaveValue(String(plannedAssignment.teacher_id));
+  await dialog.getByRole('combobox', { name: 'Salle prévue', exact: true }).selectOption(uuid(950));
+  await dialog.getByLabel('Début (heure de Lomé)', { exact: true }).fill('2026-10-21T08:00');
+  await dialog.getByLabel('Fin (heure de Lomé)', { exact: true }).fill('2026-10-21T10:00');
+  await dialog.getByRole('button', { name: 'Vérifier les informations', exact: true }).click();
+  await expect(dialog).toContainText('Groupe 1 + Groupe 2');
+  await dialog.getByRole('button', { name: /^Confirmer/ }).click();
+  await expect(dialog).not.toBeVisible();
+});

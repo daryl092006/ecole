@@ -111,6 +111,10 @@ export async function POST(request: Request) {
         }
 
         const prepChanges: PersistentChange[] = [];
+        const createdSems: DatabaseRow[] = [];
+        const createdUnits: DatabaseRow[] = [];
+        const createdComps: DatabaseRow[] = [];
+        const createdOs: DatabaseRow[] = [];
         resolvedAssignmentIds = [];
         let primarySiteId: string | null = null;
 
@@ -126,32 +130,36 @@ export async function POST(request: Request) {
           if (!compatibleOfferings.length) {
             throw new RequestError(409, 'Les groupes du cours commun doivent appartenir au même site et avoir une formation active.');
           }
+          const allComps = [...rows('curriculum_components'), ...createdComps];
           const groupOffering: DatabaseRow =
             compatibleOfferings.find((o: DatabaseRow) =>
-              rows('curriculum_components').some(c => !c.archived_at && c.curriculum_id === o.curriculum_id && String(c.subject_id) === subjectId)
+              allComps.some(c => !c.archived_at && c.curriculum_id === o.curriculum_id && String(c.subject_id) === subjectId)
             ) || compatibleOfferings[0];
           if (!primarySiteId) primarySiteId = String(groupOffering.site_id);
 
           const currId = String(groupOffering.curriculum_id);
-          let targetComp = rows('curriculum_components').find(
+          const allUnits = [...rows('teaching_units'), ...createdUnits];
+          let targetComp = allComps.find(
             c => !c.archived_at && String(c.curriculum_id) === currId && String(c.subject_id) === subjectId && c.unit_id != null
           );
           let targetSemId = targetComp
-            ? String(rows('teaching_units').find(u => u.id === targetComp!.unit_id)?.semester_id || '')
+            ? String(allUnits.find(u => u.id === targetComp!.unit_id)?.semester_id || '')
             : '';
 
           if (!targetComp) {
-            let sem = rows('curriculum_semesters')
+            const allSems = [...rows('curriculum_semesters'), ...createdSems];
+            let sem = allSems
               .filter(s => !s.archived_at && String(s.curriculum_id) === currId)
               .sort((a, b) => Number(a.position || 1) - Number(b.position || 1))[0];
             if (!sem) {
               const semId = crypto.randomUUID();
               sem = { id: semId, curriculum_id: currId, position: 1, name: 'Semestre 1', target_credits: 30 };
+              createdSems.push(sem);
               prepChanges.push({ table: 'curriculum_semesters', operation: 'insert', record: sem });
             }
             targetSemId = String(sem.id);
 
-            let unit = rows('teaching_units').find(u => !u.archived_at && String(u.semester_id) === targetSemId);
+            let unit = allUnits.find(u => !u.archived_at && String(u.semester_id) === targetSemId);
             if (!unit) {
               const unitId = crypto.randomUUID();
               unit = {
@@ -162,11 +170,12 @@ export async function POST(request: Request) {
                 name: 'Unité d’enseignement commune',
                 credits: Math.max(Number(sourceComp.credits) || 3, 1),
               };
+              createdUnits.push(unit);
               prepChanges.push({ table: 'teaching_units', operation: 'insert', record: unit });
             }
 
             const existingCodes = new Set(
-              rows('curriculum_components')
+              allComps
                 .filter(c => String(c.unit_id) === String(unit.id))
                 .map(c => String(c.code))
             );
@@ -184,26 +193,26 @@ export async function POST(request: Request) {
               coefficient: Math.max(Number(sourceComp.coefficient) || 1, 0.001),
               credits: Math.max(Number(sourceComp.credits) || 0, 0),
             };
+            createdComps.push(targetComp);
             prepChanges.push({ table: 'curriculum_components', operation: 'insert', record: targetComp });
           }
 
           if (targetSemId) {
-            const existingOs = rows('offering_semesters').find(
+            const allOs = [...rows('offering_semesters'), ...createdOs];
+            const existingOs = allOs.find(
               os => String(os.offering_id) === String(groupOffering.id) && String(os.curriculum_semester_id) === targetSemId
             );
             if (!existingOs) {
-              prepChanges.push({
-                table: 'offering_semesters',
-                operation: 'insert',
-                record: {
-                  id: crypto.randomUUID(),
-                  offering_id: String(groupOffering.id),
-                  curriculum_id: currId,
-                  curriculum_semester_id: targetSemId,
-                  starts_on: String(yearRow.starts_on),
-                  ends_on: String(yearRow.ends_on),
-                },
-              });
+              const newOs = {
+                id: crypto.randomUUID(),
+                offering_id: String(groupOffering.id),
+                curriculum_id: currId,
+                curriculum_semester_id: targetSemId,
+                starts_on: String(yearRow.starts_on),
+                ends_on: String(yearRow.ends_on),
+              };
+              createdOs.push(newOs);
+              prepChanges.push({ table: 'offering_semesters', operation: 'insert', record: newOs });
             } else if (String(existingOs.starts_on) > sessionStartDate || String(existingOs.ends_on) < sessionEndDate) {
               prepChanges.push({
                 table: 'offering_semesters',

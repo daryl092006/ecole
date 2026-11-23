@@ -450,7 +450,10 @@ function ScheduleManager() {
               <button
                 type="button"
                 className={`btn btn-sm ${sharedCreate ? 'btn-primary' : 'btn-outline'}`}
-                onClick={() => setOperation({ action: 'create_shared_course' })}
+                onClick={() => {
+                  setForm(prev => ({ ...prev, mode: 'COURS' }));
+                  setOperation({ action: 'create_shared_course' });
+                }}
               >
                 Cours en commun (plusieurs groupes)
               </button>
@@ -585,8 +588,8 @@ function ScheduleManager() {
           </label>
         )}
         {!sharedCreate && <label className="form-group">Type de séance<select className="select-input" value={form.mode} onChange={event => setForm({ ...form, mode: event.target.value as SessionMode, roomId: '' })}><option value="COURS">Cours en présentiel</option><option value="PAPIER">Épreuve sur papier</option><option value="EN_LIGNE">En ligne</option></select></label>}
-        {form.mode !== 'EN_LIGNE' && <label className="form-group">Salle prévue<select className="select-input" required disabled={sharedCreate ? (sharedGroupIds.length < 2 || !sharedComponentId || !sharedTeacherId) : !assignment} value={form.roomId} onChange={event => setForm({ ...form, roomId: event.target.value })}><option value="">Choisir une salle disponible</option>{directory.rooms.filter(room => room.available && (!room.siteId || !siteId || room.siteId === siteId)).map(room => <option key={room.id} value={room.id}>{room.name}</option>)}</select></label>}
-        {form.mode === 'EN_LIGNE' && (
+        {(sharedCreate || form.mode !== 'EN_LIGNE') && <label className="form-group">Salle prévue<select className="select-input" required disabled={sharedCreate ? (sharedGroupIds.length < 2 || !sharedComponentId || !sharedTeacherId) : !assignment} value={form.roomId} onChange={event => setForm({ ...form, roomId: event.target.value })}><option value="">Choisir une salle disponible</option>{directory.rooms.filter(room => room.available && (!room.siteId || !siteId || room.siteId === siteId)).map(room => <option key={room.id} value={room.id}>{room.name}</option>)}</select></label>}
+        {!sharedCreate && form.mode === 'EN_LIGNE' && (
           <div className="form-group">
             <label className="form-label">Lien Microsoft Teams (créé automatiquement si laissé vide)</label>
             <input className="input" type="url" placeholder="Automatique via Microsoft 365 (@escen.university) ou saisir une URL..." value={form.meetingUrl} onChange={event => setForm({ ...form, meetingUrl: event.target.value })} />
@@ -614,7 +617,7 @@ function ScheduleManager() {
       )}
       {timed && !isMultiCreate && (
         <>
-          {action === 'create_session' && (
+          {(action === 'create_session' || sharedCreate) && (
             <div className="form-group">
               <span className="form-label">Créneaux horaires rapides (heure précise)</span>
               <div className="btn-group">
