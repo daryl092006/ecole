@@ -388,9 +388,16 @@ function ScheduleManager() {
       validate={() => teacherPersonalEmailSchema.safeParse(contactEmail).success ? null : 'Indiquez un e-mail personnel valide, différent du compte ESCEN.'}
       onConfirm={event => {
         event.preventDefault(); setSaving(true); setSaveError('');
+        const matchingAssignmentId = form.assignmentId || directory.assignments.find(a => a.teacherId === missingContact.id)?.id;
         void updateScheduledTeacherContact(activeRole, { teacherId: missingContact.id, personalEmail: contactEmail,
           revision: directory.revision, reason: 'Contact personnel complété avant la programmation d’une séance.',
-          ...(current ? { sessionId: current.id } : { assignmentId: form.assignmentId }),
+          ...(current
+            ? { sessionId: current.id }
+            : matchingAssignmentId
+              ? { assignmentId: matchingAssignmentId }
+              : sharedGroupIds.length >= 2
+                ? { groupIds: sharedGroupIds }
+                : {}),
         }).then(result => {
           setDirectory(previous => previous ? { ...previous, revision: result.revision,
             teachers: previous.teachers.map(teacher => teacher.id === missingContact.id ? { ...teacher, requiresPersonalEmail: false } : teacher),

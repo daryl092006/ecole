@@ -191,7 +191,7 @@ export async function manageTeacher(role: RoleName, command: import('@/types/tea
 }
 
 export async function updateScheduledTeacherContact(role: RoleName, body: {
-  teacherId: string; personalEmail: string; revision: number; reason: string; assignmentId?: string; sessionId?: string;
+  teacherId: string; personalEmail: string; revision: number; reason: string; assignmentId?: string; sessionId?: string; groupIds?: string[];
 }): Promise<{ revision: number; digitalAccess?: import('@/types/teacherDigitalAccess').TeacherDigitalAccessResult }> {
   return readResponse(await fetch('/api/schedule/teacher-contact', { method: 'POST', headers: { ...await headers(role), 'Content-Type': 'application/json' }, body: JSON.stringify(body) }));
 }
