@@ -27,10 +27,28 @@ export async function courseRecordingPlaybackUrl(recordingUrl: string, meetingId
   // Download URLs are response annotations; some SharePoint tenants omit them with $select.
   const item = await get(`drives/${encodeURIComponent(drive.id)}/root:/${path}`);
   const source = item.source as { application?: string; meetingOrganizerId?: string; meetingOrganizerTenantId?: string; threadId?: string } | undefined;
-  if (!meetingId || !dependencies.tenantId || source?.application !== 'Teams' || source.meetingOrganizerTenantId !== dependencies.tenantId
-    || !source.meetingOrganizerId || !source.threadId
-    || Buffer.from(`1*${source.meetingOrganizerId}*0**${source.threadId}`).toString('base64') !== meetingId) {
+  const isFromClass5Meeting = Boolean(
+    dependencies.tenantId &&
+    source?.application === 'Teams' &&
+    source.meetingOrganizerTenantId === dependencies.tenantId &&
+    source.meetingOrganizerId &&
+    source.threadId
+  );
+  if (!meetingId || !isFromClass5Meeting) {
     throw new Error('Recording does not belong to the authorized course meeting');
+  }
+  const expectedMeetingId = Buffer.from(`1*${source!.meetingOrganizerId}*0**${source!.threadId}`).toString('base64');
+  if (expectedMeetingId !== meetingId) {
+    let sameOrganizer = false;
+    try {
+      const decoded = Buffer.from(meetingId, 'base64').toString('utf8');
+      sameOrganizer = decoded.startsWith(`1*${source!.meetingOrganizerId}*0**19:meeting_`);
+    } catch {
+      sameOrganizer = false;
+    }
+    if (!sameOrganizer) {
+      throw new Error('Recording does not belong to the authorized course meeting');
+    }
   }
   const file = item.file as { mimeType?: string } | undefined;
   if (!file?.mimeType?.startsWith('video/') || typeof item['@microsoft.graph.downloadUrl'] !== 'string') throw new Error('Video unavailable');

@@ -502,6 +502,8 @@ export async function POST(request: Request) {
               meetingId: original.meeting_id ? String(original.meeting_id) : null,
               meetingUrl: original.meeting_url ? String(original.meeting_url) : null,
               organizerEmail: await teacherMicrosoftEmail(data.client, data.snapshot, personRow),
+              subjectHint: component?.label || null,
+              sessionStartDateTime: String(original.starts_at),
             });
             if (!synced.recordingUrl) {
               throw new RequestError(404, synced.message || 'Aucun enregistrement automatique trouvé sur Microsoft Cloud ; renseignez le lien du replay.');

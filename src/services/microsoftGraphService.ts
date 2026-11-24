@@ -416,6 +416,8 @@ export async function syncTeamsMeetingRecording(params: {
   meetingId?: string | null;
   meetingUrl?: string | null;
   organizerEmail?: string | null;
+  subjectHint?: string | null;
+  sessionStartDateTime?: string | null;
 }): Promise<TeamsRecordingSyncResult> {
   const syncedAt = new Date().toISOString();
   const organizerUpn = COURSE_TEAMS_ORGANIZER;
@@ -427,6 +429,7 @@ export async function syncTeamsMeetingRecording(params: {
     token = null;
   }
 
+  let hasGraphRecording = false;
   if (token && params.meetingId && !params.meetingId.startsWith('teams-')) {
     try {
       let organizerId = await teamsOrganizerId(token, organizerUpn);
@@ -452,18 +455,72 @@ export async function syncTeamsMeetingRecording(params: {
         };
         const first = recData.value?.[0];
         if (first?.recordingContentUrl) {
-          return {
-            // L’URL de contenu Graph exige un jeton applicatif et n’est pas un lien de lecture pour l’étudiant.
-            recordingUrl: null,
-            syncedAt,
-            source: 'GRAPH_API',
-            message: 'Un enregistrement existe pour cette réunion. Renseignez son lien de lecture OneDrive ou SharePoint partagé avec les étudiants.',
-          };
+          hasGraphRecording = true;
         }
       }
     } catch {
       // Ignorer et retourner null si aucun enregistrement disponible sur Graph
     }
+  }
+
+  if (token && !hasGraphRecording && (params.meetingId || params.subjectHint) && params.sessionStartDateTime) {
+    try {
+      const targetDay = new Date(params.sessionStartDateTime).toISOString().slice(0, 10);
+      const driveRes = await fetch(
+        `https://graph.microsoft.com/v1.0/users/${encodeURIComponent(organizerUpn)}/drive/root:/Recordings:/children`,
+        {
+          method: 'GET',
+          headers: { Authorization: `Bearer ${token}` },
+        }
+      );
+      if (driveRes.ok) {
+        const driveData = (await driveRes.json()) as {
+          value?: Array<{
+            name?: string;
+            webUrl?: string;
+            createdDateTime?: string;
+            source?: { meetingOrganizerId?: string; threadId?: string };
+          }>;
+        };
+        const files = (driveData.value || []).filter(f => f.webUrl && f.createdDateTime?.slice(0, 10) === targetDay);
+        const byMeeting = params.meetingId
+          ? files.find(f => {
+              const org = f.source?.meetingOrganizerId;
+              const tid = f.source?.threadId;
+              return Boolean(org && tid && Buffer.from(`1*${org}*0**${tid}`).toString('base64') === params.meetingId);
+            })
+          : undefined;
+        const normalize = (v: string) =>
+          v.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim();
+        const hintWords = normalize(params.subjectHint || '').split(' ').filter(w => w.length >= 4);
+        const bySubject = !byMeeting && hintWords.length >= 2
+          ? files.find(f => {
+              const fname = normalize(f.name || '');
+              return hintWords.every(w => fname.includes(w));
+            })
+          : undefined;
+        const matched = byMeeting || bySubject;
+        if (matched?.webUrl) {
+          return {
+            recordingUrl: matched.webUrl,
+            syncedAt,
+            source: 'GRAPH_API',
+          };
+        }
+      }
+    } catch {
+      // Ignorer si le dossier OneDrive n'est pas atteignable
+    }
+  }
+
+  if (hasGraphRecording) {
+    return {
+      // L’URL de contenu Graph exige un jeton applicatif et n’est pas un lien de lecture pour l’étudiant.
+      recordingUrl: null,
+      syncedAt,
+      source: 'GRAPH_API',
+      message: 'Un enregistrement existe pour cette réunion. Renseignez son lien de lecture OneDrive ou SharePoint partagé avec les étudiants.',
+    };
   }
 
   return {
