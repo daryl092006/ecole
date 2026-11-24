@@ -23,6 +23,7 @@ export function roleScopeDescription(role: RoleName): string {
   if (role === ROLES.STUD) return 'Uniquement ses propres données et les séances de ses groupes.';
   if (role === ROLES.IT) return 'Tout l’établissement : tous les modules et actions, avec validations et audit.';
   if (role === ROLES.CC) return 'Candidatures de l’établissement : contrôle, suivi, frais d’inscription, création du dossier étudiant après admission et opérations financières de scolarité ; décision académique réservée à la direction académique.';
+  if (role === ROLES.STG_CC) return 'Candidatures de l’établissement : réception, contrôle de conformité des dossiers, demandes de compléments, suivi candidat et transmission à l’académie, sans accès financier ni académique.';
   if (role === ROLES.STG) return 'Périmètre opérationnel : cours en ligne, supports de cours, présences, planning, étudiants, notes et consultation financière.';
   return 'Périmètre de l’établissement, limité aux actions attribuées à ce rôle.';
 }

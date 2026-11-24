@@ -51,6 +51,7 @@ export default function WorkspaceHome({ mode = 'home' }: { mode?: 'home' | 'over
     [ROLES.SITE]: 'Retrouvez les candidatures, les formations et les publications du site.',
     [ROLES.IT]: 'Retrouvez les comptes, les accès, le support et le suivi du système.',
     [ROLES.STG]: 'Retrouvez les dossiers, les activités et les annonces accessibles à votre rôle.',
+    [ROLES.STG_CC]: 'Retrouvez les dossiers de candidature à vérifier, compléter et transmettre à l’académie.',
   };
 
   const canViewStudents = state.perms.permissions.includes('student.view');
@@ -455,6 +456,21 @@ export default function WorkspaceHome({ mode = 'home' }: { mode?: 'home' | 'over
       ];
     }
 
+    if (role === ROLES.STG_CC) {
+      return [
+        {
+          title: 'Candidatures à vérifier',
+          href: '/site-web/demandes',
+          icon: Megaphone,
+          items: [
+            { label: 'Candidatures', value: `${applications.length}` },
+            { label: 'À traiter', value: `${pendingApps}` },
+            { label: 'Admis', value: `${admittedApps}` },
+          ],
+        },
+      ];
+    }
+
     if (role === ROLES.CC) {
       return [
         {
@@ -577,6 +593,7 @@ export default function WorkspaceHome({ mode = 'home' }: { mode?: 'home' | 'over
     [ROLES.STUD]: ['acad_resources', 'acad_schedule', 'acad_program', 'espace_attendance', 'espace_exams', 'espace_documents', 'espace_finance', 'espace_announcements', 'espace_support'],
     [ROLES.DEL]: ['acad_resources', 'acad_attendance', 'acad_program', 'espace_attendance', 'espace_exams', 'espace_documents', 'espace_finance', 'acad_complaints', 'espace_support'],
     [ROLES.STG]: ['stud_list', 'acad_schedule', 'espace_announcements', 'espace_support'],
+    [ROLES.STG_CC]: ['web_applications', 'espace_announcements', 'espace_support'],
   };
   const taskIcons: Record<string, typeof Award> = {
     dashboard_kpis: TrendingUp, stud_list: GraduationCap, fin_kpis: Wallet, fin_payments: Wallet,
@@ -661,7 +678,7 @@ export default function WorkspaceHome({ mode = 'home' }: { mode?: 'home' | 'over
     {state.perms.permissions.includes('finance.view') && <KpiChart title="Répartition des frais" description={`${knownFinancialStudents.length} dossier(s) avec une situation financière renseignée. Les règlements en attente sont exclus.`} kind="donut" format="currency" available={knownFinancialStudents.length > 0} series={[{ label: 'Frais', values: [{ label: 'Réglé', value: collectedAmount }, { label: 'Reste à régler', value: remainingAmount }] }]} />}
     {state.perms.permissions.includes('user.manage') && <KpiChart title="État des comptes" description="Comptes de connexion visibles dans votre périmètre." kind="donut" series={[{ label: 'Comptes', values: [{ label: 'Actifs', value: state.users.filter(user => user.active).length }, { label: 'Inactifs', value: state.users.filter(user => !user.active).length }] }]} />}
     {[ROLES.IT, ROLES.DG, ROLES.DGA, ROLES.DA, ROLES.LOG, ROLES.ENS, ROLES.SURV].includes(state.activeRole as typeof ROLES.DA) && (state.perms.permissions.includes('grade.view') || state.perms.permissions.includes('schedule.view')) && <KpiChart title="État des évaluations" description="Répartition des évaluations visibles selon leur état enregistré, sans estimation des résultats." series={[{ label: 'Évaluations', values: groupStates('evaluations', evaluationStates) }]} />}
-    {[ROLES.IT, ROLES.DG, ROLES.DGA, ROLES.CC, ROLES.MKT, ROLES.SITE].includes(state.activeRole as typeof ROLES.CC) && applications.length > 0 && <KpiChart title="État des candidatures" description="Répartition des candidatures visibles selon leur étape de traitement." series={[{ label: 'Candidatures', values: applicationStates() }]} />}
+    {[ROLES.IT, ROLES.DG, ROLES.DGA, ROLES.CC, ROLES.STG_CC, ROLES.MKT, ROLES.SITE].includes(state.activeRole as typeof ROLES.CC) && applications.length > 0 && <KpiChart title="État des candidatures" description="Répartition des candidatures visibles selon leur étape de traitement." series={[{ label: 'Candidatures', values: applicationStates() }]} />}
     {[ROLES.IT, ROLES.DG, ROLES.DGA, ROLES.DA, ROLES.LOG, ROLES.SURV].includes(state.activeRole as typeof ROLES.DA) && activeRows('attendances').length > 0 && <KpiChart title="Répartition des présences" description="Pointages enregistrés pour les séances visibles dans votre périmètre." kind="donut" series={[{ label: 'Présences', values: attendanceStates() }]} />}
     {[ROLES.IT, ROLES.DG, ROLES.DGA, ROLES.RAF, ROLES.ACHATS].includes(state.activeRole as typeof ROLES.ACHATS) && state.perms.permissions.includes('purchase.view') && <KpiChart title="Suivi des achats" description="Demandes visibles, regroupées selon leur état enregistré." series={[{ label: 'Demandes', values: groupStates('purchases', PURCHASE_STATUS_LABELS) }]} />}
     {[ROLES.IT, ROLES.DG, ROLES.DGA, ROLES.MKT, ROLES.SITE].includes(state.activeRole as typeof ROLES.MKT) && state.perms.permissions.includes('communication.view') && <KpiChart title="État des communications" description="Communications visibles selon leur état de publication enregistré." series={[{ label: 'Publications', values: communicationStates() }]} />}

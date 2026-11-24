@@ -14,6 +14,7 @@ export const ROLES = {
   STUD: 'Étudiant',
   DEL: 'Délégué',
   STG: 'Stagiaire',
+  STG_CC: 'Stagiaire chargé de clientèle',
 } as const;
 
 export type RoleName = typeof ROLES[keyof typeof ROLES];
