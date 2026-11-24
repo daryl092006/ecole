@@ -10,6 +10,7 @@ import { attemptApplicationEmails, enqueueCandidateCredentialsEmail, portalOrigi
 import { websiteProspectSchema } from '@/services/websiteProspectService';
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
+export const maxDuration = 60;
 type RouteContext = { params: Promise<{ path: string[] }> };
 function cors(request: Request, response: Response) {
   const origin = request.headers.get('origin');
@@ -184,22 +185,47 @@ async function handle(request: Request, context: RouteContext) {
       const level = z.uuid().parse(data.get('niveau_id')); const program = z.uuid().parse(data.get('filiere_id'));
       const intakes = await rpc('intakes') as WebsiteIntake[];
       if (!intakes.some(item => item.level_id === level && item.program_id === program && item.academic_year_id === selectedYear)) throw new RequestError(400, 'Formation non ouverte aux inscriptions.');
+      const existingDocs: Array<{ document_key?: string; filename?: string }> = Array.isArray(draft.documents) ? draft.documents : [];
+      const pendingUploads: Array<{ id: string; documentKey: string; filename: string; mime: string; size: number; objectPath: string; bytes: Uint8Array; sha256: string }> = [];
+      for (const [key, value] of data.entries()) {
+        if (['academic_year_id', 'niveau_id', 'filiere_id'].includes(key)) continue;
+        const documentKey = key.replace(/\[\d+\]$/, '');
+        if (!DOCUMENT_LABELS[documentKey] || !(value instanceof File)) throw new RequestError(400, 'Pièce non reconnue.');
+        if (value.size < 1 || value.size > 5 * 1024 * 1024 || pendingUploads.length >= 12) throw new RequestError(413, 'Maximum 12 fichiers de 5 Mo par envoi.');
+        const bytes = new Uint8Array(await value.arrayBuffer()); const mime = sniffDocument(bytes);
+        if (!mime || mime !== value.type || (documentKey === 'photo_identite_file' && mime === 'application/pdf')) throw new RequestError(400, 'Utilisez un PDF, JPEG ou PNG valide ; la photo doit être une image.');
+        const filename = value.name.replace(/[\x00-\x1f/\\]/g, '_').slice(0, 200);
+        if (existingDocs.some(d => d.document_key === documentKey && d.filename === filename)) continue;
+        const id = randomUUID(); const objectPath = `${draft.id}/${id}`;
+        pendingUploads.push({
+          id,
+          documentKey,
+          filename,
+          mime,
+          size: value.size,
+          objectPath,
+          bytes,
+          sha256: createHash('sha256').update(bytes).digest('hex'),
+        });
+      }
       const uploaded: string[] = [];
-      const documents: Record<string, unknown>[] = [];
       try {
-        for (const [key, value] of data.entries()) {
-          if (['academic_year_id', 'niveau_id', 'filiere_id'].includes(key)) continue;
-          const documentKey = key.replace(/\[\d+\]$/, '');
-          if (!DOCUMENT_LABELS[documentKey] || !(value instanceof File)) throw new RequestError(400, 'Pièce non reconnue.');
-          if (value.size < 1 || value.size > 5 * 1024 * 1024 || documents.length >= 12) throw new RequestError(413, 'Maximum 12 fichiers de 5 Mo par envoi.');
-          const bytes = new Uint8Array(await value.arrayBuffer()); const mime = sniffDocument(bytes);
-          if (!mime || mime !== value.type || (documentKey === 'photo_identite_file' && mime === 'application/pdf')) throw new RequestError(400, 'Utilisez un PDF, JPEG ou PNG valide ; la photo doit être une image.');
-          const id = randomUUID(); const objectPath = `${draft.id}/${id}`;
-          const stored = await client.storage.from('escen-online-applications').upload(objectPath, bytes, { contentType: mime, upsert: false });
-          if (stored.error) throw new RequestError(503, 'La pièce n’a pas été transférée. Réessayez sans fermer votre dossier.');
-          uploaded.push(objectPath);
-          documents.push({ id, document_key: documentKey, filename: value.name.replace(/[\x00-\x1f/\\]/g, '_').slice(0, 200), mime_type: mime, byte_size: value.size, object_path: objectPath, sha256: createHash('sha256').update(bytes).digest('hex') });
-        }
+        await Promise.all(
+          pendingUploads.map(async item => {
+            const stored = await client.storage.from('escen-online-applications').upload(item.objectPath, item.bytes, { contentType: item.mime, upsert: false });
+            if (stored.error) throw new RequestError(503, 'La pièce n’a pas été transférée. Réessayez sans fermer votre dossier.');
+            uploaded.push(item.objectPath);
+          }),
+        );
+        const documents = pendingUploads.map(item => ({
+          id: item.id,
+          document_key: item.documentKey,
+          filename: item.filename,
+          mime_type: item.mime,
+          byte_size: item.size,
+          object_path: item.objectPath,
+          sha256: item.sha256,
+        }));
         return cors(request, Response.json(await rpc('documents', token, { academic_year_id: selectedYear, niveau_id: level, filiere_id: program, documents })));
       } catch (error) {
         if (uploaded.length) await client.storage.from('escen-online-applications').remove(uploaded);
