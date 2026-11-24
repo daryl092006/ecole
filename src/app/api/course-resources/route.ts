@@ -146,7 +146,20 @@ function buildDirectory(
 
   const sessions = rows('sessions').filter(s => !['ANNULE'].includes(String(s.status)));
   const participations = rows('session_participants');
+  const allParticipations = allRows('session_participants').filter(p => p.active !== false);
   const rawResources = (rows('course_resources') || []).filter(r => !r.archived_at);
+
+  const sessionGroupInfo = (s: Record<string, unknown>) => {
+    const sId = String(s.id);
+    const parts = allParticipations.filter(p => String(p.session_id) === sId);
+    const gIds = Array.from(new Set([String(s.group_id), ...parts.map(p => String(p.group_id))].filter(Boolean)));
+    const gNames = gIds.map(id => groupsMap.get(id) || 'Groupe');
+    return {
+      groupId: String(s.group_id),
+      groupIds: gIds,
+      groupName: gNames.join(' + ') || 'Groupe',
+    };
+  };
 
   const assignmentMeta = new Map(
     allRows('teaching_assignments').map(a => {
@@ -201,10 +214,16 @@ function buildDirectory(
       const courseRes = rawResources.filter(
         r =>
           r.assignment_id === assignmentId ||
+          (r.session_id && partSessionIds.has(String(r.session_id))) ||
           (r.group_id === groupId && r.component_id === componentId) ||
           (Boolean(comp?.subjectId) && componentsMap.get(String(r.component_id))?.subjectId === comp?.subjectId && assignmentMeta.get(String(r.assignment_id))?.levelId === String(offering?.level_id))
       );
-      const recCount = courseRes.filter(r => r.kind === 'ENREGISTREMENT').length + courseSessions.filter(s => Boolean(s.recording_url)).length;
+      const recordedSessionIds = new Set([
+        ...courseRes.filter(r => r.kind === 'ENREGISTREMENT' && r.session_id).map(r => String(r.session_id)),
+        ...courseSessions.filter(s => Boolean(s.recording_url)).map(s => String(s.id)),
+      ]);
+      const standaloneRecCount = courseRes.filter(r => r.kind === 'ENREGISTREMENT' && !r.session_id).length;
+      const recCount = recordedSessionIds.size + standaloneRecCount;
 
       return {
         assignmentId,
@@ -237,12 +256,14 @@ function buildDirectory(
       const comp = componentsMap.get(compId);
       const subj = comp ? subjectsMap.get(comp.subjectId) : undefined;
       const tInfo = teacherInfo(String(s.replacement_teacher_id || s.teacher_id));
+      const gInfo = sessionGroupInfo(s);
       return {
         id: String(s.id),
         assignmentId: String(s.assignment_id),
         offeringId: String(s.offering_id),
-        groupId: String(s.group_id),
-        groupName: groupsMap.get(String(s.group_id)) || 'Groupe',
+        groupId: gInfo.groupId,
+        groupIds: gInfo.groupIds,
+        groupName: gInfo.groupName,
         componentId: compId,
         subjectName: subj?.name || 'Matière',
         teacherName: tInfo.name,
@@ -258,7 +279,17 @@ function buildDirectory(
     })
     .sort((a, b) => b.startsAt.localeCompare(a.startsAt));
 
-  const resources: CourseResourceItem[] = rawResources
+  const seenSessionRecordings = new Set<string>();
+  const dedupedRawResources = rawResources.filter(r => {
+    if (r.kind === 'ENREGISTREMENT' && r.session_id) {
+      const key = String(r.session_id);
+      if (seenSessionRecordings.has(key)) return false;
+      seenSessionRecordings.add(key);
+    }
+    return true;
+  });
+
+  const resources: CourseResourceItem[] = dedupedRawResources
     .map(r => {
       const compId = String(r.component_id);
       const comp = componentsMap.get(compId);
@@ -266,12 +297,14 @@ function buildDirectory(
       const assignment = r.assignment_id ? allRows('teaching_assignments').find(a => a.id === r.assignment_id) : undefined;
       const tInfo = assignment ? teacherInfo(String(assignment.teacher_id)) : { name: 'Équipe pédagogique', email: null };
       const session = r.session_id ? allRows('sessions').find(s => s.id === r.session_id) : undefined;
+      const gInfo = session ? sessionGroupInfo(session) : null;
       return {
         id: String(r.id),
         academicYearId: String(r.academic_year_id),
         offeringId: String(r.offering_id),
         groupId: String(r.group_id),
-        groupName: groupsMap.get(String(r.group_id)) || 'Groupe',
+        groupIds: gInfo ? gInfo.groupIds : [String(r.group_id)],
+        groupName: gInfo ? gInfo.groupName : (groupsMap.get(String(r.group_id)) || 'Groupe'),
         componentId: compId,
         subjectCode: subj?.code || comp?.code || '',
         subjectName: subj?.name || 'Matière',
@@ -556,30 +589,41 @@ export async function POST(request: Request) {
           },
         });
 
-        const offering = (data.snapshot.tables.academic_offerings || []).find(o => o.id === session.offering_id);
-        if (offering && assignment?.component_id) {
-          const existingRes = (data.snapshot.tables.course_resources || []).find(
-            r => r.session_id === session.id && r.kind === 'ENREGISTREMENT' && !r.archived_at
-          );
-          changes.push({
-            table: 'course_resources',
-            operation: existingRes ? 'update' : 'insert',
-            record: {
-              id: existingRes ? existingRes.id : crypto.randomUUID(),
-              academic_year_id: offering.academic_year_id,
-              offering_id: session.offering_id,
-              group_id: session.group_id,
-              component_id: assignment.component_id,
-              assignment_id: session.assignment_id,
-              session_id: session.id,
-              title: `Enregistrement · ${String(subj?.name || 'Cours')} (${new Date(String(session.starts_at)).toLocaleDateString('fr-FR')})`,
-              description: 'Enregistrement vidéo de la séance de cours en ligne',
-              kind: 'ENREGISTREMENT',
-              resource_url: recUrl,
-              uploaded_by: data.context.accountId,
-              reason: body.reason.trim(),
-            },
-          });
+        const participantAssignments = Array.from(
+          new Set([
+            String(session.assignment_id),
+            ...(data.snapshot.tables.session_participants || [])
+              .filter(p => String(p.session_id) === String(session.id) && p.active !== false)
+              .map(p => String(p.assignment_id)),
+          ].filter(Boolean))
+        );
+        for (const partAssignId of participantAssignments) {
+          const partAssign = (data.snapshot.tables.teaching_assignments || []).find(a => String(a.id) === partAssignId);
+          const partOffering = partAssign ? (data.snapshot.tables.academic_offerings || []).find(o => o.id === partAssign.offering_id) : undefined;
+          if (partAssign?.component_id && partOffering) {
+            const existingRes = (data.snapshot.tables.course_resources || []).find(
+              r => r.session_id === session.id && r.assignment_id === partAssign.id && r.kind === 'ENREGISTREMENT' && !r.archived_at
+            );
+            changes.push({
+              table: 'course_resources',
+              operation: existingRes ? 'update' : 'insert',
+              record: {
+                id: existingRes ? existingRes.id : crypto.randomUUID(),
+                academic_year_id: partOffering.academic_year_id,
+                offering_id: partAssign.offering_id,
+                group_id: partAssign.group_id,
+                component_id: partAssign.component_id,
+                assignment_id: partAssign.id,
+                session_id: session.id,
+                title: `Enregistrement · ${String(subj?.name || 'Cours')} (${new Date(String(session.starts_at)).toLocaleDateString('fr-FR')})`,
+                description: 'Enregistrement vidéo de la séance de cours en ligne',
+                kind: 'ENREGISTREMENT',
+                resource_url: recUrl,
+                uploaded_by: data.context.accountId,
+                reason: body.reason.trim(),
+              },
+            });
+          }
         }
       }
 

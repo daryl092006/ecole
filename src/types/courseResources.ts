@@ -13,6 +13,7 @@ export interface CourseResourceItem {
   academicYearId: string;
   offeringId: string;
   groupId: string;
+  groupIds?: string[];
   groupName: string;
   componentId: string;
   subjectCode: string;
@@ -60,6 +61,7 @@ export interface OnlineCourseSessionItem {
   assignmentId: string;
   offeringId: string;
   groupId: string;
+  groupIds?: string[];
   groupName: string;
   componentId: string;
   subjectName: string;

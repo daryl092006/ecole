@@ -170,7 +170,7 @@ export default function CourseResourcesWorkspace() {
   });
 
   const filteredResources = directory.resources.filter(res => {
-    if (groupFilter && res.groupId !== groupFilter) return false;
+    if (groupFilter && res.groupId !== groupFilter && !res.groupIds?.includes(groupFilter)) return false;
     if (kindFilter && res.kind !== kindFilter) return false;
     if (q && !`${res.title} ${res.subjectName} ${res.groupName} ${res.teacherName} ${res.description || ''}`.toLowerCase().includes(q)) {
       return false;
@@ -180,7 +180,7 @@ export default function CourseResourcesWorkspace() {
 
   const onlineOnlySessions = directory.onlineSessions.filter(s => {
     if (s.mode !== 'EN_LIGNE') return false;
-    if (groupFilter && s.groupId !== groupFilter) return false;
+    if (groupFilter && s.groupId !== groupFilter && !s.groupIds?.includes(groupFilter)) return false;
     if (q && !`${s.subjectName} ${s.groupName} ${s.teacherName}`.toLowerCase().includes(q)) return false;
     return true;
   });

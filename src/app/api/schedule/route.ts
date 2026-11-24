@@ -513,28 +513,41 @@ export async function POST(request: Request) {
           }
           patch.recording_url = recUrl;
           patch.recording_synced_at = syncedAt;
-          const offering = rows('academic_offerings').find(o => o.id === original.offering_id);
-          if (offering && rawAssignment?.component_id) {
-            const existingResource = rows('course_resources').find(r => r.session_id === id && r.kind === 'ENREGISTREMENT' && !r.archived_at);
-            changes.push({
-              table: 'course_resources',
-              operation: existingResource ? 'update' : 'insert',
-              record: {
-                id: existingResource ? existingResource.id : crypto.randomUUID(),
-                academic_year_id: offering.academic_year_id,
-                offering_id: original.offering_id,
-                group_id: original.group_id,
-                component_id: rawAssignment.component_id,
-                assignment_id: original.assignment_id,
-                session_id: id,
-                title: `Enregistrement · ${component?.label || 'Cours'} (${new Date(String(original.starts_at)).toLocaleDateString('fr-FR')})`,
-                description: 'Enregistrement vidéo de la séance en ligne',
-                kind: 'ENREGISTREMENT',
-                resource_url: recUrl,
-                uploaded_by: data.context.accountId,
-                reason: body.reason,
-              },
-            });
+          const participantAssignments = Array.from(
+            new Set([
+              String(original.assignment_id),
+              ...rows('session_participants')
+                .filter(p => String(p.session_id) === id && p.active !== false)
+                .map(p => String(p.assignment_id)),
+            ].filter(Boolean))
+          );
+          for (const partAssignId of participantAssignments) {
+            const partAssign = rows('teaching_assignments').find(a => String(a.id) === partAssignId);
+            const partOffering = partAssign ? rows('academic_offerings').find(o => o.id === partAssign.offering_id) : undefined;
+            if (partAssign?.component_id && partOffering) {
+              const existingResource = rows('course_resources').find(
+                r => r.session_id === id && r.assignment_id === partAssign.id && r.kind === 'ENREGISTREMENT' && !r.archived_at
+              );
+              changes.push({
+                table: 'course_resources',
+                operation: existingResource ? 'update' : 'insert',
+                record: {
+                  id: existingResource ? existingResource.id : crypto.randomUUID(),
+                  academic_year_id: partOffering.academic_year_id,
+                  offering_id: partAssign.offering_id,
+                  group_id: partAssign.group_id,
+                  component_id: partAssign.component_id,
+                  assignment_id: partAssign.id,
+                  session_id: id,
+                  title: `Enregistrement · ${component?.label || 'Cours'} (${new Date(String(original.starts_at)).toLocaleDateString('fr-FR')})`,
+                  description: 'Enregistrement vidéo de la séance en ligne',
+                  kind: 'ENREGISTREMENT',
+                  resource_url: recUrl,
+                  uploaded_by: data.context.accountId,
+                  reason: body.reason,
+                },
+              });
+            }
           }
         }
         changes.unshift({ table: 'sessions', operation: 'update', record: patch });
