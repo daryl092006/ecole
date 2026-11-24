@@ -30,6 +30,7 @@ export interface SessionSlotInput { startsAt: string; endsAt: string; }
 export interface SessionInput {
   assignmentId: string; startsAt: string; endsAt: string; mode: SessionMode; roomId: string | null;
   meetingUrl?: string | null; recordingUrl?: string | null; slots?: SessionSlotInput[];
+  personalEmail?: string;
 }
 export type ScheduleCommand = Common & (
   | {
@@ -38,6 +39,7 @@ export type ScheduleCommand = Common & (
       groupIds?: string[];
       componentId?: string;
       teacherId?: string;
+      personalEmail?: string;
       roomId: string | null;
       mode?: 'COURS' | 'EN_LIGNE';
       meetingUrl?: string | null;
@@ -47,9 +49,9 @@ export type ScheduleCommand = Common & (
     }
   | ({ action: 'create_session' } & SessionInput)
   | ({ action: 'update_session'; sessionId: string } & SessionInput)
-  | { action: 'move_session'; sessionId: string; startsAt: string; endsAt: string }
+  | { action: 'move_session'; sessionId: string; startsAt: string; endsAt: string; personalEmail?: string }
   | { action: 'cancel_session'; sessionId: string }
-  | { action: 'replace_teacher'; sessionId: string; teacherId: string | null }
+  | { action: 'replace_teacher'; sessionId: string; teacherId: string | null; personalEmail?: string }
   | { action: 'generate_online_link'; sessionId: string; customMeetingUrl?: string | null }
   | { action: 'sync_recording'; sessionId: string; recordingUrl?: string | null }
   | { action: 'block_period'; name: string; kind: 'JOUR_FERIE' | 'VACANCES' | 'FERMETURE' | 'EXAMEN' | 'AUTRE'; siteId: string | null; startsAt: string; endsAt: string }

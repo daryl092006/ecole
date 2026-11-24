@@ -9,9 +9,9 @@ import { emailExistingTeacherAccess } from '@/server/existingTeacherAccessEmail'
 export const dynamic = 'force-dynamic';
 const schema = z.object({ teacherId: z.uuid(), personalEmail: teacherPersonalEmailSchema,
   assignmentId: z.uuid().optional(), sessionId: z.uuid().optional(),
-  groupIds: z.array(z.uuid()).min(2).max(30).optional(),
+  groupIds: z.array(z.uuid()).min(1).max(30).optional(),
   revision: z.number().int().nonnegative(), reason: z.string().trim().min(3).max(1000),
-}).strict().refine(body => Boolean(body.assignmentId || body.sessionId || body.groupIds?.length), 'Sélectionnez un cours à programmer.');
+}).strict();
 
 export async function POST(request: Request) {
   try {
@@ -29,8 +29,10 @@ export async function POST(request: Request) {
     const teacher = directory.teachers.find(row => row.id === body.teacherId && row.active);
     const session = body.sessionId ? directory.sessions.find(row => row.id === body.sessionId && row.canUpdate) : undefined;
     const assignment = body.assignmentId ? directory.assignments.find(row => row.id === body.assignmentId && row.teacherId === body.teacherId) : undefined;
-    const groupsValid = body.groupIds?.length ? body.groupIds.every(gid => directory.groups.some(g => g.id === gid)) : false;
-    if (!teacher || !(body.sessionId ? session : body.assignmentId ? assignment : groupsValid)) throw new RequestError(404, 'Enseignant ou cours hors de votre périmètre.');
+    const groupsValid = body.groupIds?.length ? body.groupIds.every(gid => directory.groups.some(g => g.id === gid)) : true;
+    if (!teacher || (body.sessionId && !session) || (body.assignmentId && !assignment) || !groupsValid) {
+      throw new RequestError(404, 'Enseignant ou cours hors de votre périmètre.');
+    }
     const person = snapshot.tables.people?.find(row => row.id === teacher.personId && !row.archived_at);
     if (!person) throw new RequestError(404, 'Dossier enseignant introuvable.');
     if (teacherPersonalEmailSchema.safeParse(person.email).success) throw new RequestError(409, 'L’e-mail personnel est déjà renseigné. Actualisez le planning.');

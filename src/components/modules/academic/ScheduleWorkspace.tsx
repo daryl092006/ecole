@@ -240,6 +240,7 @@ function ScheduleManager() {
   const dateMax = [selectedYear?.ends_on, !sharedCreate ? assignment?.validUntil : undefined].filter((date): date is string => Boolean(date)).sort()[0];
 
   const fields: ReviewField[] = [
+    ...(missingContact && contactEmail.trim() ? [{ label: `E-mail personnel (${missingContact.name})`, value: contactEmail.trim() }] : []),
     ...(sharedCreate ? [
       { label: 'Groupes participants', value: sharedGroupIds.map(groupName).join(' + ') },
       { label: 'Matière', value: sharedComponent?.label || '' },
@@ -393,9 +394,9 @@ function ScheduleManager() {
           revision: directory.revision, reason: 'Contact personnel complété avant la programmation d’une séance.',
           ...(current
             ? { sessionId: current.id }
-            : matchingAssignmentId
+            : !sharedCreate && matchingAssignmentId
               ? { assignmentId: matchingAssignmentId }
-              : sharedGroupIds.length >= 2
+              : sharedGroupIds.length > 0
                 ? { groupIds: sharedGroupIds }
                 : {}),
         }).then(result => {
@@ -415,7 +416,9 @@ function ScheduleManager() {
     </ReviewedForm> : <ReviewedForm busy={saving} error={saveError} fields={fields} consequence={consequence}
       confirmLabel={`Confirmer : ${titles[operation.action].toLocaleLowerCase('fr')}`} danger={action === 'cancel_session'}
       validate={() => {
-        if (missingContact) return 'Complétez d’abord l’e-mail personnel de l’enseignant pour programmer cette séance.';
+        if (missingContact && !teacherPersonalEmailSchema.safeParse(contactEmail).success) {
+          return 'Complétez d’abord l’e-mail personnel de l’enseignant pour programmer cette séance.';
+        }
         if (sharedCreate) {
           if (sharedGroupIds.length < 2 || sharedGroupIds.length > 30) return 'Choisissez au moins 2 groupes pour programmer un cours commun.';
           if (!sharedComponent) return 'Choisissez la matière du cours commun.';
@@ -436,9 +439,11 @@ function ScheduleManager() {
       onConfirm={event => {
         event.preventDefault(); setSaving(true); setSaveError('');
         const common = { revision: directory.revision, reason: effectiveReason };
+        const inlinePersonalEmail = missingContact && teacherPersonalEmailSchema.safeParse(contactEmail).success ? { personalEmail: contactEmail.trim().toLowerCase() } : {};
         const sessionId = current?.id || '';
         const command: ScheduleCommand = operation.action === 'create_shared_course' ? {
           ...common,
+          ...inlinePersonalEmail,
           action: 'create_shared_course',
           groupIds: sharedGroupIds,
           componentId: sharedComponentId,
@@ -452,12 +457,13 @@ function ScheduleManager() {
         }
           : operation.action === 'block_period' ? { ...common, action: 'block_period', name: form.name, kind: form.kind, siteId: form.siteId || null, startsAt: iso(form.startsAt), endsAt: iso(form.endsAt) }
           : operation.action === 'cancel_session' ? { ...common, action: 'cancel_session', sessionId }
-            : operation.action === 'replace_teacher' ? { ...common, action: 'replace_teacher', sessionId, teacherId: form.teacherId || null }
+            : operation.action === 'replace_teacher' ? { ...common, ...inlinePersonalEmail, action: 'replace_teacher', sessionId, teacherId: form.teacherId || null }
               : operation.action === 'generate_online_link' ? { ...common, action: 'generate_online_link', sessionId, customMeetingUrl: form.meetingUrl.trim() || null }
                 : operation.action === 'sync_recording' ? { ...common, action: 'sync_recording', sessionId, recordingUrl: form.recordingUrl.trim() || null }
-                  : operation.action === 'move_session' ? { ...common, action: 'move_session', sessionId, startsAt: iso(form.startsAt), endsAt: iso(form.endsAt) }
+                  : operation.action === 'move_session' ? { ...common, ...inlinePersonalEmail, action: 'move_session', sessionId, startsAt: iso(form.startsAt), endsAt: iso(form.endsAt) }
                     : isMultiCreate ? {
                       ...common,
+                      ...inlinePersonalEmail,
                       action: 'create_session',
                       assignmentId: form.assignmentId,
                       roomId: form.roomId || null,
@@ -467,7 +473,7 @@ function ScheduleManager() {
                       endsAt: multiSlots[0].endsAt,
                       slots: multiSlots.map(slot => ({ startsAt: slot.startsAt, endsAt: slot.endsAt })),
                     }
-                    : { ...common, action: operation.action, ...(operation.action === 'update_session' ? { sessionId } : {}), assignmentId: form.assignmentId, roomId: form.roomId || null, mode: form.mode, ...(form.mode === 'EN_LIGNE' && form.meetingUrl.trim() ? { meetingUrl: form.meetingUrl.trim() } : {}), startsAt: iso(form.startsAt), endsAt: iso(form.endsAt) } as ScheduleCommand;
+                    : { ...common, ...inlinePersonalEmail, action: operation.action, ...(operation.action === 'update_session' ? { sessionId } : {}), assignmentId: form.assignmentId, roomId: form.roomId || null, mode: form.mode, ...(form.mode === 'EN_LIGNE' && form.meetingUrl.trim() ? { meetingUrl: form.meetingUrl.trim() } : {}), startsAt: iso(form.startsAt), endsAt: iso(form.endsAt) } as ScheduleCommand;
         void manageSchedule(activeRole, command).then(() => {
           setOperation(null);
           setSuccess(isMultiCreate && multiSlots.length > 1 ? `${multiSlots.length} séances programmées avec succès.` : 'Planning enregistré. Le motif et l’historique sont conservés.');
@@ -476,7 +482,27 @@ function ScheduleManager() {
         }).catch(cause => setSaveError(cause instanceof Error ? cause.message : 'Enregistrement impossible.')).finally(() => setSaving(false));
       }}>
       {contactMessage && <p className="review-notice" role="status">{contactMessage}</p>}
-      {missingContact && <div className="review-notice"><p>L’e-mail personnel de {missingContact.name} est obligatoire avant de programmer cette séance.</p><button type="button" className="btn btn-outline" onClick={() => { setSaveError(''); setContactStep(true); }}>Renseigner l’e-mail personnel</button></div>}
+      {missingContact && (
+        <div className="review-notice">
+          <p>L’e-mail personnel de <strong>{missingContact.name}</strong> est obligatoire avant de programmer cette séance (hors domaine @escen.university).</p>
+          <label className="form-group mt-1">
+            E-mail personnel de l’enseignant
+            <input
+              className="input"
+              type="email"
+              placeholder="ex: prenom.nom@gmail.com"
+              maxLength={254}
+              value={contactEmail}
+              onChange={event => setContactEmail(event.target.value)}
+            />
+          </label>
+          <div className="btn-group mt-1">
+            <button type="button" className="btn btn-sm btn-outline" onClick={() => { setSaveError(''); setContactStep(true); }}>
+              Renseigner l’e-mail personnel
+            </button>
+          </div>
+        </div>
+      )}
       {editing && <>
         {(action === 'create_session' || sharedCreate) && (
           <div className="form-group">

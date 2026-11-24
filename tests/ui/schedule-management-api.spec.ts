@@ -23,6 +23,34 @@ test('Programmation : contact personnel exigé, collecte autorisée et absence d
   expect(f.snapshot.tables.people[0].email).toBe('alice@example.test');
   expect((await contact({ personalEmail: 'autre@example.test' })).status).toBe(409);
   expect((await f.post(createSession)).status).toBe(201);
+
+  // Enseignant sans affectation existante ou cours commun avec e-mail personnel transmis directement
+  f.snapshot.tables.people[0].email = 'prof@escen.university';
+  expect((await f.contactApi.POST(new Request('http://local.test/api/schedule/teacher-contact', {
+    method: 'POST', headers: { 'x-escen-year': id.year },
+    body: JSON.stringify({ teacherId: id.teacher, personalEmail: 'kolani@gmail.com', revision: f.snapshot.revision, reason: 'Contact cours commun sans affectation' }),
+  }))).status).toBe(200);
+  expect(f.snapshot.tables.people[0].email).toBe('kolani@gmail.com');
+
+  f.snapshot.tables.people[0].email = 'prof@escen.university';
+  const plannedAssignment = f.snapshot.tables.teaching_assignments.find(row => row.id === id.assignment(0))!;
+  const sharedRes = await f.post({
+    action: 'create_shared_course',
+    groupIds: [id.group, id.otherGroup],
+    componentId: plannedAssignment.component_id,
+    teacherId: id.teacher,
+    personalEmail: 'inline.kolani@gmail.com',
+    roomId: uuid(950),
+    mode: 'COURS',
+    startsAt: '2026-10-23T08:00:00Z',
+    endsAt: '2026-10-23T10:00:00Z',
+    slots: [
+      { startsAt: '2026-10-23T08:00:00Z', endsAt: '2026-10-23T10:00:00Z' },
+      { startsAt: '2026-10-30T08:00:00Z', endsAt: '2026-10-30T10:00:00Z' },
+    ],
+  });
+  expect(sharedRes.status).toBe(201);
+  expect(f.snapshot.tables.people[0].email).toBe('inline.kolani@gmail.com');
 });
 import { ROLES } from '../../src/types/permissions';
 

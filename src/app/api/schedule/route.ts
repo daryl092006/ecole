@@ -1,4 +1,5 @@
 import { teacherMicrosoftEmail } from '@/server/teacherMicrosoftIdentity';
+import { emailExistingTeacherAccess } from '@/server/existingTeacherAccessEmail';
 import { teacherPersonalEmailSchema } from '@/services/teacherIdentityService';
 import { z } from 'zod';
 import { requireAccount, requirePermission, RequestError, errorResponse } from '@/server/auth';
@@ -19,6 +20,7 @@ const session = {
   mode: z.enum(['COURS', 'PAPIER', 'EN_LIGNE']),
   meetingUrl: z.string().trim().min(5).max(2048).nullable().optional(),
   recordingUrl: z.string().trim().min(5).max(2048).nullable().optional(),
+  personalEmail: teacherPersonalEmailSchema.optional(),
 };
 const schema = z.discriminatedUnion('action', [
   z.object({
@@ -29,6 +31,7 @@ const schema = z.discriminatedUnion('action', [
     groupIds: z.array(z.uuid()).min(2).max(30).optional(),
     componentId: z.uuid().optional(),
     teacherId: z.uuid().optional(),
+    personalEmail: teacherPersonalEmailSchema.optional(),
     roomId: z.uuid().nullable(),
     mode: z.enum(['COURS', 'EN_LIGNE']).default('COURS'),
     meetingUrl: session.meetingUrl,
@@ -36,9 +39,9 @@ const schema = z.discriminatedUnion('action', [
   }).strict(),
   z.object({ ...common, ...session, action: z.literal('create_session'), slots: z.array(slotSchema).min(1).max(60).optional() }).strict(),
   z.object({ ...common, ...session, action: z.literal('update_session'), sessionId: z.uuid() }).strict(),
-  z.object({ ...common, ...times, action: z.literal('move_session'), sessionId: z.uuid() }).strict(),
+  z.object({ ...common, ...times, action: z.literal('move_session'), sessionId: z.uuid(), personalEmail: teacherPersonalEmailSchema.optional() }).strict(),
   z.object({ ...common, action: z.literal('cancel_session'), sessionId: z.uuid() }).strict(),
-  z.object({ ...common, action: z.literal('replace_teacher'), sessionId: z.uuid(), teacherId: z.uuid().nullable() }).strict(),
+  z.object({ ...common, action: z.literal('replace_teacher'), sessionId: z.uuid(), teacherId: z.uuid().nullable(), personalEmail: teacherPersonalEmailSchema.optional() }).strict(),
   z.object({ ...common, action: z.literal('generate_online_link'), sessionId: z.uuid(), customMeetingUrl: z.string().trim().min(5).max(2048).nullable().optional() }).strict(),
   z.object({ ...common, action: z.literal('sync_recording'), sessionId: z.uuid(), recordingUrl: z.string().trim().min(5).max(2048).nullable().optional() }).strict(),
   z.object({ ...common, ...times, action: z.literal('block_period'), name: z.string().trim().min(1).max(160), siteId: z.uuid().nullable(), kind: z.enum(['JOUR_FERIE', 'VACANCES', 'FERMETURE', 'EXAMEN', 'AUTRE']) }).strict(),
@@ -72,14 +75,25 @@ export async function POST(request: Request) {
     if (body.revision !== data.snapshot.revision) throw new RequestError(409, 'Le planning a changé. Actualisez avant de réessayer.');
     if ('startsAt' in body && Date.parse(body.endsAt) <= Date.parse(body.startsAt)) throw new RequestError(400, 'La fin doit être postérieure au début.');
     const rows = (table: string) => data.snapshot.tables[table] || [];
-    const requireTeacherContact = (teacherId: string) => {
+    const changes: PersistentChange[] = [];
+    const prepChanges: PersistentChange[] = [];
+    const contactUpdates: Array<{ person: DatabaseRow; teacherId: string; email: string }> = [];
+    const requireTeacherContact = (teacherId: string, inlineTargetList: PersistentChange[] = changes) => {
       const teacher = rows('teachers').find(row => row.id === teacherId);
       const staff = rows('staff').find(row => row.id === teacher?.staff_id);
       const person = rows('people').find(row => row.id === staff?.person_id && !row.archived_at);
-      if (!teacherPersonalEmailSchema.safeParse(person?.email).success) throw new RequestError(409, 'Renseignez l’e-mail personnel de l’enseignant avant de programmer cette séance.');
+      if (teacherPersonalEmailSchema.safeParse(person?.email).success) return;
+      const providedEmail = 'personalEmail' in body ? body.personalEmail : undefined;
+      if (person && providedEmail && teacherPersonalEmailSchema.safeParse(providedEmail).success) {
+        if (!contactUpdates.some(u => u.person.id === person.id)) {
+          inlineTargetList.push({ table: 'people', operation: 'update', record: { id: person.id, email: providedEmail } });
+          contactUpdates.push({ person, teacherId, email: providedEmail });
+        }
+        return;
+      }
+      throw new RequestError(409, 'Renseignez l’e-mail personnel de l’enseignant avant de programmer cette séance.');
     };
     let id = '';
-    const changes: PersistentChange[] = [];
     if (body.action === 'create_shared_course') {
       if ((body.mode === 'EN_LIGNE') !== (body.roomId === null)) throw new RequestError(400, 'Une séance en ligne ne réserve pas de salle ; une séance en présentiel exige une salle.');
       if (body.roomId && !data.directory.rooms.some(room => room.id === body.roomId && room.available)) throw new RequestError(409, 'Choisissez une salle disponible.');
@@ -110,7 +124,7 @@ export async function POST(request: Request) {
         if (!teacher || !teacher.active) {
           throw new RequestError(409, 'L’enseignant sélectionné doit être actif.');
         }
-        requireTeacherContact(teacher.id);
+        requireTeacherContact(teacher.id, prepChanges);
 
         const sourceComp = rows('curriculum_components').find(c => c.id === body.componentId && !c.archived_at);
         if (!sourceComp) {
@@ -124,7 +138,6 @@ export async function POST(request: Request) {
           throw new RequestError(400, 'Le créneau doit appartenir à l’année scolaire sélectionnée.');
         }
 
-        const prepChanges: PersistentChange[] = [];
         const createdSems: DatabaseRow[] = [];
         const createdUnits: DatabaseRow[] = [];
         const createdComps: DatabaseRow[] = [];
@@ -159,6 +172,21 @@ export async function POST(request: Request) {
           let targetSemId = targetComp
             ? String(allUnits.find(u => u.id === targetComp!.unit_id)?.semester_id || '')
             : '';
+
+          if (!targetComp) {
+            const currRow = rows('curricula').find(c => String(c.id) === currId);
+            if (currRow && String(currRow.status) !== 'DRAFT') {
+              const fallbackComp = allComps.find(
+                c => !c.archived_at && String(c.curriculum_id) === currId && c.unit_id != null
+              );
+              if (fallbackComp) {
+                targetComp = fallbackComp;
+                targetSemId = String(allUnits.find(u => u.id === targetComp!.unit_id)?.semester_id || '');
+              } else {
+                throw new RequestError(409, 'La maquette d’un groupe sélectionné est verrouillée et ne contient pas cette matière.');
+              }
+            }
+          }
 
           if (!targetComp) {
             const allSems = [...rows('curriculum_semesters'), ...createdSems];
@@ -301,7 +329,16 @@ export async function POST(request: Request) {
         if (!resolvedAssignmentIds.every(assignmentId => data.directory.assignments.some(assignment => assignment.id === assignmentId))) {
           throw new RequestError(404, 'Une affectation est absente de votre périmètre ou de l’année sélectionnée.');
         }
-        for (const assignmentId of resolvedAssignmentIds) requireTeacherContact(data.directory.assignments.find(row => row.id === assignmentId)!.teacherId);
+        for (const assignmentId of resolvedAssignmentIds) requireTeacherContact(data.directory.assignments.find(row => row.id === assignmentId)!.teacherId, prepChanges);
+        if (prepChanges.length > 0) {
+          const prepSaved = await data.client.rpc('escen_backend_transaction', {
+            p_actor_id: data.context.accountId,
+            p_expected_revision: currentRevision,
+            p_changes: prepChanges,
+          });
+          if (prepSaved.error) throw new RequestError(409, scheduleDatabaseError(prepSaved.error));
+          currentRevision = Number(prepSaved.data);
+        }
       }
 
       const teacherId = data.directory.assignments.find(row => row.id === resolvedAssignmentIds[0])?.teacherId || body.teacherId;
@@ -335,6 +372,9 @@ export async function POST(request: Request) {
           p_starts_at: slot.startsAt, p_ends_at: slot.endsAt, p_reason: body.reason, ...onlineParams });
         if (saved.error) throw new RequestError(409, scheduleDatabaseError(saved.error));
         currentRevision = Number(saved.data);
+      }
+      for (const update of contactUpdates) {
+        await emailExistingTeacherAccess(data.client, data.snapshot, update.person, update.teacherId, update.email, data.context.accountId);
       }
       return Response.json({ id, count: slotList.length, revision: currentRevision }, { status: 201, headers: { 'Cache-Control': 'no-store' } });
     } else if (body.action === 'block_period') {
@@ -502,12 +542,25 @@ export async function POST(request: Request) {
       }
       if (current?.shared) {
         if (body.action === 'update_session') throw new RequestError(409, 'Utilisez le déplacement, le remplacement ou l’annulation du cours commun pour conserver ses affectations.');
+        let currentRevision = body.revision;
+        if (changes.length > 0) {
+          const prepSaved = await data.client.rpc('escen_backend_transaction', {
+            p_actor_id: data.context.accountId,
+            p_expected_revision: currentRevision,
+            p_changes: changes,
+          });
+          if (prepSaved.error) throw new RequestError(409, scheduleDatabaseError(prepSaved.error));
+          currentRevision = Number(prepSaved.data);
+        }
         const saved = await data.client.rpc('escen_shared_course_change', { p_actor_id: data.context.accountId, p_role_code: data.context.roleCode,
-          p_expected_revision: body.revision, p_session_id: current.id, p_reason: body.reason,
+          p_expected_revision: currentRevision, p_session_id: current.id, p_reason: body.reason,
           p_action: body.action === 'move_session' ? 'move' : body.action === 'cancel_session' ? 'cancel' : 'replace_teacher',
           p_starts_at: body.action === 'move_session' ? body.startsAt : null, p_ends_at: body.action === 'move_session' ? body.endsAt : null,
           p_teacher_id: body.action === 'replace_teacher' ? body.teacherId : null });
         if (saved.error) throw new RequestError(409, scheduleDatabaseError(saved.error));
+        for (const update of contactUpdates) {
+          await emailExistingTeacherAccess(data.client, data.snapshot, update.person, update.teacherId, update.email, data.context.accountId);
+        }
         return Response.json({ id: current.id, count: 1, revision: saved.data }, { headers: { 'Cache-Control': 'no-store' } });
       }
       const original = current ? rows('sessions').find(session => session.id === current.id)! : undefined;
@@ -561,6 +614,10 @@ export async function POST(request: Request) {
     }
     const saved = await data.client.rpc('escen_backend_transaction', { p_actor_id: data.context.accountId, p_expected_revision: body.revision, p_changes: changes });
     if (saved.error) throw new RequestError(409, scheduleDatabaseError(saved.error));
-    return Response.json({ id, count: changes.length, revision: saved.data }, { status: changes[0]?.operation === 'insert' ? 201 : 200, headers: { 'Cache-Control': 'no-store' } });
+    for (const update of contactUpdates) {
+      await emailExistingTeacherAccess(data.client, data.snapshot, update.person, update.teacherId, update.email, data.context.accountId);
+    }
+    const createdRecord = changes.some(change => change.operation === 'insert');
+    return Response.json({ id, count: changes.length, revision: saved.data }, { status: createdRecord ? 201 : 200, headers: { 'Cache-Control': 'no-store' } });
   } catch (error) { return errorResponse(error instanceof TeamsIntegrationError ? new RequestError(503, error.message) : error); }
 }

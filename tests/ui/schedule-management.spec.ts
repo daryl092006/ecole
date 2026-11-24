@@ -552,3 +552,38 @@ for (const width of [390, 1440]) test(`Cours commun en ligne : confirmation sans
   expect(session).toMatchObject({ mode: 'EN_LIGNE', room_id: null, meeting_provider: 'TEAMS' });
   expect(fixture.snapshot.tables.session_participants.filter(row => row.session_id === session.id)).toHaveLength(2);
 });
+
+test('Cours commun : saisie directe de l’e-mail personnel de l’enseignant et récurrence multi-dates', async ({ page }) => {
+  await page.setViewportSize({ width: 1440, height: 950 });
+  const fixture = await connectedSchedule(page);
+  fixture.snapshot.tables.people[0].email = 'k.alexandre.coach@escen.university';
+  const year = fixture.snapshot.tables.academic_years.find(row => row.id === id.year)!;
+  Object.assign(year, { starts_on: '2026-10-01', ends_on: '2027-07-01' });
+
+  await page.goto('/academique/emploi-du-temps');
+  await page.getByRole('button', { name: 'Programmer un cours commun', exact: true }).click();
+  const dialog = page.getByRole('dialog', { name: 'Nouveau cours commun', exact: true });
+  await dialog.getByRole('checkbox', { name: 'Groupe 1', exact: true }).check();
+  await dialog.getByRole('checkbox', { name: 'Groupe 2', exact: true }).check();
+  const assignment = fixture.snapshot.tables.teaching_assignments.find(row => row.id === id.assignment(0))!;
+  await dialog.getByLabel('Matière du cours', { exact: true }).selectOption(String(assignment.component_id));
+  await expect(dialog.getByLabel('Enseignant du cours', { exact: true })).toHaveValue(String(assignment.teacher_id));
+
+  await dialog.getByLabel('E-mail personnel de l’enseignant', { exact: true }).fill('mikibankolani@gmail.com');
+  await dialog.getByRole('combobox', { name: 'Salle prévue', exact: true }).selectOption(uuid(950));
+  await dialog.getByRole('button', { name: 'Récurrence / Plusieurs dates', exact: true }).click();
+  const picker = dialog.getByRole('region', { name: 'Choisir les dates des séances' });
+  await picker.getByLabel('Mois des séances', { exact: true }).fill('2026-10');
+  await picker.getByRole('button', { name: 'mercredi 21 octobre 2026', exact: true }).click();
+  await picker.getByRole('button', { name: 'mercredi 28 octobre 2026', exact: true }).click();
+
+  await dialog.getByRole('button', { name: 'Vérifier les informations', exact: true }).click();
+  const review = dialog.getByRole('region', { name: 'Vérification avant enregistrement' });
+  await expect(review).toContainText('mikibankolani@gmail.com');
+  await expect(review).toContainText('Groupe 1 + Groupe 2');
+  await expect(review).toContainText('21/10/2026 (08:00–12:00)');
+  await expect(review).toContainText('28/10/2026 (08:00–12:00)');
+  await dialog.getByRole('button', { name: /^Confirmer/ }).click();
+  await expect(dialog).not.toBeVisible();
+  expect(fixture.snapshot.tables.people[0].email).toBe('mikibankolani@gmail.com');
+});
