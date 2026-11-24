@@ -130,6 +130,27 @@ try {
     assert.equal(unavailable.status, 503, JSON.stringify(await unavailable.json()));
     assert.equal(await revision(), before); assert.equal(await audits(), count); assert.equal(meetings, 1);
   });
+  await check('Cours commun inter-maquettes (DRAFT) : création automatique de la matière sans colonne coefficient obsolète', async () => {
+    const draftProgram = await insert('programs', { code: 'SHARED-DRAFT-2', name: 'Formation brouillon cours commun' });
+    const draftCurr = await insert('curricula', { program_id: draftProgram.id, level_id: level.id, version: 1, status: 'DRAFT' });
+    const draftOffering = await insert('academic_offerings', { curriculum_id: draftCurr.id, academic_year_id: year.id, level_id: level.id, site_id: site.id });
+    const draftGroup = await insert('groups', { academic_year_id: year.id, level_id: level.id, site_id: site.id, name: 'Groupe maquette brouillon' });
+    await insert('group_offerings', { group_id: draftGroup.id, offering_id: draftOffering.id, academic_year_id: year.id, level_id: level.id, site_id: site.id });
+    const res = await post({
+      action: 'create_shared_course',
+      groupIds: [anchor.group_id, draftGroup.id],
+      componentId: anchor.component_id,
+      teacherId: anchor.teacher_id,
+      roomId: null,
+      mode: 'EN_LIGNE',
+      meetingUrl: 'https://teams.microsoft.com/l/meetup-join/shared-draft-curriculum',
+      startsAt: '2027-06-15T08:00:00Z',
+      endsAt: '2027-06-15T10:00:00Z',
+    });
+    const body = await res.json();
+    assert.equal(res.status, 201, JSON.stringify(body));
+    assert.equal(await value('select count(*)::int as value from escen.session_participants where session_id=$1', [body.id]), 2);
+  });
   console.log(`${checks} contrôles planning et cours communs en ligne réussis (PGlite local).`);
 } finally {
   globalThis.fetch = originalFetch;

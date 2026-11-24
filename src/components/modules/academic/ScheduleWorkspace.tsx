@@ -479,7 +479,10 @@ function ScheduleManager() {
           setSuccess(isMultiCreate && multiSlots.length > 1 ? `${multiSlots.length} séances programmées avec succès.` : 'Planning enregistré. Le motif et l’historique sont conservés.');
           setReload(value => value + 1);
           portal.refreshCampus();
-        }).catch(cause => setSaveError(cause instanceof Error ? cause.message : 'Enregistrement impossible.')).finally(() => setSaving(false));
+        }).catch(cause => {
+          setSaveError(cause instanceof Error ? cause.message : 'Enregistrement impossible.');
+          void loadSchedule(activeRole).then(updated => setDirectory(updated)).catch(() => {});
+        }).finally(() => setSaving(false));
       }}>
       {contactMessage && <p className="review-notice" role="status">{contactMessage}</p>}
       {missingContact && (

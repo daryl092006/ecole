@@ -176,15 +176,7 @@ export async function POST(request: Request) {
           if (!targetComp) {
             const currRow = rows('curricula').find(c => String(c.id) === currId);
             if (currRow && String(currRow.status) !== 'DRAFT') {
-              const fallbackComp = allComps.find(
-                c => !c.archived_at && String(c.curriculum_id) === currId && c.unit_id != null
-              );
-              if (fallbackComp) {
-                targetComp = fallbackComp;
-                targetSemId = String(allUnits.find(u => u.id === targetComp!.unit_id)?.semester_id || '');
-              } else {
-                throw new RequestError(409, 'La maquette d’un groupe sélectionné est verrouillée et ne contient pas cette matière.');
-              }
+              throw new RequestError(409, 'La maquette d’un groupe sélectionné est verrouillée et ne contient pas cette matière.');
             }
           }
 
@@ -232,7 +224,6 @@ export async function POST(request: Request) {
               unit_id: String(unit.id),
               curriculum_id: currId,
               code: compCode,
-              coefficient: Math.max(Number(sourceComp.coefficient) || 1, 0.001),
               credits: Math.max(Number(sourceComp.credits) || 0, 0),
             };
             createdComps.push(targetComp);
@@ -313,6 +304,22 @@ export async function POST(request: Request) {
         }
 
         if (prepChanges.length > 0) {
+          for (const slot of slotList) {
+            if (rows('blocked_periods').some(period => (!period.academic_year_id || period.academic_year_id === data.year.selectedYearId) && (!period.site_id || !primarySiteId || String(period.site_id) === primarySiteId) && overlaps(slot.startsAt, slot.endsAt, period))) {
+              throw new RequestError(409, 'Ce créneau se trouve dans une période bloquée.');
+            }
+            for (const gid of body.groupIds) {
+              const conflict = scheduleConflict(data.snapshot, {
+                id: '',
+                starts_at: slot.startsAt,
+                ends_at: slot.endsAt,
+                group_id: gid,
+                teacher_id: teacher.id,
+                room_id: body.roomId,
+              });
+              if (conflict) throw new RequestError(409, conflict);
+            }
+          }
           const prepSaved = await data.client.rpc('escen_backend_transaction', {
             p_actor_id: data.context.accountId,
             p_expected_revision: currentRevision,
