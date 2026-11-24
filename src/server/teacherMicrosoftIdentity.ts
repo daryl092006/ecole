@@ -2,6 +2,7 @@ import 'server-only';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import type { DatabaseRow, RelationalSnapshot } from '@/types/persistence';
 import { protectedTeacherAccount } from '@/server/protectedTeacherAccounts';
+import { sanitizeNameToken } from '@/services/microsoftGraphService';
 
 /** The personal contact address must never become the organizer of an ESCEN Teams meeting. */
 export async function teacherMicrosoftEmail(client: SupabaseClient, snapshot: RelationalSnapshot, person?: DatabaseRow): Promise<string | null> {
@@ -16,6 +17,10 @@ export async function teacherMicrosoftEmail(client: SupabaseClient, snapshot: Re
       if (email) return email;
     }
   }
+  const fallbackFirst = sanitizeNameToken(String(person.firstname || '').split(/[\s-]+/)[0] || '');
+  const fallbackInitial = sanitizeNameToken(String(person.lastname || ''))[0] || '';
+  const generatedFallback = fallbackFirst && fallbackInitial ? `${fallbackInitial}.${fallbackFirst}.coach@escen.university` : null;
   return protectedTeacherAccount(String(person.firstname || ''), String(person.lastname || ''))?.email
-    || institutional(person.email);
+    || institutional(person.email)
+    || generatedFallback;
 }

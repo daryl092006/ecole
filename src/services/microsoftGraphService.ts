@@ -351,8 +351,13 @@ export async function createTeamsOnlineMeeting(params: {
 
   try {
     const organizerId = await teamsOrganizerId(token, organizerUpn);
-    const teacherId = await teamsOrganizerId(token, teacherUpn);
-    const coorganizer = { upn: teacherUpn, role: 'coorganizer', identity: { user: { id: teacherId } } };
+    let teacherId: string | null = null;
+    try {
+      teacherId = await teamsOrganizerId(token, teacherUpn);
+    } catch {
+      teacherId = null;
+    }
+    const coorganizer = teacherId ? { upn: teacherUpn, role: 'coorganizer', identity: { user: { id: teacherId } } } : null;
     const meetingRes = await fetch(
       `https://graph.microsoft.com/v1.0/users/${encodeURIComponent(organizerId)}/onlineMeetings/createOrGet`,
       {
@@ -368,7 +373,7 @@ export async function createTeamsOnlineMeeting(params: {
           subject: params.subject,
           externalId: params.sessionId,
           recordAutomatically: true,
-          participants: { attendees: [coorganizer] },
+          ...(coorganizer ? { participants: { attendees: [coorganizer] } } : {}),
         }),
         signal: AbortSignal.timeout(15000),
       }
@@ -378,16 +383,16 @@ export async function createTeamsOnlineMeeting(params: {
       const data = (await meetingRes.json()) as { id?: string; joinWebUrl?: string; participants?: { attendees?: Array<{ upn?: string; role?: string; identity?: { user?: { id?: string } } }> } };
       if (data.id && data.joinWebUrl) {
         // createOrGet may return an existing meeting: confirm the requested settings on it too.
-        const attendees = (data.participants?.attendees || []).filter(person => person.identity?.user?.id !== teacherId && person.upn?.toLowerCase() !== teacherUpn);
+        const attendees = (data.participants?.attendees || []).filter(person => !teacherId || (person.identity?.user?.id !== teacherId && person.upn?.toLowerCase() !== teacherUpn));
         const configured = await fetch(`https://graph.microsoft.com/v1.0/users/${encodeURIComponent(organizerId)}/onlineMeetings/${encodeURIComponent(data.id)}`, {
           method: 'PATCH', headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json', Prefer: 'include-unknown-enum-members' },
           signal: AbortSignal.timeout(15000),
           body: JSON.stringify({ startDateTime: params.startDateTime, endDateTime: params.endDateTime, subject: params.subject,
-            recordAutomatically: true, participants: { attendees: [...attendees, coorganizer] } }),
+            recordAutomatically: true, ...(coorganizer ? { participants: { attendees: [...attendees, coorganizer] } } : {}) }),
         });
         if (!configured.ok) throw new TeamsIntegrationError('La réunion existe, mais Microsoft n’a pas confirmé le professeur coorganisateur et l’enregistrement automatique.');
         const confirmed = await configured.json() as { recordAutomatically?: boolean; participants?: { attendees?: Array<{ role?: string; identity?: { user?: { id?: string } } }> } };
-        if (confirmed.recordAutomatically !== true || !confirmed.participants?.attendees?.some(person => person.identity?.user?.id === teacherId && person.role === 'coorganizer')) {
+        if (confirmed.recordAutomatically !== true || (teacherId && !confirmed.participants?.attendees?.some(person => person.identity?.user?.id === teacherId && person.role === 'coorganizer'))) {
           throw new TeamsIntegrationError('Microsoft n’a pas confirmé les paramètres du cours : professeur coorganisateur et enregistrement automatique.');
         }
         return {
