@@ -34,8 +34,11 @@ export default function TeachersWorkspace() {
   const [section, setSection] = useState<'teachers' | 'assignments'>('teachers');
   const [operation, setOperation] = useState<Operation | null>(null);
   const [form, setForm] = useState(blank);
+  const [teacherModalQuery, setTeacherModalQuery] = useState('');
+  const [subjectModalQuery, setSubjectModalQuery] = useState('');
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState('');
+  const normalizeSearch = (value: string) => value.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().trim();
   useEffect(() => {
     const controller = new AbortController();
     setLoading(true); setError(''); setOperation(null);
@@ -45,7 +48,7 @@ export default function TeachersWorkspace() {
     return () => controller.abort();
   }, [activeRole, academicYearSelection, reload]);
   const open = (next: Operation, teacherId = '') => {
-    setOperation(next); setSaveError('');
+    setOperation(next); setSaveError(''); setTeacherModalQuery(''); setSubjectModalQuery('');
     setForm({ ...blank(), teacherId,
       ...(next.kind === 'end_assignment' ? { endOn: next.assignment.validUntil || new Date().toISOString().slice(0, 10) } : {}) });
   };
@@ -199,14 +202,54 @@ export default function TeachersWorkspace() {
       {operation.kind === 'set_active' && <p>{operation.teacher.name} : {operation.teacher.active ? 'Actif → Inactif' : 'Inactif → Actif'}</p>}
       {operation.kind === 'create_profile' && <label className="form-group">E-mail personnel<input className="input" aria-label="E-mail personnel" type="email" required maxLength={254} value={form.personalEmail} onChange={event => setForm({ ...form, personalEmail: event.target.value })} /><span className="cell-sub">Les accès Microsoft 365 et au portail enseignant seront envoyés à cette adresse.</span></label>}
       {operation.kind === 'create_assignment' && <div className="form-grid">
-        <label className="form-group">Enseignant<select className="select-input" required value={form.teacherId} onChange={event => setForm({ ...form, teacherId: event.target.value })}><option value="">Choisir un enseignant actif</option>{directory.teachers.filter(teacher => teacher.active).map(teacher => <option key={teacher.id} value={teacher.id}>{teacher.name}</option>)}</select></label>
+        <div className="form-group">
+          <label className="form-label" htmlFor="teachers-assign-teacher-select">Enseignant</label>
+          <input
+            type="search"
+            aria-label="Rechercher un enseignant pour l’affectation"
+            className="input mb-1"
+            placeholder="Rechercher un enseignant par nom…"
+            value={teacherModalQuery}
+            onChange={event => {
+              const nextQuery = event.target.value;
+              setTeacherModalQuery(nextQuery);
+              const norm = normalizeSearch(nextQuery);
+              if (norm) {
+                const match = directory.teachers.find(t => t.active && normalizeSearch(t.name).includes(norm));
+                if (match) setForm(prev => ({ ...prev, teacherId: match.id }));
+              }
+            }}
+          />
+          <select id="teachers-assign-teacher-select" aria-label="Enseignant" className="select-input" required value={form.teacherId} onChange={event => setForm({ ...form, teacherId: event.target.value })}><option value="">Choisir un enseignant actif</option>{directory.teachers.filter(teacher => teacher.active && (!normalizeSearch(teacherModalQuery) || teacher.id === form.teacherId || normalizeSearch(teacher.name).includes(normalizeSearch(teacherModalQuery)))).map(teacher => <option key={teacher.id} value={teacher.id}>{teacher.name}</option>)}</select>
+        </div>
         <label className="form-group">Formation annuelle<select className="select-input" required value={form.offeringId} onChange={event => {
           const nextOfferingId = event.target.value;
           const matchingGroups = directory.groups.filter(group => group.offeringIds.includes(nextOfferingId));
+          setSubjectModalQuery('');
           setForm({ ...form, offeringId: nextOfferingId, groupId: matchingGroups.length === 1 ? matchingGroups[0].id : '', componentId: '' });
         }}><option value="">Choisir une formation</option>{directory.offerings.map(row => <option key={row.id} value={row.id}>{row.label}</option>)}</select></label>
         <label className="form-group">Groupe<select className="select-input" required disabled={!offering} value={form.groupId} onChange={event => setForm({ ...form, groupId: event.target.value })}><option value="">Choisir un groupe rattaché</option>{directory.groups.filter(group => group.offeringIds.includes(form.offeringId)).map(group => <option key={group.id} value={group.id}>{group.label}</option>)}</select></label>
-        <label className="form-group">Matière du programme<select className="select-input" required disabled={!offering} value={form.componentId} onChange={event => setForm({ ...form, componentId: event.target.value })}><option value="">Choisir une matière de la maquette</option>{directory.components.filter(component => component.curriculumId === offering?.curriculumId).map(component => <option key={component.id} value={component.id}>{component.label}</option>)}</select></label>
+        <div className="form-group">
+          <label className="form-label" htmlFor="teachers-assign-subject-select">Matière du programme</label>
+          <input
+            type="search"
+            aria-label="Rechercher une matière du programme"
+            className="input mb-1"
+            placeholder="Rechercher une matière par nom ou code…"
+            disabled={!offering}
+            value={subjectModalQuery}
+            onChange={event => {
+              const nextQuery = event.target.value;
+              setSubjectModalQuery(nextQuery);
+              const norm = normalizeSearch(nextQuery);
+              if (norm) {
+                const match = directory.components.find(c => c.curriculumId === offering?.curriculumId && normalizeSearch(c.label).includes(norm));
+                if (match) setForm(prev => ({ ...prev, componentId: match.id }));
+              }
+            }}
+          />
+          <select id="teachers-assign-subject-select" aria-label="Matière du programme" className="select-input" required disabled={!offering} value={form.componentId} onChange={event => setForm({ ...form, componentId: event.target.value })}><option value="">Choisir une matière de la maquette</option>{directory.components.filter(component => component.curriculumId === offering?.curriculumId && (!normalizeSearch(subjectModalQuery) || component.id === form.componentId || normalizeSearch(component.label).includes(normalizeSearch(subjectModalQuery)))).map(component => <option key={component.id} value={component.id}>{component.label}</option>)}</select>
+        </div>
         <label className="form-group">Début de l’affectation<input className="input" type="date" required value={form.validFrom} onChange={event => setForm({ ...form, validFrom: event.target.value })} /></label>
         <label className="form-group">Fin prévue (facultative)<input className="input" type="date" min={form.validFrom} value={form.validUntil} onChange={event => setForm({ ...form, validUntil: event.target.value })} /></label>
       </div>}

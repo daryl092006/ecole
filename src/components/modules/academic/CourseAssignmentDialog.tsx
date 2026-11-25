@@ -18,7 +18,9 @@ export default function CourseAssignmentDialog({ groupId, offeringId, componentI
   const [directory, setDirectory] = useState<TeacherDirectory | null>(null);
   const [error, setError] = useState(''), [retry, setRetry] = useState(0), [busy, setBusy] = useState(false);
   const [teacherId, setTeacherId] = useState(''), [from, setFrom] = useState(defaultFrom), [until, setUntil] = useState('');
+  const [teacherQuery, setTeacherQuery] = useState('');
   const [savedId, setSavedId] = useState('');
+  const normalizeSearch = (value: string) => value.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().trim();
   useEffect(() => {
     const controller = new AbortController(); setError('');
     void loadTeachers(portal.activeRole, controller.signal).then(data => { if (!controller.signal.aborted) setDirectory(data); }).catch(cause => { if (!controller.signal.aborted) setError(cause.message); });
@@ -46,7 +48,31 @@ export default function CourseAssignmentDialog({ groupId, offeringId, componentI
     }}>
       <fieldset disabled={busy || Boolean(savedId)}>
       <p>{directory.groups.find(row => row.id === groupId)?.label} · {directory.components.find(row => row.id === componentId)?.label}</p>
-      <label className="form-group">Enseignant<select aria-label="Enseignant" className="select-input" required value={teacherId} onChange={event => setTeacherId(event.target.value)}><option value="">Choisir un enseignant</option>{directory.teachers.filter(row => row.active).map(row => <option key={row.id} value={row.id}>{row.name}</option>)}</select></label>
+      <div className="form-group">
+        <label className="form-label" htmlFor="assign-dialog-teacher-select">Enseignant</label>
+        <input
+          type="search"
+          aria-label="Rechercher un enseignant"
+          className="input mb-1"
+          placeholder="Rechercher un enseignant par nom…"
+          value={teacherQuery}
+          onChange={event => {
+            const nextQuery = event.target.value;
+            setTeacherQuery(nextQuery);
+            const norm = normalizeSearch(nextQuery);
+            if (norm) {
+              const match = directory.teachers.find(row => row.active && normalizeSearch(row.name).includes(norm));
+              if (match) setTeacherId(match.id);
+            }
+          }}
+        />
+        <select id="assign-dialog-teacher-select" aria-label="Enseignant" className="select-input" required value={teacherId} onChange={event => setTeacherId(event.target.value)}>
+          <option value="">Choisir un enseignant</option>
+          {directory.teachers
+            .filter(row => row.active && (!normalizeSearch(teacherQuery) || row.id === teacherId || normalizeSearch(row.name).includes(normalizeSearch(teacherQuery))))
+            .map(row => <option key={row.id} value={row.id}>{row.name}</option>)}
+        </select>
+      </div>
       {!directory.teachers.some(row => row.active) && <p>Aucun enseignant actif. <Link href="/personnel/enseignants">Complétez les profils dans « Enseignants et affectations »</Link> avant de programmer ce cours.</p>}
       <label className="form-group">Début de l’enseignement<input className="input" type="date" required value={from} onChange={event => setFrom(event.target.value)} /></label>
       <label className="form-group">Fin de l’enseignement (facultative)<input className="input" type="date" min={from} value={until} onChange={event => setUntil(event.target.value)} /></label>

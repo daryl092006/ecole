@@ -88,8 +88,11 @@ function ScheduleManager() {
   const [sharedGroupIds, setSharedGroupIds] = useState<string[]>([]);
   const [sharedComponentId, setSharedComponentId] = useState('');
   const [sharedTeacherId, setSharedTeacherId] = useState('');
+  const [sharedSubjectQuery, setSharedSubjectQuery] = useState('');
+  const [sharedTeacherQuery, setSharedTeacherQuery] = useState('');
   const [multiStartTime, setMultiStartTime] = useState('08:00');
   const [multiEndTime, setMultiEndTime] = useState('12:00');
+  const normalizeSearch = (value: string) => value.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().trim();
 
 
   useEffect(() => {
@@ -148,6 +151,8 @@ function ScheduleManager() {
     setSharedGroupIds(requestedGroup ? [requestedGroup] : groupId ? [groupId] : []);
     setSharedComponentId(requestedComponent || '');
     setSharedTeacherId('');
+    setSharedSubjectQuery('');
+    setSharedTeacherQuery('');
     setContactEmail(''); setContactStep(false); setContactMessage('');
     setCadence('single');
     setSelectedDates([]);
@@ -579,9 +584,37 @@ function ScheduleManager() {
                 </p>
               )}
             </fieldset>
-            <label className="form-group">
-              Matière du cours
+            <div className="form-group">
+              <label className="form-label" htmlFor="shared-course-subject-select">Matière du cours</label>
+              <input
+                type="search"
+                aria-label="Rechercher une matière"
+                className="input mb-1"
+                placeholder="Rechercher une matière par nom ou code…"
+                disabled={sharedGroupIds.length < 2}
+                value={sharedSubjectQuery}
+                onChange={event => {
+                  const nextQuery = event.target.value;
+                  setSharedSubjectQuery(nextQuery);
+                  const norm = normalizeSearch(nextQuery);
+                  if (norm) {
+                    const match = sharedAvailableComponents.find(row => normalizeSearch(row.label).includes(norm));
+                    if (match && match.id !== sharedComponentId) {
+                      setSharedComponentId(match.id);
+                      const matchingAssign = directory.assignments.find(a => {
+                        const comp = directory.components.find(c => c.id === a.componentId);
+                        return sharedGroupIds.includes(a.groupId) && comp && (comp.subjectId === match.subjectId || comp.id === match.id) && directory.teachers.some(t => t.id === a.teacherId && t.active);
+                      }) || directory.assignments.find(a => {
+                        const comp = directory.components.find(c => c.id === a.componentId);
+                        return comp && (comp.subjectId === match.subjectId || comp.id === match.id) && directory.teachers.some(t => t.id === a.teacherId && t.active);
+                      });
+                      if (matchingAssign) setSharedTeacherId(matchingAssign.teacherId);
+                    }
+                  }
+                }}
+              />
               <select
+                id="shared-course-subject-select"
                 aria-label="Matière du cours"
                 className="select-input"
                 required
@@ -613,14 +646,37 @@ function ScheduleManager() {
                 }}
               >
                 <option value="">{sharedGroupIds.length < 2 ? 'Cochez d’abord au moins 2 groupes' : 'Choisir une matière'}</option>
-                {sharedAvailableComponents.map(row => (
-                  <option key={row.id} value={row.id}>{row.label}</option>
-                ))}
+                {sharedAvailableComponents
+                  .filter(row => !normalizeSearch(sharedSubjectQuery) || row.id === sharedComponentId || normalizeSearch(row.label).includes(normalizeSearch(sharedSubjectQuery)))
+                  .map(row => (
+                    <option key={row.id} value={row.id}>{row.label}</option>
+                  ))}
               </select>
-            </label>
-            <label className="form-group">
-              Enseignant du cours
+            </div>
+            <div className="form-group">
+              <label className="form-label" htmlFor="shared-course-teacher-select">Enseignant du cours</label>
+              <input
+                type="search"
+                aria-label="Rechercher un enseignant"
+                className="input mb-1"
+                placeholder="Rechercher un enseignant par nom…"
+                disabled={sharedGroupIds.length < 2 || !sharedComponentId}
+                value={sharedTeacherQuery}
+                onChange={event => {
+                  const nextQuery = event.target.value;
+                  setSharedTeacherQuery(nextQuery);
+                  const norm = normalizeSearch(nextQuery);
+                  if (norm) {
+                    const sortedTeachers = directory.teachers
+                      .filter(teacher => teacher.active)
+                      .sort((a, b) => Number(sharedSubjectAssignedTeacherIds.has(b.id)) - Number(sharedSubjectAssignedTeacherIds.has(a.id)) || a.name.localeCompare(b.name, 'fr'));
+                    const match = sortedTeachers.find(t => normalizeSearch(t.name).includes(norm));
+                    if (match && match.id !== sharedTeacherId) setSharedTeacherId(match.id);
+                  }
+                }}
+              />
               <select
+                id="shared-course-teacher-select"
                 aria-label="Enseignant du cours"
                 className="select-input"
                 required
@@ -630,7 +686,7 @@ function ScheduleManager() {
               >
                 <option value="">Choisir l’enseignant</option>
                 {directory.teachers
-                  .filter(teacher => teacher.active)
+                  .filter(teacher => teacher.active && (!normalizeSearch(sharedTeacherQuery) || teacher.id === sharedTeacherId || normalizeSearch(teacher.name).includes(normalizeSearch(sharedTeacherQuery))))
                   .sort((a, b) => Number(sharedSubjectAssignedTeacherIds.has(b.id)) - Number(sharedSubjectAssignedTeacherIds.has(a.id)) || a.name.localeCompare(b.name, 'fr'))
                   .map(teacher => (
                     <option key={teacher.id} value={teacher.id}>
@@ -638,12 +694,22 @@ function ScheduleManager() {
                     </option>
                   ))}
               </select>
-            </label>
+            </div>
           </fieldset>
         ) : (
-          <label className="form-group">
-            Affectation
+          <div className="form-group">
+            <label className="form-label" htmlFor="schedule-update-assignment-select">Affectation</label>
+            <input
+              type="search"
+              aria-label="Rechercher une affectation"
+              className="input mb-1"
+              placeholder="Rechercher par matière, enseignant ou groupe…"
+              value={sharedSubjectQuery}
+              onChange={event => setSharedSubjectQuery(event.target.value)}
+            />
             <select
+              id="schedule-update-assignment-select"
+              aria-label="Affectation"
               className="select-input"
               required
               value={form.assignmentId}
@@ -651,12 +717,13 @@ function ScheduleManager() {
             >
               <option value="">Choisir une affectation</option>
               {directory.assignments
-                .filter(assignment => assignment.id === current?.assignmentId || directory.teachers.some(teacher => teacher.id === assignment.teacherId && teacher.active))
+                .filter(assignment => (assignment.id === current?.assignmentId || directory.teachers.some(teacher => teacher.id === assignment.teacherId && teacher.active))
+                  && (!normalizeSearch(sharedSubjectQuery) || assignment.id === form.assignmentId || normalizeSearch(assignmentName(assignment.id)).includes(normalizeSearch(sharedSubjectQuery))))
                 .map(assignment => (
                   <option key={assignment.id} value={assignment.id}>{assignmentName(assignment.id)}</option>
                 ))}
             </select>
-          </label>
+          </div>
         )}
         <label className="form-group">Type de séance<select className="select-input" value={form.mode} onChange={event => setForm({ ...form, mode: event.target.value as SessionMode, roomId: '' })}><option value="COURS">Cours en présentiel</option>{!sharedCreate && <option value="PAPIER">Épreuve sur papier</option>}<option value="EN_LIGNE">En ligne</option></select></label>
         {form.mode !== 'EN_LIGNE' && <label className="form-group">Salle prévue<select className="select-input" required disabled={sharedCreate ? (sharedGroupIds.length < 2 || !sharedComponentId || !sharedTeacherId) : !assignment} value={form.roomId} onChange={event => setForm({ ...form, roomId: event.target.value })}><option value="">Choisir une salle disponible</option>{directory.rooms.filter(room => room.available && (!room.siteId || !siteId || room.siteId === siteId)).map(room => <option key={room.id} value={room.id}>{room.name}</option>)}</select></label>}
@@ -742,7 +809,33 @@ function ScheduleManager() {
           </div>
         </fieldset>
       )}
-      {action === 'replace_teacher' && current && <label className="form-group">Remplaçant<select className="select-input" value={form.teacherId} onChange={event => setForm({ ...form, teacherId: event.target.value })}><option value="">Enseignant d’origine : {teacherName(current.teacherId)}</option>{directory.teachers.filter(teacher => teacher.active && teacher.id !== current.teacherId).map(teacher => <option key={teacher.id} value={teacher.id}>{teacher.name}</option>)}</select></label>}
+      {action === 'replace_teacher' && current && (
+        <div className="form-group">
+          <label className="form-label" htmlFor="schedule-replace-teacher-select">Remplaçant</label>
+          <input
+            type="search"
+            aria-label="Rechercher un enseignant remplaçant"
+            className="input mb-1"
+            placeholder="Rechercher un enseignant par nom…"
+            value={sharedTeacherQuery}
+            onChange={event => {
+              const nextQuery = event.target.value;
+              setSharedTeacherQuery(nextQuery);
+              const norm = normalizeSearch(nextQuery);
+              if (norm) {
+                const match = directory.teachers.find(t => t.active && t.id !== current.teacherId && normalizeSearch(t.name).includes(norm));
+                if (match) setForm({ ...form, teacherId: match.id });
+              }
+            }}
+          />
+          <select id="schedule-replace-teacher-select" aria-label="Remplaçant" className="select-input" value={form.teacherId} onChange={event => setForm({ ...form, teacherId: event.target.value })}>
+            <option value="">Enseignant d’origine : {teacherName(current.teacherId)}</option>
+            {directory.teachers
+              .filter(teacher => teacher.active && teacher.id !== current.teacherId && (!normalizeSearch(sharedTeacherQuery) || teacher.id === form.teacherId || normalizeSearch(teacher.name).includes(normalizeSearch(sharedTeacherQuery))))
+              .map(teacher => <option key={teacher.id} value={teacher.id}>{teacher.name}</option>)}
+          </select>
+        </div>
+      )}
       {action === 'generate_online_link' && current && (
         <div className="form-group">
           <p className="info-box mb-1">Laissez le champ vide pour générer automatiquement un nouveau lien de réunion Microsoft Teams via le compte @escen.university, ou collez un lien de visioconférence existant.</p>
