@@ -98,6 +98,19 @@ export default function EvaluationCreateDialog({
   );
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
+  const [subjectSearchQuery, setSubjectSearchQuery] = useState('');
+  const teachers = snapshot.tables.teachers || [];
+  const people = snapshot.tables.people || [];
+  const normalizeSearch = (value: string) => value.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().trim();
+  const assignmentLabel = (a: (typeof assignments)[number]) => {
+    const comp = components.find(c => c.id === a.component_id);
+    const subj = comp && subjects.find(s => s.id === comp.subject_id);
+    const teacher = teachers.find(t => t.id === a.teacher_id);
+    const person = teacher && people.find(p => p.id === teacher.person_id);
+    const teacherName = person ? `${person.firstname || ''} ${person.lastname || ''}`.trim() : '';
+    const subjName = String(subj?.name || subj?.code || 'Matière');
+    return teacherName ? `${subjName} · ${teacherName}` : subjName;
+  };
 
   const selectedAssignment = assignments.find(a => a.id === assignmentId);
   const selectedGroup = selectedAssignment ? groups.find(g => g.id === selectedAssignment.group_id) : null;
@@ -306,9 +319,33 @@ export default function EvaluationCreateDialog({
               </select>
             </label>
 
-            <label className="form-group">
-              Matière enseignée
+            <div className="form-group">
+              <label className="form-label" htmlFor="eval-create-subject-select">Matière enseignée</label>
+              <input
+                type="search"
+                aria-label="Rechercher une matière ou un enseignant"
+                className="input mb-1"
+                placeholder="Rechercher par matière ou enseignant…"
+                disabled={Boolean(createdEvaluation)}
+                value={subjectSearchQuery}
+                onChange={e => {
+                  const nextQuery = e.target.value;
+                  setSubjectSearchQuery(nextQuery);
+                  const norm = normalizeSearch(nextQuery);
+                  if (norm) {
+                    const groupAssigns = filteredAssignments.filter(row => !groupId || row.group_id === groupId);
+                    const match = groupAssigns.find(a => normalizeSearch(assignmentLabel(a)).includes(norm));
+                    if (match && String(match.id) !== assignmentId) {
+                      setAssignmentId(String(match.id));
+                      setParentEvaluationId('');
+                      setSelectedSessionId('__new__');
+                    }
+                  }
+                }}
+              />
               <select
+                id="eval-create-subject-select"
+                aria-label="Matière enseignée"
                 className="select-input"
                 required
                 value={assignmentId}
@@ -319,20 +356,18 @@ export default function EvaluationCreateDialog({
                   setSelectedSessionId('__new__');
                 }}
               >
-                {filteredAssignments.filter(row => !groupId || row.group_id === groupId).map(a => {
-                  const comp = components.find(c => c.id === a.component_id);
-                  const subj = comp && subjects.find(s => s.id === comp.subject_id);
-                  return (
+                {filteredAssignments
+                  .filter(row => (!groupId || row.group_id === groupId) && (!normalizeSearch(subjectSearchQuery) || String(row.id) === assignmentId || normalizeSearch(assignmentLabel(row)).includes(normalizeSearch(subjectSearchQuery))))
+                  .map(a => (
                     <option key={a.id} value={a.id}>
-                      {String(subj?.name || subj?.code || 'Matière')}
+                      {assignmentLabel(a)}
                     </option>
-                  );
-                })}
+                  ))}
                 {!filteredAssignments.length && (
                   <option value="">Aucun enseignement disponible</option>
                 )}
               </select>
-            </label>
+            </div>
           </div>
 
           <div className="form-grid mb-2">
