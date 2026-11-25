@@ -8,6 +8,7 @@ import { DOCUMENT_LABELS, diplomaSchema, escapeArticleContent, guardianSchema, i
 import type { WebsiteArticle, WebsiteGallery, WebsiteIntake } from '@/types/website';
 import { attemptApplicationEmails, enqueueCandidateCredentialsEmail, portalOrigin } from '@/server/admissions';
 import { websiteProspectSchema } from '@/services/websiteProspectService';
+import { assembleDocumentChunks, DOCUMENT_CHUNK_BYTES, removeDocumentChunks, saveDocumentChunk } from '@/server/websiteDocumentChunks';
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
 export const maxDuration = 60;
@@ -170,6 +171,17 @@ async function handle(request: Request, context: RouteContext) {
     if (path[0] !== 'public' || path[1] !== 'candidature' || path.length !== 4) throw new RequestError(404, 'Commande indisponible.');
     const token = z.string().regex(/^[a-f0-9]{64}$/).parse(path[2]);
     const action = path[3];
+    if (action === 'etape3-document-bloc' && request.method === 'POST') {
+      const draft = await rpc('draft', token);
+      await saveDocumentChunk(client, draft.id, await (await boundedRequest(request, DOCUMENT_CHUNK_BYTES + 16384)).formData());
+      return cors(request, Response.json({ received: true }));
+    }
+    if (action === 'etape3-blocs-nettoyage' && request.method === 'POST') {
+      const draft = await rpc('draft', token);
+      const input = z.object({ upload_ids: z.array(z.uuid()).max(12) }).strict().parse(await (await boundedRequest(request, 4096)).json());
+      await removeDocumentChunks(client, draft.id, input.upload_ids);
+      return cors(request, Response.json({ removed: true }));
+    }
     if (action === 'etape1' && request.method === 'PATCH') {
       const {academic_year_id, ...identity} = identitySchema.extend({academic_year_id:z.uuid()}).strict().parse(await (await boundedRequest(request, 16384)).json());
       const draft = await rpc('draft',token);
@@ -179,7 +191,9 @@ async function handle(request: Request, context: RouteContext) {
     if (action === 'etape2-bac' && request.method === 'PATCH') return cors(request, Response.json(await rpc('diploma', token, diplomaSchema.parse(await (await boundedRequest(request, 16384)).json()))));
     if (action === 'etape3-documents' && request.method === 'POST') {
       const draft = await rpc('draft', token);
-      const data = await (await boundedRequest(request, 26 * 1024 * 1024)).formData();
+      const data = request.headers.get('content-type')?.split(';')[0].trim() === 'application/json'
+        ? await assembleDocumentChunks(client, draft.id, await (await boundedRequest(request, 16384)).json())
+        : await (await boundedRequest(request, 26 * 1024 * 1024)).formData();
       const selectedYear = z.uuid().parse(data.get('academic_year_id'));
       if (draft.candidat.academic_year_id !== selectedYear) throw new RequestError(409, 'L’année du dossier ne correspond pas à cette campagne.');
       const level = z.uuid().parse(data.get('niveau_id')); const program = z.uuid().parse(data.get('filiere_id'));

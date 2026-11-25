@@ -1,9 +1,16 @@
-import { readFile, writeFile } from 'node:fs/promises';
+import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import os from 'node:os';
 import { protectRegistrationDocuments } from './website-registration-resilience.mjs';
 import { adaptDiplomaForm } from './website-diploma.mjs';
 import { protectBrochureListing } from './website-brochure-selection.mjs';
+
+export function protectDocumentUploadStore(store) {
+  if (store.includes('uploadWebsiteDocuments')) return store;
+  const uploadCall = /const response = await \$axios\.post\(`\/public\/candidature\/\$\{draftToken\}\/etape3-documents`, formData, \{[\s\S]*?\n\s*\}\)\s*\n\s*return response\.data/;
+  if (!uploadCall.test(store)) throw new Error('Envoi des pièces introuvable dans le store du site.');
+  return `import { uploadWebsiteDocuments } from '../utils/website-document-upload';\n${store.replace(uploadCall, 'return await uploadWebsiteDocuments($axios, draftToken, formData)')}`;
+}
 
 export async function adaptWebsite(root, portal) {
   for (const cycle of ['licence-professionnelle', 'master-professionnel', 'executive-education']) {
@@ -98,12 +105,15 @@ onMounted(async () => {`);
   }
   let store = await readFile(path.join(restoredRegistration ? root : sourceRoot, 'app/stores/candidature.ts'), 'utf8');
   store = store.replace('return response.data?.candidat || null', 'return response.data || null');
+  store = protectDocumentUploadStore(store);
+  await mkdir(path.join(root, 'app/utils'), { recursive: true });
+  await writeFile(path.join(root, 'app/utils/website-document-upload.ts'), await readFile(new URL('./website-templates/website-document-upload.ts', import.meta.url), 'utf8'));
   await writeFile(path.join(root, 'app/stores/candidature.ts'), store);
   await writeFile(path.join(root, 'app/plugins/axios.ts'), `import axios from 'axios';
 import config from '../../config';
 export default defineNuxtPlugin(() => {
   const baseURL = (import.meta.server && process.env.ESCEN_SSR_API_URL) ? process.env.ESCEN_SSR_API_URL : import.meta.dev ? (import.meta.server ? 'http://127.0.0.1:3000/api/website' : '/api/website') : config.app_prod_url;
-  const client = axios.create({ baseURL, timeout: 20000, headers: { Accept: 'application/json' } });
+  const client = axios.create({ baseURL, timeout: 60000, headers: { Accept: 'application/json' } });
   return { provide: { axios: client } };
 });
 `);
