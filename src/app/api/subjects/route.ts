@@ -22,7 +22,7 @@ async function subjectFeatures(client: Awaited<ReturnType<typeof requireAccount>
 }
 
 const privileged = (context: PersistentContext) =>
-  [ROLES.IT, ROLES.DG, ROLES.DA].includes(context.role as typeof ROLES.IT) &&
+  [ROLES.IT, ROLES.DG, ROLES.DA, ROLES.LOG, ROLES.SURV, ROLES.STG].includes(context.role as typeof ROLES.IT) &&
   context.grants.some(g => !g.site_id && !g.group_id && !g.academic_year_id);
 
 function visible(snapshot: RelationalSnapshot, context: PersistentContext): DatabaseRow[] {
