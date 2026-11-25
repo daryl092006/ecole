@@ -13,8 +13,60 @@ export interface StudentProvisionParams {
   lastname: string;
   personalEmail: string;
   intakeId?: string | null;
+  levelId?: string | null;
+  programId?: string | null;
   academicYearId: string;
   actorId: string;
+}
+
+interface SnapshotCachePayload {
+  revision?: number;
+  tables?: Record<string, Array<Record<string, unknown>>>;
+}
+
+async function fetchBackendSnapshot(client: SupabaseClient): Promise<SnapshotCachePayload | null> {
+  if (typeof client.rpc !== 'function') return null;
+  try {
+    const res = await client.rpc('escen_backend_snapshot');
+    if (!res?.error && res?.data && typeof res.data === 'object') {
+      const payload = res.data as SnapshotCachePayload;
+      if (payload.tables && typeof payload.tables === 'object') {
+        return payload;
+      }
+    }
+  } catch {
+    // Ignorer dans les mocks de test
+  }
+  return null;
+}
+
+async function applyBackendChanges(
+  client: SupabaseClient,
+  actorId: string,
+  changes: Array<{ table: string; operation: 'insert' | 'update'; record: Record<string, unknown> }>,
+  initialRevision?: number
+): Promise<boolean> {
+  if (!changes.length || typeof client.rpc !== 'function') return false;
+  let revision = initialRevision;
+  for (let attempt = 0; attempt < 2; attempt++) {
+    if (typeof revision !== 'number') {
+      const snap = await fetchBackendSnapshot(client);
+      revision = snap?.revision;
+    }
+    if (typeof revision !== 'number') return false;
+    try {
+      const res = await client.rpc('escen_backend_transaction', {
+        p_actor_id: actorId,
+        p_expected_revision: revision,
+        p_changes: changes,
+      });
+      if (!res?.error) return true;
+    } catch {
+      return false;
+    }
+    revision = undefined;
+  }
+  return false;
 }
 
 export interface StudentProvisionResult {
@@ -352,8 +404,9 @@ export async function generateNextStudentMatricule(
   client: SupabaseClient,
   academicYearId?: string
 ): Promise<string> {
-  // Récupérer l'année académique courante pour le suffixe
   let yearCode = new Date().getFullYear().toString();
+  let students: Array<{ matricule?: unknown }> | null = null;
+
   if (academicYearId) {
     const { data: y } = await client
       .from('academic_years')
@@ -361,16 +414,33 @@ export async function generateNextStudentMatricule(
       .eq('id', academicYearId)
       .maybeSingle();
     if (y?.code) {
-      const match = y.code.match(/(\d{4})/);
+      const match = String(y.code).match(/(\d{4})/);
       if (match) yearCode = match[1];
     }
   }
 
-  // Trouver le matricule le plus élevé
-  const { data: students } = await client
+  const { data: directStudents, error: directError } = await client
     .from('students')
     .select('matricule')
     .ilike('matricule', '%-ESC-%');
+
+  if (!directError && Array.isArray(directStudents) && directStudents.length > 0) {
+    students = directStudents;
+  } else {
+    const snap = await fetchBackendSnapshot(client);
+    if (snap?.tables) {
+      if (academicYearId && Array.isArray(snap.tables.academic_years)) {
+        const y = snap.tables.academic_years.find(row => String(row.id) === academicYearId);
+        if (y?.code) {
+          const match = String(y.code).match(/(\d{4})/);
+          if (match) yearCode = match[1];
+        }
+      }
+      if (Array.isArray(snap.tables.students)) {
+        students = snap.tables.students;
+      }
+    }
+  }
 
   let maxNum = 145;
   if (students && students.length > 0) {
@@ -401,12 +471,36 @@ export async function provisionStudentComplete(
   client: SupabaseClient,
   params: StudentProvisionParams
 ): Promise<StudentProvisionResult> {
-  // 1. Récupérer les informations de l'étudiant
-  const { data: student } = await client
+  // 1. Récupérer les informations de l'étudiant (via table directe ou snapshot)
+  let snapshot: SnapshotCachePayload | null = null;
+  let directFromWorks = false;
+  const getSnapshot = async (): Promise<SnapshotCachePayload | null> => {
+    if (directFromWorks) return null;
+    if (!snapshot) snapshot = await fetchBackendSnapshot(client);
+    return snapshot;
+  };
+  const pendingChanges: Array<{ table: string; operation: 'insert' | 'update'; record: Record<string, unknown> }> = [];
+
+  let { data: student } = await client
     .from('students')
     .select('id, matricule, m365_email, m365_status')
     .eq('id', params.studentId)
     .single();
+
+  if (student?.id) {
+    directFromWorks = true;
+  } else {
+    const snap = await getSnapshot();
+    const row = snap?.tables?.students?.find(s => String(s.id) === params.studentId);
+    if (row) {
+      student = {
+        id: String(row.id),
+        matricule: String(row.matricule || 'N/A'),
+        m365_email: (row.m365_email as string | null) ?? null,
+        m365_status: String(row.m365_status || 'PENDING'),
+      };
+    }
+  }
 
   const matricule = student?.matricule || 'N/A';
   let m365Email = student?.m365_email as string | undefined;
@@ -416,10 +510,19 @@ export async function provisionStudentComplete(
   // 2. Provisionnement Microsoft 365 si non existant
   if (!m365Email) {
     // Récupérer les emails existants pour éviter tout conflit d'homonyme
-    const { data: existingList } = await client
+    let { data: existingList } = await client
       .from('students')
       .select('m365_email')
       .not('m365_email', 'is', null);
+
+    if (!existingList || existingList.length === 0) {
+      const snap = await getSnapshot();
+      if (Array.isArray(snap?.tables?.students)) {
+        existingList = snap.tables.students
+          .filter(s => Boolean(s.m365_email))
+          .map(s => ({ m365_email: String(s.m365_email) }));
+      }
+    }
 
     const existingEmails = new Set<string>(
       (existingList || []).map(r => String(r.m365_email).toLowerCase())
@@ -435,16 +538,26 @@ export async function provisionStudentComplete(
     temporaryPassword = m365Res.temporaryPassword;
     m365Status = m365Res.status;
 
+    const studentM365Update = {
+      m365_email: m365Email,
+      m365_user_id: m365Res.userId ?? null,
+      m365_status: m365Status,
+      m365_provisioned_at: new Date().toISOString(),
+    };
+
     // Enregistrer l'email M365 dans escen.students
-    await client
+    const updateRes = await client
       .from('students')
-      .update({
-        m365_email: m365Email,
-        m365_user_id: m365Res.userId ?? null,
-        m365_status: m365Status,
-        m365_provisioned_at: new Date().toISOString(),
-      })
+      .update(studentM365Update)
       .eq('id', params.studentId);
+
+    if (updateRes?.error || snapshot) {
+      pendingChanges.push({
+        table: 'students',
+        operation: 'update',
+        record: { id: params.studentId, ...studentM365Update },
+      });
+    }
   }
 
   // 3. Création du compte Supabase Auth & portail
@@ -485,33 +598,55 @@ export async function provisionStudentComplete(
 
     // 4. Lier escen.accounts et escen.role_grants
     if (authUserId) {
-      const { data: existingAccount } = await client
+      let { data: existingAccount } = await client
         .from('accounts')
         .select('id')
         .eq('person_id', params.personId)
         .maybeSingle();
 
-      let accountId = existingAccount?.id;
+      if (!existingAccount) {
+        const snap = await getSnapshot();
+        const found = snap?.tables?.accounts?.find(a => String(a.person_id) === params.personId);
+        if (found?.id) existingAccount = { id: String(found.id) };
+      }
+
+      let accountId = existingAccount?.id ? String(existingAccount.id) : undefined;
       if (!accountId) {
         accountId = randomUUID();
-        await client.from('accounts').insert({
+        const accountRecord = {
+          id: accountId,
+          person_id: params.personId,
+          auth_user_id: authUserId,
+          active: true,
+          reason: `Création automatique du compte portail lors de l'admission`,
+        };
+        const insertAcc = await client.from('accounts').insert({
           id: accountId,
           person_id: params.personId,
           auth_user_id: authUserId,
           active: true,
         });
+        if (insertAcc?.error || snapshot) {
+          pendingChanges.push({ table: 'accounts', operation: 'insert', record: accountRecord });
+        }
         accountCreated = true;
       }
 
       // Attribuer le rôle STUD
-      const { data: roleStud } = await client
+      let { data: roleStud } = await client
         .from('roles')
         .select('id')
         .eq('code', 'STUD')
         .single();
 
+      if (!roleStud?.id) {
+        const snap = await getSnapshot();
+        const foundRole = snap?.tables?.roles?.find(r => String(r.code) === 'STUD');
+        if (foundRole?.id) roleStud = { id: String(foundRole.id) };
+      }
+
       if (roleStud?.id && accountId) {
-        const { data: existingGrant } = await client
+        let { data: existingGrant } = await client
           .from('role_grants')
           .select('id')
           .eq('account_id', accountId)
@@ -519,13 +654,33 @@ export async function provisionStudentComplete(
           .maybeSingle();
 
         if (!existingGrant) {
-          await client.from('role_grants').insert({
+          const snap = await getSnapshot();
+          const foundGrant = snap?.tables?.role_grants?.find(
+            g => String(g.account_id) === accountId && String(g.role_id) === String(roleStud!.id)
+          );
+          if (foundGrant?.id) existingGrant = { id: String(foundGrant.id) };
+        }
+
+        if (!existingGrant) {
+          const grantId = randomUUID();
+          const grantRecord = {
+            id: grantId,
+            account_id: accountId,
+            role_id: roleStud.id,
+            valid_from: new Date().toISOString().slice(0, 10),
+            reason: `Attribution automatique rôle Étudiant lors de l'admission`,
+            granted_by: params.actorId,
+          };
+          const insertGrant = await client.from('role_grants').insert({
             account_id: accountId,
             role_id: roleStud.id,
             valid_from: new Date().toISOString(),
             reason: `Attribution automatique rôle Étudiant lors de l'admission`,
             granted_by: params.actorId,
           });
+          if (insertGrant?.error || snapshot) {
+            pendingChanges.push({ table: 'role_grants', operation: 'insert', record: grantRecord });
+          }
         }
       }
     }
@@ -534,75 +689,144 @@ export async function provisionStudentComplete(
   // 5. Inscription pédagogique & groupe si non déjà inscrit
   let enrolled = false;
   let enrollmentId: string | null = null;
-  if (params.intakeId) {
-    // Récupérer la formation de l'intake
+  let levelId = params.levelId || null;
+  let programId = params.programId || null;
+
+  if (params.intakeId && !levelId) {
     const { data: intake } = await client
       .from('website_intakes')
       .select('level_id, program_id')
       .eq('id', params.intakeId)
       .maybeSingle();
+    if (intake?.level_id) levelId = String(intake.level_id);
+    if (intake?.program_id) programId = String(intake.program_id);
+  }
 
-    if (intake?.level_id) {
-      // Trouver l'offering correspondant
-      const { data: offering } = await client
-        .from('academic_offerings')
+  if (levelId) {
+    let { data: offering } = await client
+      .from('academic_offerings')
+      .select('id')
+      .eq('academic_year_id', params.academicYearId)
+      .eq('level_id', levelId)
+      .maybeSingle();
+
+    if (!offering?.id) {
+      const snap = await getSnapshot();
+      const offerings = (snap?.tables?.academic_offerings || []).filter(
+        o => String(o.academic_year_id) === params.academicYearId && String(o.level_id) === levelId && !o.archived_at
+      );
+      if (offerings.length === 1) {
+        offering = { id: String(offerings[0].id) };
+      } else if (offerings.length > 1 && programId && Array.isArray(snap?.tables?.curricula)) {
+        const curriculumIds = new Set(
+          snap.tables.curricula
+            .filter(c => String(c.program_id) === programId && !c.archived_at)
+            .map(c => String(c.id))
+        );
+        const matched = offerings.find(o => curriculumIds.has(String(o.curriculum_id)));
+        offering = { id: String((matched || offerings[0]).id) };
+      } else if (offerings.length > 0) {
+        offering = { id: String(offerings[0].id) };
+      }
+    }
+
+    if (offering?.id) {
+      let { data: existingEnrollment } = await client
+        .from('enrollments')
         .select('id')
-        .eq('academic_year_id', params.academicYearId)
-        .eq('level_id', intake.level_id)
+        .eq('student_id', params.studentId)
+        .eq('offering_id', offering.id)
         .maybeSingle();
 
-      if (offering?.id) {
-        const { data: existingEnrollment } = await client
-          .from('enrollments')
+      if (!existingEnrollment?.id) {
+        const snap = await getSnapshot();
+        const foundEnr = snap?.tables?.enrollments?.find(
+          e => String(e.student_id) === params.studentId && String(e.offering_id) === String(offering!.id)
+        );
+        if (foundEnr?.id) existingEnrollment = { id: String(foundEnr.id) };
+      }
+
+      if (existingEnrollment?.id) {
+        enrollmentId = String(existingEnrollment.id);
+      } else {
+        enrollmentId = randomUUID();
+        const enrollmentRecord = {
+          id: enrollmentId,
+          student_id: params.studentId,
+          offering_id: offering.id,
+          status: 'INSCRIT',
+          enrolled_on: new Date().toISOString().slice(0, 10),
+          created_by: params.actorId,
+        };
+        const insertEnr = await client.from('enrollments').insert(enrollmentRecord);
+        if (insertEnr?.error || snapshot) {
+          pendingChanges.push({ table: 'enrollments', operation: 'insert', record: enrollmentRecord });
+        }
+        enrolled = true;
+      }
+
+      // Trouver le groupe associé
+      let { data: groupLink } = await client
+        .from('group_offerings')
+        .select('group_id')
+        .eq('offering_id', offering.id)
+        .is('archived_at', null)
+        .maybeSingle();
+
+      if (!groupLink?.group_id) {
+        const snap = await getSnapshot();
+        const foundGroupLink = snap?.tables?.group_offerings?.find(
+          g => String(g.offering_id) === String(offering!.id) && !g.archived_at
+        );
+        if (foundGroupLink?.group_id) groupLink = { group_id: String(foundGroupLink.group_id) };
+      }
+
+      if (groupLink?.group_id && enrollmentId) {
+        let { data: existingGroup } = await client
+          .from('enrollment_groups')
           .select('id')
-          .eq('student_id', params.studentId)
-          .eq('offering_id', offering.id)
+          .eq('enrollment_id', enrollmentId)
+          .is('valid_until', null)
           .maybeSingle();
 
-        if (existingEnrollment?.id) {
-          enrollmentId = String(existingEnrollment.id);
-        } else {
-          enrollmentId = randomUUID();
-          await client.from('enrollments').insert({
-            id: enrollmentId,
-            student_id: params.studentId,
-            offering_id: offering.id,
-            status: 'INSCRIT',
-            enrolled_on: new Date().toISOString().slice(0, 10),
-            created_by: params.actorId,
-          });
-          enrolled = true;
+        if (!existingGroup?.id) {
+          const snap = await getSnapshot();
+          const foundEg = snap?.tables?.enrollment_groups?.find(
+            eg => String(eg.enrollment_id) === enrollmentId && !eg.valid_until
+          );
+          if (foundEg?.id) existingGroup = { id: String(foundEg.id) };
         }
 
-        // Trouver le groupe associé
-        const { data: groupLink } = await client
-          .from('group_offerings')
-          .select('group_id')
-          .eq('offering_id', offering.id)
-          .is('archived_at', null)
-          .maybeSingle();
-
-        if (groupLink?.group_id && enrollmentId) {
-          const { data: existingGroup } = await client
-            .from('enrollment_groups')
-            .select('id')
-            .eq('enrollment_id', enrollmentId)
-            .is('valid_until', null)
-            .maybeSingle();
-
-          if (!existingGroup) {
-            await client.from('enrollment_groups').insert({
-              enrollment_id: enrollmentId,
-              offering_id: offering.id,
-              group_id: groupLink.group_id,
-              valid_from: new Date().toISOString().slice(0, 10),
-              changed_by: params.actorId,
-              reason: `Affectation automatique lors de l'admission officielle`,
-            });
+        if (!existingGroup) {
+          const egId = randomUUID();
+          const egRecord = {
+            id: egId,
+            enrollment_id: enrollmentId,
+            offering_id: offering.id,
+            group_id: groupLink.group_id,
+            valid_from: new Date().toISOString().slice(0, 10),
+            changed_by: params.actorId,
+            reason: `Affectation automatique lors de l'admission officielle`,
+          };
+          const insertEg = await client.from('enrollment_groups').insert({
+            enrollment_id: enrollmentId,
+            offering_id: offering.id,
+            group_id: groupLink.group_id,
+            valid_from: new Date().toISOString().slice(0, 10),
+            changed_by: params.actorId,
+            reason: `Affectation automatique lors de l'admission officielle`,
+          });
+          if (insertEg?.error || snapshot) {
+            pendingChanges.push({ table: 'enrollment_groups', operation: 'insert', record: egRecord });
           }
         }
       }
     }
+  }
+
+  if (pendingChanges.length > 0) {
+    const snap = snapshot as SnapshotCachePayload | null;
+    await applyBackendChanges(client, params.actorId, pendingChanges, snap?.revision);
   }
 
   // 6. Transférer les pièces justificatives de la candidature en ligne vers le dossier étudiant
@@ -616,6 +840,20 @@ export async function provisionStudentComplete(
       actorId: params.actorId,
     });
     documentsTransferred = transferRes.transferredCount;
+    if (documentsTransferred === 0 && snapshot && typeof client.rpc === 'function') {
+      try {
+        const rpcRes = await client.rpc('escen_sync_student_application_documents', {
+          p_student_id: params.studentId,
+          p_actor_id: params.actorId || null,
+        });
+        if (!rpcRes?.error && rpcRes?.data && typeof rpcRes.data === 'object') {
+          const payload = rpcRes.data as { transferredCount?: number };
+          documentsTransferred = Number(payload.transferredCount || 0);
+        }
+      } catch {
+        // Ignorer
+      }
+    }
   }
 
   // 7. Placer l'email de bienvenue avec les identifiants officiels dans la file d'envoi

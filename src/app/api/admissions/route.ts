@@ -74,9 +74,6 @@ export async function POST(request: Request) {
       const token = randomBytes(32).toString('hex');
       payload.access_token_hash = hashWebsiteToken(token); payload.access_url = `${portalOrigin(request)}/candidature/suivi#access=${token}`;
     }
-    if (input.action === 'create_student' && !payload.existing_student_id && !payload.matricule) {
-      payload.matricule = await generateNextStudentMatricule(client, yearId);
-    }
 
     // Orchestration directe des étapes intermédiaires pour éviter les clics superflus en interface
     const admissionContext = await websiteRpc(client, 'escen_admissions_context', {
@@ -85,6 +82,55 @@ export async function POST(request: Request) {
     const currentApp = admissionContext.applications.find(application => application.id === input.id);
     if (!currentApp) throw new RequestError(404, 'Candidature introuvable dans votre périmètre pour cette année.');
     if (currentApp.version !== input.version) throw new RequestError(409, 'Modification concurrente. Actualisez le dossier avant de confirmer.');
+
+    const findExistingStudentByEmail = async (emailRaw: string): Promise<{ studentId: string; matricule: string } | null> => {
+      const cleanEmail = emailRaw.trim().toLowerCase();
+      if (!cleanEmail) return null;
+      const { data: existingPerson } = await client
+        .from('people')
+        .select('id')
+        .ilike('email', cleanEmail)
+        .is('archived_at', null)
+        .maybeSingle();
+      if (existingPerson?.id) {
+        const { data: existingStudent } = await client
+          .from('students')
+          .select('id, matricule')
+          .eq('person_id', existingPerson.id)
+          .is('archived_at', null)
+          .maybeSingle();
+        if (existingStudent?.id && existingStudent?.matricule) {
+          return { studentId: String(existingStudent.id), matricule: String(existingStudent.matricule) };
+        }
+      }
+      const snapRes = await client.rpc('escen_backend_snapshot');
+      const tables = snapRes?.data?.tables as Record<string, Array<Record<string, unknown>>> | undefined;
+      if (tables && Array.isArray(tables.people) && Array.isArray(tables.students)) {
+        const person = tables.people.find(
+          p => !p.archived_at && String(p.email || '').trim().toLowerCase() === cleanEmail
+        );
+        if (person?.id) {
+          const student = tables.students.find(
+            s => !s.archived_at && String(s.person_id) === String(person.id)
+          );
+          if (student?.id && student?.matricule) {
+            return { studentId: String(student.id), matricule: String(student.matricule) };
+          }
+        }
+      }
+      return null;
+    };
+
+    if (input.action === 'create_student' && !payload.existing_student_id) {
+      const candidateEmail = String(currentApp.identity?.email || '').trim().toLowerCase();
+      const matched = candidateEmail ? await findExistingStudentByEmail(candidateEmail) : null;
+      if (matched) {
+        payload.existing_student_id = matched.studentId;
+        payload.matricule = matched.matricule;
+      } else if (!payload.matricule) {
+        payload.matricule = await generateNextStudentMatricule(client, yearId);
+      }
+    }
 
     let currentVersion = input.version;
     let currentStage: string | null = currentApp.workflow_stage;
@@ -190,33 +236,9 @@ export async function POST(request: Request) {
       try {
         const identity = (data.identity || {}) as Record<string, unknown>;
         const candidateEmail = String(identity.email || '').trim().toLowerCase();
-        let existingStudentId: string | null = null;
-        let autoMatricule: string | null = null;
-
-        if (candidateEmail) {
-          const { data: existingPerson } = await client
-            .from('people')
-            .select('id')
-            .ilike('email', candidateEmail)
-            .is('archived_at', null)
-            .maybeSingle();
-          if (existingPerson?.id) {
-            const { data: existingStudent } = await client
-              .from('students')
-              .select('id, matricule')
-              .eq('person_id', existingPerson.id)
-              .is('archived_at', null)
-              .maybeSingle();
-            if (existingStudent?.id && existingStudent?.matricule) {
-              existingStudentId = String(existingStudent.id);
-              autoMatricule = String(existingStudent.matricule);
-            }
-          }
-        }
-
-        if (!autoMatricule) {
-          autoMatricule = await generateNextStudentMatricule(client, yearId);
-        }
+        const matched = candidateEmail ? await findExistingStudentByEmail(candidateEmail) : null;
+        const existingStudentId: string | null = matched?.studentId || null;
+        const autoMatricule: string = matched?.matricule || await generateNextStudentMatricule(client, yearId);
 
         data = await websiteRpc(client, 'escen_application_command', {
           p_actor_id: context.accountId,
@@ -239,8 +261,16 @@ export async function POST(request: Request) {
     if ((input.action === 'create_student' || input.action === 'confirm_payment') && data?.student_id) {
       const studentId = String(data.student_id);
       const { data: studentRow } = await client.from('students').select('person_id').eq('id', studentId).maybeSingle();
-      const personId = String(studentRow?.person_id || '');
+      let personId = String(studentRow?.person_id || '');
+      if (!personId) {
+        const snapRes = await client.rpc('escen_backend_snapshot');
+        const students = (snapRes?.data?.tables?.students || []) as Array<Record<string, unknown>>;
+        const found = students.find(s => String(s.id) === studentId);
+        if (found?.person_id) personId = String(found.person_id);
+      }
       const identity = (data.identity || {}) as Record<string, unknown>;
+      const intakeId = data.intake_id ? String(data.intake_id) : null;
+      const intakeRow = intakeId ? admissionContext.intakes.find(i => i.id === intakeId) : undefined;
 
       if (personId) {
         await provisionStudentComplete(client, {
@@ -250,7 +280,9 @@ export async function POST(request: Request) {
           firstname: String(identity.prenom || ''),
           lastname: String(identity.nom || ''),
           personalEmail: String(identity.email || ''),
-          intakeId: data.intake_id ? String(data.intake_id) : null,
+          intakeId,
+          levelId: intakeRow?.level_id ? String(intakeRow.level_id) : null,
+          programId: intakeRow?.program_id ? String(intakeRow.program_id) : null,
           academicYearId: yearId,
           actorId: context.accountId,
         });
