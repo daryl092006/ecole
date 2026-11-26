@@ -13,7 +13,7 @@ export const WORKSPACE_NAVIGATION: NavigationGroup[] = [
   { id: 'year', name: 'Année scolaire', icon: 'CalendarDays', category: 'Scolarité', sections: ['acad_reference', 'acad_settings'] },
   { id: 'applications', name: 'Candidatures', icon: 'ClipboardCheck', category: 'Scolarité', sections: ['web_applications'] },
   { id: 'students', name: 'Dossiers étudiants', icon: 'GraduationCap', category: 'Scolarité', sections: ['stud_list', 'stud_corrections', 'stud_status', 'stud_cards'] },
-  { id: 'teaching', name: 'Cours et présences', icon: 'BookOpen', category: 'Scolarité', sections: ['acad_resources', 'acad_groups', 'acad_program', 'staff_teachers', 'acad_schedule', 'acad_attendance'] },
+  { id: 'teaching', name: 'Cours et présences', icon: 'BookOpen', category: 'Scolarité', sections: ['acad_resources', 'acad_library', 'acad_groups', 'acad_program', 'staff_teachers', 'acad_schedule', 'acad_attendance'] },
   { id: 'results', name: 'Examens et résultats', icon: 'ClipboardCheck', category: 'Scolarité', sections: ['acad_subjects', 'acad_exams', 'acad_grades', 'acad_complaints', 'acad_jury'] },
   { id: 'payments', name: 'Scolarité et paiements', icon: 'CreditCard', category: 'Services de l’établissement', sections: ['fin_kpis', 'fin_contracts', 'fin_payments', 'fin_reports'] },
   { id: 'staff', name: 'Personnel', icon: 'Users', category: 'Services de l’établissement', sections: ['staff_records'] },
@@ -28,7 +28,7 @@ interface AuthorizedTab { id: string; subTabs?: { id: string; name: string; href
 
 const STUDENT_NAVIGATION: NavigationGroup[] = [
   { id: 'home', name: 'Mon quotidien', icon: 'Home', category: 'Mon espace étudiant', sections: ['espace_dashboard', 'espace_profile'] },
-  { id: 'student_courses', name: 'Mes cours', icon: 'BookOpen', category: 'Mes études', sections: ['acad_schedule', 'acad_resources', 'acad_program'] },
+  { id: 'student_courses', name: 'Mes cours', icon: 'BookOpen', category: 'Mes études', sections: ['acad_schedule', 'acad_resources', 'acad_library', 'acad_program'] },
   { id: 'student_results', name: 'Mes résultats et examens', icon: 'ClipboardCheck', category: 'Mes études', sections: ['acad_grades', 'espace_exams', 'acad_exams', 'acad_complaints'] },
   { id: 'student_attendance', name: 'Mon assiduité', icon: 'ClipboardCheck', category: 'Mes études', sections: ['espace_attendance'] },
   { id: 'student_admin', name: 'Mes démarches', icon: 'CreditCard', category: 'Ma vie étudiante', sections: ['espace_finance', 'espace_documents'] },

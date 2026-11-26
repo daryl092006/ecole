@@ -25,6 +25,7 @@ connected.add('web_prospects');
 connected.add('espace_attendance');
 connected.add('acad_groups');
 connected.add('acad_resources');
+connected.add('acad_library');
 connected.add('stud_corrections');
 for (const route of PORTAL_ROUTES) assert.ok(connected.has(route.section), `${route.href} doit disposer d’un écran connecté explicite.`);
 for (const stages of Object.values(MODULE_JOURNEYS)) for (const stage of stages) for (const section of stage.sections) assert.ok(routeSections.has(section), `Destination de parcours inconnue : ${section}`);
