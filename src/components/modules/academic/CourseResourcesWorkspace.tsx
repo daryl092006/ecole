@@ -72,22 +72,28 @@ const formatBytes = (bytes: number | null) => {
   return `${(bytes / (1024 * 1024)).toFixed(1)} Mo`;
 };
 
+const RESOURCE_CHUNK_BYTES = 1_500_000;
+
 async function apiFetch<T>(role: string, path: string, init?: RequestInit): Promise<T> {
   const { data } = await getSupabaseBrowserClient().auth.getSession();
   if (!data.session) throw new Error('Session expirée. Veuillez vous reconnecter.');
+  const isFormData = typeof FormData !== 'undefined' && init?.body instanceof FormData;
   const response = await fetch(path, {
     ...init,
     headers: {
       Authorization: `Bearer ${data.session.access_token}`,
       'x-escen-role': roleHeaderValue(role as Parameters<typeof roleHeaderValue>[0]),
       ...academicYearRequestHeaders(),
-      ...(init?.body ? { 'Content-Type': 'application/json' } : {}),
+      ...(init?.body && !isFormData ? { 'Content-Type': 'application/json' } : {}),
       ...(init?.headers || {}),
     },
     cache: 'no-store',
   });
+  if (response.status === 413) {
+    throw new Error('Le fichier est trop volumineux pour un envoi direct (limite dépassée).');
+  }
   const body = await response.json().catch(() => ({}));
-  if (!response.ok) throw new Error(body.error || 'Opération impossible.');
+  if (!response.ok) throw new Error(body.error || `Opération impossible (erreur ${response.status}).`);
   return body as T;
 }
 
@@ -115,6 +121,7 @@ export default function CourseResourcesWorkspace() {
   const [description, setDescription] = useState('');
   const [resourceKind, setResourceKind] = useState<CourseResourceKind>('SUPPORT');
   const [resourceUrl, setResourceUrl] = useState('');
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [fileName, setFileName] = useState('');
   const [mimeType, setMimeType] = useState('');
   const [fileContentBase64, setFileContentBase64] = useState('');
@@ -205,6 +212,7 @@ export default function CourseResourcesWorkspace() {
     setDescription('');
     setResourceKind(defaultKind);
     setResourceUrl('');
+    setSelectedFile(null);
     setFileName('');
     setMimeType('');
     setFileContentBase64('');
@@ -216,23 +224,38 @@ export default function CourseResourcesWorkspace() {
   const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (!file) {
+      setSelectedFile(null);
       setFileName('');
       setMimeType('');
       setFileContentBase64('');
       return;
     }
+    if (file.size > 35 * 1024 * 1024) {
+      setSaveError('Ce fichier dépasse 35 Mo. Pour les fichiers très volumineux, privilégiez un lien OneDrive / SharePoint.');
+      setSelectedFile(null);
+      setFileName('');
+      setMimeType('');
+      setFileContentBase64('');
+      return;
+    }
+    setSaveError('');
+    setSelectedFile(file);
     setFileName(file.name);
     setMimeType(file.type || 'application/octet-stream');
     if (!title.trim()) {
       setTitle(file.name.replace(/\.[^.]+$/, ''));
     }
-    const reader = new FileReader();
-    reader.onload = () => {
-      const result = typeof reader.result === 'string' ? reader.result : '';
-      const base64 = result.includes(',') ? result.split(',')[1] : result;
-      setFileContentBase64(base64);
-    };
-    reader.readAsDataURL(file);
+    if (file.size <= RESOURCE_CHUNK_BYTES) {
+      const reader = new FileReader();
+      reader.onload = () => {
+        const result = typeof reader.result === 'string' ? reader.result : '';
+        const base64 = result.includes(',') ? result.split(',')[1] : result;
+        setFileContentBase64(base64);
+      };
+      reader.readAsDataURL(file);
+    } else {
+      setFileContentBase64('');
+    }
   };
 
   const handleOpenResource = async (res: CourseResourceItem) => {
@@ -696,7 +719,7 @@ export default function CourseResourcesWorkspace() {
               if (operation.kind === 'create_resource') {
                 if (!assignmentId) return 'Choisissez un cours.';
                 if (title.trim().length < 2) return 'Renseignez l’intitulé du support.';
-                if (!fileContentBase64 && !resourceUrl.trim()) {
+                if (!selectedFile && !fileContentBase64 && !resourceUrl.trim()) {
                   return 'Sélectionnez un fichier à téléverser ou renseignez un lien URL.';
                 }
               }
@@ -712,65 +735,91 @@ export default function CourseResourcesWorkspace() {
               setSaving(true);
               setSaveError('');
               const effectiveReason = reason.trim() || 'Opération sur les supports et cours en ligne';
-              const payload =
-                operation.kind === 'create_resource'
-                  ? {
-                      action: 'create_resource',
-                      revision: directory.revision,
-                      assignmentId,
-                      sessionId: sessionId || null,
-                      title: title.trim(),
-                      description: description.trim() || null,
-                      kind: resourceKind,
-                      resourceUrl: resourceUrl.trim() || null,
-                      fileName: fileName || null,
-                      mimeType: mimeType || null,
-                      fileContentBase64: fileContentBase64 || null,
-                      reason: effectiveReason,
-                    }
-                  : operation.kind === 'archive_resource'
-                  ? {
-                      action: 'archive_resource',
-                      revision: directory.revision,
-                      resourceId: operation.resource.id,
-                      reason: effectiveReason,
-                    }
-                  : operation.kind === 'create_online_session'
-                  ? {
-                      action: 'create_online_session',
-                      revision: directory.revision,
-                      assignmentId,
-                      startsAt: `${sessionDate}T${startTime}:00Z`,
-                      endsAt: `${sessionDate}T${endTime}:00Z`,
-                      customMeetingUrl: resourceUrl.trim() || null,
-                      reason: effectiveReason,
-                    }
-                  : operation.kind === 'generate_meeting_link'
-                  ? {
-                      action: 'generate_meeting_link',
-                      revision: directory.revision,
-                      sessionId: operation.session.id,
-                      customMeetingUrl: resourceUrl.trim() || null,
-                      reason: effectiveReason,
-                    }
-                  : {
-                      action: 'save_recording',
-                      revision: directory.revision,
-                      sessionId: operation.session.id,
-                      recordingUrl: resourceUrl.trim() || null,
-                      reason: effectiveReason,
-                    };
 
-              void apiFetch(activeRole, '/api/course-resources', {
-                method: 'POST',
-                body: JSON.stringify(payload),
-              })
-                .then(() => {
-                  setOperation(null);
-                  setSuccess('Enregistrement effectué avec succès.');
-                  setReload(v => v + 1);
-                  portal.refreshCampus();
-                })
+              void (async () => {
+                let chunkUploadId: string | null = null;
+                let chunkCount: number | null = null;
+
+                if (operation.kind === 'create_resource' && selectedFile && selectedFile.size > RESOURCE_CHUNK_BYTES) {
+                  chunkUploadId = crypto.randomUUID();
+                  chunkCount = Math.ceil(selectedFile.size / RESOURCE_CHUNK_BYTES);
+                  for (let idx = 0; idx < chunkCount; idx++) {
+                    const start = idx * RESOURCE_CHUNK_BYTES;
+                    const end = Math.min(selectedFile.size, start + RESOURCE_CHUNK_BYTES);
+                    const slice = selectedFile.slice(start, end, selectedFile.type || 'application/octet-stream');
+                    const chunkFile = new File([slice], selectedFile.name, { type: selectedFile.type || 'application/octet-stream' });
+                    const form = new FormData();
+                    form.append('upload_id', chunkUploadId);
+                    form.append('index', String(idx));
+                    form.append('chunk', chunkFile);
+                    await apiFetch(activeRole, '/api/course-resources', {
+                      method: 'POST',
+                      body: form,
+                    });
+                  }
+                }
+
+                const payload =
+                  operation.kind === 'create_resource'
+                    ? {
+                        action: 'create_resource',
+                        revision: directory.revision,
+                        assignmentId,
+                        sessionId: sessionId || null,
+                        title: title.trim(),
+                        description: description.trim() || null,
+                        kind: resourceKind,
+                        resourceUrl: resourceUrl.trim() || null,
+                        fileName: fileName || null,
+                        mimeType: mimeType || null,
+                        byteSize: selectedFile ? selectedFile.size : null,
+                        fileContentBase64: chunkUploadId ? null : (fileContentBase64 || null),
+                        chunkUploadId,
+                        chunkCount,
+                        reason: effectiveReason,
+                      }
+                    : operation.kind === 'archive_resource'
+                    ? {
+                        action: 'archive_resource',
+                        revision: directory.revision,
+                        resourceId: operation.resource.id,
+                        reason: effectiveReason,
+                      }
+                    : operation.kind === 'create_online_session'
+                    ? {
+                        action: 'create_online_session',
+                        revision: directory.revision,
+                        assignmentId,
+                        startsAt: `${sessionDate}T${startTime}:00Z`,
+                        endsAt: `${sessionDate}T${endTime}:00Z`,
+                        customMeetingUrl: resourceUrl.trim() || null,
+                        reason: effectiveReason,
+                      }
+                    : operation.kind === 'generate_meeting_link'
+                    ? {
+                        action: 'generate_meeting_link',
+                        revision: directory.revision,
+                        sessionId: operation.session.id,
+                        customMeetingUrl: resourceUrl.trim() || null,
+                        reason: effectiveReason,
+                      }
+                    : {
+                        action: 'save_recording',
+                        revision: directory.revision,
+                        sessionId: operation.session.id,
+                        recordingUrl: resourceUrl.trim() || null,
+                        reason: effectiveReason,
+                      };
+
+                await apiFetch(activeRole, '/api/course-resources', {
+                  method: 'POST',
+                  body: JSON.stringify(payload),
+                });
+                setOperation(null);
+                setSuccess('Enregistrement effectué avec succès.');
+                setReload(v => v + 1);
+                portal.refreshCampus();
+              })()
                 .catch(cause => {
                   setSaveError(cause instanceof Error ? cause.message : 'Enregistrement impossible.');
                 })

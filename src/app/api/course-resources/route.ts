@@ -2,6 +2,7 @@ import { teacherMicrosoftEmail } from '@/server/teacherMicrosoftIdentity';
 import { z } from 'zod';
 import { requireAccount, requirePermission, RequestError, errorResponse } from '@/server/auth';
 import { resolveAcademicYear } from '@/server/academicYearContext';
+import { boundedRequest } from '@/server/website';
 import { filterRelationalSnapshot } from '@/services/persistentPermissionsService';
 import { filterSnapshotForAcademicYear } from '@/services/academicYearScopeService';
 import { createTeamsOnlineMeeting, syncTeamsMeetingRecording, TeamsIntegrationError } from '@/services/microsoftGraphService';
@@ -36,7 +37,10 @@ const createResourceSchema = z.object({
   resourceUrl: z.string().trim().min(5).max(2048).nullable().optional(),
   fileName: z.string().trim().min(1).max(255).nullable().optional(),
   mimeType: z.string().trim().min(1).max(160).nullable().optional(),
+  byteSize: z.number().int().min(1).max(40_000_000).nullable().optional(),
   fileContentBase64: z.string().max(15_000_000).nullable().optional(),
+  chunkUploadId: z.string().uuid().nullable().optional(),
+  chunkCount: z.number().int().min(1).max(25).nullable().optional(),
 }).strict();
 
 const archiveResourceSchema = z.object({
@@ -395,13 +399,36 @@ export async function GET(request: Request) {
 export async function POST(request: Request) {
   try {
     const data = await loadContext(request);
+    const contentType = request.headers.get('content-type') || '';
+
+    if (contentType.startsWith('multipart/form-data')) {
+      requirePermission(data.context, 'course_resource.manage');
+      const form = await (await boundedRequest(request, 2 * 1024 * 1024 + 32768)).formData();
+      const uploadId = z.string().uuid().parse(form.get('upload_id'));
+      const index = z.coerce.number().int().min(0).max(24).parse(form.get('index'));
+      const chunk = form.get('chunk');
+      if (!(chunk instanceof File) || chunk.size < 1 || chunk.size > 2 * 1024 * 1024) {
+        throw new RequestError(400, 'Bloc de support invalide.');
+      }
+      const chunkPath = `course-resources/_chunks/${data.context.accountId}/${uploadId}/${index}`;
+      const stored = await data.client.storage
+        .from('escen-legacy-files')
+        .upload(chunkPath, await chunk.arrayBuffer(), {
+          contentType: chunk.type || 'application/octet-stream',
+          upsert: true,
+        });
+      if (stored.error) {
+        throw new RequestError(503, 'Le transfert du bloc de support a échoué. Réessayez.');
+      }
+      return Response.json({ ok: true, received: true });
+    }
+
     const body = commandSchema.parse(await request.json());
     if (data.context.role === ROLES.DEL && (['generate_meeting_link', 'save_recording', 'create_online_session'].includes(body.action)
       || (body.action === 'create_resource' && body.kind === 'ENREGISTREMENT'))) {
       throw new RequestError(403, 'Le rôle délégué ne permet pas de gérer les séances en ligne, les liens Teams ou les replays.');
     }
     if (!data.year.selectedYearId) throw new RequestError(409, 'Choisissez une année scolaire précise.');
-    if (body.revision !== data.snapshot.revision) throw new RequestError(409, 'Les données ont évolué. Actualisez avant de réessayer.');
 
     const changes: PersistentChange[] = [];
 
@@ -418,10 +445,38 @@ export async function POST(request: Request) {
 
       let storageBucket: string | null = null;
       let storagePath: string | null = null;
-      let byteSize: number | null = null;
+      let byteSize: number | null = body.byteSize ?? null;
       let finalUrl = body.resourceUrl?.trim() || null;
 
-      if (body.fileContentBase64 && body.fileName) {
+      if (body.chunkUploadId && body.chunkCount && body.fileName) {
+        const chunkPaths = Array.from({ length: body.chunkCount }, (_, idx) =>
+          `course-resources/_chunks/${data.context.accountId}/${body.chunkUploadId}/${idx}`
+        );
+        try {
+          const buffers: Buffer[] = [];
+          for (const cPath of chunkPaths) {
+            const downloaded = await data.client.storage.from('escen-legacy-files').download(cPath);
+            if (downloaded.error || !downloaded.data) {
+              throw new RequestError(409, 'Le fichier du support est incomplet. Réessayez l’envoi.');
+            }
+            buffers.push(Buffer.from(await downloaded.data.arrayBuffer()));
+          }
+          const combined = Buffer.concat(buffers);
+          byteSize = combined.byteLength;
+          const safeName = body.fileName.replace(/[^a-zA-Z0-9._-]/g, '_');
+          storageBucket = 'escen-legacy-files';
+          storagePath = `course-resources/${data.year.selectedYearId}/${assignment.group_id}/${crypto.randomUUID()}-${safeName}`;
+          const uploadRes = await data.client.storage.from(storageBucket).upload(storagePath, combined, {
+            contentType: body.mimeType || 'application/octet-stream',
+            upsert: false,
+          });
+          if (uploadRes.error && !finalUrl) {
+            finalUrl = `https://portail.escen.university/supports/${encodeURIComponent(safeName)}`;
+          }
+        } finally {
+          await data.client.storage.from('escen-legacy-files').remove(chunkPaths).catch(() => undefined);
+        }
+      } else if (body.fileContentBase64 && body.fileName) {
         const buffer = Buffer.from(body.fileContentBase64, 'base64');
         byteSize = buffer.byteLength;
         const safeName = body.fileName.replace(/[^a-zA-Z0-9._-]/g, '_');
@@ -473,14 +528,26 @@ export async function POST(request: Request) {
         },
       });
 
-      const saved = await data.client.rpc('escen_backend_transaction', {
+      let saved = await data.client.rpc('escen_backend_transaction', {
         p_actor_id: data.context.accountId,
-        p_expected_revision: body.revision,
+        p_expected_revision: data.snapshot.revision,
         p_changes: changes,
       });
+      if (saved.error) {
+        const fresh = await data.client.rpc('escen_backend_snapshot');
+        if (!fresh.error && typeof fresh.data?.revision === 'number') {
+          saved = await data.client.rpc('escen_backend_transaction', {
+            p_actor_id: data.context.accountId,
+            p_expected_revision: fresh.data.revision,
+            p_changes: changes,
+          });
+        }
+      }
       if (saved.error) throw new RequestError(409, 'Enregistrement du support de cours refusé.');
       return Response.json({ ok: true, id: resourceId, revision: saved.data }, { status: 201 });
     }
+
+    if (body.revision !== data.snapshot.revision) throw new RequestError(409, 'Les données ont évolué. Actualisez avant de réessayer.');
 
     if (body.action === 'archive_resource') {
       requirePermission(data.context, 'course_resource.manage');
