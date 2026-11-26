@@ -566,15 +566,13 @@ export default function CourseResourcesWorkspace() {
                           <span className="cell-sub">Lien non généré</span>
                         )}
                         {session.recordingUrl && (
-                          <a
+                          <button
+                            type="button"
                             className="btn btn-sm btn-outline"
-                            href={session.recordingUrl}
-                            onClick={event => { event.preventDefault(); void playRecording(session); }}
-                            target="_blank"
-                            rel="noopener noreferrer"
+                            onClick={() => void playRecording(session)}
                           >
                             Voir le replay
-                          </a>
+                          </button>
                         )}
                       </div>
                     </td>

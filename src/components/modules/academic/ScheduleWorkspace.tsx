@@ -335,14 +335,13 @@ function ScheduleManager() {
       {detail.mode === 'EN_LIGNE' && (
         <>
           <div><dt>Lien du cours en ligne</dt><dd>{detail.meetingUrl ? <a href={detail.meetingUrl} target="_blank" rel="noopener noreferrer" className="btn btn-sm btn-primary">Rejoindre le cours Teams</a> : 'Non généré'}</dd></div>
-          <div><dt>Enregistrement (Replay)</dt><dd>{detail.recordingUrl ? <a href={detail.recordingUrl} onClick={event => {
-            event.preventDefault();
+          <div><dt>Enregistrement (Replay)</dt><dd>{detail.recordingUrl ? <button type="button" onClick={() => {
             const target = detail;
             setPlayback({ sessionId: target.id, title: `Enregistrement · ${componentName(target.assignmentId)}`, url: null, inline: false, error: '' });
             void loadCourseRecordingPlayback(activeRole, { sessionId: target.id })
               .then(result => setPlayback(current => current?.sessionId === target.id ? { ...current, url: result.url, inline: Boolean(result.inline) } : current))
               .catch(cause => setPlayback(current => current?.sessionId === target.id ? { ...current, error: cause instanceof Error ? cause.message : 'Lecture impossible.' } : current));
-          }} target="_blank" rel="noopener noreferrer" className="btn btn-sm btn-outline">Accéder à l’enregistrement</a> : 'En attente d’enregistrement'}</dd></div>
+          }} className="btn btn-sm btn-outline">Accéder à l’enregistrement</button> : 'En attente d’enregistrement'}</dd></div>
         </>
       )}
       <div><dt>Statut</dt><dd>{detail.status}</dd></div><div><dt>Motif</dt><dd>{detail.reason || 'Non renseigné'}</dd></div></dl>
