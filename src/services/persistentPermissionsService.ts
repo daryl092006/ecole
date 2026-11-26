@@ -55,7 +55,7 @@ export function filterRelationalSnapshot(snapshot: RelationalSnapshot, context: 
   const supervisor = context.role === ROLES.SURV && assignedSessionIds.size > 0;
   const assignments = rows('teaching_assignments').filter(row => teacher ? !!context.teacherId && (row.teacher_id === context.teacherId || sessionAssignmentIds.has(row.id))
     : supervisor ? sessionAssignmentIds.has(row.id)
-    : self ? personalHistoricalAssignmentIds.has(row.id) || sessionAssignmentIds.has(row.id) || rows('enrollment_groups').some(link => link.historical_only !== true && personalEnrollments.has(field(link,'enrollment_id')) && link.group_id === row.group_id && rows('enrollments').some(enrollment => enrollment.id === link.enrollment_id && enrollment.offering_id === row.offering_id))
+    : self ? personalHistoricalAssignmentIds.has(row.id) || sessionAssignmentIds.has(row.id) || rows('enrollment_groups').some(link => link.historical_only !== true && personalEnrollments.has(field(link,'enrollment_id')) && link.group_id === row.group_id)
     : rows('academic_offerings').some(offering => offering.id === row.offering_id && grantsOffering(offering,row.group_id))).filter(row => rows('academic_offerings').some(offering => offering.id === row.offering_id && grantsOffering(offering, row.group_id)));
   const assignmentIds = new Set(assignments.map(row => row.id));
   const offeringIds = new Set(rows('academic_offerings').filter(row => self ? rows('enrollments').some(link => personalEnrollments.has(link.id) && link.offering_id === row.id) || rows('enrollment_offering_contexts').some(link => personalEnrollments.has(field(link, 'enrollment_id')) && link.offering_id === row.id)

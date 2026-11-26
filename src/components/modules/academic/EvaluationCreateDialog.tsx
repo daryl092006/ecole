@@ -152,18 +152,18 @@ export default function EvaluationCreateDialog({
     }
   };
 
-  // Calcul du nombre d'étudiants rattachés (aligné sur le trigger SQL guard_candidate)
+  // Calcul du nombre d'étudiants rattachés (tous les étudiants actifs du groupe de l'enseignement)
   const today = new Date().toISOString().slice(0, 10);
   const groupEnrollmentIds = new Set(
     enrollmentGroups
       .filter(eg =>
         eg.group_id === selectedAssignment?.group_id &&
-        (!eg.valid_from || String(eg.valid_from).slice(0, 10) <= today) &&
+        eg.historical_only !== true &&
         (!eg.valid_until || String(eg.valid_until).slice(0, 10) > today)
       )
       .map(eg => String(eg.enrollment_id))
   );
-  const candidateCount = enrollments.filter(e => groupEnrollmentIds.has(String(e.id)) && e.offering_id === selectedAssignment?.offering_id && isEvaluationEnrollmentStatus(e.status)).length;
+  const candidateCount = enrollments.filter(e => groupEnrollmentIds.has(String(e.id)) && isEvaluationEnrollmentStatus(e.status)).length;
 
   const parentOptions = evaluations.filter(e => e.assignment_id === assignmentId && e.kind !== 'RATTRAPAGE' && e.session_type !== 'RATTRAPAGE' && !e.cancelled_at && !e.archived_at);
 

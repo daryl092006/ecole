@@ -105,11 +105,43 @@ async function loadContext(request: Request) {
   return { ...auth, snapshot, scoped, year };
 }
 
+async function runTransactionWithRetry(
+  client: Awaited<ReturnType<typeof requireAccount>>['client'],
+  rpcName: 'escen_evaluation_transaction' | 'escen_backend_transaction',
+  actorId: string,
+  initialRevision: number,
+  changes: PersistentChange[]
+) {
+  let expectedRevision = initialRevision;
+  for (let attempt = 0; attempt < 3; attempt++) {
+    const saved = await client.rpc(rpcName, {
+      p_actor_id: actorId,
+      p_expected_revision: expectedRevision,
+      p_changes: changes,
+    });
+    if (!saved.error) return saved;
+    const detail = saved.error.message || saved.error.details || '';
+    const isConflict = saved.error.code === '40001' || saved.error.code === 'PT409' || detail.includes('CONCURRENT_UPDATE');
+    if (!isConflict || attempt === 2) return saved;
+    const fresh = await client.rpc('escen_backend_snapshot');
+    if (fresh.error || !fresh.data) return saved;
+    const freshRev = Number((fresh.data as RelationalSnapshot).revision);
+    if (!Number.isFinite(freshRev) || freshRev < 0) return saved;
+    expectedRevision = freshRev;
+  }
+  return client.rpc(rpcName, {
+    p_actor_id: actorId,
+    p_expected_revision: expectedRevision,
+    p_changes: changes,
+  });
+}
+
 export async function POST(request: Request) {
   try {
     const data = await loadContext(request);
     const body = requestSchema.parse(await request.json());
     const changes: PersistentChange[] = [];
+    const effectiveRevision = Math.max(body.revision, data.snapshot.revision);
 
     if (body.action === 'create') {
       requirePermission(data.context, 'evaluation.create');
@@ -126,16 +158,17 @@ export async function POST(request: Request) {
         throw new RequestError(400, 'Un rattrapage doit être rattaché à une évaluation parente.');
       }
 
-      // Candidats : étudiants inscrits dans le groupe de l'affectation (aligné sur guard_candidate SQL)
+      // Candidats : tous les étudiants actifs inscrits dans le groupe de l'affectation (y compris en Tronc commun multi-filières)
       const today = new Date().toISOString().slice(0, 10);
-      const groupLinks = (data.scoped.tables.enrollment_groups || []).filter(eg =>
+      const groupLinks = (data.snapshot.tables.enrollment_groups || []).filter(eg =>
         eg.historical_only !== true &&
         eg.group_id === assignment.group_id &&
-        (!eg.valid_from || String(eg.valid_from).slice(0, 10) <= today) &&
         (!eg.valid_until || String(eg.valid_until).slice(0, 10) > today)
       );
       const groupEnrollmentIds = new Set(groupLinks.map(eg => eg.enrollment_id));
-      const eligibleEnrollments = (data.scoped.tables.enrollments || []).filter(e => groupEnrollmentIds.has(e.id) && e.offering_id === assignment.offering_id && isEvaluationEnrollmentStatus(e.status));
+      const eligibleEnrollments = (data.snapshot.tables.enrollments || []).filter(e =>
+        groupEnrollmentIds.has(e.id) && isEvaluationEnrollmentStatus(e.status)
+      );
 
       if (!eligibleEnrollments.length) {
         throw new RequestError(409, 'Aucun étudiant inscrit n’est rattaché à ce groupe pour cette formation.');
@@ -172,11 +205,13 @@ export async function POST(request: Request) {
         });
       }
 
-      const saved = await data.client.rpc('escen_evaluation_transaction', {
-        p_actor_id: data.context.accountId,
-        p_expected_revision: body.revision,
-        p_changes: changes,
-      });
+      const saved = await runTransactionWithRetry(
+        data.client,
+        'escen_evaluation_transaction',
+        data.context.accountId,
+        effectiveRevision,
+        changes
+      );
 
       if (saved.error) {
         console.error('[API evaluations:create] Transaction failed:', saved.error);
@@ -264,11 +299,13 @@ export async function POST(request: Request) {
         });
       }
 
-      const saved = await data.client.rpc('escen_evaluation_transaction', {
-        p_actor_id: data.context.accountId,
-        p_expected_revision: body.revision,
-        p_changes: changes,
-      });
+      const saved = await runTransactionWithRetry(
+        data.client,
+        'escen_evaluation_transaction',
+        data.context.accountId,
+        effectiveRevision,
+        changes
+      );
 
       if (saved.error) {
         console.error('[API evaluations:enter_grades] Transaction failed:', saved.error);
@@ -336,11 +373,13 @@ export async function POST(request: Request) {
         },
       });
 
-      const saved = await data.client.rpc('escen_backend_transaction', {
-        p_actor_id: data.context.accountId,
-        p_expected_revision: body.revision,
-        p_changes: changes,
-      });
+      const saved = await runTransactionWithRetry(
+        data.client,
+        'escen_backend_transaction',
+        data.context.accountId,
+        effectiveRevision,
+        changes
+      );
 
       if (saved.error) {
         throw new RequestError(409, 'Transition de notes refusée : vérifiez les prérequis.');
@@ -381,11 +420,13 @@ export async function POST(request: Request) {
         },
       });
 
-      const saved = await data.client.rpc('escen_backend_transaction', {
-        p_actor_id: data.context.accountId,
-        p_expected_revision: body.revision,
-        p_changes: changes,
-      });
+      const saved = await runTransactionWithRetry(
+        data.client,
+        'escen_backend_transaction',
+        data.context.accountId,
+        effectiveRevision,
+        changes
+      );
 
       if (saved.error) {
         throw new RequestError(409, 'Correction refusée : vérifiez les valeurs et l’état de la publication.');
@@ -569,11 +610,13 @@ export async function POST(request: Request) {
         });
       }
 
-      const saved = await data.client.rpc('escen_backend_transaction', {
-        p_actor_id: data.context.accountId,
-        p_expected_revision: body.revision,
-        p_changes: changes,
-      });
+      const saved = await runTransactionWithRetry(
+        data.client,
+        'escen_backend_transaction',
+        data.context.accountId,
+        effectiveRevision,
+        changes
+      );
 
       if (saved.error) {
         console.error('[API evaluations:schedule_delivery] Transaction failed:', saved.error);

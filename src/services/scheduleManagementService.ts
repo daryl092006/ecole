@@ -82,7 +82,7 @@ export function scheduleConflict(snapshot: RelationalSnapshot, proposed: Databas
   const groups = new Set((participants.length === 1 ? [proposed] : participants).map(participant => participant.group_id));
   if (sessions.some(row => sessionParticipants(snapshot, row).some(participant => groups.has(participant.group_id)))) return 'Ce groupe a déjà une séance sur ce créneau.';
   const teacher = proposed.replacement_teacher_id || proposed.teacher_id;
-  if (sessions.some(row => (row.replacement_teacher_id || row.teacher_id) === teacher)) return 'Cet enseignant a déjà une séance sur ce créneau.';
+  if (sessions.some(row => (row.replacement_teacher_id || row.teacher_id) === teacher && (proposed.mode === 'COURS' || row.mode === 'COURS'))) return 'Cet enseignant a déjà une séance sur ce créneau.';
   const room = proposed.actual_room_id || proposed.room_id;
   if (room && sessions.some(row => (row.actual_room_id || row.room_id) === room)) return 'Cette salle est déjà occupée sur ce créneau.';
   if (room && (snapshot.tables.exam_rooms || []).some(examRoom => examRoom.room_id === room && (snapshot.tables.exam_deliveries || []).some(delivery => delivery.id === examRoom.delivery_id
