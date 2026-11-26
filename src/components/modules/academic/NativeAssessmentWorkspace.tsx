@@ -176,7 +176,7 @@ export default function NativeAssessmentWorkspace({ category }: { category: Asse
     </DataPanel>
     {selected && selectedMembers && (() => {
       const selectedPaper = (data.tables.exam_papers || [])
-        .filter(row => row.evaluation_id === selected.id && !row.archived_at)
+        .filter(row => row.evaluation_id === selected.id && !row.archived_at && row.status !== 'RETIRE')
         .sort((a, b) => Number(b.version) - Number(a.version))[0];
       const selectedDelivery = (data.tables.exam_deliveries || []).find(row => row.evaluation_id === selected.id);
       const selectedSession = selectedDelivery && (data.tables.sessions || []).find(row => row.id === selectedDelivery.session_id);

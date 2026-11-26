@@ -89,7 +89,7 @@ export async function POST(request: Request) {
     if (exam && (body.subject.purpose !== exam.purpose || body.subject.durationMinutes !== exam.durationMinutes)) {
       throw new RequestError(409, 'La nature et la durée du sujet doivent correspondre à la programmation de l’examen. Actualisez la page.');
     }
-    if (!previous && (snapshot.tables.exam_papers || []).some(row => row.evaluation_id === body.subject.evaluationId && !row.archived_at)) {
+    if (!previous && (snapshot.tables.exam_papers || []).some(row => row.evaluation_id === body.subject.evaluationId && !row.archived_at && row.status !== 'RETIRE')) {
       throw new RequestError(409, 'Cet examen possède déjà un sujet. Ouvrez ce sujet pour le compléter.');
     }
 

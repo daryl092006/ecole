@@ -184,7 +184,7 @@ export function projectSubjects(snapshot: RelationalSnapshot, papers: DatabaseRo
     id: paper.id,
     libraryId: String(paper.library_id),
     version: Number(paper.version),
-    archived: !!paper.archived_at,
+    archived: !!paper.archived_at || paper.status === 'RETIRE',
     title: String(paper.title || ''),
     instructions: String(paper.instructions || ''),
     durationMinutes: Number(paper.duration_minutes || 60),
