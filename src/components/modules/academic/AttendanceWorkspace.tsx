@@ -67,11 +67,62 @@ export default function AttendanceWorkspace() {
   const changed = session?.students.filter(student => drafts[student.enrollmentId]?.status && JSON.stringify(drafts[student.enrollmentId]) !== JSON.stringify(previous(student.enrollmentId))) || [];
   const correcting = changed.some(student => session?.attendances.some(row => row.enrollmentId === student.enrollmentId));
   const teacherBefore = session?.teacherAttendances.find(row => row.teacherId === session.teacherId);
-  const open = (next: Operation) => {
+  const isStatusDisabled = (enrollmentId: string, status: AttendanceStatus) => {
+    const prevStatus = previous(enrollmentId).status;
+    return (
+      activeRole === ROLES.DEL &&
+      status !== prevStatus &&
+      (!['PRESENT', 'ABSENT', 'RETARD'].includes(status) ||
+        ['ABSENT_JUSTIFIE', 'RETARD_JUSTIFIE', 'DISPENSE'].includes(prevStatus))
+    );
+  };
+  const setStudentStatus = (enrollmentId: string, status: AttendanceStatus | '') => {
+    setDrafts(current => ({
+      ...current,
+      [enrollmentId]: { ...(current[enrollmentId] || previous(enrollmentId)), status },
+    }));
+  };
+  const markAllStudents = (status: 'PRESENT' | 'ABSENT') => {
+    if (!session) return;
+    setDrafts(current => {
+      const next = { ...current };
+      for (const student of session.students) {
+        if (!isStatusDisabled(student.enrollmentId, status)) {
+          next[student.enrollmentId] = { ...(next[student.enrollmentId] || previous(student.enrollmentId)), status };
+        }
+      }
+      return next;
+    });
+  };
+  const open = (next: Operation, initialOverrides?: Record<string, Partial<Draft>>) => {
     if (!session) return;
     setOperation(next); setSaveError(''); setReason('');
-    setDrafts(Object.fromEntries(session.students.map(student => [student.enrollmentId, previous(student.enrollmentId)])));
+    setDrafts(Object.fromEntries(session.students.map(student => [
+      student.enrollmentId,
+      { ...previous(student.enrollmentId), ...(initialOverrides?.[student.enrollmentId] || {}) },
+    ])));
     setTeacher({ arrivedAt: local(teacherBefore?.arrivedAt || null), leftAt: local(teacherBefore?.leftAt || null), comment: teacherBefore?.comment || '' });
+  };
+  const quickMarkOnTable = (enrollmentId: string, status: AttendanceStatus) => {
+    if (!session || isStatusDisabled(enrollmentId, status)) return;
+    open({ kind: 'students' }, { [enrollmentId]: { status } });
+  };
+  const quickMarkAllOnTable = (status: 'PRESENT' | 'ABSENT') => {
+    if (!session) return;
+    const overrides: Record<string, Partial<Draft>> = {};
+    for (const student of session.students) {
+      if (!isStatusDisabled(student.enrollmentId, status)) {
+        overrides[student.enrollmentId] = { status };
+      }
+    }
+    open({ kind: 'students' }, overrides);
+  };
+  const statusPillClass = (status?: AttendanceStatus | '') => {
+    if (!status) return 'pill pill-default';
+    if (status === 'PRESENT') return 'pill pill-success';
+    if (status === 'ABSENT') return 'pill pill-danger';
+    if (status === 'RETARD') return 'pill pill-warning';
+    return 'pill pill-info';
   };
   const title = operation?.kind === 'students' ? 'Émargement des étudiants' : operation?.kind === 'teacher' ? 'Présence enseignante'
     : operation?.kind === 'review' && operation.decision === 'VALIDE' ? 'Accepter le justificatif' : 'Refuser le justificatif';
@@ -131,14 +182,13 @@ export default function AttendanceWorkspace() {
       <div className="card-header"><div><h2>{session.label} {session.mode === 'EN_LIGNE' && <span className="pill pill-info">Cours en ligne</span>}</h2><p>{date(session.startsAt)} → {date(session.endsAt)} · {session.teacherName} · {session.status}</p>
         {session.mode === 'EN_LIGNE' && (session.meetingUrl || session.recordingUrl) && <div className="btn-group mt-1">
           {session.meetingUrl && <a className="btn btn-sm btn-outline" href={session.meetingUrl} target="_blank" rel="noopener noreferrer">Lien du cours en ligne</a>}
-          {session.recordingUrl && <a className="btn btn-sm btn-outline" href={session.recordingUrl} onClick={event => {
-            event.preventDefault();
+          {session.recordingUrl && <button type="button" className="btn btn-sm btn-outline" onClick={() => {
             const target = session;
             setPlayback({ sessionId: target.id, title: `Enregistrement · ${target.label}`, url: null, inline: false, error: '' });
             void loadCourseRecordingPlayback(activeRole, { sessionId: target.id })
               .then(result => setPlayback(current => current?.sessionId === target.id ? { ...current, url: result.url, inline: Boolean(result.inline) } : current))
               .catch(cause => setPlayback(current => current?.sessionId === target.id ? { ...current, error: cause instanceof Error ? cause.message : 'Lecture impossible.' } : current));
-          }} target="_blank" rel="noopener noreferrer">Voir l’enregistrement</a>}
+          }}>Voir l’enregistrement</button>}
         </div>}
       </div>
       {playback && (
@@ -151,9 +201,26 @@ export default function AttendanceWorkspace() {
             : <LoadingState label="Préparation de l’enregistrement…" />}
         </WorkPage>
       )}
-        {session.canRecordStudents && <button className="btn btn-primary" onClick={() => open({ kind: 'students' })}>Saisir ou corriger les présences</button>}</div>
-        <ResponsiveTable className="data-table"><thead><tr><th>Étudiant</th><th>Présence</th><th>Horaires</th><th>Commentaire</th></tr></thead><tbody>{session.students.map(student => {
+        {session.canRecordStudents && (
+          <div className="btn-group attendance-header-actions">
+            {session.students.length > 0 && (
+              <>
+                <button type="button" className="btn btn-sm btn-outline" onClick={() => quickMarkAllOnTable('PRESENT')}>
+                  Tous présents
+                </button>
+                <button type="button" className="btn btn-sm btn-outline" onClick={() => quickMarkAllOnTable('ABSENT')}>
+                  Tous absents
+                </button>
+              </>
+            )}
+            <button type="button" className="btn btn-primary" onClick={() => open({ kind: 'students' })}>
+              Saisir ou corriger les présences
+            </button>
+          </div>
+        )}</div>
+        <ResponsiveTable className="data-table attendance-sheet-table"><thead><tr><th>Étudiant</th><th>Statut</th>{session.canRecordStudents && <th>Pointage rapide</th>}<th>Détails & Commentaire</th></tr></thead><tbody>{session.students.map(student => {
           const attendance = session.attendances.find(row => row.enrollmentId === student.enrollmentId);
+          const currentStatus = attendance?.status || '';
           return <tr key={student.enrollmentId}><td>
             <strong>{student.name}</strong>
             <div className="cell-sub">{student.matricule}</div>
@@ -166,8 +233,44 @@ export default function AttendanceWorkspace() {
                 Dossier étudiant
               </button>
             )}
-          </td><td>{attendance ? ATTENDANCE_LABELS[attendance.status] : 'Non renseignée'}</td><td>{date(attendance?.arrivedAt || null)} → {date(attendance?.leftAt || null)}{attendance?.lateMinutes != null && <div>{attendance.lateMinutes} min de retard</div>}</td><td>{attendance?.comment || '—'}{attendance?.reason && <div className="cell-sub">Motif : {attendance.reason}</div>}</td></tr>;
-        })}{!session.students.length && <tr><td colSpan={4}>Aucun étudiant rattaché à ce groupe à la date de la séance.</td></tr>}</tbody></ResponsiveTable>
+          </td><td><span className={statusPillClass(currentStatus)}>{attendance ? ATTENDANCE_LABELS[attendance.status] : 'Non renseignée'}</span></td>
+          {session.canRecordStudents && (
+            <td>
+              <div className="btn-group attendance-quick-buttons">
+                <button
+                  type="button"
+                  className={`btn btn-sm ${currentStatus === 'PRESENT' ? 'btn-primary' : 'btn-outline'}`}
+                  disabled={isStatusDisabled(student.enrollmentId, 'PRESENT')}
+                  onClick={() => quickMarkOnTable(student.enrollmentId, 'PRESENT')}
+                >
+                  Présent
+                </button>
+                <button
+                  type="button"
+                  className={`btn btn-sm ${currentStatus === 'ABSENT' ? 'btn-danger' : 'btn-outline'}`}
+                  disabled={isStatusDisabled(student.enrollmentId, 'ABSENT')}
+                  onClick={() => quickMarkOnTable(student.enrollmentId, 'ABSENT')}
+                >
+                  Absent
+                </button>
+                <button
+                  type="button"
+                  className={`btn btn-sm ${currentStatus === 'RETARD' ? 'btn-primary' : 'btn-outline'}`}
+                  disabled={isStatusDisabled(student.enrollmentId, 'RETARD')}
+                  onClick={() => quickMarkOnTable(student.enrollmentId, 'RETARD')}
+                >
+                  En retard
+                </button>
+              </div>
+            </td>
+          )}
+          <td>
+            {(attendance?.arrivedAt || attendance?.leftAt) ? <div>{date(attendance?.arrivedAt || null)} → {date(attendance?.leftAt || null)}</div> : null}
+            {attendance?.lateMinutes != null && <div className="cell-sub">{attendance.lateMinutes} min de retard</div>}
+            <div>{attendance?.comment || '—'}</div>
+            {attendance?.reason && <div className="cell-sub">Motif : {attendance.reason}</div>}
+          </td></tr>;
+        })}{!session.students.length && <tr><td colSpan={session.canRecordStudents ? 4 : 3}>Aucun étudiant rattaché à ce groupe à la date de la séance.</td></tr>}</tbody></ResponsiveTable>
     </>}
     </section>
     {session && <>
@@ -196,17 +299,94 @@ export default function AttendanceWorkspace() {
           } catch { setSaveError('Vérifiez les dates et les valeurs saisies.'); setSaving(false); }
         }}>
         <fieldset className="permission-fieldset" disabled={saving}>
-          {operation.kind === 'students' && <><p>Choisissez un statut pour chaque présence à enregistrer. Les lignes sans saisie restent non renseignées.</p>{session.students.map(student => {
-            const draft = drafts[student.enrollmentId];
-            const update = (value: Partial<Draft>) => setDrafts(current => ({ ...current, [student.enrollmentId]: { ...current[student.enrollmentId], ...value } }));
-            return <fieldset key={student.enrollmentId}><legend>{student.name} · {student.matricule}</legend>
-              <label className="form-group">Présence de {student.name}<select className="select-input" value={draft.status} onChange={event => update({ status: event.target.value as Draft['status'] })}><option value="">Non renseignée</option>{ATTENDANCE_STATUSES.map(status => <option key={status} value={status} disabled={activeRole === ROLES.DEL && status !== previous(student.enrollmentId).status && (!['PRESENT','ABSENT','RETARD'].includes(status) || ['ABSENT_JUSTIFIE','RETARD_JUSTIFIE','DISPENSE'].includes(previous(student.enrollmentId).status))}>{ATTENDANCE_LABELS[status]}</option>)}</select></label>
-              <label className="form-group">Arrivée de {student.name}<input className="input" type="datetime-local" step={1} value={draft.arrivedAt} onChange={event => update({ arrivedAt: event.target.value })} /></label>
-              <label className="form-group">Départ de {student.name}<input className="input" type="datetime-local" step={1} value={draft.leftAt} onChange={event => update({ leftAt: event.target.value })} /></label>
-              <label className="form-group">Retard de {student.name} (minutes)<input className="input" type="number" min={0} max={2147483647} step={1} value={draft.lateMinutes} onChange={event => update({ lateMinutes: event.target.value })} /></label>
-              <label className="form-group">Commentaire pour {student.name}<textarea className="input" maxLength={4000} value={draft.comment} onChange={event => update({ comment: event.target.value })} /></label>
-            </fieldset>;
-          })}</>}
+          {operation.kind === 'students' && <>
+            <div className="attendance-bulk-bar">
+              <p>Cliquez sur <strong>Présent</strong> ou <strong>Absent</strong> pour chaque étudiant. Les lignes non cochées restent inchangées.</p>
+              {session.students.length > 0 && (
+                <div className="btn-group">
+                  <button type="button" className="btn btn-sm btn-outline" onClick={() => markAllStudents('PRESENT')}>
+                    Tout marquer Présent
+                  </button>
+                  <button type="button" className="btn btn-sm btn-outline" onClick={() => markAllStudents('ABSENT')}>
+                    Tout marquer Absent
+                  </button>
+                </div>
+              )}
+            </div>
+            <div className="attendance-student-cards">
+              {session.students.map(student => {
+                const draft = drafts[student.enrollmentId];
+                const update = (value: Partial<Draft>) => setDrafts(current => ({ ...current, [student.enrollmentId]: { ...current[student.enrollmentId], ...value } }));
+                const hasExtraDetails = Boolean(draft.arrivedAt || draft.leftAt || draft.lateMinutes || draft.comment || draft.status === 'RETARD');
+                return (
+                  <fieldset key={student.enrollmentId} className="attendance-student-row">
+                    <legend>{student.name} · {student.matricule}</legend>
+                    <div className="attendance-student-main">
+                      <div className="attendance-student-identity">
+                        <strong>{student.name}</strong>
+                        <span className="cell-sub">{student.matricule}</span>
+                      </div>
+                      <div className="btn-group attendance-status-toggles" role="group" aria-label={`Boutons de présence pour ${student.name}`}>
+                        <button
+                          type="button"
+                          className={`btn btn-sm ${draft.status === 'PRESENT' ? 'btn-primary' : 'btn-outline'}`}
+                          disabled={isStatusDisabled(student.enrollmentId, 'PRESENT')}
+                          onClick={() => setStudentStatus(student.enrollmentId, draft.status === 'PRESENT' ? '' : 'PRESENT')}
+                        >
+                          ✓ Présent
+                        </button>
+                        <button
+                          type="button"
+                          className={`btn btn-sm ${draft.status === 'ABSENT' ? 'btn-danger' : 'btn-outline'}`}
+                          disabled={isStatusDisabled(student.enrollmentId, 'ABSENT')}
+                          onClick={() => setStudentStatus(student.enrollmentId, draft.status === 'ABSENT' ? '' : 'ABSENT')}
+                        >
+                          ✕ Absent
+                        </button>
+                        <button
+                          type="button"
+                          className={`btn btn-sm ${draft.status === 'RETARD' ? 'btn-primary' : 'btn-outline'}`}
+                          disabled={isStatusDisabled(student.enrollmentId, 'RETARD')}
+                          onClick={() => setStudentStatus(student.enrollmentId, draft.status === 'RETARD' ? '' : 'RETARD')}
+                        >
+                          En retard
+                        </button>
+                        <label className="attendance-select-wrapper">
+                          <span className="sr-only">Présence de {student.name}</span>
+                          <select
+                            aria-label={`Présence de ${student.name}`}
+                            className="select-input attendance-compact-select"
+                            value={draft.status}
+                            onChange={event => update({ status: event.target.value as Draft['status'] })}
+                          >
+                            <option value="">Non renseignée</option>
+                            {ATTENDANCE_STATUSES.map(status => (
+                              <option
+                                key={status}
+                                value={status}
+                                disabled={isStatusDisabled(student.enrollmentId, status)}
+                              >
+                                {ATTENDANCE_LABELS[status]}
+                              </option>
+                            ))}
+                          </select>
+                        </label>
+                      </div>
+                    </div>
+                    <details className="attendance-extra-details" open={hasExtraDetails}>
+                      <summary>Options avancées (retard en minutes, heures d’arrivée/départ, observation)</summary>
+                      <div className="form-grid mt-1">
+                        <label className="form-group">Retard de {student.name} (minutes)<input className="input" type="number" min={0} max={2147483647} step={1} value={draft.lateMinutes} onChange={event => update({ lateMinutes: event.target.value })} /></label>
+                        <label className="form-group">Arrivée de {student.name}<input className="input" type="datetime-local" step={1} value={draft.arrivedAt} onChange={event => update({ arrivedAt: event.target.value })} /></label>
+                        <label className="form-group">Départ de {student.name}<input className="input" type="datetime-local" step={1} value={draft.leftAt} onChange={event => update({ leftAt: event.target.value })} /></label>
+                      </div>
+                      <label className="form-group mt-1">Commentaire pour {student.name}<textarea className="input" rows={2} maxLength={4000} value={draft.comment} onChange={event => update({ comment: event.target.value })} /></label>
+                    </details>
+                  </fieldset>
+                );
+              })}
+            </div>
+          </>}
           {operation.kind === 'teacher' && <><p>{session.teacherName}</p><label className="form-group">Arrivée enseignante<input className="input" type="datetime-local" step={1} required value={teacher.arrivedAt} onChange={event => setTeacher({ ...teacher, arrivedAt: event.target.value })} /></label><label className="form-group">Départ enseignant<input className="input" type="datetime-local" step={1} value={teacher.leftAt} onChange={event => setTeacher({ ...teacher, leftAt: event.target.value })} /></label><label className="form-group">Commentaire enseignant<textarea className="input" maxLength={4000} value={teacher.comment} onChange={event => setTeacher({ ...teacher, comment: event.target.value })} /></label></>}
           {operation.kind === 'review' && <p>{operation.justification.studentName} · {operation.justification.reason}</p>}
           <DrawerActions><button className="btn btn-primary">Vérifier les informations</button></DrawerActions>
