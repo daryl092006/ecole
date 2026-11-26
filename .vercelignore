@@ -1,0 +1,10 @@
+/node_modules
+/.next*
+/.git
+/tmp
+/.tmp
+/test-results
+/playwright-report
+/tests
+/supabase
+/scripts
