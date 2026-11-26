@@ -7,6 +7,7 @@ import { teacherIdentityKey, teacherPersonalEmailSchema } from '@/services/teach
 import { protectedTeacherAccount, protectedTeacherEmails } from '@/server/protectedTeacherAccounts';
 import { sanitizeNameToken, getGraphAccessToken } from '@/services/microsoftGraphService';
 import { deliverEmail, emailConfiguration } from '@/server/emailTransport';
+import { buildEscenEmailHtml } from '@/server/escenEmailTemplate';
 
 interface Input {
   requestId: string; teacherId: string; personId: string; actorId: string;
@@ -190,13 +191,35 @@ export async function completeTeacherDigitalAccess(client: SupabaseClient, input
       options: { redirectTo: 'https://portail.escen.university/mot-de-passe-reinitialiser' } });
     if (recovery.error || !recovery.data.properties.action_link) throw new ProvisionError('AUTH_REJECTED');
     const text = `Bonjour ${input.firstname} ${input.lastname},\n\nVotre espace enseignant ESCEN est activé.\n\nMicrosoft 365 : https://office.com\nIdentifiant : ${institutionalEmail}\n${microsoftPassword ? `Mot de passe temporaire : ${microsoftPassword}\nChoisissez un nouveau mot de passe à la première connexion.` : 'Votre compte Microsoft 365 existant est conservé. Utilisez votre mot de passe habituel.'}\n\nEspace enseignant : https://portail.escen.university/\nIdentifiant : ${portalUser.email}\nChoisissez votre mot de passe portail avec ce lien personnel :\n${recovery.data.properties.action_link}\n\nNe partagez pas ce message.\nSupport : support.informatique@escen.university`;
+    const html = buildEscenEmailHtml(`
+      <h2 style="color: #01b4d5; margin-top: 0; font-size: 20px;">Bienvenue sur votre Espace Enseignant ESCEN</h2>
+      <p style="margin-top: 16px;">Bonjour <strong>${input.firstname} ${input.lastname}</strong>,</p>
+      <p>Votre espace enseignant ESCEN ainsi que votre compte Microsoft 365 Education sont activés.</p>
+      <div style="background-color: #f8fafc; border: 1px solid #e2e8f0; padding: 20px; border-radius: 8px; margin: 24px 0;">
+        <p style="margin: 0 0 8px 0; font-size: 14px; color: #64748b;">Identifiant (Portail &amp; Microsoft 365) :</p>
+        <p style="margin: 0 0 16px 0; font-size: 16px; font-weight: bold; color: #0f172a;">${institutionalEmail}</p>
+        <p style="margin: 0 0 8px 0; font-size: 14px; color: #64748b;">Mot de passe Microsoft 365 :</p>
+        <p style="margin: 0; font-size: 16px; font-weight: bold; color: #01b4d5; font-family: monospace;">${microsoftPassword || 'Compte Microsoft 365 existant conservé (mot de passe habituel)'}</p>
+      </div>
+      <p style="color: #f59e0b; font-weight: 600; font-size: 14px; margin: 16px 0;">
+        Cliquez sur le bouton ci-dessous pour définir votre mot de passe personnel sur le Portail Enseignant :
+      </p>
+      <p style="text-align: center; margin: 28px 0 14px 0;">
+        <a href="${recovery.data.properties.action_link}" style="display: inline-block; padding: 12px 24px; background-color: #01b4d5; color: #ffffff; text-decoration: none; border-radius: 8px; font-weight: bold; font-size: 15px; box-shadow: 0 4px 6px rgba(1,180,213,0.2); margin: 4px 6px;">
+          Activer mon Portail Enseignant
+        </a>
+        <a href="https://office.com" style="display: inline-block; padding: 12px 24px; background-color: #0f172a; color: #ffffff; text-decoration: none; border-radius: 8px; font-weight: bold; font-size: 15px; margin: 4px 6px;">
+          Ouvrir Microsoft 365
+        </a>
+      </p>
+    `);
     const now = new Date().toISOString();
     const outcome = await dependencies.deliver({ id: input.requestId, academic_year_id: '', event_type: 'teaching_assignment_created',
       source_table: 'teachers', source_id: input.teacherId, recipient_email: personalEmail,
       recipient_name: `${input.firstname} ${input.lastname}`, subject: 'ESCEN — Vos accès Microsoft 365 et espace enseignant',
       status: 'PROCESSING', attempts: 1, provider_reference: null, accepted_at: null, last_error_code: null,
       requested_by: input.actorId, reason: 'Envoi initial des accès enseignant.', version: 1, created_at: now, updated_at: now,
-      text_body: text, html_body: '',
+      text_body: text, html_body: html,
     });
     if (outcome.status !== 'ACCEPTED') {
       const ambiguous = outcome.status === 'UNKNOWN';

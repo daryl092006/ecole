@@ -2,6 +2,7 @@ import 'server-only';
 import { randomUUID } from 'node:crypto';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { provisionM365Account } from './microsoftGraphService';
+import { buildEscenEmailHtml } from '@/server/escenEmailTemplate';
 
 export const STUDENT_PORTAL_DEFAULT_PASSWORD = 'password';
 
@@ -881,27 +882,38 @@ Lors de votre première connexion, il vous sera demandé de configurer votre mot
 
 La Direction et toute l’équipe de l’ESCEN vous souhaitent une excellente rentrée académique !`;
 
-    const htmlBody = `<!doctype html><html><body style="font-family: sans-serif; color: #182333; line-height: 1.6;">
-<h2 style="color: #0f4c81;">Bienvenue à l’ESCEN !</h2>
-<p>Bonjour <strong>${params.firstname} ${params.lastname}</strong>,</p>
-<p>Félicitations ! Votre admission à l’ESCEN est désormais officielle.</p>
-<div style="background: #f4f7fb; border-left: 4px solid #0f4c81; padding: 16px; margin: 20px 0;">
-  <p style="margin: 0 0 8px 0;"><strong>Vos identifiants officiels :</strong></p>
-  <ul style="margin: 0; padding-left: 20px;">
-    <li><strong>Matricule étudiant :</strong> ${matricule}</li>
-    <li><strong>Email institutionnel Microsoft 365 :</strong> <code>${m365Email}</code></li>
-    <li><strong>Mot de passe initial Microsoft 365 :</strong> <code>${pwdDisplay}</code></li>
-    <li><strong>Mot de passe du Portail Étudiant :</strong> <code>${portalPwdDisplay}</code></li>
-  </ul>
-</div>
-<p><strong>Vos accès directs :</strong></p>
-<ol>
-  <li><a href="https://portail.escen.university/" style="color: #0f4c81; font-weight: bold;">Accéder au Portail Étudiant ESCEN</a> (utilisez votre email institutionnel)</li>
-  <li><a href="https://office.com" style="color: #0f4c81; font-weight: bold;">Accéder à vos outils Microsoft 365 (Office, Teams, OneDrive)</a></li>
-</ol>
-<p style="font-size: 13px; color: #64748b;">Lors de votre première connexion, il vous sera demandé de personnaliser votre mot de passe.</p>
-<p>L’équipe de direction et d’admission ESCEN vous souhaite une excellente réussite académique !</p>
-</body></html>`;
+    const htmlBody = buildEscenEmailHtml(`
+      <h2 style="color: #01b4d5; margin-top: 0; font-size: 20px;">Bienvenue à l’ESCEN !</h2>
+      <p style="margin-top: 16px;">Bonjour <strong>${params.firstname} ${params.lastname}</strong>,</p>
+      <p>Félicitations ! Votre admission à l’ESCEN est désormais officielle. Vos accès à votre Portail Étudiant et à votre compte Microsoft 365 Education sont activés.</p>
+
+      <div style="background-color: #f8fafc; border: 1px solid #e2e8f0; padding: 20px; border-radius: 8px; margin: 24px 0;">
+        <p style="margin: 0 0 6px 0; font-size: 14px; color: #64748b;">Matricule étudiant officiel :</p>
+        <p style="margin: 0 0 14px 0; font-size: 16px; font-weight: bold; color: #0f172a;">${matricule}</p>
+
+        <p style="margin: 0 0 6px 0; font-size: 14px; color: #64748b;">Identifiant (Portail &amp; Microsoft 365) :</p>
+        <p style="margin: 0 0 14px 0; font-size: 16px; font-weight: bold; color: #0f172a;">${m365Email}</p>
+
+        <p style="margin: 0 0 6px 0; font-size: 14px; color: #64748b;">Mot de passe du Portail Étudiant :</p>
+        <p style="margin: 0 0 14px 0; font-size: 18px; font-weight: bold; color: #01b4d5; font-family: monospace; letter-spacing: 0.05em;">${portalPwdDisplay}</p>
+
+        <p style="margin: 0 0 6px 0; font-size: 14px; color: #64748b;">Mot de passe initial Microsoft 365 :</p>
+        <p style="margin: 0; font-size: 18px; font-weight: bold; color: #01b4d5; font-family: monospace; letter-spacing: 0.05em;">${pwdDisplay}</p>
+      </div>
+
+      <p style="color: #f59e0b; font-weight: 600; font-size: 14px; margin: 16px 0;">
+        Lors de votre première connexion, il vous sera demandé de configurer votre mot de passe personnel.
+      </p>
+
+      <p style="text-align: center; margin: 28px 0 14px 0;">
+        <a href="https://portail.escen.university/" style="display: inline-block; padding: 12px 24px; background-color: #01b4d5; color: #ffffff; text-decoration: none; border-radius: 8px; font-weight: bold; font-size: 15px; box-shadow: 0 4px 6px rgba(1,180,213,0.2); margin: 4px 6px;">
+          Accéder au Portail Étudiant
+        </a>
+        <a href="https://office.com" style="display: inline-block; padding: 12px 24px; background-color: #0f172a; color: #ffffff; text-decoration: none; border-radius: 8px; font-weight: bold; font-size: 15px; margin: 4px 6px;">
+          Ouvrir Microsoft 365
+        </a>
+      </p>
+    `);
 
     const enqueue = await client.rpc('escen_email_enqueue', {
       p_year_id: params.academicYearId,
