@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useMemo, useState } from 'react';
-import { Check, Copy, ExternalLink, KeyRound, Library, Lock, Search, ShieldCheck, TriangleAlert, UserCheck } from 'lucide-react';
+import { Check, Copy, ExternalLink, Library, Lock, Search, ShieldCheck, TriangleAlert, UserCheck } from 'lucide-react';
 import { usePortal } from '@/hooks/usePortal';
 import { roleHeaderValue } from '@/services/remoteCampusService';
 import { academicYearRequestHeaders } from '@/services/academicYearSelection';
@@ -21,7 +21,6 @@ import ResponsiveTable from '@/components/ui/ResponsiveTable';
 import LoadingState from '@/components/ui/LoadingState';
 
 const YOUSCRIBE_LOGIN_URL = 'https://www.youscribe.com/Account/Login/LogOn';
-const YOUSCRIBE_CODE_URL = 'https://en.youscribe.com/abo/code';
 
 interface DigitalLibraryDirectoryResponse {
   selectedYearId: string;
@@ -158,7 +157,7 @@ export default function DigitalLibraryWorkspace() {
     return allocations.filter(item => {
       if (groupFilter && item.groupName !== groupFilter) return false;
       if (teamFilter && item.teamEmail !== teamFilter) return false;
-      if (q && !`${item.studentName} ${item.matricule} ${item.groupName} ${item.teamEmail} ${item.activationCode}`.toLowerCase().includes(q)) {
+      if (q && !`${item.studentName} ${item.matricule} ${item.groupName} ${item.teamEmail}`.toLowerCase().includes(q)) {
         return false;
       }
       return true;
@@ -174,7 +173,7 @@ export default function DigitalLibraryWorkspace() {
       <PageHeader
         eyebrow="RESSOURCES DOCUMENTAIRES · ESCEN"
         title="Bibliothèque numérique YouScribe"
-        description="Connectez-vous directement à la bibliothèque numérique YouScribe avec les identifiants attribués à votre inscription active pour l’année scolaire."
+        description="Connectez-vous directement à la bibliothèque numérique YouScribe avec l’identifiant et le mot de passe attribués à votre inscription active pour l’année scolaire."
       >
         <a
           href={YOUSCRIBE_LOGIN_URL}
@@ -184,15 +183,6 @@ export default function DigitalLibraryWorkspace() {
         >
           <ExternalLink size={17} aria-hidden="true" />
           Se connecter à YouScribe
-        </a>
-        <a
-          href={YOUSCRIBE_CODE_URL}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="btn btn-outline"
-        >
-          <KeyRound size={16} aria-hidden="true" />
-          Activer un code d’abonnement
         </a>
       </PageHeader>
 
@@ -233,22 +223,6 @@ export default function DigitalLibraryWorkspace() {
                       onClick={() => copyValue('pwd', myAllocation.youScribePassword)}
                     >
                       {copiedField === 'pwd' ? <><Check size={14} aria-hidden="true" /> Copié</> : <><Copy size={14} aria-hidden="true" /> Copier</>}
-                    </button>
-                  </dd>
-                </div>
-
-                <div className="card">
-                  <dt style={{ fontSize: '0.82rem', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.06em' }}>
-                    Code d’abonnement rattaché
-                  </dt>
-                  <dd style={{ marginTop: '0.45rem', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '0.75rem', flexWrap: 'wrap' }}>
-                    <code className="dossier-ref-badge">{myAllocation.activationCode}</code>
-                    <button
-                      type="button"
-                      className="btn btn-sm btn-outline"
-                      onClick={() => copyValue('code', myAllocation.activationCode)}
-                    >
-                      {copiedField === 'code' ? <><Check size={14} aria-hidden="true" /> Copié</> : <><Copy size={14} aria-hidden="true" /> Copier</>}
                     </button>
                   </dd>
                 </div>
@@ -338,7 +312,7 @@ export default function DigitalLibraryWorkspace() {
                       <input
                         className="input"
                         type="search"
-                        placeholder="Nom, matricule, biblioteam, code..."
+                        placeholder="Nom, matricule, biblioteam..."
                         value={search}
                         onChange={e => setSearch(e.target.value)}
                       />
@@ -358,7 +332,7 @@ export default function DigitalLibraryWorkspace() {
                     <select className="select-input" value={teamFilter} onChange={e => setTeamFilter(e.target.value)}>
                       <option value="">Tous les comptes ({YOUSCRIBE_TEAMS.length})</option>
                       {YOUSCRIBE_TEAMS.map(t => (
-                        <option key={t.teamEmail} value={t.teamEmail}>{t.teamEmail} ({t.activationCode})</option>
+                        <option key={t.teamEmail} value={t.teamEmail}>{t.teamEmail}</option>
                       ))}
                     </select>
                   </label>
@@ -373,7 +347,6 @@ export default function DigitalLibraryWorkspace() {
                       <th>Classe</th>
                       <th>Compte YouScribe</th>
                       <th>Mot de passe YouScribe</th>
-                      <th>Code d’abonnement</th>
                       <th>Statut d’attribution</th>
                     </tr>
                   </thead>
@@ -392,9 +365,6 @@ export default function DigitalLibraryWorkspace() {
                           <code style={{ fontWeight: 700, color: 'var(--primary, #01b4d5)' }}>{item.youScribePassword}</code>
                         </td>
                         <td>
-                          <code className="dossier-ref-badge">{item.activationCode}</code>
-                        </td>
-                        <td>
                           {item.allocationKind === 'TITULAIRE_INITIAL' ? (
                             <span className="pill pill-success">Titulaire réinscrit conservé</span>
                           ) : (
@@ -407,7 +377,7 @@ export default function DigitalLibraryWorkspace() {
                     ))}
                     {!filteredAllocations.length && (
                       <tr>
-                        <td colSpan={6}>Aucun étudiant inscrit ne correspond à ce filtre.</td>
+                        <td colSpan={5}>Aucun étudiant inscrit ne correspond à ce filtre.</td>
                       </tr>
                     )}
                   </tbody>
