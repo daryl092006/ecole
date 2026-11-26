@@ -31,9 +31,11 @@ export default function AttendanceWorkspace() {
   const [error, setError] = useState('');
   const [reload, setReload] = useState(0);
   const [selectedId, setSelectedId] = useState('');
+  const [groupFilter, setGroupFilter] = useState('');
   const [modeFilter, setModeFilter] = useState<'ALL' | 'EN_LIGNE' | 'PRESENTIEL'>('ALL');
   const [operation, setOperation] = useState<Operation | null>(null);
   const [drafts, setDrafts] = useState<Record<string, Draft>>({});
+  const [tableDrafts, setTableDrafts] = useState<Record<string, AttendanceStatus | ''>>({});
   const [teacher, setTeacher] = useState({ arrivedAt: '', leftAt: '', comment: '' });
   const [reason, setReason] = useState('');
   const [saving, setSaving] = useState(false);
@@ -54,7 +56,10 @@ export default function AttendanceWorkspace() {
   if (loading) return <LoadingState label="Chargement des feuilles de présence…" variant="table" />;
   if (error || !directory) return <ErrorState title="Présences indisponibles" message={error || 'Les feuilles de présence n’ont pas pu être chargées.'} onRetry={() => setReload(value => value + 1)} />;
   if (archives) return <div><button className="btn btn-outline" onClick={() => setArchives(false)}>Revenir aux feuilles de présence</button><HistoricalWorkspace section="acad_attendance" /></div>;
+  const sessionGroupLabel = (label: string) => label.split(' · ')[0]?.trim() || 'Groupe';
+  const availableGroups = Array.from(new Set(directory.sessions.map(row => sessionGroupLabel(row.label)))).sort((a, b) => a.localeCompare(b, 'fr'));
   const filteredSessions = directory.sessions.filter(row => {
+    if (groupFilter && sessionGroupLabel(row.label) !== groupFilter) return false;
     if (modeFilter === 'EN_LIGNE') return row.mode === 'EN_LIGNE';
     if (modeFilter === 'PRESENTIEL') return row.mode !== 'EN_LIGNE';
     return true;
@@ -63,6 +68,45 @@ export default function AttendanceWorkspace() {
   const previous = (enrollmentId: string): Draft => {
     const row = session?.attendances.find(item => item.enrollmentId === enrollmentId);
     return { status: row?.status || '', arrivedAt: local(row?.arrivedAt || null), leftAt: local(row?.leftAt || null), lateMinutes: row?.lateMinutes == null ? '' : String(row.lateMinutes), comment: row?.comment || '' };
+  };
+  const effectiveTableStatus = (enrollmentId: string): AttendanceStatus | '' => {
+    const key = `${session?.id || ''}:${enrollmentId}`;
+    if (key in tableDrafts) return tableDrafts[key];
+    return previous(enrollmentId).status;
+  };
+  const setInlineTableStatus = (enrollmentId: string, status: AttendanceStatus) => {
+    if (!session || isStatusDisabled(enrollmentId, status)) return;
+    const key = `${session.id}:${enrollmentId}`;
+    const current = effectiveTableStatus(enrollmentId);
+    setTableDrafts(prev => ({
+      ...prev,
+      [key]: current === status ? previous(enrollmentId).status : status,
+    }));
+  };
+  const setAllInlineTableStatus = (status: 'PRESENT' | 'ABSENT') => {
+    if (!session) return;
+    setTableDrafts(prev => {
+      const next = { ...prev };
+      for (const student of session.students) {
+        if (!isStatusDisabled(student.enrollmentId, status)) {
+          next[`${session.id}:${student.enrollmentId}`] = status;
+        }
+      }
+      return next;
+    });
+  };
+  const pendingInlineChanges = session?.students.filter(student => {
+    const eff = effectiveTableStatus(student.enrollmentId);
+    return Boolean(eff) && eff !== previous(student.enrollmentId).status;
+  }) || [];
+  const openWithInlineChanges = () => {
+    if (!session) return;
+    const overrides: Record<string, Partial<Draft>> = {};
+    for (const student of session.students) {
+      const eff = effectiveTableStatus(student.enrollmentId);
+      if (eff) overrides[student.enrollmentId] = { status: eff };
+    }
+    open({ kind: 'students' }, overrides);
   };
   const changed = session?.students.filter(student => drafts[student.enrollmentId]?.status && JSON.stringify(drafts[student.enrollmentId]) !== JSON.stringify(previous(student.enrollmentId))) || [];
   const correcting = changed.some(student => session?.attendances.some(row => row.enrollmentId === student.enrollmentId));
@@ -102,20 +146,6 @@ export default function AttendanceWorkspace() {
       { ...previous(student.enrollmentId), ...(initialOverrides?.[student.enrollmentId] || {}) },
     ])));
     setTeacher({ arrivedAt: local(teacherBefore?.arrivedAt || null), leftAt: local(teacherBefore?.leftAt || null), comment: teacherBefore?.comment || '' });
-  };
-  const quickMarkOnTable = (enrollmentId: string, status: AttendanceStatus) => {
-    if (!session || isStatusDisabled(enrollmentId, status)) return;
-    open({ kind: 'students' }, { [enrollmentId]: { status } });
-  };
-  const quickMarkAllOnTable = (status: 'PRESENT' | 'ABSENT') => {
-    if (!session) return;
-    const overrides: Record<string, Partial<Draft>> = {};
-    for (const student of session.students) {
-      if (!isStatusDisabled(student.enrollmentId, status)) {
-        overrides[student.enrollmentId] = { status };
-      }
-    }
-    open({ kind: 'students' }, overrides);
   };
   const statusPillClass = (status?: AttendanceStatus | '') => {
     if (!status) return 'pill pill-default';
@@ -162,6 +192,14 @@ export default function AttendanceWorkspace() {
     {fileError && <p role="alert" className="restricted-box">{fileError}</p>}
     <section className="card attendance-session-sheet">
       <div className="form-grid">
+        <label className="form-group">Classe / Groupe
+          <select className="select-input" value={groupFilter} onChange={event => { setGroupFilter(event.target.value); setSelectedId(''); }}>
+            <option value="">Tous les groupes ({availableGroups.length})</option>
+            {availableGroups.map(groupName => (
+              <option key={groupName} value={groupName}>{groupName}</option>
+            ))}
+          </select>
+        </label>
         <label className="form-group">Modalité de séance
           <select className="select-input" value={modeFilter} onChange={event => { setModeFilter(event.target.value as 'ALL' | 'EN_LIGNE' | 'PRESENTIEL'); setSelectedId(''); }}>
             <option value="ALL">Toutes les séances ({directory.sessions.length})</option>
@@ -205,22 +243,28 @@ export default function AttendanceWorkspace() {
           <div className="btn-group attendance-header-actions">
             {session.students.length > 0 && (
               <>
-                <button type="button" className="btn btn-sm btn-outline" onClick={() => quickMarkAllOnTable('PRESENT')}>
+                <button type="button" className="btn btn-sm btn-outline" onClick={() => setAllInlineTableStatus('PRESENT')}>
                   Tous présents
                 </button>
-                <button type="button" className="btn btn-sm btn-outline" onClick={() => quickMarkAllOnTable('ABSENT')}>
+                <button type="button" className="btn btn-sm btn-outline" onClick={() => setAllInlineTableStatus('ABSENT')}>
                   Tous absents
                 </button>
               </>
             )}
-            <button type="button" className="btn btn-primary" onClick={() => open({ kind: 'students' })}>
+            {pendingInlineChanges.length > 0 && (
+              <button type="button" className="btn btn-primary" onClick={openWithInlineChanges}>
+                Enregistrer l’appel ({pendingInlineChanges.length})
+              </button>
+            )}
+            <button type="button" className={pendingInlineChanges.length > 0 ? 'btn btn-outline' : 'btn btn-primary'} onClick={openWithInlineChanges}>
               Saisir ou corriger les présences
             </button>
           </div>
         )}</div>
-        <ResponsiveTable className="data-table attendance-sheet-table"><thead><tr><th>Étudiant</th><th>Statut</th>{session.canRecordStudents && <th>Pointage rapide</th>}<th>Détails & Commentaire</th></tr></thead><tbody>{session.students.map(student => {
+        <ResponsiveTable className="data-table attendance-sheet-table"><thead><tr><th>Étudiant</th><th>Statut</th>{session.canRecordStudents && <th>Pointage (Présent / Absent)</th>}<th>Observations</th></tr></thead><tbody>{session.students.map(student => {
           const attendance = session.attendances.find(row => row.enrollmentId === student.enrollmentId);
-          const currentStatus = attendance?.status || '';
+          const currentStatus = effectiveTableStatus(student.enrollmentId);
+          const isModifiedInline = Boolean(currentStatus) && currentStatus !== (attendance?.status || '');
           return <tr key={student.enrollmentId}><td>
             <strong>{student.name}</strong>
             <div className="cell-sub">{student.matricule}</div>
@@ -233,7 +277,12 @@ export default function AttendanceWorkspace() {
                 Dossier étudiant
               </button>
             )}
-          </td><td><span className={statusPillClass(currentStatus)}>{attendance ? ATTENDANCE_LABELS[attendance.status] : 'Non renseignée'}</span></td>
+          </td><td>
+            <span className={statusPillClass(currentStatus)}>
+              {currentStatus ? ATTENDANCE_LABELS[currentStatus] : 'Non renseignée'}
+            </span>
+            {isModifiedInline && <div className="cell-sub">À enregistrer</div>}
+          </td>
           {session.canRecordStudents && (
             <td>
               <div className="btn-group attendance-quick-buttons">
@@ -241,23 +290,23 @@ export default function AttendanceWorkspace() {
                   type="button"
                   className={`btn btn-sm ${currentStatus === 'PRESENT' ? 'btn-primary' : 'btn-outline'}`}
                   disabled={isStatusDisabled(student.enrollmentId, 'PRESENT')}
-                  onClick={() => quickMarkOnTable(student.enrollmentId, 'PRESENT')}
+                  onClick={() => setInlineTableStatus(student.enrollmentId, 'PRESENT')}
                 >
-                  Présent
+                  ✓ Présent
                 </button>
                 <button
                   type="button"
                   className={`btn btn-sm ${currentStatus === 'ABSENT' ? 'btn-danger' : 'btn-outline'}`}
                   disabled={isStatusDisabled(student.enrollmentId, 'ABSENT')}
-                  onClick={() => quickMarkOnTable(student.enrollmentId, 'ABSENT')}
+                  onClick={() => setInlineTableStatus(student.enrollmentId, 'ABSENT')}
                 >
-                  Absent
+                  ✕ Absent
                 </button>
                 <button
                   type="button"
                   className={`btn btn-sm ${currentStatus === 'RETARD' ? 'btn-primary' : 'btn-outline'}`}
                   disabled={isStatusDisabled(student.enrollmentId, 'RETARD')}
-                  onClick={() => quickMarkOnTable(student.enrollmentId, 'RETARD')}
+                  onClick={() => setInlineTableStatus(student.enrollmentId, 'RETARD')}
                 >
                   En retard
                 </button>
@@ -294,7 +343,7 @@ export default function AttendanceWorkspace() {
                 arrivedAt: instant(draft.arrivedAt), leftAt: instant(draft.leftAt), lateMinutes: draft.lateMinutes === '' ? null : Number(draft.lateMinutes), comment: draft.comment } satisfies AttendanceEntry; }) }
               : operation.kind === 'teacher' ? { action: 'record_teacher', sessionId: session.id, revision: directory.revision, arrivedAt: instant(teacher.arrivedAt)!, leftAt: instant(teacher.leftAt), comment: teacher.comment }
                 : { action: 'review_justification', justificationId: operation.justification.id, decision: operation.decision, revision: directory.revision, reason: reason.trim() || (operation.decision === 'VALIDE' ? 'Validation du justificatif d’absence' : 'Refus du justificatif d’absence') };
-            void manageAttendance(activeRole, command).then(() => { setOperation(null); setSuccess('Enregistrement effectué. L’historique est conservé.'); setReload(value => value + 1); portal.refreshCampus(); })
+            void manageAttendance(activeRole, command).then(() => { setOperation(null); setTableDrafts({}); setSuccess('Enregistrement effectué. L’historique est conservé.'); setReload(value => value + 1); portal.refreshCampus(); })
               .catch(cause => setSaveError(cause instanceof Error ? cause.message : 'Enregistrement impossible.')).finally(() => setSaving(false));
           } catch { setSaveError('Vérifiez les dates et les valeurs saisies.'); setSaving(false); }
         }}>
