@@ -375,7 +375,16 @@ export async function GET(request: Request) {
             const session = (data.scoped.tables.sessions || []).find(
               row => (row.id === resource.session_id || (!resource.session_id && row.recording_url === resource.resource_url)) && row.status !== 'ANNULE'
             );
-            const url = await courseRecordingPlaybackUrl(String(resource.resource_url), session?.meeting_id ? String(session.meeting_id) : null);
+            const fallbackMeetingSession = !session?.meeting_id
+              ? (data.scoped.tables.sessions || []).find(row => row.meeting_id && row.status !== 'ANNULE' && (row.assignment_id === resource.assignment_id || row.group_id === resource.group_id))
+                || (data.snapshot.tables.sessions || []).find(row => row.meeting_id && row.status !== 'ANNULE')
+              : null;
+            const effectiveMeetingId = session?.meeting_id
+              ? String(session.meeting_id)
+              : fallbackMeetingSession?.meeting_id
+                ? String(fallbackMeetingSession.meeting_id)
+                : null;
+            const url = await courseRecordingPlaybackUrl(String(resource.resource_url), effectiveMeetingId);
             return Response.json({ url, inline: url !== String(resource.resource_url) }, { headers: { 'Cache-Control': 'private, no-store', 'Referrer-Policy': 'no-referrer' } });
           } catch { throw new RequestError(503, 'La vidéo est temporairement indisponible auprès de Microsoft. Réessayez.'); }
         }

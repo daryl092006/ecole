@@ -299,13 +299,11 @@ export async function POST(request: Request) {
         });
       }
 
-      const saved = await runTransactionWithRetry(
-        data.client,
-        'escen_evaluation_transaction',
-        data.context.accountId,
-        effectiveRevision,
-        changes
-      );
+      const saved = await data.client.rpc('escen_evaluation_transaction', {
+        p_actor_id: data.context.accountId,
+        p_expected_revision: body.revision,
+        p_changes: changes,
+      });
 
       if (saved.error) {
         console.error('[API evaluations:enter_grades] Transaction failed:', saved.error);
