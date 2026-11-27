@@ -150,6 +150,20 @@ export default function ProgramsCoursesWorkspace() {
     setSemesterId(nextSemesters[0]?.id || '');
   };
 
+  const onlyGroupOption = groupOptions.length === 1 ? groupOptions[0] : undefined;
+  const onlyGroupId = onlyGroupOption?.id || '';
+  const onlyCurriculumId = onlyGroupOption?.curriculum?.id || '';
+
+  useEffect(() => {
+    if (!groupId && portal.perms.scope.ownDataOnly && onlyGroupId) {
+      setGroupId(onlyGroupId);
+      const nextSemesters = (tables.curriculum_semesters || [])
+        .filter(row => !row.archived_at && row.curriculum_id === onlyCurriculumId)
+        .sort((a, b) => Number(a.position) - Number(b.position));
+      setSemesterId(nextSemesters.length > 1 ? 'ALL' : (nextSemesters[0]?.id || ''));
+    }
+  }, [groupId, portal.perms.scope.ownDataOnly, onlyGroupId, onlyCurriculumId, tables.curriculum_semesters]);
+
   return <div className="domain-workspace workspace-stack">
     <PageHeader
       eyebrow="PÉDAGOGIE & PROGRAMMES"
@@ -176,7 +190,25 @@ export default function ProgramsCoursesWorkspace() {
           </select>
         </label>
       </div>
-      {!groupId ? <p>Choisissez un groupe puis un semestre pour afficher ou compléter les matières du programme.</p> : !curriculum ? <p>Aucun programme de cours n’est rattaché à ce groupe.</p> : !semesters.length ? <p>Ce programme ne contient pas encore de semestre.</p> : null}
+      {!groupId ? (
+        <div>
+          <p>Choisissez un groupe puis un semestre pour afficher ou compléter les matières du programme.</p>
+          {groupOptions.length > 0 && (
+            <div className="btn-group" style={{ flexWrap: 'wrap', gap: '8px', marginTop: '10px' }}>
+              {groupOptions.map(opt => (
+                <button
+                  key={opt.id}
+                  type="button"
+                  className="btn btn-sm btn-outline"
+                  onClick={() => selectGroup(opt.id)}
+                >
+                  {opt.label}
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
+      ) : !curriculum ? <p>Aucun programme de cours n’est rattaché à ce groupe.</p> : !semesters.length ? <p>Ce programme ne contient pas encore de semestre.</p> : null}
       {curriculum && <div className="btn-group">{editableProgram && <><button className="btn btn-outline" onClick={() => setTask({ collection: 'curriculum_semesters', create: true })}>Ajouter un semestre</button>{semester && <button className="btn btn-outline" onClick={() => setTask({ collection: 'curriculum_semesters', editId: semester.id })}>Modifier le semestre</button>}</>}{curriculum.status === 'APPROVED' && <span className="pill pill-success">Programme approuvé</span>}{selectedOption && <span className="pill pill-default">Groupe : {selectedOption.name}</span>}</div>}
       {!year && <p className="restricted-box">Choisissez une année scolaire précise avant d’ajouter ou de modifier des matières.</p>}
     </section>

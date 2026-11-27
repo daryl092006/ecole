@@ -6,13 +6,18 @@ import { usePortal } from '@/hooks/usePortal';
 import { useAcademicReferences } from '@/hooks/useAcademicReferences';
 import ResponsiveTable from '@/components/ui/ResponsiveTable';
 import PageHeader from '@/components/ui/PageHeader';
+import StudentRecordDialog from '@/components/modules/StudentRecordDialog';
+import { downloadCsv } from '@/utils/csv';
+import { formatSubjectCode } from '@/services/resaoCodeService';
 import type { TeachingAssignment, Subject, Teacher } from '@/types/academic';
 import { Users, Search, ArrowRight, ShieldAlert, ArrowLeft } from 'lucide-react';
 
 export default function GroupsWorkspace() {
   const portal = usePortal();
   const { groups = [], students = [], academicYearContext, perms } = portal;
+  const tables = portal.relationalSnapshot.tables;
   const { assignments = [], subjects = [], teachers = [] } = useAcademicReferences();
+  const canViewStudent = perms.permissions.includes('student.view');
 
   const currentYearId = academicYearContext?.selectedYearId;
   const currentYearName = academicYearContext?.years?.find(y => y.id === currentYearId)?.name || 'Année en cours';
@@ -23,6 +28,7 @@ export default function GroupsWorkspace() {
   const [selectedNiveau, setSelectedNiveau] = useState<string>('ALL');
   const [selectedGroupId, setSelectedGroupId] = useState<string | null>(null);
   const [studentSearch, setStudentSearch] = useState('');
+  const [selectedStudentDrawer, setSelectedStudentDrawer] = useState<{ matricule: string; section?: 'identity' | 'finance' | 'parcours' } | null>(null);
 
   // Groupes rattachés à l'année de travail active
   const yearGroups = useMemo(() => {
@@ -53,20 +59,67 @@ export default function GroupsWorkspace() {
 
   // Association des étudiants et cours à chaque groupe
   const groupsWithDetails = useMemo(() => {
+    const snapAssignments = (tables.teaching_assignments || []).filter(row => !row.archived_at);
+    const snapComponents = tables.curriculum_components || [];
+    const snapSubjects = tables.subjects || [];
+    const snapTeachers = tables.teachers || [];
+    const snapStaff = tables.staff || [];
+    const snapPeople = tables.people || [];
+
     return yearGroups.map(group => {
       const groupStudents = yearStudents.filter(
         s => s.groupId === group.id || (group.studentIds && group.studentIds.includes(s.matricule))
       );
-      const groupAssignments = assignments.filter((a: TeachingAssignment) => a.groupId === group.id);
+      const rawSnapForGroup = snapAssignments.filter(a => a.group_id === group.id);
+      const resolvedAssignments: { id: string; subjectCode: string; subjectName: string; teacherName: string }[] = [];
+      const seenKeys = new Set<string>();
+
+      for (const a of rawSnapForGroup) {
+        const comp = snapComponents.find(c => c.id === a.component_id);
+        const sub = snapSubjects.find(s => s.id === (comp?.subject_id || a.subject_id));
+        const teacherRow = snapTeachers.find(t => t.id === a.teacher_id);
+        const staffRow = teacherRow ? snapStaff.find(st => st.id === teacherRow.staff_id) : undefined;
+        const personRow = staffRow ? snapPeople.find(p => p.id === staffRow.person_id) : undefined;
+        const subjectName = String(sub?.name || comp?.name || 'Matière');
+        const subjectCode = formatSubjectCode(comp?.code || sub?.code, subjectName) || '—';
+        const teacherName = personRow
+          ? `${String(personRow.firstname || '').trim()} ${String(personRow.lastname || '').trim()}`.trim()
+          : 'Non assigné';
+        const dedupKey = `${subjectCode}::${subjectName}::${teacherName}`;
+        if (!seenKeys.has(dedupKey)) {
+          seenKeys.add(dedupKey);
+          resolvedAssignments.push({
+            id: String(a.id),
+            subjectCode,
+            subjectName,
+            teacherName,
+          });
+        }
+      }
+
+      if (resolvedAssignments.length === 0) {
+        const fallbackAssignments = assignments.filter((a: TeachingAssignment) => a.groupId === group.id);
+        for (const item of fallbackAssignments) {
+          const sub = subjects.find((s: Subject) => s.id === item.subjectId);
+          const prof = teachers.find((t: Teacher) => t.id === item.teacherId);
+          resolvedAssignments.push({
+            id: item.id,
+            subjectCode: sub?.code || '—',
+            subjectName: sub?.name || 'Matière',
+            teacherName: prof ? `${prof.firstname} ${prof.lastname}`.trim() : 'Non assigné',
+          });
+        }
+      }
+
       return {
         ...group,
         studentsCount: groupStudents.length,
         studentsList: groupStudents,
-        assignmentsCount: groupAssignments.length,
-        assignmentsList: groupAssignments,
+        assignmentsCount: resolvedAssignments.length,
+        assignmentsList: resolvedAssignments,
       };
     });
-  }, [yearGroups, yearStudents, assignments]);
+  }, [yearGroups, yearStudents, assignments, subjects, teachers, tables]);
 
   // Étudiants non affectés
   const unassignedStudents = useMemo(() => {
@@ -195,6 +248,32 @@ export default function GroupsWorkspace() {
               <span className="cell-sub">
                 Affichage de <strong>{filteredClassStudents.length}</strong> sur <strong>{activeGroup.studentsCount}</strong> étudiant(s)
               </span>
+              {filteredClassStudents.length > 0 && (
+                <button
+                  type="button"
+                  className="btn btn-sm btn-outline"
+                  onClick={() => {
+                    downloadCsv(
+                      `classe-${activeGroup.name.toLowerCase().replace(/[^a-z0-9]+/gi, '-')}.csv`,
+                      ['#', 'Matricule', 'Prénom', 'Nom', 'Email M365', 'Téléphone', 'Filière', 'Niveau', 'Classe', 'Statut'],
+                      filteredClassStudents.map((s, idx) => [
+                        idx + 1,
+                        s.matricule,
+                        s.firstname,
+                        s.lastname,
+                        s.institutionalEmail || s.email || '',
+                        s.phone || '',
+                        s.filiere || (activeGroup.filieres || []).join(', '),
+                        s.niveau || activeGroup.niveau || '',
+                        activeGroup.name,
+                        s.status || 'Inscrit',
+                      ])
+                    );
+                  }}
+                >
+                  Exporter la liste CSV ({filteredClassStudents.length})
+                </button>
+              )}
             </div>
           </div>
 
@@ -223,7 +302,7 @@ export default function GroupsWorkspace() {
                     <th>Email institutionnel M365</th>
                     <th>Téléphone</th>
                     <th>Statut</th>
-                    <th style={{ textAlign: 'right' }}>Actions</th>
+                    {canViewStudent && <th style={{ textAlign: 'right' }}>Actions</th>}
                   </tr>
                 </thead>
                 <tbody>
@@ -235,12 +314,18 @@ export default function GroupsWorkspace() {
                       <tr key={student.matricule}>
                         <td style={{ color: '#64748b', fontSize: '12px' }}>{idx + 1}</td>
                         <td>
-                          <Link
-                            href={`/etudiants/${encodeURIComponent(student.matricule)}`}
-                            style={{ fontWeight: 600, color: 'var(--primary, #202a51)', textDecoration: 'none' }}
-                          >
+                          {canViewStudent ? (
+                            <button
+                              type="button"
+                              className="btn-link"
+                              onClick={() => setSelectedStudentDrawer({ matricule: student.matricule })}
+                              style={{ fontWeight: 600, color: 'var(--primary, #202a51)', background: 'none', border: 'none', padding: 0, cursor: 'pointer' }}
+                            >
+                              <code>{student.matricule}</code>
+                            </button>
+                          ) : (
                             <code>{student.matricule}</code>
-                          </Link>
+                          )}
                         </td>
                         <td>
                           <strong>{fullName}</strong>
@@ -262,20 +347,23 @@ export default function GroupsWorkspace() {
                             {student.status || 'Inscrit'}
                           </span>
                         </td>
-                        <td style={{ textAlign: 'right' }}>
-                          <Link
-                            className="btn btn-sm btn-outline"
-                            href={`/etudiants/${encodeURIComponent(student.matricule)}`}
-                          >
-                            Fiche dossier →
-                          </Link>
-                        </td>
+                        {canViewStudent && (
+                          <td style={{ textAlign: 'right' }}>
+                            <button
+                              type="button"
+                              className="btn btn-sm btn-outline"
+                              onClick={() => setSelectedStudentDrawer({ matricule: student.matricule })}
+                            >
+                              Fiche dossier →
+                            </button>
+                          </td>
+                        )}
                       </tr>
                     );
                   })}
                   {filteredClassStudents.length === 0 && (
                     <tr>
-                      <td colSpan={7} style={{ textAlign: 'center', padding: '32px' }}>
+                      <td colSpan={canViewStudent ? 7 : 6} style={{ textAlign: 'center', padding: '32px' }}>
                         Aucun étudiant ne correspond à votre recherche « {studentSearch} ».
                       </td>
                     </tr>
@@ -303,17 +391,13 @@ export default function GroupsWorkspace() {
                     </tr>
                   </thead>
                   <tbody>
-                    {activeGroup.assignmentsList.map((item: TeachingAssignment) => {
-                      const sub = subjects.find((s: Subject) => s.id === item.subjectId);
-                      const prof = teachers.find((t: Teacher) => t.id === item.teacherId);
-                      return (
-                        <tr key={item.id}>
-                          <td><code>{sub?.code || '—'}</code></td>
-                          <td><strong>{sub?.name || 'Matière'}</strong></td>
-                          <td>{prof ? `${prof.firstname} ${prof.lastname}` : 'Non assigné'}</td>
-                        </tr>
-                      );
-                    })}
+                    {activeGroup.assignmentsList.map(item => (
+                      <tr key={item.id}>
+                        <td><code>{item.subjectCode}</code></td>
+                        <td><strong>{item.subjectName}</strong></td>
+                        <td>{item.teacherName}</td>
+                      </tr>
+                    ))}
                   </tbody>
                 </ResponsiveTable>
               </div>
@@ -503,12 +587,18 @@ export default function GroupsWorkspace() {
                   {unassignedStudents.map(student => (
                     <tr key={student.matricule}>
                       <td>
-                        <Link
-                          href={`/etudiants/${encodeURIComponent(student.matricule)}`}
-                          style={{ fontWeight: 600, color: 'var(--primary, #202a51)' }}
-                        >
+                        {canViewStudent ? (
+                          <button
+                            type="button"
+                            className="btn-link"
+                            onClick={() => setSelectedStudentDrawer({ matricule: student.matricule, section: 'parcours' })}
+                            style={{ fontWeight: 600, color: 'var(--primary, #202a51)', background: 'none', border: 'none', padding: 0, cursor: 'pointer' }}
+                          >
+                            <code>{student.matricule}</code>
+                          </button>
+                        ) : (
                           <code>{student.matricule}</code>
-                        </Link>
+                        )}
                       </td>
                       <td>
                         <strong>{student.firstname} {student.lastname}</strong>
@@ -519,12 +609,17 @@ export default function GroupsWorkspace() {
                         <span className="pill pill-warning">Non affecté</span>
                       </td>
                       <td style={{ textAlign: 'right' }}>
-                        <Link
-                          className="btn btn-sm btn-outline"
-                          href={`/etudiants/${encodeURIComponent(student.matricule)}`}
-                        >
-                          Affecter dans dossier →
-                        </Link>
+                        {canViewStudent ? (
+                          <button
+                            type="button"
+                            className="btn btn-sm btn-outline"
+                            onClick={() => setSelectedStudentDrawer({ matricule: student.matricule, section: 'parcours' })}
+                          >
+                            Affecter dans dossier →
+                          </button>
+                        ) : (
+                          <span className="cell-sub">—</span>
+                        )}
                       </td>
                     </tr>
                   ))}
@@ -540,6 +635,13 @@ export default function GroupsWorkspace() {
             </div>
           )}
         </section>
+      )}
+      {selectedStudentDrawer && (
+        <StudentRecordDialog
+          matricule={selectedStudentDrawer.matricule}
+          initialSection={selectedStudentDrawer.section}
+          onClose={() => setSelectedStudentDrawer(null)}
+        />
       )}
     </div>
   );

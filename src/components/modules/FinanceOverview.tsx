@@ -7,6 +7,7 @@ import { studentPath } from '@/constants/portalRoutes';
 import ResponsiveTable from '@/components/ui/ResponsiveTable';
 import DataPanel from '@/components/ui/DataPanel';
 import PageHeader from '@/components/ui/PageHeader';
+import StudentRecordDialog from '@/components/modules/StudentRecordDialog';
 import { downloadCsv } from '@/utils/csv';
 import KpiChart from '@/components/ui/KpiChart';
 
@@ -17,6 +18,8 @@ export default function FinanceOverview() {
   const [query, setQuery] = useState('');
   const [debtOnly, setDebtOnly] = useState(false);
   const [exported, setExported] = useState(false);
+  const [selectedFinanceMatricule, setSelectedFinanceMatricule] = useState<string | null>(null);
+  const canViewStudent = portal.perms.permissions.includes('student.view');
 
   const enrollments = portal.campus.data.enrollments;
   const situations = [
@@ -162,13 +165,14 @@ export default function FinanceOverview() {
                 <th>Montant contractuel</th>
                 <th>Montant payé</th>
                 <th>Reste à payer</th>
+                {canViewStudent && <th>Action</th>}
               </tr>
             </thead>
             <tbody>
               {rows.map(student => (
                 <tr key={student.rowId}>
                   <td>
-                    {portal.perms.permissions.includes('student.view') ? (
+                    {canViewStudent ? (
                       <Link href={studentPath(student.matricule)} style={{ fontWeight: 600 }}>
                         {student.firstname} {student.lastname}
                       </Link>
@@ -204,17 +208,35 @@ export default function FinanceOverview() {
                       )}
                     </td>
                   ))}
+                  {canViewStudent && (
+                    <td>
+                      <button
+                        type="button"
+                        className="btn btn-sm btn-outline"
+                        onClick={() => setSelectedFinanceMatricule(student.matricule)}
+                      >
+                        Versements & Contrat
+                      </button>
+                    </td>
+                  )}
                 </tr>
               ))}
               {!rows.length && (
                 <tr>
-                  <td colSpan={6}>Aucun dossier pour ces filtres.</td>
+                  <td colSpan={canViewStudent ? 7 : 6}>Aucun dossier pour ces filtres.</td>
                 </tr>
               )}
             </tbody>
           </ResponsiveTable>
         </div>
       </DataPanel>
+      {selectedFinanceMatricule && (
+        <StudentRecordDialog
+          initialSection="finance"
+          matricule={selectedFinanceMatricule}
+          onClose={() => setSelectedFinanceMatricule(null)}
+        />
+      )}
     </div>
   );
 }

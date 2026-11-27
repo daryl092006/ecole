@@ -28,7 +28,7 @@ export default function StudentFiltersPanel({ students, filters, onChange, role,
   </div></section><div className="student-filter-footer"><p role="status">{results.length} résultat(s) sur {students.length} dossier(s).</p>
     <div className="btn-group">{(filters.search || activeFilters > 0) && <button className="btn btn-outline" onClick={() => onChange(EMPTY_STUDENT_FILTERS)}>Effacer les filtres</button>}{results.length > 0 && <button className="btn btn-outline" onClick={() => {
       const permitted = filterRegisteredStudents(students, filters, role);
-      downloadCsv('escen-etudiants.csv', ['Matricule', 'Prénom', 'Nom', 'Email', 'Nationalité', 'Sexe', 'Filière', 'Niveau', 'Groupe', 'Statut'], permitted.map(item => [item.matricule, item.firstname, item.lastname, item.email, item.nationality, item.gender, item.filiere, item.niveau, item.groupe, item.status]));
+      downloadCsv('escen-etudiants.csv', ['Matricule', 'Prénom', 'Nom', 'Email M365', 'Téléphone', 'Nationalité', 'Sexe', 'Filière', 'Niveau', 'Groupe', 'Statut'], permitted.map(item => [item.matricule, item.firstname, item.lastname, item.institutionalEmail || item.email || '', item.phone || '', item.nationality, item.gender, item.filiere, item.niveau, item.groupe, item.status]));
     }}>Exporter CSV ({results.length})</button>}</div></div>
   </div>;
 }
