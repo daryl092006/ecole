@@ -1,11 +1,12 @@
 'use client';
 
 import { useMemo, useState } from 'react';
-import Link from 'next/link';
 import { usePortal } from '@/hooks/usePortal';
 import { useAcademicReferences } from '@/hooks/useAcademicReferences';
-import { studentPath } from '@/constants/portalRoutes';
 import ResponsiveTable from '@/components/ui/ResponsiveTable';
+import DataPanel from '@/components/ui/DataPanel';
+import WorkspaceSummary from '@/components/ui/WorkspaceSummary';
+import StudentRecordDialog from '@/components/modules/StudentRecordDialog';
 import type { DatabaseRow } from '@/types/persistence';
 import {
   evaluationGradeIsComplete,
@@ -29,6 +30,9 @@ import {
   FileCheck2,
   Edit3,
   Printer,
+  BookOpen,
+  Files,
+  UsersRound,
 } from 'lucide-react';
 
 function evalTypeLabel(ev: DatabaseRow): string {
@@ -53,6 +57,8 @@ export default function GradesWorkspace() {
   const [studentSearch, setStudentSearch] = useState('');
   const [managingEvalId, setManagingEvalId] = useState('');
   const [onlineCopiesId, setOnlineCopiesId] = useState('');
+  const [selectedStudentMatricule, setSelectedStudentMatricule] = useState<string | null>(null);
+  const canViewStudent = portal.perms.permissions.includes('student.view') && !portal.perms.scope.ownDataOnly;
 
   const gradeByCandidate = useMemo(() => {
     const map = new Map<string, DatabaseRow>();
@@ -333,25 +339,40 @@ export default function GradesWorkspace() {
   }, [isStudentRole, portal.session?.matricule, snapshot, portal.academicYearContext?.selectedYearId]);
 
   return (
-    <div className="domain-workspace">
+    <div className="domain-workspace workspace-stack">
+      <PageHeader
+        eyebrow="PÉDAGOGIE & RÉSULTATS"
+        title="Notes et résultats"
+        description="Suivi des carnets de notes, saisie des évaluations et procès-verbaux par promotion."
+      >
+        {activeGroup && (
+          <button
+            type="button"
+            className="btn btn-outline"
+            onClick={() => {
+              setSelectedGroupId(null);
+              setSelectedSubjectId(null);
+            }}
+          >
+            <ArrowLeft size={15} /> Toutes les classes
+          </button>
+        )}
+      </PageHeader>
+
       {isStudentRole && selfTranscript && (
-        <section className="card card-full mb-2" aria-label="Mon relevé de notes par matière">
-          <div className="card-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '10px', marginBottom: '1rem' }}>
-            <div>
-              <h2 style={{ margin: 0 }}>Mon bulletin de notes · {selfTranscript.academicYear}</h2>
-              <p className="cell-sub" style={{ margin: '4px 0 0' }}>
-                {selfTranscript.student.name} ({selfTranscript.student.matricule}) · {selfTranscript.program} · {selfTranscript.level}
-              </p>
-            </div>
+        <DataPanel
+          title={`Mon bulletin de notes · ${selfTranscript.academicYear}`}
+          description={`${selfTranscript.student.name} (${selfTranscript.student.matricule}) · ${selfTranscript.program} · ${selfTranscript.level}`}
+          meta={
             <button
               type="button"
-              className="btn btn-primary"
+              className="btn btn-primary btn-sm"
               onClick={() => printTranscript(selfTranscript)}
-              style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}
             >
               <Printer size={15} /> Imprimer mon relevé de notes (A4 REESAO)
             </button>
-          </div>
+          }
+        >
           <div className="kpi-grid" style={{ marginBottom: '1rem' }}>
             <div className="kpi-card">
               <span className="kpi-label">Moyenne générale</span>
@@ -386,7 +407,7 @@ export default function GradesWorkspace() {
                       <td style={{ textAlign: 'center' }}>{row.credits}</td>
                       <td style={{ textAlign: 'center' }}>
                         {row.average !== null ? (
-                          <strong style={{ color: row.average >= 10 ? '#166534' : '#b91c1c' }}>
+                          <strong style={{ color: row.average >= 10 ? 'var(--success)' : 'var(--danger)' }}>
                             {row.average.toFixed(2)}
                           </strong>
                         ) : (
@@ -408,31 +429,58 @@ export default function GradesWorkspace() {
               </tbody>
             </ResponsiveTable>
           </div>
-        </section>
+        </DataPanel>
       )}
       {!selectedGroupId && (
         <>
-          <PageHeader
-            eyebrow="PÉDAGOGIE & RÉSULTATS"
-            title="Notes et résultats"
-            description="Suivi des carnets de notes, saisie des évaluations et procès-verbaux par promotion."
+          <WorkspaceSummary
+            label="Synthèse des notes et évaluations"
+            items={[
+              {
+                label: 'Classes suivies',
+                value: groupsData.length.toLocaleString('fr-FR'),
+                description: 'Promotions et groupes de l’année consultée',
+                icon: <UsersRound size={21} />,
+                tone: 'primary',
+              },
+              {
+                label: 'Épreuves créées',
+                value: groupsData.reduce((sum, g) => sum + g.evaluationsCount, 0).toLocaleString('fr-FR'),
+                description: 'Contrôles continus, examens et rattrapages',
+                icon: <Files size={21} />,
+              },
+              {
+                label: 'Copies traitées',
+                value: `${groupsData.reduce((sum, g) => sum + g.completedCount, 0).toLocaleString('fr-FR')} / ${groupsData.reduce((sum, g) => sum + g.expectedCount, 0).toLocaleString('fr-FR')}`,
+                description: 'Notes saisies ou absences constatées',
+                icon: <BookOpen size={21} />,
+              },
+            ]}
           />
 
-          <section className="card card-full">
-            <div style={{ marginBottom: '16px', maxWidth: '360px' }}>
-              <div style={{ position: 'relative' }}>
-                <input
-                  className="input"
-                  type="search"
-                  value={searchQuery}
-                  onChange={e => setSearchQuery(e.target.value)}
-                  placeholder="Rechercher une classe, un niveau…"
-                  style={{ paddingLeft: '34px', width: '100%' }}
-                />
-                <Search size={16} style={{ position: 'absolute', left: '10px', top: '50%', transform: 'translateY(-50%)', color: '#94a3b8' }} />
+          <DataPanel
+            title="Carnets de notes par classe"
+            description="Sélectionnez une classe pour consulter les matières, saisir les notes ou exporter les relevés."
+            meta={<span className="pill pill-default">{filteredGroups.length} classe(s)</span>}
+            footer={`${filteredGroups.length} classe(s) affichée(s) sur ${groupsData.length}`}
+            toolbar={
+              <div className="panel-filter-grid">
+                <label className="form-group">
+                  Rechercher une classe ou un niveau
+                  <span className="assessment-search-input">
+                    <Search size={18} aria-hidden="true" />
+                    <input
+                      className="input"
+                      type="search"
+                      value={searchQuery}
+                      onChange={e => setSearchQuery(e.target.value)}
+                      placeholder="Rechercher une classe, un niveau…"
+                    />
+                  </span>
+                </label>
               </div>
-            </div>
-
+            }
+          >
             <div className="table-wrap">
               <ResponsiveTable className="data-table">
                 <thead>
@@ -456,19 +504,18 @@ export default function GradesWorkspace() {
                       </td>
                       <td style={{ textAlign: 'center' }}>{g.evaluationsCount}</td>
                       <td>
-                        <span style={{ fontSize: '13px', fontWeight: 600, color: g.progressPercent === 100 ? '#16a34a' : '#475569' }}>
+                        <span className={`pill ${g.progressPercent === 100 && g.expectedCount > 0 ? 'pill-success' : g.completedCount > 0 ? 'pill-info' : 'pill-default'}`}>
                           {g.completedCount}/{g.expectedCount} ({g.progressPercent}%)
                         </span>
                       </td>
                       <td style={{ textAlign: 'right' }}>
                         <button
                           type="button"
-                          className="btn btn-sm btn-outline"
+                          className="btn btn-sm btn-primary"
                           onClick={() => {
                             setSelectedGroupId(g.id);
                             setSelectedSubjectId(null);
                           }}
-                          style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}
                         >
                           Consulter <ArrowRight size={14} />
                         </button>
@@ -485,37 +532,17 @@ export default function GradesWorkspace() {
                 </tbody>
               </ResponsiveTable>
             </div>
-          </section>
+          </DataPanel>
         </>
       )}
 
       {activeGroup && (
-        <section className="card card-full">
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '12px', marginBottom: '16px', paddingBottom: '12px', borderBottom: '1px solid #e2e8f0' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flexWrap: 'wrap' }}>
-              <button
-                type="button"
-                className="btn btn-sm btn-outline"
-                onClick={() => {
-                  setSelectedGroupId(null);
-                  setSelectedSubjectId(null);
-                }}
-                style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}
-              >
-                <ArrowLeft size={15} /> Toutes les classes
-              </button>
-              <div>
-                <h1 style={{ margin: 0, fontSize: '1.25rem', color: '#0f172a', fontWeight: 700 }}>
-                  {activeGroup.name}
-                </h1>
-                <span className="cell-sub">
-                  {activeGroup.levelName} · {activeGroup.studentCount} étudiant(s) inscrit(s)
-                </span>
-              </div>
-            </div>
-
-            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-              <label htmlFor="quick-group-select" style={{ fontSize: '13px', color: '#64748b', fontWeight: 500 }}>Classe :</label>
+        <DataPanel
+          title={`${activeGroup.name}${activeSubject ? ` · ${activeSubject.name}` : ''}`}
+          description={`${activeGroup.levelName || 'Formation'} · ${activeGroup.studentCount} étudiant(s) inscrit(s)${activeSubject ? ` · Enseignant : ${subjectTeacherName}` : ''}`}
+          meta={
+            <div className="btn-group">
+              <label htmlFor="quick-group-select" className="sr-only">Changer de classe</label>
               <select
                 id="quick-group-select"
                 aria-label="Changer de classe"
@@ -525,7 +552,6 @@ export default function GradesWorkspace() {
                   setSelectedGroupId(e.target.value);
                   setSelectedSubjectId(null);
                 }}
-                style={{ minWidth: '200px' }}
               >
                 {groupsData.map(g => (
                   <option key={g.id} value={g.id}>
@@ -534,187 +560,180 @@ export default function GradesWorkspace() {
                 ))}
               </select>
             </div>
-          </div>
-
-          <div style={{ marginBottom: '16px' }}>
-            <div className="btn-group" style={{ flexWrap: 'wrap' }}>
-              {activeGroup.subjects.map(s => {
-                const isActive = activeSubject?.id === s.id;
-                return (
-                  <button
-                    key={s.id}
-                    type="button"
-                    className={`btn btn-sm ${isActive ? 'btn-primary' : 'btn-outline'}`}
-                    onClick={() => setSelectedSubjectId(s.id)}
-                  >
-                    {s.name} ({s.evals.length})
-                  </button>
-                );
-              })}
-              {!activeGroup.subjects.length && (
-                <p className="cell-sub">Aucune matière affectée à ce groupe.</p>
-              )}
-            </div>
-          </div>
-
-          {activeSubject && (
-            <div>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '12px', marginBottom: '14px' }}>
-                <div>
-                  <h2 style={{ margin: 0, fontSize: '1.1rem', color: '#0f172a' }}>
-                    {activeSubject.name}
-                  </h2>
-                  <span className="cell-sub">
-                    Enseignant : <strong>{subjectTeacherName}</strong> · {activeSubjectEvals.length} épreuve(s)
-                  </span>
-                </div>
-
-                <div className="btn-group" style={{ alignItems: 'center' }}>
-                  <input
-                    className="input"
-                    type="search"
-                    value={studentSearch}
-                    onChange={e => setStudentSearch(e.target.value)}
-                    placeholder="Filtrer un étudiant…"
-                    style={{ width: '210px', fontSize: '13px' }}
-                  />
-                  {activeSubjectEvals.length > 0 && (
+          }
+          toolbar={
+            <div className="workspace-stack">
+              <div className="btn-group" style={{ flexWrap: 'wrap' }}>
+                {activeGroup.subjects.map(s => {
+                  const isActive = activeSubject?.id === s.id;
+                  return (
                     <button
+                      key={s.id}
                       type="button"
-                      className="btn btn-sm btn-primary"
-                      onClick={() => setManagingEvalId(String(activeSubjectEvals[0].id))}
-                      style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}
+                      className={`btn btn-sm ${isActive ? 'btn-primary' : 'btn-outline'}`}
+                      onClick={() => setSelectedSubjectId(s.id)}
                     >
-                      <Edit3 size={14} /> Saisir / Gérer les notes
+                      {s.name} ({s.evals.length})
                     </button>
-                  )}
-                  {activeSubjectEvals.some(ev => (tables.exam_attempts || []).some(a => a.evaluation_id === ev.id)) && (
+                  );
+                })}
+                {!activeGroup.subjects.length && (
+                  <p className="cell-sub">Aucune matière affectée à ce groupe.</p>
+                )}
+              </div>
+              {activeSubject && (
+                <div className="panel-filter-grid">
+                  <label className="form-group">
+                    Filtrer un étudiant
+                    <input
+                      className="input"
+                      type="search"
+                      value={studentSearch}
+                      onChange={e => setStudentSearch(e.target.value)}
+                      placeholder="Nom ou matricule…"
+                    />
+                  </label>
+                  <div className="btn-group" style={{ alignItems: 'flex-end' }}>
+                    {activeSubjectEvals.length > 0 && !isStudentRole && (
+                      <button
+                        type="button"
+                        className="btn btn-sm btn-primary"
+                        onClick={() => setManagingEvalId(String(activeSubjectEvals[0].id))}
+                      >
+                        <Edit3 size={14} /> Saisir / Gérer les notes
+                      </button>
+                    )}
+                    {activeSubjectEvals.some(ev => (tables.exam_attempts || []).some(a => a.evaluation_id === ev.id)) && (
+                      <button
+                        type="button"
+                        className="btn btn-sm btn-outline"
+                        onClick={() => {
+                          const onlineEval = activeSubjectEvals.find(ev => (tables.exam_attempts || []).some(a => a.evaluation_id === ev.id));
+                          if (onlineEval) setOnlineCopiesId(String(onlineEval.id));
+                        }}
+                      >
+                        <FileCheck2 size={14} /> Copies en ligne
+                      </button>
+                    )}
                     <button
                       type="button"
                       className="btn btn-sm btn-outline"
-                      onClick={() => {
-                        const onlineEval = activeSubjectEvals.find(ev => (tables.exam_attempts || []).some(a => a.evaluation_id === ev.id));
-                        if (onlineEval) setOnlineCopiesId(String(onlineEval.id));
-                      }}
-                      style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}
+                      onClick={handleExportCsv}
                     >
-                      <FileCheck2 size={14} /> Copies en ligne
+                      <Download size={14} /> Exporter CSV
                     </button>
-                  )}
-                  <button
-                    type="button"
-                    className="btn btn-sm btn-outline"
-                    onClick={handleExportCsv}
-                    style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}
-                  >
-                    <Download size={14} /> Exporter CSV
-                  </button>
+                  </div>
                 </div>
-              </div>
-
-              <div className="cell-sub mb-2" style={{ fontSize: '12px' }}>
-                Barème officiel ESCEN : <strong>Devoir (40%)</strong> + <strong>Examen (60%)</strong> (ou <strong>100% Examen</strong> si pas de devoir)
-              </div>
-              <div className="table-wrap">
-                <ResponsiveTable className="data-table">
-                  <thead>
-                    <tr>
-                      <th>Étudiant</th>
-                      <th>Filière</th>
-                      {activeSubjectEvals.map(ev => (
-                        <th key={ev.id} style={{ textAlign: 'center' }}>
-                          <div style={{ fontWeight: 700 }}>{evalTypeLabel(ev)}</div>
-                          <div className="cell-sub" style={{ fontSize: '11px' }}>{String(ev.name)}</div>
-                          {!isStudentRole && (
+              )}
+            </div>
+          }
+          footer="Barème officiel ESCEN : Devoir (40%) + Examen (60%) (ou 100% Examen si pas de devoir)"
+        >
+          {activeSubject && (
+            <div className="table-wrap">
+              <ResponsiveTable className="data-table">
+                <thead>
+                  <tr>
+                    <th>Étudiant</th>
+                    <th>Filière</th>
+                    {activeSubjectEvals.map(ev => (
+                      <th key={ev.id} style={{ textAlign: 'center' }}>
+                        <div>{evalTypeLabel(ev)}</div>
+                        <div className="cell-sub">{String(ev.name)}</div>
+                        {!isStudentRole && (
+                          <button
+                            type="button"
+                            className="btn btn-sm btn-outline mt-1"
+                            onClick={() => setManagingEvalId(String(ev.id))}
+                          >
+                            Gérer
+                          </button>
+                        )}
+                      </th>
+                    ))}
+                    <th style={{ textAlign: 'center' }}>
+                      <div>Moyenne finale</div>
+                      <div className="cell-sub">40/60 ou 100% Ex.</div>
+                    </th>
+                    <th style={{ textAlign: 'center' }}>Décision</th>
+                    {canViewStudent && <th style={{ textAlign: 'right' }}>Dossier</th>}
+                  </tr>
+                </thead>
+                <tbody>
+                  {activeSubjectStudentRows.map(row => {
+                    const isAdmis = row.studentSubjectAverage !== null && row.studentSubjectAverage >= 10;
+                    return (
+                      <tr key={row.enrollmentId}>
+                        <td>
+                          <strong>{row.fullName}</strong>
+                          <div className="cell-sub">{row.matricule}</div>
+                        </td>
+                        <td>
+                          <span className="cell-sub">{row.filiere}</span>
+                        </td>
+                        {row.evalCells.map(cell => (
+                          <td key={cell.evalId} style={{ textAlign: 'center' }}>
+                            {!cell.candidate ? (
+                              <span className="cell-sub">—</span>
+                            ) : cell.absenceStatus === 'ABSENT' ? (
+                              <span className="pill pill-danger">Absent</span>
+                            ) : cell.absenceStatus === 'JUSTIFIE' ? (
+                              <span className="pill pill-default">Justifié</span>
+                            ) : cell.value !== null ? (
+                              <strong style={{ color: cell.value >= 10 ? 'var(--success)' : 'var(--danger)' }}>
+                                {cell.value.toFixed(2)}
+                              </strong>
+                            ) : cell.attemptStatus === 'REMISE' || cell.attemptStatus === 'EXPIREE' ? (
+                              <span className="pill pill-info">Copie remise</span>
+                            ) : (
+                              <span className="cell-sub">En attente</span>
+                            )}
+                          </td>
+                        ))}
+                        <td style={{ textAlign: 'center' }}>
+                          {row.studentSubjectAverage !== null ? (
+                            <strong style={{ color: isAdmis ? 'var(--success)' : 'var(--danger)' }}>
+                              {row.studentSubjectAverage.toFixed(2)}
+                            </strong>
+                          ) : (
+                            <span className="cell-sub">—</span>
+                          )}
+                        </td>
+                        <td style={{ textAlign: 'center' }}>
+                          {row.studentSubjectAverage !== null ? (
+                            <span className={`pill ${isAdmis ? 'pill-success' : 'pill-warning'}`}>
+                              {isAdmis ? 'Validé' : 'Non validé'}
+                            </span>
+                          ) : (
+                            <span className="pill pill-subtle">En attente</span>
+                          )}
+                        </td>
+                        {canViewStudent && (
+                          <td style={{ textAlign: 'right' }}>
                             <button
                               type="button"
                               className="btn btn-sm btn-outline"
-                              style={{ marginTop: '4px', padding: '2px 8px', fontSize: '11px' }}
-                              onClick={() => setManagingEvalId(String(ev.id))}
+                              onClick={() => setSelectedStudentMatricule(row.matricule)}
                             >
-                              Gérer
+                              Fiche dossier →
                             </button>
-                          )}
-                        </th>
-                      ))}
-                      <th style={{ textAlign: 'center' }}>
-                        <div>Moyenne finale</div>
-                        <div className="cell-sub" style={{ fontSize: '10px' }}>40/60 ou 100% Ex.</div>
-                      </th>
-                      <th style={{ textAlign: 'center' }}>Décision</th>
-                      <th style={{ textAlign: 'right' }}>Dossier</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {activeSubjectStudentRows.map(row => {
-                      const isAdmis = row.studentSubjectAverage !== null && row.studentSubjectAverage >= 10;
-                      return (
-                        <tr key={row.enrollmentId}>
-                          <td>
-                            <strong>{row.fullName}</strong>
-                            <div className="cell-sub">{row.matricule}</div>
                           </td>
-                          <td>
-                            <span className="cell-sub">{row.filiere}</span>
-                          </td>
-                          {row.evalCells.map(cell => (
-                            <td key={cell.evalId} style={{ textAlign: 'center' }}>
-                              {!cell.candidate ? (
-                                <span style={{ color: '#94a3b8' }}>—</span>
-                              ) : cell.absenceStatus === 'ABSENT' ? (
-                                <span className="pill pill-danger">Absent</span>
-                              ) : cell.absenceStatus === 'JUSTIFIE' ? (
-                                <span className="pill pill-default">Justifié</span>
-                              ) : cell.value !== null ? (
-                                <strong style={{ color: cell.value >= 10 ? '#166534' : '#b91c1c' }}>
-                                  {cell.value.toFixed(2)}
-                                </strong>
-                              ) : cell.attemptStatus === 'REMISE' || cell.attemptStatus === 'EXPIREE' ? (
-                                <span className="pill pill-info">Copie remise</span>
-                              ) : (
-                                <span className="cell-sub">En attente</span>
-                              )}
-                            </td>
-                          ))}
-                          <td style={{ textAlign: 'center' }}>
-                            {row.studentSubjectAverage !== null ? (
-                              <strong style={{ color: isAdmis ? '#166534' : '#991b1b' }}>
-                                {row.studentSubjectAverage.toFixed(2)}
-                              </strong>
-                            ) : (
-                              <span style={{ color: '#94a3b8' }}>—</span>
-                            )}
-                          </td>
-                          <td style={{ textAlign: 'center' }}>
-                            {row.studentSubjectAverage !== null ? (
-                              <span className={`pill ${isAdmis ? 'pill-success' : 'pill-warning'}`}>
-                                {isAdmis ? 'Validé' : 'Non validé'}
-                              </span>
-                            ) : (
-                              <span className="pill pill-subtle">En attente</span>
-                            )}
-                          </td>
-                          <td style={{ textAlign: 'right' }}>
-                            <Link className="btn btn-sm btn-outline" href={studentPath(row.matricule)}>
-                              Fiche →
-                            </Link>
-                          </td>
-                        </tr>
-                      );
-                    })}
-                    {!activeSubjectStudentRows.length && (
-                      <tr>
-                        <td colSpan={activeSubjectEvals.length + 5} style={{ textAlign: 'center', padding: '24px' }}>
-                          Aucun étudiant trouvé dans cette matière pour cette recherche.
-                        </td>
+                        )}
                       </tr>
-                    )}
-                  </tbody>
-                </ResponsiveTable>
-              </div>
+                    );
+                  })}
+                  {!activeSubjectStudentRows.length && (
+                    <tr>
+                      <td colSpan={activeSubjectEvals.length + (canViewStudent ? 5 : 4)} style={{ textAlign: 'center', padding: '24px' }}>
+                        Aucun étudiant trouvé dans cette matière pour cette recherche.
+                      </td>
+                    </tr>
+                  )}
+                </tbody>
+              </ResponsiveTable>
             </div>
           )}
-        </section>
+        </DataPanel>
       )}
 
       {/* MODALES ET DIALOGUES DE GESTION */}
@@ -729,6 +748,12 @@ export default function GradesWorkspace() {
         <PersistentExamCopies
           evaluationId={onlineCopiesId}
           onClose={() => setOnlineCopiesId('')}
+        />
+      )}
+      {selectedStudentMatricule && (
+        <StudentRecordDialog
+          matricule={selectedStudentMatricule}
+          onClose={() => setSelectedStudentMatricule(null)}
         />
       )}
     </div>

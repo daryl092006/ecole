@@ -11,6 +11,7 @@ import ErrorState from '@/components/ui/ErrorState';
 import ResponsiveTable from '@/components/ui/ResponsiveTable';
 import IconButton from '@/components/ui/IconButton';
 import PageHeader from '@/components/ui/PageHeader';
+import DataPanel from '@/components/ui/DataPanel';
 import WorkPage from '@/components/ui/WorkPage';
 import ReviewedForm from '@/components/ui/ReviewedForm';
 
@@ -23,6 +24,8 @@ export default function EmailOutboxPanel() {
   const [offset, setOffset] = useState(0);
   const [revision, setRevision] = useState(0);
   const [error, setError] = useState('');
+  const [query, setQuery] = useState('');
+  const [statusFilter, setStatusFilter] = useState<EmailStatus | ''>('');
   const [selected, setSelected] = useState<EmailRecord | null>(null);
   const [retrying, setRetrying] = useState(false);
   const [reason, setReason] = useState('');
@@ -67,6 +70,12 @@ export default function EmailOutboxPanel() {
   };
 
   if (!allowed) return <section className="card"><h1>Suivi des emails</h1><p role="alert">Accès réservé à la direction et à l’Informaticien avec attribution globale.</p></section>;
+  const filteredRecords = (page?.records || []).filter(record => {
+    if (statusFilter && record.status !== statusFilter) return false;
+    if (!query.trim()) return true;
+    const q = query.trim().toLowerCase();
+    return `${record.recipient_name} ${record.recipient_email} ${record.subject} ${record.reason || ''}`.toLowerCase().includes(q);
+  });
   return <div className="domain-workspace workspace-stack email-workspace">
     <PageHeader
       eyebrow="SYSTÈME & CONTRÔLE"
@@ -75,19 +84,49 @@ export default function EmailOutboxPanel() {
     >
       <button className="btn btn-outline" onClick={() => setRevision(value => value + 1)}>Actualiser</button>
     </PageHeader>
-    <section className="card card-full">
-    {message && <p role="status">{message}</p>}
+    {message && <p role="status" className="info-box">{message}</p>}
+    <DataPanel
+      title={`Messages de la file d’envoi${page ? ` (${page.total})` : ''}`}
+      description="« Accepté par le service » ne confirme pas la réception dans la boîte mail."
+      meta={page ? <span className="pill pill-default">{filteredRecords.length} affiché(s)</span> : undefined}
+      toolbar={
+        <div className="panel-filter-grid">
+          <label className="form-group">
+            Rechercher un destinataire ou un objet
+            <input
+              className="input"
+              type="search"
+              placeholder="Nom, email ou objet du message…"
+              value={query}
+              onChange={e => setQuery(e.target.value)}
+            />
+          </label>
+          <label className="form-group">
+            État d’envoi
+            <select
+              className="select-input"
+              value={statusFilter}
+              onChange={e => setStatusFilter(e.target.value as EmailStatus | '')}
+            >
+              <option value="">Tous les états</option>
+              {Object.entries(statuses).map(([value, label]) => (
+                <option key={value} value={value}>{label}</option>
+              ))}
+            </select>
+          </label>
+        </div>
+      }
+    >
     {error ? <ErrorState title="Mails indisponibles" message={error} onRetry={() => setRevision(value => value + 1)} /> : !page ? <LoadingState label="Chargement des mails…" variant="table" /> : <>
       {!page.configuration.ready && <p className="info-box" role="status">Envoi non configuré. Les messages restent en attente.</p>}
-      <p className="cell-sub">« Accepté par le service » ne confirme pas la réception dans la boîte mail.</p>
-      <ResponsiveTable pageSize={0} className="data-table"><thead><tr><th>Date</th><th>Destinataire</th><th>Objet</th><th>État</th><th>Actions</th></tr></thead><tbody>
-        {page.records.map(record => <tr key={record.id}>
+      <div className="table-wrap"><ResponsiveTable pageSize={0} className="data-table"><thead><tr><th>Date</th><th>Destinataire</th><th>Objet</th><th>État</th><th>Actions</th></tr></thead><tbody>
+        {filteredRecords.map(record => <tr key={record.id}>
           <td>{date(record.created_at)}</td><td>{record.recipient_name}<div className="cell-sub audit-values">{record.recipient_email}</div></td><td>{record.subject}</td>
           <td><span className={`pill ${record.status === 'ACCEPTED' ? 'pill-success' : record.status === 'FAILED' || record.status === 'UNKNOWN' ? 'pill-warning' : 'pill-default'}`}>{statuses[record.status]}</span></td>
           <td><div className="btn-group"><IconButton className="btn btn-outline" label="Consulter le mail" onClick={() => { setSelected(record); setRetrying(false); setSaveError(''); }} />{canRetry && record.status === 'FAILED' && record.attempts < 5 && <IconButton className="btn btn-outline" label="Réessayer l’envoi" onClick={() => { setSelected(record); setRetrying(true); setReason(''); setSaveError(''); }} />}</div></td>
         </tr>)}
-        {!page.records.length && <tr><td colSpan={5}>Aucun mail pour cette année. Les actions historiques ne déclenchent pas d’envoi rétroactif.</td></tr>}
-      </tbody></ResponsiveTable>
+        {!filteredRecords.length && <tr><td colSpan={5}>{query || statusFilter ? 'Aucun mail ne correspond à ces filtres sur cette page.' : 'Aucun mail pour cette année. Les actions historiques ne déclenchent pas d’envoi rétroactif.'}</td></tr>}
+      </tbody></ResponsiveTable></div>
       {page.total > page.limit && <div className="browser-pagination"><span>{Math.min(offset + 1, page.total)}–{Math.min(offset + page.limit, page.total)} sur {page.total}</span><div className="btn-group"><button className="btn btn-outline" disabled={!offset} onClick={() => setOffset(value => Math.max(0, value - page.limit))}>Précédent</button><button className="btn btn-outline" disabled={offset + page.limit >= page.total} onClick={() => setOffset(value => value + page.limit)}>Suivant</button></div></div>}
     </>}
     {selected && <WorkPage title={retrying ? 'Reprendre un mail en échec' : 'Détail du mail'} busy={busy} onClose={() => { if (!busy) setSelected(null); }}>
@@ -101,6 +140,6 @@ export default function EmailOutboxPanel() {
         {selected.status === 'UNKNOWN' && <p className="info-box">Vérifiez auprès du service si ce mail a été accepté. Aucun renvoi automatique n’est effectué.</p>}
       </>}
     </WorkPage>}
-  </section>
+    </DataPanel>
   </div>;
 }

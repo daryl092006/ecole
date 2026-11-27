@@ -6,11 +6,13 @@ import { usePortal } from '@/hooks/usePortal';
 import { useAcademicReferences } from '@/hooks/useAcademicReferences';
 import ResponsiveTable from '@/components/ui/ResponsiveTable';
 import PageHeader from '@/components/ui/PageHeader';
+import DataPanel from '@/components/ui/DataPanel';
+import WorkspaceSummary from '@/components/ui/WorkspaceSummary';
 import StudentRecordDialog from '@/components/modules/StudentRecordDialog';
 import { downloadCsv } from '@/utils/csv';
 import { formatSubjectCode } from '@/services/resaoCodeService';
 import type { TeachingAssignment, Subject, Teacher } from '@/types/academic';
-import { Users, Search, ArrowRight, ShieldAlert, ArrowLeft } from 'lucide-react';
+import { Users, Search, ArrowRight, ShieldAlert, ArrowLeft, BookOpen, GraduationCap } from 'lucide-react';
 
 export default function GroupsWorkspace() {
   const portal = usePortal();
@@ -172,110 +174,133 @@ export default function GroupsWorkspace() {
         eyebrow="PÉDAGOGIE & SCOLARITÉ"
         title="Classes et groupes d'étudiants"
         description={`Consultez la composition exacte de chaque classe, l'effectif des inscrits et les étudiants rattachés pour l'année ${currentYearName}.`}
-      />
+      >
+        {activeGroup ? (
+          <button
+            type="button"
+            className="btn btn-outline"
+            onClick={() => { setSelectedGroupId(null); setStudentSearch(''); }}
+          >
+            <ArrowLeft size={16} />
+            <span>Retour à toutes les classes</span>
+          </button>
+        ) : (
+          activeTab === 'classes' && perms.permissions.includes('academic.group.manage') && (
+            <Link className="btn btn-outline" href="/academique/referentiel">
+              Gérer les groupes dans le référentiel →
+            </Link>
+          )
+        )}
+      </PageHeader>
+
+      {!activeGroup && (
+        <WorkspaceSummary
+          label="Vue d’ensemble des classes et effectifs"
+          items={[
+            {
+              label: 'Classes actives',
+              value: yearGroups.length.toLocaleString('fr-FR'),
+              description: `Groupes ouverts en ${currentYearName}`,
+              icon: <GraduationCap size={21} />,
+              tone: 'primary',
+            },
+            {
+              label: 'Étudiants inscrits',
+              value: yearStudents.length.toLocaleString('fr-FR'),
+              description: unassignedStudents.length > 0 ? `${unassignedStudents.length} non affecté(s)` : 'Tous rattachés à une classe',
+              icon: <Users size={21} />,
+              tone: unassignedStudents.length > 0 ? 'warning' : undefined,
+            },
+            {
+              label: 'Enseignements affectés',
+              value: groupsWithDetails.reduce((sum, g) => sum + g.assignmentsCount, 0).toLocaleString('fr-FR'),
+              description: 'Matières et enseignants rattachés aux classes',
+              icon: <BookOpen size={21} />,
+            },
+          ]}
+        />
+      )}
 
       {/* CAS 1 : VUE DÉTAILLÉE D'UNE CLASSE SÉLECTIONNÉE (PLEINE LARGEUR) */}
       {activeGroup ? (
-        <section className="card card-full" aria-label={`Détail de la classe ${activeGroup.name}`}>
-          {/* Barre de navigation retour & sélecteur rapide */}
-          <div className="card-header" style={{ flexWrap: 'wrap', gap: '12px' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flexWrap: 'wrap' }}>
-              <button
-                type="button"
-                className="btn btn-outline"
-                onClick={() => { setSelectedGroupId(null); setStudentSearch(''); }}
-                style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}
-              >
-                <ArrowLeft size={16} />
-                <span>Retour à toutes les classes</span>
-              </button>
-              <div>
-                <h2 style={{ margin: 0 }}>{activeGroup.name}</h2>
-                <div style={{ display: 'flex', gap: '6px', alignItems: 'center', marginTop: '4px' }}>
-                  {activeGroup.niveau && <span className="pill pill-default">{activeGroup.niveau}</span>}
-                  {(activeGroup.filieres || []).map(f => (
-                    <span key={f} className="pill pill-info">{f}</span>
+        <>
+          <DataPanel
+            title={activeGroup.name}
+            description={[activeGroup.niveau, ...(activeGroup.filieres || [])].filter(Boolean).join(' · ') || 'Classe de l’année consultée'}
+            meta={
+              <div className="btn-group">
+                <span className="pill pill-success">{activeGroup.studentsCount} étudiants inscrits</span>
+                <label htmlFor="quick-group-select" className="sr-only">Changer de classe</label>
+                <select
+                  id="quick-group-select"
+                  className="select-input"
+                  value={activeGroup.id}
+                  onChange={e => { setSelectedGroupId(e.target.value); setStudentSearch(''); }}
+                >
+                  {groupsWithDetails.map(g => (
+                    <option key={g.id} value={g.id}>
+                      {g.name} ({g.studentsCount} étud.)
+                    </option>
                   ))}
-                  <span className="pill pill-success">{activeGroup.studentsCount} étudiants inscrits</span>
+                </select>
+              </div>
+            }
+            footer={`Affichage de ${filteredClassStudents.length} sur ${activeGroup.studentsCount} étudiant(s)`}
+            toolbar={
+              <div className="panel-filter-grid">
+                <label className="form-group">
+                  Filtrer les étudiants de cette classe
+                  <span className="assessment-search-input">
+                    <Search size={18} aria-hidden="true" />
+                    <input
+                      type="search"
+                      className="input"
+                      placeholder="Nom, prénom, matricule, email…"
+                      value={studentSearch}
+                      onChange={e => setStudentSearch(e.target.value)}
+                    />
+                  </span>
+                </label>
+                <div className="btn-group" style={{ alignItems: 'flex-end' }}>
+                  {studentSearch && (
+                    <button
+                      type="button"
+                      className="btn btn-sm btn-outline"
+                      onClick={() => setStudentSearch('')}
+                    >
+                      Effacer le filtre
+                    </button>
+                  )}
+                  {filteredClassStudents.length > 0 && (
+                    <button
+                      type="button"
+                      className="btn btn-sm btn-outline"
+                      onClick={() => {
+                        downloadCsv(
+                          `classe-${activeGroup.name.toLowerCase().replace(/[^a-z0-9]+/gi, '-')}.csv`,
+                          ['#', 'Matricule', 'Prénom', 'Nom', 'Email M365', 'Téléphone', 'Filière', 'Niveau', 'Classe', 'Statut'],
+                          filteredClassStudents.map((s, idx) => [
+                            idx + 1,
+                            s.matricule,
+                            s.firstname,
+                            s.lastname,
+                            s.institutionalEmail || s.email || '',
+                            s.phone || '',
+                            s.filiere || (activeGroup.filieres || []).join(', '),
+                            s.niveau || activeGroup.niveau || '',
+                            activeGroup.name,
+                            s.status || 'Inscrit',
+                          ])
+                        );
+                      }}
+                    >
+                      Exporter la liste CSV ({filteredClassStudents.length})
+                    </button>
+                  )}
                 </div>
               </div>
-            </div>
-
-            {/* Sélecteur direct pour basculer vers une autre classe sans revenir en arrière */}
-            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-              <label htmlFor="quick-group-select" className="cell-sub" style={{ fontWeight: 500 }}>
-                Changer de classe :
-              </label>
-              <select
-                id="quick-group-select"
-                className="select-input"
-                style={{ minWidth: '220px' }}
-                value={activeGroup.id}
-                onChange={e => { setSelectedGroupId(e.target.value); setStudentSearch(''); }}
-              >
-                {groupsWithDetails.map(g => (
-                  <option key={g.id} value={g.id}>
-                    {g.name} ({g.studentsCount} étud.)
-                  </option>
-                ))}
-              </select>
-            </div>
-          </div>
-
-          {/* Recherche dans la classe */}
-          <div style={{ padding: '16px 20px', borderBottom: '1px solid var(--border-color, #e2e8f0)', background: '#f8fafc' }}>
-            <div style={{ display: 'flex', gap: '12px', alignItems: 'center', flexWrap: 'wrap' }}>
-              <div style={{ position: 'relative', flex: 1, minWidth: '260px' }}>
-                <Search size={16} style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: '#94a3b8' }} />
-                <input
-                  type="text"
-                  className="search-input"
-                  style={{ width: '100%', paddingLeft: '36px' }}
-                  placeholder="Filtrer les étudiants de cette classe (nom, prénom, matricule, email)..."
-                  value={studentSearch}
-                  onChange={e => setStudentSearch(e.target.value)}
-                />
-              </div>
-              {studentSearch && (
-                <button
-                  type="button"
-                  className="btn btn-sm btn-outline"
-                  onClick={() => setStudentSearch('')}
-                >
-                  Effacer le filtre
-                </button>
-              )}
-              <span className="cell-sub">
-                Affichage de <strong>{filteredClassStudents.length}</strong> sur <strong>{activeGroup.studentsCount}</strong> étudiant(s)
-              </span>
-              {filteredClassStudents.length > 0 && (
-                <button
-                  type="button"
-                  className="btn btn-sm btn-outline"
-                  onClick={() => {
-                    downloadCsv(
-                      `classe-${activeGroup.name.toLowerCase().replace(/[^a-z0-9]+/gi, '-')}.csv`,
-                      ['#', 'Matricule', 'Prénom', 'Nom', 'Email M365', 'Téléphone', 'Filière', 'Niveau', 'Classe', 'Statut'],
-                      filteredClassStudents.map((s, idx) => [
-                        idx + 1,
-                        s.matricule,
-                        s.firstname,
-                        s.lastname,
-                        s.institutionalEmail || s.email || '',
-                        s.phone || '',
-                        s.filiere || (activeGroup.filieres || []).join(', '),
-                        s.niveau || activeGroup.niveau || '',
-                        activeGroup.name,
-                        s.status || 'Inscrit',
-                      ])
-                    );
-                  }}
-                >
-                  Exporter la liste CSV ({filteredClassStudents.length})
-                </button>
-              )}
-            </div>
-          </div>
+            }
+          >
 
           {/* Tableau complet des étudiants de la classe */}
           {activeGroup.studentsCount === 0 ? (
@@ -373,14 +398,14 @@ export default function GroupsWorkspace() {
             </div>
           )}
 
+          </DataPanel>
+
           {/* Section secondaire : Enseignements et matières du groupe */}
           {activeGroup.assignmentsCount > 0 && (
-            <div style={{ marginTop: '24px', borderTop: '1px solid var(--border-color, #e2e8f0)', paddingTop: '20px' }}>
-              <div style={{ padding: '0 20px 12px' }}>
-                <h3 style={{ fontSize: '15px', margin: 0 }}>
-                  Matières et enseignants affectés à ce groupe ({activeGroup.assignmentsCount})
-                </h3>
-              </div>
+            <DataPanel
+              title={`Matières et enseignants affectés à ce groupe (${activeGroup.assignmentsCount})`}
+              description="Enseignements rattachés à cette classe pour l’année universitaire."
+            >
               <div className="table-wrap">
                 <ResponsiveTable className="data-table">
                   <thead>
@@ -401,18 +426,19 @@ export default function GroupsWorkspace() {
                   </tbody>
                 </ResponsiveTable>
               </div>
-            </div>
+            </DataPanel>
           )}
-        </section>
+        </>
       ) : (
         /* CAS 2 : VUE D'ENSEMBLE PLEINE LARGEUR (TABLEAU DES CLASSES OU SANS CLASSE) */
-        <section className="card card-full" aria-label="Liste des classes de l'établissement">
-          {/* Onglets supérieurs de sélection de vue */}
-          <div className="card-header" style={{ borderBottom: '1px solid var(--border-color, #e2e8f0)', paddingBottom: '12px' }}>
+        <DataPanel
+          title={activeTab === 'classes' ? 'Liste des classes de l’établissement' : 'Étudiants non affectés à une classe'}
+          description={activeTab === 'classes' ? 'Sélectionnez une classe pour afficher la liste complète de ses étudiants et matières.' : 'Étudiants inscrits en attente de rattachement à un groupe de classe.'}
+          meta={
             <div className="btn-group" role="group" aria-label="Vue des classes et des étudiants non affectés">
               <button
                 type="button"
-                className={`btn ${activeTab === 'classes' ? 'btn-primary' : 'btn-outline'}`}
+                className={`btn btn-sm ${activeTab === 'classes' ? 'btn-primary' : 'btn-outline'}`}
                 aria-pressed={activeTab === 'classes'}
                 onClick={() => setActiveTab('classes')}
               >
@@ -420,68 +446,64 @@ export default function GroupsWorkspace() {
               </button>
               <button
                 type="button"
-                className={`btn ${activeTab === 'unassigned' ? 'btn-primary' : 'btn-outline'}`}
+                className={`btn btn-sm ${activeTab === 'unassigned' ? 'btn-primary' : 'btn-outline'}`}
                 aria-pressed={activeTab === 'unassigned'}
                 onClick={() => setActiveTab('unassigned')}
-                style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}
               >
-                <ShieldAlert size={15} style={{ color: activeTab === 'unassigned' ? '#fff' : 'var(--warning, #d97706)' }} />
+                <ShieldAlert size={15} />
                 <span>Étudiants non affectés ({unassignedStudents.length})</span>
               </button>
             </div>
-
-            {activeTab === 'classes' && perms.permissions.includes('academic.group.manage') && (
-              <Link className="btn btn-outline" href="/academique/referentiel">
-                Gérer les groupes dans le référentiel →
-              </Link>
-            )}
-          </div>
-
-          {activeTab === 'classes' ? (
-            <>
-              {/* Filtres de recherche des classes */}
-              <div style={{ padding: '16px 20px', borderBottom: '1px solid var(--border-color, #e2e8f0)', background: '#f8fafc' }}>
-                <div className="form-grid" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '12px' }}>
-                  <div style={{ position: 'relative' }}>
-                    <Search size={16} style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: '#94a3b8' }} />
+          }
+          footer={activeTab === 'classes' ? `${filteredGroups.length} classe(s) affichée(s) sur ${yearGroups.length}` : `${unassignedStudents.length} étudiant(s) non affecté(s)`}
+          toolbar={
+            activeTab === 'classes' ? (
+              <div className="panel-filter-grid">
+                <label className="form-group">
+                  Rechercher une classe ou un étudiant
+                  <span className="assessment-search-input">
+                    <Search size={18} aria-hidden="true" />
                     <input
-                      type="text"
-                      className="search-input"
-                      style={{ width: '100%', paddingLeft: '36px' }}
-                      placeholder="Rechercher une classe, filière, niveau ou étudiant..."
+                      type="search"
+                      className="input"
+                      placeholder="Classe, filière, niveau ou étudiant…"
                       value={searchQuery}
                       onChange={e => setSearchQuery(e.target.value)}
                     />
-                  </div>
-
-                  <div>
-                    <select
-                      className="select-input"
-                      value={selectedFiliere}
-                      onChange={e => setSelectedFiliere(e.target.value)}
-                    >
-                      <option value="ALL">Toutes les filières ({filieresList.length})</option>
-                      {filieresList.map(f => (
-                        <option key={f} value={f}>{f}</option>
-                      ))}
-                    </select>
-                  </div>
-
-                  <div>
-                    <select
-                      className="select-input"
-                      value={selectedNiveau}
-                      onChange={e => setSelectedNiveau(e.target.value)}
-                    >
-                      <option value="ALL">Tous les niveaux ({niveauxList.length})</option>
-                      {niveauxList.map(n => (
-                        <option key={n} value={n}>{n}</option>
-                      ))}
-                    </select>
-                  </div>
-                </div>
+                  </span>
+                </label>
+                <label className="form-group">
+                  Filière
+                  <select
+                    className="select-input"
+                    value={selectedFiliere}
+                    onChange={e => setSelectedFiliere(e.target.value)}
+                  >
+                    <option value="ALL">Toutes les filières ({filieresList.length})</option>
+                    {filieresList.map(f => (
+                      <option key={f} value={f}>{f}</option>
+                    ))}
+                  </select>
+                </label>
+                <label className="form-group">
+                  Niveau
+                  <select
+                    className="select-input"
+                    value={selectedNiveau}
+                    onChange={e => setSelectedNiveau(e.target.value)}
+                  >
+                    <option value="ALL">Tous les niveaux ({niveauxList.length})</option>
+                    {niveauxList.map(n => (
+                      <option key={n} value={n}>{n}</option>
+                    ))}
+                  </select>
+                </label>
               </div>
-
+            ) : undefined
+          }
+        >
+          {activeTab === 'classes' ? (
+            <>
               {/* Grand tableau récapitulatif des classes */}
               <div className="table-wrap">
                 <ResponsiveTable className="data-table">
@@ -634,7 +656,7 @@ export default function GroupsWorkspace() {
               </ResponsiveTable>
             </div>
           )}
-        </section>
+        </DataPanel>
       )}
       {selectedStudentDrawer && (
         <StudentRecordDialog
