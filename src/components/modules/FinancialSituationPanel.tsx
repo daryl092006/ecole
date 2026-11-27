@@ -4,6 +4,7 @@ import ResponsiveTable from '@/components/ui/ResponsiveTable';
 import Link from 'next/link';
 import { useState } from 'react';
 import { studentPath } from '@/constants/portalRoutes';
+import StudentRecordDialog from '@/components/modules/StudentRecordDialog';
 import type { RoleName, Student } from '@/types';
 import { getFinancialReport, type FinancialSituation } from '@/services/financialReportService';
 import { fmtMoney } from '@/hooks/useAppState';
@@ -14,6 +15,13 @@ const labels: Record<FinancialSituation, string> = {
   SCOLARITE_SOLDEE: 'Contrat soldé',
   A_JOUR: 'À jour',
   EN_RETARD: 'En retard',
+};
+
+const situationPill: Record<FinancialSituation, string> = {
+  SANS_CONTRAT: 'pill-default',
+  SCOLARITE_SOLDEE: 'pill-success',
+  A_JOUR: 'pill-info',
+  EN_RETARD: 'pill-danger',
 };
 
 export default function FinancialSituationPanel({
@@ -29,6 +37,7 @@ export default function FinancialSituationPanel({
   const [program, setProgram] = useState('');
   const [level, setLevel] = useState('');
   const [referenceDate, setReferenceDate] = useState(new Date().toISOString().slice(0, 10));
+  const [selectedFinanceMatricule, setSelectedFinanceMatricule] = useState<string | null>(null);
   const date = referenceDate || new Date().toISOString().slice(0, 10);
   const pendingCount = students.filter(student => student.financials.available === false).length;
   const allRows = getFinancialReport(students, role, date);
@@ -181,6 +190,7 @@ export default function FinancialSituationPanel({
               <th>Situation</th>
               <th>Reste à payer</th>
               <th>Échu impayé</th>
+              {canViewStudents && <th>Action</th>}
             </tr>
           </thead>
           <tbody>
@@ -199,14 +209,29 @@ export default function FinancialSituationPanel({
                 <td>
                   {row.student.filiere} · {row.student.niveau}
                 </td>
-                <td>{labels[row.situation]}</td>
+                <td>
+                  <span className={`pill ${situationPill[row.situation]}`}>
+                    {labels[row.situation]}
+                  </span>
+                </td>
                 <td>{fmtMoney(row.student.financials.remaining)}</td>
                 <td>{fmtMoney(row.overdue)}</td>
+                {canViewStudents && (
+                  <td>
+                    <button
+                      type="button"
+                      className="btn btn-sm btn-outline"
+                      onClick={() => setSelectedFinanceMatricule(row.student.matricule)}
+                    >
+                      Versements & Contrat
+                    </button>
+                  </td>
+                )}
               </tr>
             ))}
             {!rows.length && (
               <tr>
-                <td colSpan={5}>
+                <td colSpan={canViewStudents ? 6 : 5}>
                   {allRows.length
                     ? 'Aucun dossier ne correspond aux filtres.'
                     : pendingCount
@@ -218,6 +243,13 @@ export default function FinancialSituationPanel({
           </tbody>
         </ResponsiveTable>
       </div>
+      {selectedFinanceMatricule && (
+        <StudentRecordDialog
+          initialSection="finance"
+          matricule={selectedFinanceMatricule}
+          onClose={() => setSelectedFinanceMatricule(null)}
+        />
+      )}
     </div>
   );
 }

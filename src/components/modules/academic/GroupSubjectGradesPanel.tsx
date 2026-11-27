@@ -11,6 +11,7 @@ import { evaluationGradeIsComplete, evaluationGradeValue } from '@/services/eval
 import { assessmentProgress } from '@/services/assessmentDisplayService';
 import { formatSubjectCode } from '@/services/resaoCodeService';
 import { computeSubjectAverage } from '@/services/gradeCalculationService';
+import { downloadCsv } from '@/utils/csv';
 
 interface Props {
   snapshot: RelationalSnapshot;
@@ -119,7 +120,28 @@ export default function GroupSubjectGradesPanel({ snapshot, canViewStudents, onS
       if (!subjectMap.has(subj.id)) subjectMap.set(subj.id, { ...subj, evals: [] });
       subjectMap.get(subj.id)!.evals.push(ev);
     }
-    const memberEnrollmentIds = new Set(enrollmentGroups.filter(eg => eg.group_id === gId).map(eg => String(eg.enrollment_id)));
+    const groupAssignments = assignments.filter(a => !a.archived_at && String(a.group_id) === gId);
+    for (const assign of groupAssignments) {
+      const comp = components.find(c => c.id === assign.component_id);
+      const subj = comp && subjects.find(s => s.id === comp.subject_id);
+      if (subj) {
+        const sId = String(subj.id);
+        if (!subjectMap.has(sId)) {
+          const sName = String(subj.name || subj.code || 'Matière');
+          subjectMap.set(sId, {
+            id: sId,
+            code: formatSubjectCode(comp?.code || subj.code, sName),
+            name: sName,
+            evals: [],
+          });
+        }
+      }
+    }
+    const memberEnrollmentIds = new Set(
+      enrollmentGroups
+        .filter(eg => eg.group_id === gId && !eg.archived_at && !eg.valid_until && eg.historical_only !== true)
+        .map(eg => String(eg.enrollment_id))
+    );
     for (const c of groupCands) memberEnrollmentIds.add(String(c.enrollment_id));
     const level = levels.find(l => l.id === group.level_id);
     return {
@@ -382,9 +404,50 @@ export default function GroupSubjectGradesPanel({ snapshot, canViewStudents, onS
             </div>
           )}
 
-          <h3>
-            Notes de {activeSubjectSummary.name} — {activeGroup.name} ({studentRows.filter(r => r.hasAnyGrade).length} traité(s) sur {studentRows.length})
-          </h3>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '8px', marginBottom: '6px' }}>
+            <h3 style={{ margin: 0 }}>
+              Notes de {activeSubjectSummary.name} — {activeGroup.name} ({studentRows.filter(r => r.hasAnyGrade).length} traité(s) sur {studentRows.length})
+            </h3>
+            {studentRows.length > 0 && (
+              <button
+                type="button"
+                className="btn btn-sm btn-outline"
+                onClick={() => {
+                  downloadCsv(
+                    `notes-${activeGroup.name}-${activeSubjectSummary.code || activeSubjectSummary.name}.csv`
+                      .toLowerCase()
+                      .replace(/[^a-z0-9.-]+/gi, '-'),
+                    [
+                      'Matricule',
+                      'Étudiant',
+                      'Filière',
+                      ...orderedSubjectEvals.map(ev => `${evalTypeLabel(ev)} (${String(ev.name)})`),
+                      'Moyenne finale /20',
+                      'Avancement',
+                    ],
+                    studentRows.map(row => [
+                      row.matricule,
+                      row.fullName,
+                      row.filiere,
+                      ...row.evalCells.map(cell =>
+                        !cell.candidate
+                          ? '—'
+                          : cell.absenceStatus
+                          ? cell.absenceStatus
+                          : cell.value !== null
+                          ? cell.value
+                          : 'En attente'
+                      ),
+                      row.subjectAverage !== null ? row.subjectAverage.toFixed(2) : '—',
+                      `${row.completedCount}/${row.candidateCount}`,
+                    ])
+                  );
+                }}
+              >
+                Exporter CSV ({studentRows.length})
+              </button>
+            )}
+          </div>
           <p className="cell-sub mb-2">
             Barème officiel ESCEN : <strong>Devoir (40%)</strong> + <strong>Examen (60%)</strong> (ou <strong>100% Examen</strong> si pas de devoir)
           </p>

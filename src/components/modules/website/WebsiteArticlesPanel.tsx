@@ -10,6 +10,7 @@ import { loadWebsiteData, saveWebsiteData } from '@/services/remoteCampusService
 import { slugifyWebsiteText } from '@/services/websiteService';
 import type { WebsiteArticle } from '@/types/website';
 import WorkPage from '@/components/ui/WorkPage';
+import DetailDrawer from '@/components/ui/DetailDrawer';
 import ArticleEditor from '@/components/ui/ArticleEditor';
 import ReviewedForm from '@/components/ui/ReviewedForm';
 import { articlePlainText, extractArticleImages, readAndOptimizeArticleImage, renderArticleContent } from '@/utils/articleDocument';
@@ -35,6 +36,7 @@ export default function WebsiteArticlesPanel() {
   const canManage = (!state.academicYearContext || !!state.academicYearContext.selectedYearId) && state.perms.permissions.includes('communication.manage') && state.session?.capabilities?.[role]?.globalAccess;
   const [articles, setArticles] = useState<WebsiteArticle[]>([]);
   const [editing, setEditing] = useState<Partial<WebsiteArticle> & typeof emptyArticle | null>(null);
+  const [viewingArticle, setViewingArticle] = useState<WebsiteArticle | null>(null);
   const [slugTouched, setSlugTouched] = useState(false);
   const [editorError, setEditorError] = useState('');
   const [coverUploading, setCoverUploading] = useState(false);
@@ -172,6 +174,14 @@ export default function WebsiteArticlesPanel() {
                     <p className="article-row-address">Version {article.version} · /blogs/{article.slug}</p>
                   </div>
                   <div className="article-row-actions">
+                    <button
+                      type="button"
+                      className="btn btn-outline"
+                      aria-label={`Lire : ${article.title}`}
+                      onClick={() => setViewingArticle(article)}
+                    >
+                      <Eye size={15} aria-hidden="true" />Lire
+                    </button>
                     {canManage && (
                       <button className="btn btn-outline" aria-label={`Modifier : ${article.title}`} onClick={() => { setSuccess(''); setEditorError(''); setFullPreview(false); setEditing(article); setSlugTouched(true); }}>
                         <Pencil size={15} aria-hidden="true" />Modifier
@@ -187,6 +197,34 @@ export default function WebsiteArticlesPanel() {
     )}
 
     </div>
+
+    {viewingArticle && (
+      <DetailDrawer
+        title={viewingArticle.title}
+        onClose={() => setViewingArticle(null)}
+      >
+        <article className="article-full-preview-card" aria-label={`Lecture de ${viewingArticle.title}`}>
+          {viewingArticle.image && (
+            <div className="article-full-preview-cover">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src={viewingArticle.image} alt={viewingArticle.title} />
+            </div>
+          )}
+          <div className="article-full-preview-body">
+            <div className="editorial-article-meta">
+              <span className={`pill ${viewingArticle.status === 'PUBLIE' ? 'pill-success' : viewingArticle.status === 'BROUILLON' ? 'pill-warning' : 'pill-default'}`}>
+                {statusLabels[viewingArticle.status]}
+              </span>
+              <span>{estimateReadingStats(viewingArticle.content || '').minutes} min de lecture</span>
+              <span>/blogs/{viewingArticle.slug}</span>
+            </div>
+            <h2>{viewingArticle.title}</h2>
+            {viewingArticle.excerpt && <p className="article-full-preview-excerpt">{viewingArticle.excerpt}</p>}
+            <div className="article-content" dangerouslySetInnerHTML={{ __html: renderArticleContent(viewingArticle.content || '') }} />
+          </div>
+        </article>
+      </DetailDrawer>
+    )}
 
     {editing && <WorkPage busy={busy} title={editing.id ? 'Modifier l’article du site' : 'Rédiger un article'} onClose={() => { if (!busy) { setEditing(null); setFullPreview(false); } }}>
       <ReviewedForm className="article-compose-form" busy={busy} error={message} confirmLabel="Confirmer l’enregistrement" fields={[
