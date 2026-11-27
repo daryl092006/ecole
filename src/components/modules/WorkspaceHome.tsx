@@ -2,8 +2,11 @@
 import IconButton from '@/components/ui/IconButton';
 import PageHeader from '@/components/ui/PageHeader';
 import Link from 'next/link';
+import { useEffect, useState } from 'react';
 import { ArrowUpRight, GraduationCap, Wallet, BookOpen, Users, ShieldCheck, CalendarDays, TrendingUp, Award, Server, Package, Megaphone, ClipboardCheck } from 'lucide-react';
 import { usePortal } from '@/hooks/usePortal';
+import { admissionsOperation } from '@/services/remoteCampusService';
+import type { AdmissionApplication, AdmissionsContext } from '@/types/admissions';
 import { HISTORY_TABLES, HISTORY_DOMAINS } from '@/data/historyCatalog';
 import { ROLES, type RoleName } from '@/types/permissions';
 import type { HistoryDomain } from '@/types/history';
@@ -29,6 +32,23 @@ interface RoleKpiCard {
 
 export default function WorkspaceHome({ mode = 'home' }: { mode?: 'home' | 'overview' | 'reports' }) {
   const state = usePortal(); const { catalog, error, retry } = state.history;
+  const [remoteApps, setRemoteApps] = useState<AdmissionApplication[] | null>(null);
+  const [remoteIntakesCount, setRemoteIntakesCount] = useState<number | null>(null);
+  const canLoadAdmissions = state.perms.permissions.includes('application.view') && !state.perms.scope.ownDataOnly;
+  useEffect(() => {
+    if (!canLoadAdmissions || (mode === 'home' && (state.activeRole === ROLES.STUD || state.activeRole === ROLES.DEL))) return;
+    const controller = new AbortController();
+    void admissionsOperation(state.activeRole, undefined, controller.signal)
+      .then(res => {
+        const ctx = res as AdmissionsContext;
+        if (!controller.signal.aborted && Array.isArray(ctx?.applications)) {
+          setRemoteApps(ctx.applications);
+          setRemoteIntakesCount(Array.isArray(ctx.intakes) ? ctx.intakes.length : null);
+        }
+      })
+      .catch(() => undefined);
+    return () => controller.abort();
+  }, [canLoadAdmissions, mode, state.activeRole, state.academicYearSelection]);
   if (mode === 'home' && (state.activeRole === ROLES.STUD || state.activeRole === ROLES.DEL)) return <StudentHome />;
   const tables = state.relationalSnapshot.tables;
   const activeRows = (table: string) => (tables[table] || []).filter(row => !row.archived_at);
@@ -110,9 +130,10 @@ export default function WorkspaceHome({ mode = 'home' }: { mode?: 'home' | 'over
   const debtorStudents = knownFinancialStudents.filter(s => (s.financials?.remaining ?? 0) > 0).length;
 
   // Compact role-specific KPI cards (short 1-2 word labels, big numbers)
-  const applications = activeRows('online_applications');
+  const snapshotApps = activeRows('online_applications');
+  const applications = snapshotApps.length > 0 ? snapshotApps : (remoteApps || []);
   const pendingApps = applications.filter(a => !['ADMIS_OFFICIEL', 'REFUSE'].includes(String(a.workflow_stage || a.status || ''))).length;
-  const admittedApps = applications.filter(a => String(a.workflow_stage || a.status || '') === 'ADMIS_OFFICIEL').length;
+  const admittedApps = applications.filter(a => String(a.workflow_stage || a.status || '') === 'ADMIS_OFFICIEL' || Boolean((a as AdmissionApplication).student_id)).length;
   const absencesCount = activeRows('attendances').filter(a => a.status && String(a.status).toUpperCase() !== 'PRESENT').length;
   const totalExpenses = activeRows('expenses').reduce((sum, e) => sum + (Number(e.amount ?? 0) || 0), 0);
   const publishedComms = activeRows('communications').filter(c => c.published_at && !c.withdrawn_at).length;
@@ -523,7 +544,7 @@ export default function WorkspaceHome({ mode = 'home' }: { mode?: 'home' | 'over
             { label: 'Publications', value: `${count('communications')}` },
             { label: 'En ligne', value: `${publishedComms}` },
             { label: 'Articles web', value: `${count('annual_website_articles')}` },
-            { label: 'Concours & rentrées', value: `${count('annual_website_intakes')}` },
+            { label: 'Concours & rentrées', value: `${count('annual_website_intakes') || remoteIntakesCount || 0}` },
             { label: 'Brochures', value: `${count('annual_website_brochures')}` },
             { label: 'Filières', value: `${programsCount}` },
           ],

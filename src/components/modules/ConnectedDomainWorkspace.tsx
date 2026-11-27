@@ -25,6 +25,8 @@ import ArchiveFinanceWorkspace from './history/ArchiveFinanceWorkspace';
 import GroupSubjectGradesPanel from './academic/GroupSubjectGradesPanel';
 import TranscriptPrintAction from './academic/TranscriptPrintAction';
 import ReceiptPrintAction from './finance/ReceiptPrintAction';
+import { buildProvisionalTranscriptDocument } from '@/services/schoolCertificateService';
+import { printTranscript } from '@/utils/printTranscript';
 import PageHeader from '@/components/ui/PageHeader';
 import { confirmedMeetingUrl } from '@/utils/meetingLinks';
 import { loadCourseRecordingPlayback } from '@/services/remoteCampusService';
@@ -147,8 +149,16 @@ export default function ConnectedDomainWorkspace({ section, studentMatricule, on
           <p className="cell-sub">Matricule : <strong>{student.matricule}</strong> · {student.filiere} · {student.niveau}</p>
         </div>
         <div className="btn-group">
+          {(() => {
+            const prov = buildProvisionalTranscriptDocument(snapshot, student.matricule, portal.academicYearContext?.selectedYearId);
+            return prov ? (
+              <button type="button" className="btn btn-primary" onClick={() => printTranscript(prov)}>
+                Imprimer le relevé REESAO (A4)
+              </button>
+            ) : null;
+          })()}
           {portal.perms.permissions.includes('student.view') && (
-            <Link className="btn btn-primary" href={`/etudiants/${encodeURIComponent(student.matricule)}`}>
+            <Link className="btn btn-outline" href={`/etudiants/${encodeURIComponent(student.matricule)}`}>
               Accéder au dossier complet →
             </Link>
           )}

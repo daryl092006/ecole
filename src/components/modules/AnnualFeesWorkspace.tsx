@@ -13,6 +13,7 @@ import DrawerActions from '@/components/ui/DrawerActions';
 import { DrawerCloseButton } from '@/components/ui/DetailDrawer';
 import LoadingState from '@/components/ui/LoadingState';
 import ScholarshipAwardForm from './ScholarshipAwardForm';
+import StudentRecordDialog from './StudentRecordDialog';
 import ErrorState from '@/components/ui/ErrorState';
 import ActionResult from '@/components/ui/ActionResult';
 import { loadFinanceSettings, mutateFinanceSettings } from '@/services/financeSettingsService';
@@ -33,6 +34,7 @@ export default function AnnualFeesWorkspace() {
   const [contractsQuery, setContractsQuery] = useState('');
   const [awardQuery, setAwardQuery] = useState('');
   const [awardEnrollmentId, setAwardEnrollmentId] = useState('');
+  const [financeDossierMatricule, setFinanceDossierMatricule] = useState('');
   const [directory, setDirectory] = useState<FinanceSettingsDirectory | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -262,6 +264,16 @@ export default function AnnualFeesWorkspace() {
           <p>{notice}</p>
         </ActionResult>
       )}
+      {financeDossierMatricule && (
+        <StudentRecordDialog
+          initialSection="finance"
+          matricule={financeDossierMatricule}
+          onClose={() => {
+            setFinanceDossierMatricule('');
+            setReloadKey(k => k + 1);
+          }}
+        />
+      )}
 
       {error && (
         <ActionResult title="Erreur" onDismiss={() => setError(null)}>
@@ -421,13 +433,22 @@ export default function AnnualFeesWorkspace() {
                       </td>
                       {canEdit && (
                         <td>
-                          <button
-                            type="button"
-                            className="btn btn-sm btn-outline"
-                            onClick={() => openAwardScholarship(student.enrollmentId)}
-                          >
-                            {student.hasScholarship ? 'Modifier bourse' : 'Attribuer bourse'}
-                          </button>
+                          <div className="btn-group">
+                            <button
+                              type="button"
+                              className="btn btn-sm btn-primary"
+                              onClick={() => setFinanceDossierMatricule(student.matricule)}
+                            >
+                              Versements & Contrat
+                            </button>
+                            <button
+                              type="button"
+                              className="btn btn-sm btn-outline"
+                              onClick={() => openAwardScholarship(student.enrollmentId)}
+                            >
+                              {student.hasScholarship ? 'Modifier bourse' : 'Attribuer bourse'}
+                            </button>
+                          </div>
                         </td>
                       )}
                     </tr>

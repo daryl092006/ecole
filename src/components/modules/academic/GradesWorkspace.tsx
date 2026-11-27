@@ -18,6 +18,9 @@ import PageHeader from '@/components/ui/PageHeader';
 import { downloadCsv } from '@/utils/csv';
 import { formatSubjectCode } from '@/services/resaoCodeService';
 import { computeSubjectAverage } from '@/services/gradeCalculationService';
+import { buildProvisionalTranscriptDocument } from '@/services/schoolCertificateService';
+import { printTranscript } from '@/utils/printTranscript';
+import { ROLES } from '@/types/permissions';
 import {
   Search,
   ArrowLeft,
@@ -25,6 +28,7 @@ import {
   Download,
   FileCheck2,
   Edit3,
+  Printer,
 } from 'lucide-react';
 
 function evalTypeLabel(ev: DatabaseRow): string {
@@ -124,9 +128,24 @@ export default function GradesWorkspace() {
         if (!subjectMap.has(subj.id)) subjectMap.set(subj.id, { ...subj, evals: [] });
         subjectMap.get(subj.id)!.evals.push(ev);
       }
+      for (const assign of (tables.teaching_assignments || []).filter(a => String(a.group_id) === gId && !a.archived_at)) {
+        const comp = rawComponents.find(c => c.id === assign.component_id);
+        const subj = comp && rawSubjects.find(s => s.id === comp.subject_id);
+        if (subj && !subjectMap.has(String(subj.id))) {
+          const subjectName = String(subj.name || subj.code || 'Matière');
+          subjectMap.set(String(subj.id), {
+            id: String(subj.id),
+            code: formatSubjectCode(comp?.code || subj.code, subjectName),
+            name: subjectName,
+            evals: [],
+          });
+        }
+      }
 
       const memberEnrollmentIds = new Set(
-        rawEnrollmentGroups.filter(eg => String(eg.group_id) === gId).map(eg => String(eg.enrollment_id))
+        rawEnrollmentGroups
+          .filter(eg => String(eg.group_id) === gId && eg.historical_only !== true)
+          .map(eg => String(eg.enrollment_id))
       );
       for (const c of groupCands) memberEnrollmentIds.add(String(c.enrollment_id));
 
@@ -187,15 +206,26 @@ export default function GradesWorkspace() {
 
   // Enseignant de la matière
   const subjectTeacherName = useMemo(() => {
-    if (!activeSubjectEvals.length) return 'Non renseigné';
     const firstEval = activeSubjectEvals[0];
-    const assign = assignments.find(a => a.id === firstEval.assignment_id);
-    const tId = assign?.teacherId || firstEval.teacher_id;
+    const groupAssign = activeGroup && activeSubject
+      ? (tables.teaching_assignments || []).find(a => {
+          if (String(a.group_id) !== activeGroup.id || a.archived_at) return false;
+          const comp = (tables.curriculum_components || []).find(c => c.id === a.component_id);
+          return String(comp?.subject_id || '') === activeSubject.id;
+        })
+      : undefined;
+    const assign = firstEval ? assignments.find(a => a.id === firstEval.assignment_id) : undefined;
+    const rawAssign = firstEval
+      ? (tables.teaching_assignments || []).find(a => a.id === firstEval.assignment_id)
+      : groupAssign;
+    const tId = assign?.teacherId || firstEval?.teacher_id || rawAssign?.teacher_id;
+    if (!tId) return 'Non renseigné';
     const teacher = (tables.teachers || []).find(t => String(t.id) === String(tId));
     if (!teacher) return 'Enseignant responsable';
-    const person = (tables.people || []).find(p => String(p.id) === String(teacher.person_id));
-    return person ? `${person.firstname} ${person.lastname}` : 'Enseignant';
-  }, [activeSubjectEvals, assignments, tables.teachers, tables.people]);
+    const staff = (tables.staff || []).find(s => String(s.id) === String(teacher.staff_id));
+    const person = (tables.people || []).find(p => String(p.id) === String(staff?.person_id || teacher.person_id));
+    return person ? `${person.firstname} ${person.lastname}`.trim() : 'Enseignant';
+  }, [activeSubjectEvals, activeGroup, activeSubject, assignments, tables.teaching_assignments, tables.curriculum_components, tables.teachers, tables.staff, tables.people]);
 
   // Données des étudiants pour le carnet de notes de la matière
   const activeSubjectStudentRows = useMemo(() => {
@@ -292,8 +322,94 @@ export default function GradesWorkspace() {
     downloadCsv(`releve-notes-${activeGroup.name}-${activeSubject.name}.csv`, headers, rows);
   };
 
+  const isStudentRole = portal.activeRole === ROLES.STUD || portal.activeRole === ROLES.DEL;
+  const selfTranscript = useMemo(() => {
+    if (!isStudentRole || !portal.session?.matricule) return null;
+    return buildProvisionalTranscriptDocument(
+      snapshot,
+      portal.session.matricule,
+      portal.academicYearContext?.selectedYearId
+    );
+  }, [isStudentRole, portal.session?.matricule, snapshot, portal.academicYearContext?.selectedYearId]);
+
   return (
     <div className="domain-workspace">
+      {isStudentRole && selfTranscript && (
+        <section className="card card-full mb-2" aria-label="Mon relevé de notes par matière">
+          <div className="card-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '10px', marginBottom: '1rem' }}>
+            <div>
+              <h2 style={{ margin: 0 }}>Mon bulletin de notes · {selfTranscript.academicYear}</h2>
+              <p className="cell-sub" style={{ margin: '4px 0 0' }}>
+                {selfTranscript.student.name} ({selfTranscript.student.matricule}) · {selfTranscript.program} · {selfTranscript.level}
+              </p>
+            </div>
+            <button
+              type="button"
+              className="btn btn-primary"
+              onClick={() => printTranscript(selfTranscript)}
+              style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}
+            >
+              <Printer size={15} /> Imprimer mon relevé de notes (A4 REESAO)
+            </button>
+          </div>
+          <div className="kpi-grid" style={{ marginBottom: '1rem' }}>
+            <div className="kpi-card">
+              <span className="kpi-label">Moyenne générale</span>
+              <strong className="kpi-value">{selfTranscript.average !== null ? `${selfTranscript.average.toFixed(2)} / 20` : 'En cours'}</strong>
+              <span className="cell-sub">{selfTranscript.mention ? `Mention : ${selfTranscript.mention}` : 'Calculée sur les notes saisies'}</span>
+            </div>
+            <div className="kpi-card">
+              <span className="kpi-label">Crédits validés</span>
+              <strong className="kpi-value" style={{ color: 'var(--success)' }}>{selfTranscript.earnedCredits} / {selfTranscript.totalCredits}</strong>
+              <span className="cell-sub">Crédits CAMES / REESAO</span>
+            </div>
+          </div>
+          <div className="table-wrap">
+            <ResponsiveTable pageSize={0} className="data-table">
+              <thead>
+                <tr>
+                  <th>Semestre</th>
+                  <th>Code UE</th>
+                  <th>Unité d’enseignement / Matière</th>
+                  <th style={{ textAlign: 'center' }}>Crédits</th>
+                  <th style={{ textAlign: 'center' }}>Moyenne / 20</th>
+                  <th style={{ textAlign: 'center' }}>Validation</th>
+                </tr>
+              </thead>
+              <tbody>
+                {selfTranscript.semesters.flatMap(sem =>
+                  sem.rows.map(row => (
+                    <tr key={`${sem.name}:${row.code}`}>
+                      <td><span className="cell-sub">{sem.name}</span></td>
+                      <td><code>{row.code}</code></td>
+                      <td><strong>{row.name}</strong></td>
+                      <td style={{ textAlign: 'center' }}>{row.credits}</td>
+                      <td style={{ textAlign: 'center' }}>
+                        {row.average !== null ? (
+                          <strong style={{ color: row.average >= 10 ? '#166534' : '#b91c1c' }}>
+                            {row.average.toFixed(2)}
+                          </strong>
+                        ) : (
+                          <span className="cell-sub">—</span>
+                        )}
+                      </td>
+                      <td style={{ textAlign: 'center' }}>
+                        {row.validated === null ? (
+                          <span className="pill pill-subtle">En attente</span>
+                        ) : row.validated ? (
+                          <span className="pill pill-success">Validée</span>
+                        ) : (
+                          <span className="pill pill-warning">Non validée</span>
+                        )}
+                      </td>
+                    </tr>
+                  ))
+                )}
+              </tbody>
+            </ResponsiveTable>
+          </div>
+        </section>
+      )}
       {!selectedGroupId && (
         <>
           <PageHeader
@@ -509,6 +625,16 @@ export default function GradesWorkspace() {
                         <th key={ev.id} style={{ textAlign: 'center' }}>
                           <div style={{ fontWeight: 700 }}>{evalTypeLabel(ev)}</div>
                           <div className="cell-sub" style={{ fontSize: '11px' }}>{String(ev.name)}</div>
+                          {!isStudentRole && (
+                            <button
+                              type="button"
+                              className="btn btn-sm btn-outline"
+                              style={{ marginTop: '4px', padding: '2px 8px', fontSize: '11px' }}
+                              onClick={() => setManagingEvalId(String(ev.id))}
+                            >
+                              Gérer
+                            </button>
+                          )}
                         </th>
                       ))}
                       <th style={{ textAlign: 'center' }}>
@@ -595,6 +721,7 @@ export default function GradesWorkspace() {
       {managingEvalId && (
         <EvaluationGradeDialog
           evaluationId={managingEvalId}
+          evaluationIds={activeSubjectEvals.map(e => String(e.id))}
           onClose={() => setManagingEvalId('')}
         />
       )}
