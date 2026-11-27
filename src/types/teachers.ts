@@ -18,6 +18,7 @@ export interface TeacherDirectory {
 }
 export type TeacherCommand = { revision: number; reason: string } & (
   | { action: 'create_profile'; staffId: string; specialty: string; personalEmail: string }
+  | { action: 'configure_access'; teacherId: string; personalEmail: string }
   | { action: 'update_profile'; teacherId: string; specialty: string }
   | { action: 'set_active'; teacherId: string; active: boolean }
   | { action: 'create_assignment'; teacherId: string; groupId: string; offeringId: string; componentId: string; validFrom: string; validUntil: string | null }

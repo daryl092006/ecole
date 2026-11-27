@@ -37,6 +37,15 @@ export function connectedRecordName(table: string, row: DatabaseRow, snapshot: R
     const year=snapshot.tables.academic_years?.find(item=>item.id===row.academic_year_id);
     return `${curriculum ? connectedRecordName('curricula',curriculum,snapshot,depth+1) : String(snapshot.tables.levels?.find(level => level.id === row.level_id)?.name || 'Formation sans filière renseignée')} · ${year?.name || 'Année non retrouvée'}${row.delivery_mode ? ` · ${row.delivery_mode}` : ''}`;
   }
+  if (table === 'contract_versions' && depth < 4) {
+    const contract = snapshot.tables.financial_contracts?.find(item => item.id === row.contract_id);
+    const enrollment = contract && snapshot.tables.enrollments?.find(item => item.id === contract.enrollment_id);
+    const studentLabel = enrollment ? connectedRecordName('enrollments', enrollment, snapshot, depth + 1) : '';
+    const refLabel = contract?.reference ? String(contract.reference) : '';
+    if (studentLabel && refLabel) return `${studentLabel} · ${refLabel}`;
+    if (studentLabel) return studentLabel;
+    if (refLabel) return refLabel;
+  }
   const name = [row.firstname, row.lastname].filter(Boolean).join(' ') || row.name || row.title || row.reference || row.code;
   if (name) return String(name);
   if (depth < 4) {

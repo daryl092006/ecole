@@ -13,6 +13,7 @@ const common = { revision: z.number().int().nonnegative(), reason: z.string().tr
 const specialty = z.string().trim().max(160).default('');
 const commandSchema = z.discriminatedUnion('action', [
   z.object({ ...common, action: z.literal('create_profile'), staffId: z.uuid(), specialty, personalEmail: teacherPersonalEmailSchema }).strict(),
+  z.object({ ...common, action: z.literal('configure_access'), teacherId: z.uuid(), personalEmail: teacherPersonalEmailSchema }).strict(),
   z.object({ ...common, action: z.literal('update_profile'), teacherId: z.uuid(), specialty }).strict(),
   z.object({ ...common, action: z.literal('set_active'), teacherId: z.uuid(), active: z.boolean() }).strict(),
   z.object({ ...common, action: z.literal('create_assignment'), teacherId: z.uuid(), groupId: z.uuid(), offeringId: z.uuid(), componentId: z.uuid(), validFrom: z.iso.date(), validUntil: z.iso.date().nullable() }).strict(),
@@ -56,7 +57,7 @@ export async function POST(request: Request) {
     if (body.revision !== data.snapshot.revision) throw new RequestError(409, 'Ces données ont changé. Actualisez avant de réessayer.');
     const changes: PersistentChange[] = [];
     let id: string;
-    if (['create_profile', 'update_profile', 'set_active'].includes(body.action)) {
+    if (['create_profile', 'configure_access', 'update_profile', 'set_active'].includes(body.action)) {
       requirePermission(data.context, 'staff.manage');
       if (!hasGlobalStaffManagement(data.context)) throw new RequestError(403, 'La gestion des profils enseignants nécessite un accès global au personnel.');
     } else {
@@ -73,6 +74,12 @@ export async function POST(request: Request) {
       if (!rawStaff) throw new RequestError(409, 'Dossier du personnel introuvable.');
       changes.push({ table: 'people', operation: 'update', record: { id: rawStaff.person_id, email: body.personalEmail } });
       changes.push({ table: 'teachers', operation: 'insert', record: { id, staff_id: member.id, specialty: body.specialty || null, active: true, reason: body.reason } });
+      changes.push(teacherAccessRequest(id, body.personalEmail, data.context.accountId));
+    } else if (body.action === 'configure_access') {
+      const teacher = data.directory.teachers.find(row => row.id === body.teacherId);
+      if (!teacher) throw new RequestError(404, 'Profil enseignant introuvable.');
+      id = teacher.id;
+      changes.push({ table: 'people', operation: 'update', record: { id: teacher.personId, email: body.personalEmail } });
       changes.push(teacherAccessRequest(id, body.personalEmail, data.context.accountId));
     } else if (body.action === 'update_profile' || body.action === 'set_active') {
       const teacher = data.directory.teachers.find(row => row.id === body.teacherId);
@@ -145,9 +152,11 @@ export async function POST(request: Request) {
       }
     }
     let digitalAccess;
-    if (body.action === 'create_profile') {
-      const staff = data.snapshot.tables.staff!.find(row => row.id === body.staffId)!;
-      const person = data.snapshot.tables.people!.find(row => row.id === staff.person_id)!;
+    if (body.action === 'create_profile' || body.action === 'configure_access') {
+      const personId = body.action === 'create_profile'
+        ? data.snapshot.tables.staff!.find(row => row.id === body.staffId)!.person_id
+        : data.directory.teachers.find(row => row.id === body.teacherId)!.personId;
+      const person = data.snapshot.tables.people!.find(row => row.id === personId)!;
       const accessRequest = changes.find(change => change.table === 'teacher_digital_access')!;
       digitalAccess = await completeTeacherDigitalAccess(data.client, {
         requestId: String(accessRequest.record.id), teacherId: id, personId: person.id,

@@ -16,6 +16,8 @@ import ConnectedDomainWorkspace from './ConnectedDomainWorkspace';
 import TranscriptPrintAction from './academic/TranscriptPrintAction';
 import PageHeader from '@/components/ui/PageHeader';
 import { connectedRecordValue } from '@/services/connectedRecordDisplayService';
+import { printDocument } from '@/utils/printDocument';
+import { schoolCertificateMarkup } from '@/services/schoolCertificateService';
 const labels: Record<string, string> = { A_VERIFIER: 'À vérifier', CONFORME: 'Conforme', NON_CONFORME: 'Non conforme' };
 type Action = { kind: 'upload'; previous?: DatabaseRow } | { kind: 'review'; row: DatabaseRow; status: 'CONFORME' | 'NON_CONFORME' };
 export default function StudentDocumentsWorkspace({ studentMatricule }: { studentMatricule?: string }) {
@@ -41,6 +43,29 @@ export default function StudentDocumentsWorkspace({ studentMatricule }: { studen
   const studentName = (id: unknown) => String(directory.students.find(row => row.id === id)?.name || 'Étudiant');
   const superseded = new Set(directory.documents.map(row => row.supersedes_id));
   const issuedDocuments = (portal.relationalSnapshot.tables.generated_documents || []).filter(row => students.some(student => student.id === row.student_id) && !row.archived_at);
+  const certificateStudent = studentMatricule
+    ? portal.students.find(s => s.matricule === studentMatricule)
+    : undefined;
+  const printSchoolCertificate = () => {
+    if (!certificateStudent) return;
+    const yearLabel =
+      portal.academicYearContext?.years.find(y => y.id === portal.academicYearContext?.selectedYearId)?.name ||
+      '2026-2027';
+    printDocument(
+      `Certificat-Scolarite-${certificateStudent.matricule}`,
+      schoolCertificateMarkup({
+        studentName: `${certificateStudent.firstname} ${certificateStudent.lastname}`.trim(),
+        matricule: certificateStudent.matricule,
+        birthDate: certificateStudent.birthDate,
+        nationality: certificateStudent.nationality,
+        academicYear: yearLabel,
+        program: certificateStudent.filiere || 'Formation ESCEN',
+        level: certificateStudent.niveau || 'Niveau',
+        group: certificateStudent.groupe,
+        status: certificateStudent.status,
+      })
+    );
+  };
   const documents = directory.documents.filter(row => students.some(student => student.id === row.student_id) && `${row.filename} ${studentName(row.student_id)}`.toLocaleLowerCase('fr').includes(filter.toLocaleLowerCase('fr')));
   const label = action?.kind === 'upload' ? action.previous ? 'Enregistrer la nouvelle version' : 'Déposer la pièce' : 'Confirmer la vérification';
   async function save() {
@@ -76,6 +101,11 @@ export default function StudentDocumentsWorkspace({ studentMatricule }: { studen
             <p className="cell-sub" style={{ margin: '3px 0 0' }}>Pièces administratives et justificatifs déposés pour ce dossier.</p>
           </div>
           <div className="btn-group">
+            {certificateStudent && (
+              <button type="button" className="btn btn-sm btn-outline" onClick={printSchoolCertificate}>
+                Imprimer le certificat de scolarité (A4)
+              </button>
+            )}
             <button className="btn btn-sm btn-outline" onClick={() => setReload(value => value + 1)}>Actualiser</button>
             {directory.canUpload && (
               <button className="btn btn-sm btn-primary" disabled={!directory.yearId || !students.length} onClick={() => open({ kind: 'upload' })}>

@@ -13,6 +13,7 @@ import { DOMAIN_WORKSPACES } from '@/data/domainWorkspaces';
 import { PORTAL_ROUTES } from '@/constants/portalRoutes';
 import { connectedFieldLabel, connectedRecordName, connectedRecordValue } from '@/services/connectedRecordDisplayService';
 import { receiptStatus } from '@/services/paymentAdjustmentService';
+import { activePaymentAllocations } from '@/services/paymentAllocationService';
 import type { DatabaseRow } from '@/types/persistence';
 import HistoricalWorkspace, { HISTORY_SECTIONS } from './history/HistoricalWorkspace';
 import ResponsiveTable from '@/components/ui/ResponsiveTable';
@@ -101,6 +102,21 @@ export default function ConnectedDomainWorkspace({ section, studentMatricule, on
   const canOpenFinancialDossier = !studentMatricule && portal.perms.permissions.includes('payment.record') && portal.perms.permissions.includes('student.view') && ['fin_payments', 'fin_contracts'].includes(section);
   const page = rows.slice(offset, offset + 10);
   const selectedMeetingUrl = selected ? confirmedMeetingUrl(selected.meeting_url, selected.meeting_id) : null;
+  const activeAllocs = activePaymentAllocations(snapshot);
+  const settledByInstallment = new Map<string, number>();
+  for (const alloc of activeAllocs) {
+    if (alloc.installment_id) {
+      const k = String(alloc.installment_id);
+      settledByInstallment.set(k, (settledByInstallment.get(k) || 0) + Number(alloc.amount || 0));
+    }
+  }
+  const todayIso = new Date().toISOString().slice(0, 10);
+  const selfStudent = section === 'espace_finance'
+    ? portal.students.find(s => s.matricule === (studentMatricule || portal.session?.matricule))
+    : undefined;
+  const selfInstallments = section === 'espace_finance'
+    ? [...(snapshot.tables.installments || [])].sort((a, b) => String(a.due_on || '').localeCompare(String(b.due_on || '')) || Number(a.position || 0) - Number(b.position || 0))
+    : [];
   if (['espace_documents', 'espace_finance'].includes(section) && !portal.perms.scope.ownDataOnly) return (
     <section className="card card-full staff-redirect-card">
       <div className="staff-redirect-header">
@@ -226,6 +242,76 @@ export default function ConnectedDomainWorkspace({ section, studentMatricule, on
         </PageHeader>
       )}
     {dossierPicker}
+    {section === 'espace_finance' && selfStudent && selfStudent.financials.available !== false && (
+      <section className="card card-full mb-2" aria-label="Synthèse de ma scolarité">
+        <div className="kpi-grid" style={{ marginBottom: selfInstallments.length ? '1.25rem' : 0 }}>
+          <div className="kpi-card">
+            <span className="kpi-label">Montant contractuel net</span>
+            <strong className="kpi-value">{selfStudent.financials.expected.toLocaleString('fr-FR')} FCFA</strong>
+            <span className="cell-sub">{selfStudent.filiere} · {selfStudent.niveau}</span>
+          </div>
+          <div className="kpi-card">
+            <span className="kpi-label">Total réglé</span>
+            <strong className="kpi-value" style={{ color: 'var(--success)' }}>{selfStudent.financials.paid.toLocaleString('fr-FR')} FCFA</strong>
+            <span className="cell-sub">Paiements validés</span>
+          </div>
+          <div className="kpi-card">
+            <span className="kpi-label">Reste à régler</span>
+            <strong className="kpi-value" style={{ color: selfStudent.financials.remaining > 0 ? 'var(--warning)' : 'var(--success)' }}>
+              {selfStudent.financials.remaining.toLocaleString('fr-FR')} FCFA
+            </strong>
+            <span className="cell-sub">{selfStudent.financials.remaining <= 0 ? 'Scolarité soldée' : 'Solde restant'}</span>
+          </div>
+          <div className="kpi-card">
+            <span className="kpi-label">Bourse / Remise</span>
+            <strong className="kpi-value">
+              {selfStudent.bourse?.active ? `${selfStudent.bourse.percent}%` : 'Aucune'}
+            </strong>
+            <span className="cell-sub">{selfStudent.bourse?.active ? selfStudent.bourse.type : 'Tarif standard'}</span>
+          </div>
+        </div>
+        {selfInstallments.length > 0 && (
+          <div>
+            <h2 style={{ fontSize: '1.05rem', marginBottom: '0.65rem' }}>Suivi de mon échéancier ({selfInstallments.length} tranches)</h2>
+            <div className="table-wrap">
+              <ResponsiveTable pageSize={0} className="data-table">
+                <thead>
+                  <tr>
+                    <th>Tranche</th>
+                    <th>Date d’échéance</th>
+                    <th>Montant</th>
+                    <th>Réglé</th>
+                    <th>Reste</th>
+                    <th>État</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {selfInstallments.map(inst => {
+                    const amt = Number(inst.amount || 0);
+                    const settled = Math.min(amt, settledByInstallment.get(String(inst.id)) || 0);
+                    const rem = Math.max(0, amt - settled);
+                    const due = String(inst.due_on || '').slice(0, 10);
+                    const isOverdue = rem > 0 && due && due < todayIso;
+                    const pill = rem === 0 ? 'pill-success' : settled > 0 ? 'pill-info' : isOverdue ? 'pill-warning' : 'pill-default';
+                    const stateLabel = rem === 0 ? 'Soldée' : settled > 0 ? 'Partielle' : isOverdue ? 'Échue' : 'À venir';
+                    return (
+                      <tr key={inst.id}>
+                        <td><strong>{String(inst.description || `Tranche ${inst.position || ''}`)}</strong></td>
+                        <td>{connectedRecordValue('installments', 'due_on', inst.due_on, snapshot)}</td>
+                        <td>{amt.toLocaleString('fr-FR')} FCFA</td>
+                        <td style={{ color: settled > 0 ? 'var(--success)' : undefined }}>{settled.toLocaleString('fr-FR')} FCFA</td>
+                        <td style={{ fontWeight: rem > 0 ? 600 : 400 }}>{rem.toLocaleString('fr-FR')} FCFA</td>
+                        <td><span className={`pill ${pill}`}>{stateLabel}</span></td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </ResponsiveTable>
+            </div>
+          </div>
+        )}
+      </section>
+    )}
 
 
     {paymentPicker && <WorkPage title={section === 'fin_contracts' ? 'Choisir le dossier pour gérer le contrat' : 'Choisir le dossier pour encaisser'} onClose={() => setPaymentPicker(false)}><StudentDossierPicker students={portal.students} onSelect={matricule => { setPaymentPicker(false); setPaymentDossier(matricule); }} /></WorkPage>}
@@ -261,7 +347,15 @@ export default function ConnectedDomainWorkspace({ section, studentMatricule, on
         {dateKey && (section === 'fin_reports' || collectionRows.length > 1 || start || end) && <section className="workspace-filter-panel" aria-label="Filtrer par période"><div className="planning-filters"><label className="form-group">{collection === 'payments' ? 'Versement à partir du' : collection === 'installments' ? 'Échéance à partir du' : 'Enregistrement à partir du'}<input className="input" type="date" value={start} onChange={event => { setStart(event.target.value); setOffset(0); setExported(false); }} /></label><label className="form-group">Jusqu’au<input className="input" type="date" min={start || undefined} value={end} onChange={event => { setEnd(event.target.value); setOffset(0); setExported(false); }} /></label></div></section>}
         {(query || start || end) && <button className="btn btn-outline" onClick={() => { setQuery(''); setStart(''); setEnd(''); setOffset(0); setExported(false); }}>Effacer les filtres</button>}
         {exported && <p role="status">{rows.length} ligne(s) exportée(s) avec succès.</p>}
-        <div className="table-wrap"><ResponsiveTable pageSize={0} className="data-table"><thead><tr>{config.columns.map(key => <th key={key}>{connectedFieldLabel(key)}</th>)}<th>Détail</th></tr></thead><tbody>{page.map(row => <tr key={row.id}>{config.columns.map(key => <td key={key}>{connectedRecordValue(collection, key, row[key], snapshot)}</td>)}<td><IconButton className="btn btn-outline" onClick={() => setSelected(row)} label="Ouvrir le détail" /></td></tr>)}{!page.length && <tr><td colSpan={config.columns.length + 1}>{query ? 'Aucun résultat pour cette recherche.' : 'Aucune donnée pour l’année consultée.'}</td></tr>}</tbody></ResponsiveTable></div>
+        <div className="table-wrap"><ResponsiveTable pageSize={0} className="data-table"><thead><tr>{config.columns.map(key => <th key={key}>{connectedFieldLabel(key)}</th>)}{collection === 'installments' && <th>Règlement & État</th>}<th>Détail</th></tr></thead><tbody>{page.map(row => {
+          const instAmt = collection === 'installments' ? Number(row.amount || 0) : 0;
+          const instSettled = collection === 'installments' ? Math.min(instAmt, settledByInstallment.get(String(row.id)) || 0) : 0;
+          const instRem = Math.max(0, instAmt - instSettled);
+          const instDue = collection === 'installments' ? String(row.due_on || '').slice(0, 10) : '';
+          const instState = instRem === 0 ? 'Soldée' : instSettled > 0 ? 'Partielle' : (instDue && instDue < todayIso) ? 'Échue' : 'À venir';
+          const instPill = instRem === 0 ? 'pill-success' : instSettled > 0 ? 'pill-info' : (instDue && instDue < todayIso) ? 'pill-warning' : 'pill-default';
+          return <tr key={row.id}>{config.columns.map(key => <td key={key}>{connectedRecordValue(collection, key, row[key], snapshot)}{collection === 'installments' && key === 'version_id' && row.description ? <div className="cell-sub">{String(row.description)}</div> : null}</td>)}{collection === 'installments' && <td><span className={`pill ${instPill}`}>{instState}</span><div className="cell-sub">Réglé : {instSettled.toLocaleString('fr-FR')} FCFA</div></td>}<td><IconButton className="btn btn-outline" onClick={() => setSelected(row)} label="Ouvrir le détail" /></td></tr>;
+        })}{!page.length && <tr><td colSpan={config.columns.length + (collection === 'installments' ? 2 : 1)}>{query ? 'Aucun résultat pour cette recherche.' : 'Aucune donnée pour l’année consultée.'}</td></tr>}</tbody></ResponsiveTable></div>
         {rows.length > 10 && <div className="browser-pagination"><span>{offset + 1}–{Math.min(offset + 10, rows.length)} sur {rows.length}</span><div className="btn-group"><IconButton className="btn btn-outline" disabled={!offset} onClick={() => setOffset(value => Math.max(0, value - 10))} label="Précédent" /><IconButton className="btn btn-outline" disabled={offset + 10 >= rows.length} onClick={() => setOffset(value => value + 10)} label="Suivant" /></div></div>}
       </section> : <section className="card"><p>{definition.availability}</p></section>}
       {selected && <WorkPage title={connectedRecordName(collection, selected, snapshot)} onClose={() => setSelected(null)}>{collection === 'generated_documents' && selected.kind === 'RELEVE' && <TranscriptPrintAction key={selected.id} document={selected} />}{(() => {

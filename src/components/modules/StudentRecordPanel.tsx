@@ -22,6 +22,9 @@ import {
   evaluationGradeValue,
 } from '@/services/evaluationGradePolicy';
 import { assessmentProgress } from '@/services/assessmentDisplayService';
+import { printDocument } from '@/utils/printDocument';
+import { printTranscript } from '@/utils/printTranscript';
+import { schoolCertificateMarkup, buildProvisionalTranscriptDocument } from '@/services/schoolCertificateService';
 import type { Student } from '@/types/student';
 import { useEffect, useState } from 'react';
 
@@ -139,6 +142,31 @@ export default function StudentRecordPanel({ studentId, embedded = false, initia
           .filter(value => value && !['À reprendre', 'Non affecté'].includes(value))
           .join(' · ') || 'Formation et groupe non confirmés pour l’année consultée'}
       >
+        <button
+          type="button"
+          className="btn btn-outline"
+          onClick={() => {
+            const yearLabel =
+              state.academicYearContext?.years.find(y => y.id === state.academicYearContext?.selectedYearId)?.name ||
+              '2026-2027';
+            printDocument(
+              `Certificat-Scolarite-${student.matricule}`,
+              schoolCertificateMarkup({
+                studentName: `${student.firstname} ${student.lastname}`.trim(),
+                matricule: student.matricule,
+                birthDate: student.birthDate,
+                nationality: student.nationality,
+                academicYear: yearLabel,
+                program: student.filiere || 'Formation ESCEN',
+                level: student.niveau || 'Niveau',
+                group: student.groupe,
+                status: student.status,
+              })
+            );
+          }}
+        >
+          Certificat de scolarité (A4)
+        </button>
         {!embedded && (
           <Link href="/etudiants" className="btn btn-outline">
             ← Revenir aux étudiants
@@ -191,10 +219,26 @@ export default function StudentRecordPanel({ studentId, embedded = false, initia
           )}
           {section === 'notes' && studentEvaluationsSummary.length > 0 && (
             <section className="card card-full mb-2" aria-label="Synthèse des évaluations et copies de l’étudiant">
-              <div className="card-header">
+              <div className="card-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '8px' }}>
                 <div>
                   <h2>Notes</h2>
                 </div>
+                {(() => {
+                  const provisionalDoc = buildProvisionalTranscriptDocument(
+                    snapshot,
+                    student.matricule,
+                    state.academicYearContext?.selectedYearId
+                  );
+                  return provisionalDoc ? (
+                    <button
+                      type="button"
+                      className="btn btn-sm btn-primary"
+                      onClick={() => printTranscript(provisionalDoc)}
+                    >
+                      Imprimer le relevé de notes (A4 REESAO)
+                    </button>
+                  ) : null;
+                })()}
               </div>
               <div className="table-wrap">
                 <ResponsiveTable className="data-table">

@@ -22,6 +22,9 @@ export default function PersistentExamCopies({ evaluationId, candidateId, onClos
   const [questionScores, setQuestionScores] = useState<Record<string, Record<string, string>>>({});
   const [manualFinals, setManualFinals] = useState<Record<string, string>>({});
   const [busyAttemptId, setBusyAttemptId] = useState('');
+  const [batchBusy, setBatchBusy] = useState(false);
+  const [batchFeedback, setBatchFeedback] = useState('');
+  const [batchError, setBatchError] = useState('');
   const [errorByAttempt, setErrorByAttempt] = useState<Record<string, string>>({});
   const [savedByAttempt, setSavedByAttempt] = useState<Record<string, string>>({});
 
@@ -50,13 +53,87 @@ export default function PersistentExamCopies({ evaluationId, candidateId, onClos
 
   const roundMark = (value: number) => Math.round(Math.min(20, Math.max(0, value)) * 100) / 100;
 
+  const computeAttemptFinalMark = (attempt: (typeof allAttempts)[number]): number | null => {
+    if (!['REMISE', 'EXPIREE'].includes(String(attempt.status))) return null;
+    const manual = manualFinals[String(attempt.id)];
+    if (manual !== undefined && manual.trim() !== '') {
+      const val = Number(manual);
+      return Number.isFinite(val) && val >= 0 && val <= 20 ? roundMark(val) : null;
+    }
+    const grade = tables.grades?.find(row => row.candidate_id === attempt.candidate_id);
+    const existing = evaluationGradeValue(grade);
+    if (existing !== null) return existing;
+    const questions = [...(tables.exam_questions || []).filter(row => row.paper_id === attempt.paper_id)];
+    const totalPaperPoints = questions.reduce((sum, q) => sum + (Number(q.points) || 0), 0);
+    if (totalPaperPoints <= 0) return null;
+    const attemptScores = questionScores[String(attempt.id)] || {};
+    const hasQcm = questions.some(q => ['QCM_SIMPLE', 'QCM_MULTIPLE'].includes(String(q.kind)));
+    if (!hasQcm && Object.keys(attemptScores).length === 0) return null;
+    const answers = (tables.exam_answers || []).filter(row => row.attempt_id === attempt.id);
+    const rawTotal = questions.reduce((sum, q) => {
+      const raw = attemptScores[String(q.id)];
+      if (raw !== undefined && raw !== '' && Number.isFinite(Number(raw))) return sum + Number(raw);
+      if (!['QCM_SIMPLE', 'QCM_MULTIPLE'].includes(String(q.kind))) return sum;
+      const opts = (tables.exam_options || []).filter(row => row.question_id === q.id);
+      const correctIds = opts.filter(row => row.is_correct === true).map(row => String(row.id)).sort();
+      if (!correctIds.length) return sum;
+      const resp = answers.find(row => row.question_id === q.id)?.response as OnlineExamAnswer | undefined;
+      const chosenIds = [...new Set((resp?.option_ids || []).map(String))].sort();
+      const exact = chosenIds.length === correctIds.length && chosenIds.every((id, idx) => id === correctIds[idx]);
+      return sum + (exact ? Number(q.points) || 0 : 0);
+    }, 0);
+    return roundMark((rawTotal / totalPaperPoints) * 20);
+  };
+
+  const batchReadyGrades = canGrade
+    ? allAttempts.flatMap(attempt => {
+        const candidate = tables.evaluation_candidates?.find(row => row.id === attempt.candidate_id);
+        const val = computeAttemptFinalMark(attempt);
+        return candidate && val !== null ? [{ candidateId: String(candidate.id), value: val, absenceStatus: null as null }] : [];
+      })
+    : [];
+
+  const handleBatchSaveGrades = async () => {
+    if (!canGrade || !batchReadyGrades.length || batchBusy) return;
+    setBatchBusy(true);
+    setBatchError('');
+    setBatchFeedback('');
+    try {
+      await manageEvaluation(portal.activeRole, {
+        action: 'enter_grades',
+        evaluationId,
+        advanceToSaisies: evaluation?.status === 'BROUILLON',
+        grades: batchReadyGrades,
+        revision: snapshot.revision,
+      });
+      portal.refreshCampus();
+      setBatchFeedback(`${batchReadyGrades.length} note(s) enregistrée(s) avec succès sur le relevé de l’épreuve.`);
+    } catch (cause) {
+      setBatchError(cause instanceof Error ? cause.message : 'Enregistrement groupé impossible.');
+    } finally {
+      setBatchBusy(false);
+    }
+  };
+
   return (
     <WorkPage title="Copies en ligne" onClose={onClose}>
       <div className="btn-group mb-2">
         <button type="button" className="btn btn-outline" onClick={() => portal.refreshCampus()}>
           Actualiser les copies
         </button>
+        {canGrade && batchReadyGrades.length > 0 && (
+          <button
+            type="button"
+            className="btn btn-primary"
+            disabled={batchBusy}
+            onClick={() => void handleBatchSaveGrades()}
+          >
+            {batchBusy ? 'Enregistrement en cours…' : `Enregistrer toutes les notes calculées (${batchReadyGrades.length})`}
+          </button>
+        )}
       </div>
+      {batchFeedback && <p className="info-box mb-2" role="status">{batchFeedback}</p>}
+      {batchError && <p className="restricted-box mb-2" role="alert">{batchError}</p>}
       {allAttempts.length > 1 && (
         <div className="form-grid mb-2">
           <label className="form-group">
@@ -119,6 +196,7 @@ export default function PersistentExamCopies({ evaluationId, candidateId, onClos
           return sum + (def ?? 0);
         }, 0);
 
+        const hasQcmQuestions = questions.some(q => ['QCM_SIMPLE', 'QCM_MULTIPLE'].includes(String(q.kind)));
         const suggestedMarkOn20 = totalPaperPoints > 0 ? roundMark((rawTotal / totalPaperPoints) * 20) : roundMark(rawTotal);
         const existingNumericGrade = evaluationGradeValue(grade);
         const finalInput =
@@ -126,7 +204,7 @@ export default function PersistentExamCopies({ evaluationId, candidateId, onClos
             ? manualFinals[String(attempt.id)]
             : existingNumericGrade !== null
             ? String(existingNumericGrade)
-            : totalPaperPoints > 0 && Object.keys(attemptScores).length > 0
+            : totalPaperPoints > 0 && (hasQcmQuestions || Object.keys(attemptScores).length > 0)
             ? String(suggestedMarkOn20)
             : '';
 
