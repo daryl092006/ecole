@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { createHash, randomUUID } from 'node:crypto';
 import { ROLES } from '@/types/permissions';
 import { requireAccount, requirePermission, RequestError, errorResponse } from '@/server/auth';
 import { resolveAcademicYear } from '@/server/academicYearContext';
@@ -7,6 +8,7 @@ import { ATTENDANCE_STATUSES } from '@/types/attendanceManagement';
 import type { PersistentChange, RelationalSnapshot } from '@/types/persistence';
 
 export const dynamic = 'force-dynamic';
+const JUSTIFICATION_BUCKET = 'escen-student-documents';
 const revision = z.number().int().nonnegative();
 const instant = z.iso.datetime({ offset: true });
 const reason = z.string().trim().min(3).max(1000);
@@ -18,6 +20,15 @@ const schema = z.discriminatedUnion('action', [
   z.object({ action: z.literal('record_teacher'), revision, sessionId: z.uuid(), arrivedAt: instant,
     leftAt: instant.nullable(), comment: z.string().trim().max(4000) }).strict(),
   z.object({ action: z.literal('review_justification'), revision, justificationId: z.uuid(), decision: z.enum(['VALIDE', 'REFUSE']), reason }).strict(),
+  z.object({
+    action: z.literal('submit_justification'),
+    revision,
+    attendanceId: z.uuid(),
+    reason,
+    fileName: z.string().trim().max(240).optional(),
+    mimeType: z.string().trim().max(120).optional(),
+    contentBase64: z.string().max(7_500_000).optional(),
+  }).strict(),
 ]);
 async function load(request: Request) {
   const auth = await requireAccount(request);
@@ -52,9 +63,92 @@ export async function POST(request: Request) {
   try {
     const data = await load(request);
     const body = schema.parse(await request.json());
-    requirePermission(data.context, body.action === 'review_justification' ? 'attendance.review' : 'attendance.record');
     if (!data.year.selectedYearId) throw new RequestError(409, 'Choisissez une année scolaire précise pour enregistrer les présences.');
     if (body.revision !== data.snapshot.revision) throw new RequestError(409, 'Ces présences ont changé. Actualisez avant de réessayer.');
+
+    if (body.action === 'submit_justification') {
+      const attendance = (data.snapshot.tables.attendances || []).find(row => row.id === body.attendanceId && !row.archived_at);
+      if (!attendance) throw new RequestError(404, 'Pointage de présence introuvable.');
+      const enrollment = (data.snapshot.tables.enrollments || []).find(row => row.id === attendance.enrollment_id && !row.archived_at);
+      const isOwnStudent = Boolean(data.context.studentId && enrollment?.student_id === data.context.studentId);
+      const canStaffSubmit = data.context.permissions.includes('attendance.record') || data.context.permissions.includes('attendance.review');
+      if (!isOwnStudent && !canStaffSubmit) {
+        throw new RequestError(403, 'Vous ne pouvez déposer un justificatif que pour vos propres absences ou retards.');
+      }
+      if (!['ABSENT', 'RETARD'].includes(String(attendance.status))) {
+        throw new RequestError(409, 'Seuls une absence ou un retard non encore justifiés peuvent faire l’objet d’un justificatif.');
+      }
+      const existingPendingOrValid = (data.snapshot.tables.absence_justifications || []).some(
+        row => row.attendance_id === attendance.id && !row.archived_at && ['EN_ATTENTE', 'VALIDE'].includes(String(row.status))
+      );
+      if (existingPendingOrValid) {
+        throw new RequestError(409, 'Un justificatif est déjà en cours d’examen ou validé pour cette séance.');
+      }
+
+      const fileId = randomUUID();
+      const justificationId = randomUUID();
+      const hasAttachment = Boolean(body.contentBase64 && body.contentBase64.trim());
+      const bytes = hasAttachment
+        ? Buffer.from(body.contentBase64!, 'base64')
+        : Buffer.from(`Justificatif d'absence / retard\nMotif : ${body.reason}\nDate : ${new Date().toISOString()}\n`, 'utf-8');
+      if (bytes.byteLength === 0 || bytes.byteLength > 5 * 1024 * 1024) {
+        throw new RequestError(400, 'La pièce justificative ne doit pas dépasser 5 Mo.');
+      }
+      const cleanName = hasAttachment && body.fileName
+        ? body.fileName.replace(/[\x00-\x1f/\\]/g, '_').slice(0, 180)
+        : `declaration-justificatif-${String(attendance.id).slice(0, 8)}.txt`;
+      const mimeType = hasAttachment && body.mimeType ? body.mimeType : 'text/plain';
+      const objectPath = `justifications/${data.year.selectedYearId}/${String(attendance.id)}/${fileId}-${cleanName}`;
+      const sha256 = createHash('sha256').update(bytes).digest('hex');
+
+      const uploadRes = await data.client.storage
+        .from(JUSTIFICATION_BUCKET)
+        .upload(objectPath, bytes, { contentType: mimeType, upsert: false });
+      if (uploadRes.error) {
+        throw new RequestError(503, 'Stockage de la pièce justificative temporairement indisponible.');
+      }
+
+      const txChanges: PersistentChange[] = [
+        {
+          table: 'file_objects',
+          operation: 'insert',
+          record: {
+            id: fileId,
+            bucket: JUSTIFICATION_BUCKET,
+            object_path: objectPath,
+            original_name: cleanName,
+            mime_type: mimeType,
+            byte_size: bytes.byteLength,
+            sha256,
+            uploaded_by: data.context.accountId,
+          },
+        },
+        {
+          table: 'absence_justifications',
+          operation: 'insert',
+          record: {
+            id: justificationId,
+            attendance_id: attendance.id,
+            file_id: fileId,
+            reason: body.reason,
+            status: 'EN_ATTENTE',
+          },
+        },
+      ];
+
+      const saved = await data.client.rpc('escen_backend_transaction', {
+        p_actor_id: data.context.accountId,
+        p_expected_revision: body.revision,
+        p_changes: txChanges,
+      });
+      if (saved.error) {
+        await data.client.storage.from(JUSTIFICATION_BUCKET).remove([objectPath]);
+        throw new RequestError(409, 'Enregistrement du justificatif refusé. Actualisez avant de réessayer.');
+      }
+      return Response.json({ id: justificationId, revision: saved.data }, { status: 201, headers: { 'Cache-Control': 'no-store' } });
+    }
+
+    requirePermission(data.context, body.action === 'review_justification' ? 'attendance.review' : 'attendance.record');
     const session = body.action === 'review_justification'
       ? data.directory.sessions.find(row => row.justifications.some(item => item.id === body.justificationId))
       : data.directory.sessions.find(row => row.id === body.sessionId);

@@ -33,4 +33,5 @@ export type AttendanceCommand = { revision: number } & (
   | { action: 'record_students'; sessionId: string; entries: AttendanceEntry[]; reason?: string }
   | { action: 'record_teacher'; sessionId: string; arrivedAt: string; leftAt: string | null; comment: string }
   | { action: 'review_justification'; justificationId: string; decision: 'VALIDE' | 'REFUSE'; reason: string }
+  | { action: 'submit_justification'; attendanceId: string; reason: string; fileName?: string; mimeType?: string; contentBase64?: string }
 );
